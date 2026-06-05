@@ -1,0 +1,595 @@
+import { useState } from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
+import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { KPICard } from '../components/KPICard';
+import { Card } from '../components/Card';
+import { Badge } from '../components/Badge';
+import { Avatar } from '../components/ui';
+import { useAuth } from '../context/AuthContext';
+
+interface Exam {
+  id: string;
+  name: string;
+  subject: string;
+  class: string;
+  date: string;
+  maxMarks: number;
+  status: 'Upcoming' | 'Completed' | 'Results Published';
+}
+
+interface StudentResult {
+  name: string;
+  init: string;
+  roll: string;
+  maths: number;
+  science: number;
+  english: number;
+  telugu: number;
+  social: number;
+  total: number;
+  percentage: number;
+  grade: string;
+  rank: number;
+}
+
+interface ExamScheduleEntry {
+  subject: string;
+  time: string;
+  duration: string;
+  maxMarks: number;
+}
+
+type ClassExamSchedule = {
+  [dateStr: string]: ExamScheduleEntry[];
+};
+
+const EXAMS: Exam[] = [
+  { id: '1', name: 'Unit Test 1', subject: 'All Subjects', class: '8A', date: '2026-06-10', maxMarks: 25, status: 'Upcoming' },
+  { id: '2', name: 'Half Yearly Exam', subject: 'All Subjects', class: '8A', date: '2026-06-25', maxMarks: 100, status: 'Upcoming' },
+  { id: '3', name: 'Quarterly Test', subject: 'Mathematics', class: '8A', date: '2026-05-20', maxMarks: 50, status: 'Results Published' },
+  { id: '4', name: 'Unit Test 3', subject: 'All Subjects', class: '9A', date: '2026-05-15', maxMarks: 25, status: 'Completed' },
+];
+
+const RESULTS: StudentResult[] = [
+  { name: 'Priya Sharma', init: 'PS', roll: '8A-002', maths: 92, science: 88, english: 85, telugu: 90, social: 78, total: 433, percentage: 86.6, grade: 'A+', rank: 1 },
+  { name: 'Arjun Reddy', init: 'AR', roll: '8B-001', maths: 88, science: 82, english: 79, telugu: 85, social: 84, total: 418, percentage: 83.6, grade: 'A', rank: 2 },
+  { name: 'Ananya Singh', init: 'AS', roll: '8A-008', maths: 85, science: 90, english: 82, telugu: 76, social: 82, total: 415, percentage: 83, grade: 'A', rank: 3 },
+  { name: 'Vikram K', init: 'VK', roll: '8A-010', maths: 78, science: 75, english: 88, telugu: 82, social: 80, total: 403, percentage: 80.6, grade: 'A', rank: 4 },
+  { name: 'Meena Nair', init: 'MN', roll: '7B-004', maths: 65, science: 70, english: 74, telugu: 79, social: 68, total: 356, percentage: 71.2, grade: 'B+', rank: 5 },
+];
+
+const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
+  PS: { bg: 'var(--teal-bg)', color: 'var(--teal-tx)' },
+  AR: { bg: 'var(--blue-bg)', color: 'var(--blue-tx)' },
+  AS: { bg: 'var(--purple-bg)', color: 'var(--purple-tx)' },
+  VK: { bg: 'var(--amber-bg)', color: 'var(--amber-tx)' },
+  MN: { bg: 'var(--coral-bg)', color: 'var(--coral-tx)' },
+};
+
+const subjectAvgData = [
+  { subject: 'Maths', avg: 81.6 },
+  { subject: 'Science', avg: 81 },
+  { subject: 'English', avg: 81.6 },
+  { subject: 'Telugu', avg: 82.4 },
+  { subject: 'Social', avg: 78.4 },
+];
+
+const tooltipStyle = { backgroundColor: 'var(--surf)', border: '0.5px solid var(--b2)', borderRadius: 8, fontSize: 11, color: 'var(--tx)' };
+
+const GRADE_BADGE: Record<string, 'teal' | 'blue' | 'amber' | 'red' | 'purple'> = {
+  'A+': 'purple', 'A': 'teal', 'B+': 'blue', 'B': 'amber', 'C': 'red',
+};
+
+const CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
+const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'All Subjects'];
+
+const INITIAL_SCHEDULES: Record<string, ClassExamSchedule> = {
+  '8A': {
+    '2026-06-10': [
+      { subject: 'Mathematics', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
+      { subject: 'Science', time: '2:00 PM', duration: '2 hrs', maxMarks: 25 },
+    ],
+    '2026-06-11': [
+      { subject: 'English', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
+    ],
+    '2026-06-12': [
+      { subject: 'Telugu', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
+      { subject: 'Social Studies', time: '2:00 PM', duration: '2 hrs', maxMarks: 25 },
+    ],
+  },
+  '9A': {
+    '2026-06-14': [
+      { subject: 'Mathematics', time: '10:00 AM', duration: '3 hrs', maxMarks: 50 },
+    ],
+    '2026-06-15': [
+      { subject: 'Science', time: '10:00 AM', duration: '3 hrs', maxMarks: 50 },
+    ],
+  },
+};
+
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year: number, month: number) {
+  return new Date(year, month, 1).getDay();
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+interface AddExamModal {
+  dateStr: string;
+}
+
+function ExamScheduleDesigner() {
+  const [selectedClass, setSelectedClass] = useState('8A');
+  const [year, setYear] = useState(2026);
+  const [month, setMonth] = useState(5);
+  const [schedules, setSchedules] = useState<Record<string, ClassExamSchedule>>(INITIAL_SCHEDULES);
+  const [addModal, setAddModal] = useState<AddExamModal | null>(null);
+  const [newSubject, setNewSubject] = useState('Mathematics');
+  const [newTime, setNewTime] = useState('10:00 AM');
+  const [newDuration, setNewDuration] = useState('2 hrs');
+  const [newMarks, setNewMarks] = useState(50);
+  const [savedMsg, setSavedMsg] = useState(false);
+
+  const classSchedule = schedules[selectedClass] ?? {};
+
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay = getFirstDayOfMonth(year, month);
+
+  const calendarDays: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) calendarDays.push(null);
+  for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
+
+  const formatDate = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  const addExamEntry = () => {
+    if (!addModal) return;
+    const entry: ExamScheduleEntry = { subject: newSubject, time: newTime, duration: newDuration, maxMarks: newMarks };
+    setSchedules((prev) => ({
+      ...prev,
+      [selectedClass]: {
+        ...(prev[selectedClass] ?? {}),
+        [addModal.dateStr]: [...(prev[selectedClass]?.[addModal.dateStr] ?? []), entry],
+      },
+    }));
+    setAddModal(null);
+  };
+
+  const removeEntry = (dateStr: string, idx: number) => {
+    setSchedules((prev) => {
+      const dayEntries = [...(prev[selectedClass]?.[dateStr] ?? [])];
+      dayEntries.splice(idx, 1);
+      const updatedClass = { ...(prev[selectedClass] ?? {}), [dateStr]: dayEntries };
+      if (dayEntries.length === 0) delete updatedClass[dateStr];
+      return { ...prev, [selectedClass]: updatedClass };
+    });
+  };
+
+  const totalExams = Object.values(classSchedule).reduce((s, arr) => s + arr.length, 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center">
+        <div className="flex items-center gap-2">
+          <div className="text-[12.5px] font-semibold text-[var(--tx)]">Exam Schedule Designer</div>
+          <div className="flex gap-1">
+            {CLASSES.map((cls) => (
+              <button
+                key={cls}
+                onClick={() => setSelectedClass(cls)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                  selectedClass === cls
+                    ? 'bg-[var(--blue)] text-white'
+                    : 'bg-[var(--surf2)] border border-[var(--b)] text-[var(--tx2)] hover:border-[var(--blue)]'
+                }`}
+              >
+                {cls}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {savedMsg && <span className="text-[11.5px] text-[var(--teal-tx)]">Saved!</span>}
+          <Badge variant="blue">{totalExams} exams scheduled</Badge>
+          <button
+            onClick={() => { setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2000); }}
+            className="flex items-center gap-1 px-3 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90"
+          >
+            <Calendar size={11} /> Save Schedule
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-2.5">
+        {/* Calendar */}
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }} className="p-1 rounded-lg hover:bg-[var(--surf2)] cursor-pointer">
+              <ChevronLeft size={14} />
+            </button>
+            <div className="text-[12px] font-semibold text-[var(--tx)]">{MONTH_NAMES[month]} {year}</div>
+            <button onClick={() => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); }} className="p-1 rounded-lg hover:bg-[var(--surf2)] cursor-pointer">
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-0.5 mb-1">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+              <div key={d} className="text-center text-[9.5px] font-semibold text-[var(--tx3)] py-1">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5">
+            {calendarDays.map((day, i) => {
+              if (!day) return <div key={i} />;
+              const dateStr = formatDate(day);
+              const hasExams = classSchedule[dateStr] && classSchedule[dateStr].length > 0;
+              return (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setAddModal({ dateStr });
+                    setNewSubject('Mathematics');
+                    setNewTime('10:00 AM');
+                    setNewDuration('2 hrs');
+                    setNewMarks(50);
+                  }}
+                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10.5px] cursor-pointer transition-all relative ${
+                    hasExams
+                      ? 'bg-[var(--blue)] text-white font-bold'
+                      : 'hover:bg-[var(--surf2)] text-[var(--tx)]'
+                  }`}
+                >
+                  {day}
+                  {hasExams && (
+                    <div className="absolute bottom-0.5 flex gap-0.5">
+                      {classSchedule[dateStr].slice(0, 3).map((_, j) => (
+                        <div key={j} className="w-1 h-1 rounded-full bg-white/70" />
+                      ))}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+
+        {/* Exam list */}
+        <Card>
+          <div className="text-[12px] font-semibold text-[var(--tx)] mb-3">Class {selectedClass} — Exam Schedule</div>
+          {Object.keys(classSchedule).length === 0 ? (
+            <div className="text-center py-8 text-[12px] text-[var(--tx3)]">
+              No exams scheduled yet. Click a date on the calendar to add.
+            </div>
+          ) : (
+            <div className="space-y-2 overflow-y-auto max-h-[380px] pr-1">
+              {Object.entries(classSchedule)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([dateStr, entries]) => (
+                  <div key={dateStr} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl">
+                    <div className="text-[11.5px] font-bold text-[var(--tx)] mb-2">
+                      {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                    <div className="space-y-1.5">
+                      {entries.map((entry, idx) => (
+                        <div key={idx} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-[var(--blue)] flex-shrink-0" />
+                            <span className="text-[12px] font-semibold text-[var(--blue-tx)]">{entry.subject}</span>
+                            <span className="text-[11px] text-[var(--tx3)]">{entry.time} · {entry.duration}</span>
+                            <Badge variant="gray">{entry.maxMarks} marks</Badge>
+                          </div>
+                          <button
+                            onClick={() => removeEntry(dateStr, idx)}
+                            className="p-1 rounded hover:bg-[var(--red-bg)] text-[var(--tx3)] hover:text-[var(--red-tx)] cursor-pointer transition-colors"
+                          >
+                            <X size={11} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Add exam modal */}
+      {addModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[13.5px] font-bold text-[var(--tx)]">Add Exam</div>
+                <div className="text-[11px] text-[var(--tx3)] mt-0.5">
+                  Class {selectedClass} · {new Date(addModal.dateStr + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </div>
+              </div>
+              <button onClick={() => setAddModal(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject *</label>
+                <select value={newSubject} onChange={(e) => setNewSubject(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                  {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Start Time *</label>
+                  <select value={newTime} onChange={(e) => setNewTime(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                    {['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM'].map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Duration *</label>
+                  <select value={newDuration} onChange={(e) => setNewDuration(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                    {['1 hr', '1.5 hrs', '2 hrs', '2.5 hrs', '3 hrs'].map((d) => <option key={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Max Marks *</label>
+                <input type="number" value={newMarks} onChange={(e) => setNewMarks(Number(e.target.value))} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" min={5} max={100} />
+              </div>
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button onClick={() => setAddModal(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button onClick={addExamEntry} className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90">Add Exam</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Examinations() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
+  type Tab = 'exams' | 'results' | 'marks' | 'designer';
+  const [activeTab, setActiveTab] = useState<Tab>('exams');
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedClass, setSelectedClass] = useState('8A');
+
+  const classAvg = RESULTS.reduce((s, r) => s + r.percentage, 0) / RESULTS.length;
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'exams', label: 'Exam Schedule' },
+    { id: 'results', label: 'Results & Rankings' },
+    { id: 'marks', label: 'Marks Entry' },
+    ...(isAdmin ? [{ id: 'designer' as Tab, label: 'Schedule Designer' }] : []),
+  ];
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
+        <KPICard label="Upcoming Exams" value={EXAMS.filter((e) => e.status === 'Upcoming').length} sub="This month" icon={<BookOpen size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
+        <KPICard label="Class Average" value={`${classAvg.toFixed(1)}%`} sub="Class 8A · Last exam" icon={<BarChart2 size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
+        <KPICard label="Top Score" value={`${Math.max(...RESULTS.map((r) => r.percentage))}%`} sub={RESULTS[0].name} icon={<Award size={15} />} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
+        <KPICard label="Results Published" value={EXAMS.filter((e) => e.status === 'Results Published').length} sub="Exams" icon={<TrendingUp size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-[var(--b)] mb-3">
+        {tabs.map((tab) => (
+          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-2 text-[12px] border-b-2 -mb-px transition-colors cursor-pointer ${activeTab === tab.id ? 'text-[var(--blue-tx)] border-[var(--blue)] font-semibold' : 'text-[var(--tx3)] border-transparent hover:text-[var(--tx)]'}`}>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'exams' && (
+        <div className="space-y-2.5">
+          <div className="flex justify-end mb-2">
+            <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
+              <Plus size={12} /> Create Exam
+            </button>
+          </div>
+          {EXAMS.map((exam) => (
+            <div key={exam.id} className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-[var(--blue-bg)] flex items-center justify-center flex-shrink-0">
+                <BookOpen size={18} className="text-[var(--blue-tx)]" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[13px] font-bold text-[var(--tx)]">{exam.name}</span>
+                  {exam.status === 'Upcoming' && <Badge variant="blue">Upcoming</Badge>}
+                  {exam.status === 'Completed' && <Badge variant="amber">Completed</Badge>}
+                  {exam.status === 'Results Published' && <Badge variant="teal">Results Published</Badge>}
+                </div>
+                <div className="flex items-center gap-4 text-[11.5px] text-[var(--tx3)]">
+                  <span>Class {exam.class}</span>
+                  <span>Subjects: {exam.subject}</span>
+                  <span>Date: {exam.date}</span>
+                  <span>Max Marks: {exam.maxMarks}</span>
+                </div>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
+                {exam.status === 'Completed' && (
+                  <button className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium">Enter Marks</button>
+                )}
+                {exam.status === 'Results Published' && (
+                  <button className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium">View Results</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'results' && (
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5">
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[13px] font-semibold text-[var(--tx)]">Results — {EXAMS[2].name}</div>
+              <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
+                {['8A', '8B', '9A', '9B', '10A'].map((c) => <option key={c}>Class {c}</option>)}
+              </select>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12px] min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-[var(--b)]">
+                    {['Rank', 'Student', 'Math', 'Sci', 'Eng', 'Tel', 'Social', 'Total', 'Grade'].map((h) => (
+                      <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {RESULTS.map((r) => (
+                    <tr key={r.roll} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] last:border-0">
+                      <td className="px-2 py-2.5 font-bold text-[var(--tx3)]">#{r.rank}</td>
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <Avatar initials={r.init} bg={AVATAR_COLORS[r.init]?.bg ?? 'var(--surf3)'} color={AVATAR_COLORS[r.init]?.color ?? 'var(--tx2)'} />
+                          <span className="font-semibold text-[var(--tx)]">{r.name}</span>
+                        </div>
+                      </td>
+                      {[r.maths, r.science, r.english, r.telugu, r.social].map((mark, i) => (
+                        <td key={i} className={`px-2 py-2.5 font-medium ${mark >= 85 ? 'text-[var(--teal-tx)]' : mark >= 70 ? 'text-[var(--tx)]' : 'text-[var(--red-tx)]'}`}>{mark}</td>
+                      ))}
+                      <td className="px-2 py-2.5 font-bold text-[var(--tx)]">{r.total}/500 <span className="font-normal text-[var(--tx3)] text-[10.5px]">({r.percentage}%)</span></td>
+                      <td className="px-2 py-2.5"><Badge variant={GRADE_BADGE[r.grade] ?? 'gray'}>{r.grade}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <div className="space-y-2.5">
+            <Card>
+              <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Subject Averages</div>
+              <div className="h-[140px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={subjectAvgData} barSize={20} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                    <CartesianGrid vertical={false} stroke="var(--b)" />
+                    <XAxis dataKey="subject" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[60, 100]} tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, 'Average']} cursor={{ fill: 'var(--surf2)' }} />
+                    <Bar dataKey="avg" fill="var(--purple)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+            <Card>
+              <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Grade Distribution</div>
+              <div className="space-y-2">
+                {[['A+', 1, 'var(--purple)'], ['A', 3, 'var(--teal)'], ['B+', 1, 'var(--blue)']].map(([grade, count, color]) => (
+                  <div key={String(grade)} className="flex items-center gap-3">
+                    <span className="w-8 text-[12px] font-bold text-[var(--tx)]">{grade}</span>
+                    <div className="flex-1 h-2 bg-[var(--surf2)] rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${(Number(count) / RESULTS.length) * 100}%`, background: String(color) }} />
+                    </div>
+                    <span className="text-[11px] text-[var(--tx3)] w-6">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'marks' && (
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[13px] font-semibold text-[var(--tx)]">Marks Entry</div>
+            <div className="flex gap-2">
+              <select className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
+                {EXAMS.filter((e) => e.status !== 'Results Published').map((e) => <option key={e.id}>{e.name}</option>)}
+              </select>
+              <select className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
+                <option>Maths</option><option>Science</option><option>English</option><option>Telugu</option>
+              </select>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[12px] min-w-[600px]">
+              <thead>
+                <tr className="border-b border-[var(--b)]">
+                  {['Student', 'Roll No', 'Max Marks', 'Marks Obtained', 'Percentage', ''].map((h) => (
+                    <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {RESULTS.map((r) => (
+                  <tr key={r.roll} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] last:border-0">
+                    <td className="px-2 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <Avatar initials={r.init} bg={AVATAR_COLORS[r.init]?.bg ?? 'var(--surf3)'} color={AVATAR_COLORS[r.init]?.color ?? 'var(--tx2)'} />
+                        <span className="font-semibold text-[var(--tx)]">{r.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-2.5 font-mono text-[11px] text-[var(--tx3)]">{r.roll}</td>
+                    <td className="px-2 py-2.5 text-[var(--tx3)]">100</td>
+                    <td className="px-2 py-2.5">
+                      <input type="number" defaultValue={r.maths} min={0} max={100} className="w-16 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] text-center" />
+                    </td>
+                    <td className="px-2 py-2.5 font-semibold text-[var(--tx)]">{r.maths}%</td>
+                    <td className="px-2 py-2.5">
+                      <Badge variant={r.maths >= 90 ? 'teal' : r.maths >= 75 ? 'blue' : 'amber'}>{r.maths >= 90 ? 'A+' : r.maths >= 75 ? 'A' : 'B'}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 flex justify-end gap-2">
+            <button className="px-4 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] text-[var(--tx)] cursor-pointer">Save Draft</button>
+            <button className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-90">Submit & Publish</button>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'designer' && <ExamScheduleDesigner />}
+
+      {/* Create Exam Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[440px] shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div className="text-[14px] font-bold text-[var(--tx)]">Create Exam</div>
+              <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Exam Name *</label>
+                <input className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Unit Test 2" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class *</label>
+                  <select className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                    {['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A'].map((c) => <option key={c}>Class {c}</option>)}
+                  </select>
+                </div>
+                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject *</label>
+                  <select className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                    <option>All Subjects</option><option>Maths</option><option>Science</option><option>English</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Exam Date *</label>
+                  <input type="date" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                </div>
+                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Max Marks *</label>
+                  <input type="number" defaultValue={100} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer">Create Exam</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
