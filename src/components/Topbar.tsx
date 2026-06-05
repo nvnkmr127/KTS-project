@@ -96,7 +96,7 @@ export function Topbar({ current, dark, onToggleDark, onMenuClick }: TopbarProps
         </button>
 
         {showNotifs && (
-          <div className="absolute right-0 top-9 w-[300px] bg-[var(--surf)] border border-[var(--b)] rounded-xl shadow-2xl overflow-hidden">
+          <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-[50px] sm:top-9 w-auto sm:w-[300px] bg-[var(--surf)] border border-[var(--b)] rounded-xl shadow-2xl overflow-hidden z-50">
             <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--b)]">
               <div className="text-[12.5px] font-bold text-[var(--tx)]">Notifications</div>
               <button onClick={() => setShowNotifs(false)} className="p-0.5 hover:bg-[var(--surf2)] rounded cursor-pointer">
