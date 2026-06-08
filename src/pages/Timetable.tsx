@@ -1,22 +1,14 @@
-import { useState } from 'react';
-import { X, Clock, Save } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Clock, Save, Loader2 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useApp, TIMETABLE_DAYS, TIMETABLE_PERIODS, PERIOD_TIMES } from '../context/AppContext';
 import type { TimetablePeriod } from '../context/AppContext';
+import { api } from '../services/api';
 
 const CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'Library', 'Break'];
-
-const TEACHERS = [
-  { id: '2', name: 'Mrs. Lakshmi Devi' },
-  { id: '7', name: 'Mr. Venkat Rao' },
-  { id: '8', name: 'Mrs. Suma Reddy' },
-  { id: '9', name: 'Mr. Raju Sharma' },
-  { id: '10', name: 'Mrs. Savitha Kumar' },
-  { id: '11', name: 'Mr. Prakash Nair' },
-];
 
 const ROOMS = ['Room 10', 'Room 11', 'Room 12', 'Room 13', 'Room 14', 'Room 15', 'Room 16', 'Room 17', 'Room 18', 'Lab 1', 'Lab 2', 'Sports Ground'];
 
@@ -59,11 +51,32 @@ interface EditCell {
 export function Timetable() {
   const { timetable, setTimetablePeriod } = useApp();
   const [selectedClass, setSelectedClass] = useState('8A');
+  const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
+  const [loading, setLoading] = useState(false);
   const [editCell, setEditCell] = useState<EditCell | null>(null);
   const [editSubject, setEditSubject] = useState('Mathematics');
-  const [editTeacher, setEditTeacher] = useState(TEACHERS[0].id);
+  const [editTeacher, setEditTeacher] = useState('');
   const [editRoom, setEditRoom] = useState('Room 12');
   const [savedMsg, setSavedMsg] = useState(false);
+
+  useEffect(() => {
+    async function loadTeachers() {
+      try {
+        const data = await api.getResources('faculty');
+        const list = data.map((t: any) => ({
+          id: String(t.id),
+          name: t.name,
+        }));
+        setTeachers(list);
+        if (list.length > 0) {
+          setEditTeacher(list[0].id);
+        }
+      } catch (err) {
+        console.error('Error loading teachers for timetable:', err);
+      }
+    }
+    loadTeachers();
+  }, []);
 
   const classTimetable = timetable[selectedClass] ?? {};
 
@@ -71,13 +84,13 @@ export function Timetable() {
     const cell = classTimetable[day]?.[period] ?? null;
     setEditCell({ day, period, current: cell });
     setEditSubject(cell?.subject ?? 'Mathematics');
-    setEditTeacher(cell?.teacherId ?? TEACHERS[0].id);
+    setEditTeacher(cell?.teacherId ?? (teachers[0]?.id || ''));
     setEditRoom(cell?.room ?? 'Room 12');
   };
 
   const saveCell = () => {
     if (!editCell) return;
-    const teacher = TEACHERS.find((t) => t.id === editTeacher);
+    const teacher = teachers.find((t) => t.id === editTeacher);
     setTimetablePeriod(selectedClass, editCell.day, editCell.period, {
       subject: editSubject,
       teacher: teacher?.name ?? '',
@@ -93,9 +106,37 @@ export function Timetable() {
     setEditCell(null);
   };
 
-  const handleSaveAll = () => {
-    setSavedMsg(true);
-    setTimeout(() => setSavedMsg(false), 2000);
+  const handleSaveAll = async () => {
+    setLoading(true);
+    try {
+      const slots: any[] = [];
+      for (const day of TIMETABLE_DAYS) {
+        for (let p = 0; p < TIMETABLE_PERIODS; p++) {
+          const cell = classTimetable[day]?.[p];
+          if (cell) {
+            slots.push({
+              subject: cell.subject,
+              teacherId: cell.teacherId,
+              room: cell.room,
+              period: p,
+              day: day,  // Send day name (e.g., 'Monday') instead of a specific date
+            });
+          }
+        }
+      }
+
+      await api.createResource('timetable', {
+        batch_name: selectedClass,
+        slots: slots
+      });
+
+      setSavedMsg(true);
+      setTimeout(() => setSavedMsg(false), 2000);
+    } catch (err) {
+      console.error('Error saving timetable:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const countFilledPeriods = () => {
@@ -131,6 +172,7 @@ export function Timetable() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
           {savedMsg && <span className="text-[11.5px] text-[var(--teal-tx)] font-medium">Saved!</span>}
           <Badge variant="blue">{countFilledPeriods()} periods assigned</Badge>
           <button
@@ -251,7 +293,7 @@ export function Timetable() {
                   onChange={(e) => setEditTeacher(e.target.value)}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >
-                  {TEACHERS.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div>

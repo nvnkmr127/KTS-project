@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 export interface LeaveRequest {
   id: string;
@@ -117,27 +118,14 @@ function buildDefaultTimetable(): SchoolTimetable {
   return timetable;
 }
 
-const INITIAL_LEAVES: LeaveRequest[] = [
-  { id: '1', staffId: '3', staffName: 'Mrs. Suma Reddy', init: 'SR', type: 'Sick Leave', from: '2026-06-03', to: '2026-06-05', days: 3, reason: 'Fever and viral infection', status: 'Approved', appliedOn: '2026-06-02' },
-  { id: '2', staffId: '4', staffName: 'Mr. Raju Sharma', init: 'RS', type: 'Casual Leave', from: '2026-06-10', to: '2026-06-10', days: 1, reason: 'Personal work', status: 'Pending', appliedOn: '2026-06-05' },
-  { id: '3', staffId: '5', staffName: 'Mrs. Savitha Kumar', init: 'SK', type: 'Emergency Leave', from: '2026-06-02', to: '2026-06-02', days: 1, reason: 'Family emergency', status: 'Approved', appliedOn: '2026-06-02' },
-  { id: '4', staffId: '6', staffName: 'Mr. Prakash Nair', init: 'PN', type: 'Earned Leave', from: '2026-06-20', to: '2026-06-22', days: 3, reason: 'Planned vacation', status: 'Pending', appliedOn: '2026-06-04' },
-  { id: '5', staffId: '2', staffName: 'Mrs. Lakshmi Devi', init: 'LD', type: 'Sick Leave', from: '2026-05-28', to: '2026-05-28', days: 1, reason: 'Medical appointment', status: 'Approved', appliedOn: '2026-05-27' },
-];
-
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  { id: 'n1', type: 'leave_request', message: 'Mr. Raju Sharma applied for Casual Leave (Jun 10)', time: '2 hours ago', read: false, refId: '2' },
-  { id: 'n2', type: 'leave_request', message: 'Mr. Prakash Nair applied for Earned Leave (Jun 20–22)', time: '1 day ago', read: false, refId: '4' },
-];
-
 interface AppContextValue {
   leaveRequests: LeaveRequest[];
   notifications: Notification[];
   unreadCount: number;
   timetable: SchoolTimetable;
-  addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'appliedOn'>) => void;
-  approveLeave: (id: string) => void;
-  rejectLeave: (id: string) => void;
+  addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'appliedOn'>) => Promise<void>;
+  approveLeave: (id: string) => Promise<void>;
+  rejectLeave: (id: string) => Promise<void>;
   markNotificationsRead: () => void;
   setTimetablePeriod: (className: string, day: string, periodIndex: number, period: TimetablePeriod | null) => void;
 }
@@ -153,60 +141,170 @@ export const PERIOD_TIMES = [
 ];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVES);
-  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [timetable, setTimetable] = useState<SchoolTimetable>(buildDefaultTimetable);
+
+  useEffect(() => {
+    async function loadInitialData() {
+      try {
+        const leavesData = await api.getResources('leaves');
+        const mappedLeaves = leavesData.map((d: any) => ({
+          id: String(d.id),
+          staffId: String(d.user_id),
+          staffName: d.staff_name || 'Staff Member',
+          init: d.init || (d.staff_name ? d.staff_name.split(' ').map((n: any) => n[0] ?? '').join('') : 'SM'),
+          type: (typeof d.leave_type === 'object' && d.leave_type ? d.leave_type.name : d.leave_type) || 'Sick Leave',
+          from: d.start_date || d.from,
+          to: d.end_date || d.to,
+          days: d.days || 1,
+          reason: d.reason || '',
+          status: d.status || 'Pending',
+          appliedOn: d.created_at ? d.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        }));
+        setLeaveRequests(mappedLeaves);
+
+        const notifData = await api.getResources('notifications').catch(() => []);
+        setNotifications((notifData || []).map((n: any) => ({
+          id: String(n.id),
+          type: n.type || 'leave_request',
+          message: n.message,
+          time: 'Recently',
+          read: !!n.read_at,
+        })));
+
+        // Fetch timetable from database
+        try {
+          const timetableData = await api.getResources('timetable');
+          if (timetableData && timetableData.length > 0) {
+            const dayMap: Record<string, string> = {
+              '2026-06-01': 'Monday',
+              '2026-06-02': 'Tuesday',
+              '2026-06-03': 'Wednesday',
+              '2026-06-04': 'Thursday',
+              '2026-06-05': 'Friday',
+              '2026-06-06': 'Saturday',
+            };
+            
+            const loadedTimetable: SchoolTimetable = {};
+            const classes = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
+            for (const cls of classes) {
+              loadedTimetable[cls] = {};
+              for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
+                loadedTimetable[cls][day] = {};
+                for (let p = 0; p < 8; p++) {
+                  loadedTimetable[cls][day][p] = null;
+                }
+              }
+            }
+
+            timetableData.forEach((slot: any) => {
+              const cls = slot.batch_name;
+              const day = dayMap[slot.date];
+              const p = slot.period;
+              if (cls && day && p !== undefined && p >= 0 && p < 8) {
+                if (loadedTimetable[cls]) {
+                  loadedTimetable[cls][day][p] = {
+                    subject: slot.subject,
+                    teacher: slot.teacher,
+                    teacherId: String(slot.teacherId),
+                    room: slot.room,
+                  };
+                }
+              }
+            });
+            setTimetable(loadedTimetable);
+          }
+        } catch (tErr) {
+          console.error('Error loading timetable in AppContext:', tErr);
+        }
+      } catch (err) {
+        console.error('Error loading API data in AppContext:', err);
+      }
+    }
+    loadInitialData();
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const addLeaveRequest = (req: Omit<LeaveRequest, 'id' | 'appliedOn'>) => {
-    const id = String(Date.now());
-    const newReq: LeaveRequest = { ...req, id, appliedOn: new Date().toISOString().slice(0, 10) };
-    setLeaveRequests((prev) => [newReq, ...prev]);
-    const notif: Notification = {
-      id: 'n' + id,
-      type: 'leave_request',
-      message: `${req.staffName} applied for ${req.type} (${req.from}${req.from !== req.to ? ` – ${req.to}` : ''})`,
-      time: 'Just now',
-      read: false,
-      refId: id,
-    };
-    setNotifications((prev) => [notif, ...prev]);
-  };
+  const addLeaveRequest = async (req: Omit<LeaveRequest, 'id' | 'appliedOn'>) => {
+    try {
+      const res = await api.createResource('leaves', {
+        user_id: parseInt(req.staffId) || 1,
+        staff_name: req.staffName,
+        leave_type: req.type,
+        start_date: req.from,
+        end_date: req.to,
+        days: req.days,
+        reason: req.reason,
+        status: 'Pending',
+      });
 
-  const approveLeave = (id: string) => {
-    setLeaveRequests((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, status: 'Approved' } : l))
-    );
-    const req = leaveRequests.find((l) => l.id === id);
-    if (req) {
+      const newReq: LeaveRequest = {
+        ...req,
+        id: String(res.id),
+        appliedOn: new Date().toISOString().slice(0, 10),
+        status: 'Pending',
+      };
+      setLeaveRequests((prev) => [newReq, ...prev]);
+
       const notif: Notification = {
-        id: 'na' + id,
-        type: 'leave_approved',
-        message: `Your ${req.type} request has been approved`,
+        id: 'n' + res.id,
+        type: 'leave_request',
+        message: `${req.staffName} applied for ${req.type} (${req.from})`,
         time: 'Just now',
         read: false,
-        refId: id,
+        refId: String(res.id),
       };
       setNotifications((prev) => [notif, ...prev]);
+    } catch (err) {
+      console.error('Error adding leave request:', err);
     }
   };
 
-  const rejectLeave = (id: string) => {
-    setLeaveRequests((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, status: 'Rejected' } : l))
-    );
-    const req = leaveRequests.find((l) => l.id === id);
-    if (req) {
-      const notif: Notification = {
-        id: 'nr' + id,
-        type: 'leave_rejected',
-        message: `Your ${req.type} request has been rejected`,
-        time: 'Just now',
-        read: false,
-        refId: id,
-      };
-      setNotifications((prev) => [notif, ...prev]);
+  const approveLeave = async (id: string) => {
+    try {
+      await api.updateResource('leaves', id, { status: 'Approved' });
+      setLeaveRequests((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, status: 'Approved' } : l))
+      );
+      const req = leaveRequests.find((l) => l.id === id);
+      if (req) {
+        const notif: Notification = {
+          id: 'na' + id,
+          type: 'leave_approved',
+          message: `Your ${req.type} request has been approved`,
+          time: 'Just now',
+          read: false,
+          refId: id,
+        };
+        setNotifications((prev) => [notif, ...prev]);
+      }
+    } catch (err) {
+      console.error('Error approving leave:', err);
+    }
+  };
+
+  const rejectLeave = async (id: string) => {
+    try {
+      await api.updateResource('leaves', id, { status: 'Rejected' });
+      setLeaveRequests((prev) =>
+        prev.map((l) => (l.id === id ? { ...l, status: 'Rejected' } : l))
+      );
+      const req = leaveRequests.find((l) => l.id === id);
+      if (req) {
+        const notif: Notification = {
+          id: 'nr' + id,
+          type: 'leave_rejected',
+          message: `Your ${req.type} request has been rejected`,
+          time: 'Just now',
+          read: false,
+          refId: id,
+        };
+        setNotifications((prev) => [notif, ...prev]);
+      }
+    } catch (err) {
+      console.error('Error rejecting leave:', err);
     }
   };
 

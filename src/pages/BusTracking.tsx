@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bus, MapPin, Satellite, Clock, Navigation, Phone } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
@@ -80,12 +80,166 @@ const ROUTE_PATHS: { id: number; path: string; color: string; stops: { x: number
   },
 ];
 
-function BusMapView() {
+export function BusTracking() {
   const [selectedBus, setSelectedBus] = useState<number | null>(null);
   const [showTooltip, setShowTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
+  // Simulate live bus movement
+  const [livePcts, setLivePcts] = useState<Record<number, number>>(() => {
+    const m: Record<number, number> = {};
+    buses.forEach((b) => { m[b.id] = b.pct; });
+    return m;
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLivePcts((prev) => {
+        const next = { ...prev };
+        buses.forEach((b) => {
+          if (b.active && next[b.id] < 100) {
+            next[b.id] = Math.min(100, next[b.id] + Math.random() * 0.5);
+          }
+        });
+        return next;
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5">
+    <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
+        <KPICard label="Active Buses" value="3" sub="GPS live tracking" icon={<Bus size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
+        <KPICard label="Alerts Sent Today" value="142" sub="Pickup + WhatsApp" icon={<MapPin size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
+        <KPICard label="GPS Accuracy" value={<>98<span className="text-[13px] font-normal text-[var(--tx3)]">%</span></>} sub="All devices online" icon={<Satellite size={15} />} iconBg="var(--green-bg)" iconColor="var(--green-tx)" />
+        <KPICard label="Avg Pickup Delay" value={<>2.4<span className="text-[13px] font-normal text-[var(--tx3)]">min</span></>} sub="Within acceptable range" icon={<Clock size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
+      </div>
+
+      {/* Live Bus Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5 mb-3">
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[12.5px] font-semibold text-[var(--tx)] flex items-center gap-1.5">
+              <Bus size={14} className="text-[var(--tx3)]" /> Live Bus Status
+            </div>
+            <Badge variant="teal">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] inline-block mr-0.5 animate-pulse" />
+              Live GPS
+            </Badge>
+          </div>
+
+          <div className="space-y-2">
+            {buses.map((bus) => (
+              <button
+                key={bus.id}
+                onClick={() => setSelectedBus(selectedBus === bus.id ? null : bus.id)}
+                className={`w-full text-left flex items-center gap-2.5 p-2.5 bg-[var(--surf2)] border rounded-xl cursor-pointer transition-all ${
+                  selectedBus === bus.id ? 'border-[var(--blue)] ring-1 ring-[var(--blue)]/30' : 'border-[var(--b)] hover:border-[var(--blue)]'
+                } ${!bus.active ? 'opacity-60' : ''}`}
+              >
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${bus.active ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)]' : 'bg-[var(--surf3)] text-[var(--tx3)]'}`}>
+                  <Bus size={15} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[12px] font-semibold text-[var(--tx)]">{bus.route}</span>
+                    {bus.active && <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] flex-shrink-0" />}
+                  </div>
+                  <div className="text-[11px] text-[var(--tx3)] mb-1.5">
+                    {bus.active ? `Next: ${bus.next} · ETA ${bus.eta} min · ${bus.students} students` : bus.next}
+                  </div>
+                  {bus.active && <ProgressBar value={Math.round(livePcts[bus.id] ?? bus.pct)} color="var(--teal)" height={4} />}
+                </div>
+                {bus.active ? <Badge variant="teal">On route</Badge> : <Badge variant="gray">Idle</Badge>}
+              </button>
+            ))}
+          </div>
+        </Card>
+
+        {/* Side Panel: Route Detail or Stop Alerts */}
+        <div className="space-y-2.5">
+          {selectedBus ? (() => {
+            const bus = buses.find((b) => b.id === selectedBus);
+            if (!bus) return null;
+            const route = ROUTE_PATHS.find((r) => r.id === selectedBus);
+            return (
+              <Card>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-[12.5px] font-semibold text-[var(--tx)]">Route {bus.id} Details</div>
+                  <button onClick={() => setSelectedBus(null)} className="text-[11px] text-[var(--tx3)] hover:text-[var(--tx)] cursor-pointer">Clear</button>
+                </div>
+                <div className="p-3 rounded-xl border border-[var(--b)] bg-[var(--surf2)] mb-3">
+                  <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-1">{bus.route}</div>
+                  <div className="text-[11px] text-[var(--tx3)] mb-2">{bus.active ? `Next: ${bus.next} · ETA ${bus.eta} min · ${bus.students} students` : bus.next}</div>
+                  {bus.active && <ProgressBar value={Math.round(livePcts[bus.id] ?? bus.pct)} color={route?.color ?? 'var(--teal)'} height={5} />}
+                </div>
+                <div className="flex items-center gap-2 p-2.5 bg-[var(--blue-bg)] rounded-xl mb-3">
+                  <div className="w-7 h-7 rounded-lg bg-[var(--blue)] flex items-center justify-center flex-shrink-0">
+                    <Bus size={14} className="text-white" />
+                  </div>
+                  <div>
+                    <div className="text-[11.5px] font-semibold text-[var(--blue-tx)]">{bus.driver}</div>
+                    <div className="text-[10.5px] text-[var(--blue-tx)] opacity-70">Driver</div>
+                  </div>
+                  <a href={`tel:${bus.phone}`} className="ml-auto flex items-center gap-1 px-2.5 py-1 bg-[var(--blue)] text-white rounded-lg text-[11px] cursor-pointer hover:opacity-90">
+                    <Phone size={10} /> Call
+                  </a>
+                </div>
+                <div className="text-[11.5px] font-semibold text-[var(--tx)] mb-2">Stop Progress</div>
+                <div className="space-y-1">
+                  {(route?.stops ?? []).map((stop, i) => {
+                    const stopProgress = (i / ((route?.stops.length ?? 1) - 1)) * 100;
+                    const currentPct = livePcts[bus.id] ?? bus.pct;
+                    const passed = stopProgress <= currentPct;
+                    return (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${passed ? 'bg-[var(--teal-bg)]' : 'bg-[var(--surf3)]'}`}>
+                          {i === route!.stops.length - 1 ? (
+                            <div className="w-2 h-2 rounded-sm bg-[var(--blue)]" />
+                          ) : (
+                            <div className={`w-1.5 h-1.5 rounded-full ${passed ? 'bg-[var(--teal)]' : 'bg-[var(--tx3)]'}`} />
+                          )}
+                        </div>
+                        <span className={`text-[11px] ${passed ? 'text-[var(--tx)]' : 'text-[var(--tx3)]'}`}>{stop.name}</span>
+                        {passed && i < route!.stops.length - 1 && <span className="ml-auto text-[10px] text-[var(--teal-tx)]">Done</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })() : (
+            <Card>
+              <CardHeader title="Stop-wise Alerts" icon={<MapPin size={14} />} />
+              <div className="space-y-0">
+                {stops.map((stop, i) => (
+                  <div key={i} className={`flex items-center gap-2.5 py-2 ${i < stops.length - 1 ? 'border-b border-[var(--b)]' : ''}`}>
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${stop.status === 'done' ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)]' : stop.status === 'upcoming' ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)]' : 'bg-[var(--surf2)] text-[var(--tx3)]'}`}>
+                      {stop.status === 'done' ? (
+                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 5.5L4.5 8L9 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      ) : stop.status === 'upcoming' ? (
+                        <Clock size={11} />
+                      ) : (
+                        <MapPin size={11} />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-semibold text-[var(--tx)]">{stop.name}</div>
+                      <div className="text-[10.5px] text-[var(--tx3)]">{stop.info}</div>
+                    </div>
+                    {stop.status === 'done' && <Badge variant="teal">Done</Badge>}
+                    {stop.status === 'upcoming' && <Badge variant="amber">Upcoming</Badge>}
+                    {stop.status === 'waiting' && <Badge variant="gray">Waiting</Badge>}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Live Map View - Below status */}
       <Card>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--tx)]">
@@ -99,22 +253,22 @@ function BusMapView() {
 
         {/* SVG Map */}
         <div className="relative bg-[var(--surf2)] rounded-xl overflow-hidden border border-[var(--b)]" style={{ aspectRatio: '16/10' }}>
-          <svg viewBox="0 0 100 62" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
-            {/* Background grid (road-like) */}
-            <rect width="100" height="62" fill="var(--surf2)" />
+          <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+            {/* Background */}
+            <rect width="100" height="100" fill="var(--surf2)" />
 
             {/* Background road network */}
             <g opacity="0.15">
               <line x1="0" y1="50" x2="100" y2="50" stroke="var(--tx3)" strokeWidth="0.5" />
               <line x1="0" y1="30" x2="100" y2="30" stroke="var(--tx3)" strokeWidth="0.5" />
-              <line x1="50" y1="0" x2="50" y2="62" stroke="var(--tx3)" strokeWidth="0.5" />
-              <line x1="25" y1="0" x2="25" y2="62" stroke="var(--tx3)" strokeWidth="0.5" />
-              <line x1="75" y1="0" x2="75" y2="62" stroke="var(--tx3)" strokeWidth="0.5" />
+              <line x1="50" y1="0" x2="50" y2="100" stroke="var(--tx3)" strokeWidth="0.5" />
+              <line x1="25" y1="0" x2="25" y2="100" stroke="var(--tx3)" strokeWidth="0.5" />
+              <line x1="75" y1="0" x2="75" y2="100" stroke="var(--tx3)" strokeWidth="0.5" />
             </g>
 
             {/* Area labels */}
             <text x="8" y="76" fontSize="2.2" fill="var(--tx3)" opacity="0.7" fontFamily="system-ui">Nizamabad</text>
-            <text x="8" y="68" fontSize="2.2" fill="var(--tx3)" opacity="0.7" fontFamily="system-ui">Central</text>
+            <text x="8" y="79" fontSize="2.2" fill="var(--tx3)" opacity="0.7" fontFamily="system-ui">Central</text>
             <text x="72" y="18" fontSize="2.2" fill="var(--tx3)" opacity="0.7" fontFamily="system-ui">Gandhi Nagar</text>
             <text x="14" y="92" fontSize="2.2" fill="var(--tx3)" opacity="0.7" fontFamily="system-ui">Old Town</text>
             <text x="74" y="78" fontSize="2.2" fill="var(--tx3)" opacity="0.7" fontFamily="system-ui">Yellareddyguda</text>
@@ -158,7 +312,7 @@ function BusMapView() {
             {buses.map((bus) => {
               const pos = BUS_MAP_POSITIONS[bus.id];
               if (!pos) return null;
-              const progress = bus.pct / 100;
+              const progress = (livePcts[bus.id] ?? bus.pct) / 100;
               const routePath = ROUTE_PATHS.find((r) => r.id === bus.id);
               const color = routePath?.color ?? '#6B7280';
               const isSelected = selectedBus === bus.id;
@@ -263,202 +417,6 @@ function BusMapView() {
           })}
         </div>
       </Card>
-
-      {/* Bus details panel */}
-      <div className="space-y-2.5">
-        {selectedBus ? (
-          () => {
-            const bus = buses.find((b) => b.id === selectedBus);
-            if (!bus) return null;
-            const route = ROUTE_PATHS.find((r) => r.id === selectedBus);
-            return (
-              <Card>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-[12.5px] font-semibold text-[var(--tx)]">Route {bus.id} Details</div>
-                  <button onClick={() => setSelectedBus(null)} className="text-[11px] text-[var(--tx3)] hover:text-[var(--tx)] cursor-pointer">Clear</button>
-                </div>
-                <div className="p-3 rounded-xl border border-[var(--b)] bg-[var(--surf2)] mb-3">
-                  <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-1">{bus.route}</div>
-                  <div className="text-[11px] text-[var(--tx3)] mb-2">{bus.active ? `Next: ${bus.next} · ETA ${bus.eta} min · ${bus.students} students` : bus.next}</div>
-                  {bus.active && <ProgressBar value={bus.pct} color={route?.color ?? 'var(--teal)'} height={5} />}
-                </div>
-                <div className="flex items-center gap-2 p-2.5 bg-[var(--blue-bg)] rounded-xl mb-3">
-                  <div className="w-7 h-7 rounded-lg bg-[var(--blue)] flex items-center justify-center flex-shrink-0">
-                    <Bus size={14} className="text-white" />
-                  </div>
-                  <div>
-                    <div className="text-[11.5px] font-semibold text-[var(--blue-tx)]">{bus.driver}</div>
-                    <div className="text-[10.5px] text-[var(--blue-tx)] opacity-70">Driver</div>
-                  </div>
-                  <a href={`tel:${bus.phone}`} className="ml-auto flex items-center gap-1 px-2.5 py-1 bg-[var(--blue)] text-white rounded-lg text-[11px] cursor-pointer hover:opacity-90">
-                    <Phone size={10} /> Call
-                  </a>
-                </div>
-                <div className="text-[11.5px] font-semibold text-[var(--tx)] mb-2">Stop Progress</div>
-                <div className="space-y-1">
-                  {(route?.stops ?? []).map((stop, i) => {
-                    const stopProgress = (i / ((route?.stops.length ?? 1) - 1)) * 100;
-                    const passed = stopProgress <= bus.pct;
-                    return (
-                      <div key={i} className="flex items-center gap-2">
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${passed ? 'bg-[var(--teal-bg)]' : 'bg-[var(--surf3)]'}`}>
-                          {i === route!.stops.length - 1 ? (
-                            <div className="w-2 h-2 rounded-sm bg-[var(--blue)]" />
-                          ) : (
-                            <div className={`w-1.5 h-1.5 rounded-full ${passed ? 'bg-[var(--teal)]' : 'bg-[var(--tx3)]'}`} />
-                          )}
-                        </div>
-                        <span className={`text-[11px] ${passed ? 'text-[var(--tx)]' : 'text-[var(--tx3)]'}`}>{stop.name}</span>
-                        {passed && i < route!.stops.length - 1 && <span className="ml-auto text-[10px] text-[var(--teal-tx)]">Done</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            );
-          }
-        )() : (
-          <Card>
-            <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">All Buses Status</div>
-            <div className="space-y-2">
-              {buses.map((bus) => {
-                const route = ROUTE_PATHS.find((r) => r.id === bus.id);
-                return (
-                  <button
-                    key={bus.id}
-                    onClick={() => setSelectedBus(bus.id)}
-                    className="w-full text-left flex items-center gap-2.5 p-2.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl hover:border-[var(--blue)] cursor-pointer transition-all"
-                  >
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 text-white text-[11px] font-bold" style={{ background: bus.active ? (route?.color ?? 'var(--teal)') : 'var(--tx3)' }}>
-                      {bus.id}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[11.5px] font-semibold text-[var(--tx)] leading-tight">Route {bus.id}</div>
-                      <div className="text-[10.5px] text-[var(--tx3)] truncate">{bus.active ? `ETA ${bus.eta}m · ${bus.students} students` : 'Idle'}</div>
-                    </div>
-                    {bus.active ? <Badge variant="teal">Live</Badge> : <Badge variant="gray">Idle</Badge>}
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader title="Stop Alerts" icon={<MapPin size={14} />} />
-          <div className="space-y-0">
-            {stops.map((stop, i) => (
-              <div key={i} className={`flex items-center gap-2.5 py-2 ${i < stops.length - 1 ? 'border-b border-[var(--b)]' : ''}`}>
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${stop.status === 'done' ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)]' : stop.status === 'upcoming' ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)]' : 'bg-[var(--surf2)] text-[var(--tx3)]'}`}>
-                  {stop.status === 'done' ? (
-                    <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 5.5L4.5 8L9 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  ) : stop.status === 'upcoming' ? (
-                    <Clock size={11} />
-                  ) : (
-                    <MapPin size={11} />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-semibold text-[var(--tx)]">{stop.name}</div>
-                  <div className="text-[10.5px] text-[var(--tx3)]">{stop.info}</div>
-                </div>
-                {stop.status === 'done' && <Badge variant="teal">Done</Badge>}
-                {stop.status === 'upcoming' && <Badge variant="amber">Upcoming</Badge>}
-                {stop.status === 'waiting' && <Badge variant="gray">Waiting</Badge>}
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-}
-
-export function BusTracking() {
-  const [activeTab, setActiveTab] = useState<'status' | 'map'>('status');
-
-  return (
-    <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-        <KPICard label="Active Buses" value="3" sub="GPS live tracking" icon={<Bus size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
-        <KPICard label="Alerts Sent Today" value="142" sub="Pickup + WhatsApp" icon={<MapPin size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
-        <KPICard label="GPS Accuracy" value={<>98<span className="text-[13px] font-normal text-[var(--tx3)]">%</span></>} sub="All devices online" icon={<Satellite size={15} />} iconBg="var(--green-bg)" iconColor="var(--green-tx)" />
-        <KPICard label="Avg Pickup Delay" value={<>2.4<span className="text-[13px] font-normal text-[var(--tx3)]">min</span></>} sub="Within acceptable range" icon={<Clock size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
-      </div>
-
-      {/* Tabs */}
-      <div className="flex border-b border-[var(--b)] mb-3">
-        {[{ id: 'status' as const, label: 'Live Status' }, { id: 'map' as const, label: 'Map View' }].map((tab) => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-2 text-[12px] border-b-2 -mb-px transition-colors cursor-pointer ${activeTab === tab.id ? 'text-[var(--blue-tx)] border-[var(--blue)] font-semibold' : 'text-[var(--tx3)] border-transparent hover:text-[var(--tx)]'}`}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'status' && (
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5">
-          <Card>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-[12.5px] font-semibold text-[var(--tx)] flex items-center gap-1.5">
-                <Bus size={14} className="text-[var(--tx3)]" /> Live Bus Status
-              </div>
-              <Badge variant="teal">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] inline-block mr-0.5 animate-pulse" />
-                Live GPS
-              </Badge>
-            </div>
-
-            <div className="space-y-2">
-              {buses.map((bus) => (
-                <div key={bus.id} className={`flex items-center gap-2.5 p-2.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl ${!bus.active ? 'opacity-60' : ''}`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${bus.active ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)]' : 'bg-[var(--surf3)] text-[var(--tx3)]'}`}>
-                    <Bus size={15} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[12px] font-semibold text-[var(--tx)]">{bus.route}</span>
-                      {bus.active && <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] flex-shrink-0" />}
-                    </div>
-                    <div className="text-[11px] text-[var(--tx3)] mb-1.5">
-                      {bus.active ? `Next: ${bus.next} · ETA ${bus.eta} min · ${bus.students} students` : bus.next}
-                    </div>
-                    {bus.active && <ProgressBar value={bus.pct} color="var(--teal)" height={4} />}
-                  </div>
-                  {bus.active ? <Badge variant="teal">On route</Badge> : <Badge variant="gray">Idle</Badge>}
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          <Card>
-            <CardHeader title="Stop-wise Alerts" icon={<MapPin size={14} />} />
-            <div className="space-y-0">
-              {stops.map((stop, i) => (
-                <div key={i} className={`flex items-center gap-2.5 py-2 ${i < stops.length - 1 ? 'border-b border-[var(--b)]' : ''}`}>
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${stop.status === 'done' ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)]' : stop.status === 'upcoming' ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)]' : 'bg-[var(--surf2)] text-[var(--tx3)]'}`}>
-                    {stop.status === 'done' ? (
-                      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 5.5L4.5 8L9 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    ) : stop.status === 'upcoming' ? (
-                      <Clock size={11} />
-                    ) : (
-                      <MapPin size={11} />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[12px] font-semibold text-[var(--tx)]">{stop.name}</div>
-                    <div className="text-[10.5px] text-[var(--tx3)]">{stop.info}</div>
-                  </div>
-                  {stop.status === 'done' && <Badge variant="teal">Done</Badge>}
-                  {stop.status === 'upcoming' && <Badge variant="amber">Upcoming</Badge>}
-                  {stop.status === 'waiting' && <Badge variant="gray">Waiting</Badge>}
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {activeTab === 'map' && <BusMapView />}
     </div>
   );
 }

@@ -1,42 +1,64 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
+import { api } from '../services/api';
 
 interface AuthContextValue {
   user: User | null;
-  login: (email: string, password: string) => { ok: boolean; error?: string };
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const MOCK_USERS: { email: string; password: string; user: User }[] = [
-  {
-    email: 'admin@krishnaveni.edu',
-    password: 'admin123',
-    user: { id: '1', name: 'Dr. S. Narasimha Rao', role: 'admin', email: 'admin@krishnaveni.edu', initials: 'NR', designation: 'Principal & Administrator' },
-  },
-  {
-    email: 'teacher@krishnaveni.edu',
-    password: 'teacher123',
-    user: { id: '2', name: 'Mrs. Lakshmi Devi', role: 'teacher', email: 'teacher@krishnaveni.edu', initials: 'LD', designation: 'Senior Teacher', subject: 'Mathematics', classes: ['8A', '8B', '9A'] },
-  },
-];
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = (email: string, password: string) => {
-    const match = MOCK_USERS.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (match) {
-      setUser(match.user);
-      return { ok: true };
+  useEffect(() => {
+    async function refreshUser() {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const res = await api.getMe();
+          if (res.user) {
+            setUser(res.user);
+            localStorage.setItem('user', JSON.stringify(res.user));
+          }
+        } catch (e) {
+          console.error("Failed to refresh user profile:", e);
+        }
+      }
     }
-    return { ok: false, error: 'Invalid credentials. Please check your email and password.' };
+
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        localStorage.removeItem('user');
+      }
+    }
+    refreshUser();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    try {
+      const res = await api.login({ email, password });
+      if (res.user) {
+        setUser(res.user);
+        localStorage.setItem('user', JSON.stringify(res.user));
+        return { ok: true };
+      }
+      return { ok: false, error: 'Login failed' };
+    } catch (e: any) {
+      return { ok: false, error: e.message || 'Invalid credentials. Please check your email and password.' };
+    }
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    api.logout();
+    localStorage.removeItem('user');
+    setUser(null);
+  };
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

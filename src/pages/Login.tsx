@@ -23,7 +23,7 @@ export function Login() {
     setError('');
     setLoading(true);
     await new Promise((r) => setTimeout(r, 600));
-    const result = login(email, password);
+    const result = await login(email, password);
     if (!result.ok) setError(result.error ?? 'Login failed');
     setLoading(false);
   };
