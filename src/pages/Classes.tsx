@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, BookOpen, Users, User, Loader2 } from 'lucide-react';
+import { Plus, X, BookOpen, Users, User, Loader2, Trash2, Edit2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -18,7 +18,10 @@ interface SectionData {
   classTeacherId?: string;
   students: number;
   subjects: string[];
+  capacity?: number;
 }
+
+const ALL_SUBJECTS = ['Maths', 'Physics', 'Chemistry', 'Biology', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS', 'Computer Science', 'Physical Education'];
 
 export function Classes() {
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -27,6 +30,25 @@ export function Classes() {
   const [expandedClass, setExpandedClass] = useState<string | null>('8');
   const [showAddSection, setShowAddSection] = useState(false);
   const [showAssignTeacher, setShowAssignTeacher] = useState<SectionData | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [deleteConfirmSection, setDeleteConfirmSection] = useState<SectionData | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editSectionData, setEditSectionData] = useState<{ classId: string; section: SectionData } | null>(null);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+
+  const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+    if (allowedKeys.includes(e.key)) {
+      return;
+    }
+    if (!/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handleNumberInput = (e: React.FormEvent<HTMLInputElement>) => {
+    e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
+  };
 
   const loadClasses = async () => {
     setLoading(true);
@@ -44,7 +66,7 @@ export function Classes() {
         let classId = '8';
         let sectionLetter = 'A';
 
-        const match = batchName.match(/^(\d+)([A-Z])$/);
+        const match = batchName.match(/^(.+?)([A-Z])$/);
         if (match) {
           classId = match[1];
           sectionLetter = match[2];
@@ -61,30 +83,46 @@ export function Classes() {
           classGroups[classId] = [];
         }
 
+        const savedSubjects = localStorage.getItem(`batch_subjects_${batchName}`);
+        const subjectsList = savedSubjects ? JSON.parse(savedSubjects) : (classId === '8' ? ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social'] : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS']);
+        const capacityVal = localStorage.getItem(`batch_capacity_${batchName}`) ? Number(localStorage.getItem(`batch_capacity_${batchName}`)) : 40;
+
         classGroups[classId].push({
           id: String(b.id),
           name: `Section ${sectionLetter}`,
           classTeacher: b.class_teacher_name || 'Select teacher',
           classTeacherId: b.class_teacher_id ? String(b.class_teacher_id) : undefined,
           students: studentsInBatch > 0 ? studentsInBatch : (classId === '8' ? 42 : 38),
-          subjects: classId === '8' ? ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social'] : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS'],
+          subjects: subjectsList,
+          capacity: capacityVal,
         });
       });
 
       defaultClasses.forEach((cId) => {
         if (!classGroups[cId]) {
           classGroups[cId] = [
-            { id: `mock-${cId}A`, name: 'Section A', classTeacher: 'Select teacher', students: cId === '8' ? 42 : 38, subjects: ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'] },
-            { id: `mock-${cId}B`, name: 'Section B', classTeacher: 'Select teacher', students: cId === '8' ? 39 : 35, subjects: ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'] }
+            { id: `mock-${cId}A`, name: 'Section A', classTeacher: 'Select teacher', students: cId === '8' ? 42 : 38, subjects: localStorage.getItem(`batch_subjects_${cId}A`) ? JSON.parse(localStorage.getItem(`batch_subjects_${cId}A`)!) : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'], capacity: localStorage.getItem(`batch_capacity_${cId}A`) ? Number(localStorage.getItem(`batch_capacity_${cId}A`)) : 40 },
+            { id: `mock-${cId}B`, name: 'Section B', classTeacher: 'Select teacher', students: cId === '8' ? 39 : 35, subjects: localStorage.getItem(`batch_subjects_${cId}B`) ? JSON.parse(localStorage.getItem(`batch_subjects_${cId}B`)!) : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'], capacity: localStorage.getItem(`batch_capacity_${cId}B`) ? Number(localStorage.getItem(`batch_capacity_${cId}B`)) : 40 }
           ];
         }
       });
 
       const mappedClasses = Object.keys(classGroups).map((cId) => ({
         id: cId,
-        name: `Class ${cId}`,
-        sections: classGroups[cId],
-      })).sort((a, b) => Number(a.id) - Number(b.id));
+        name: cId,
+        sections: classGroups[cId].sort((a, b) => a.name.localeCompare(b.name)),
+      })).sort((a, b) => {
+        const numA = Number(a.id);
+        const numB = Number(b.id);
+        const isNumA = !isNaN(numA);
+        const isNumB = !isNaN(numB);
+        if (isNumA && isNumB) {
+          return numA - numB;
+        }
+        if (isNumA) return -1;
+        if (isNumB) return 1;
+        return a.id.localeCompare(b.id);
+      });
 
       setClasses(mappedClasses);
     } catch (err) {
@@ -128,13 +166,31 @@ export function Classes() {
 
   const handleAddSection = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setErrorMsg(null);
     const fd = new FormData(e.currentTarget);
     const classNameVal = fd.get('className') as string;
     const sectionNameVal = fd.get('sectionName') as string;
     const teacherIdVal = fd.get('teacherId') as string;
+    const capacityVal = fd.get('capacity') as string;
 
-    const classNum = classNameVal.replace('Class ', '');
-    const sectionLetter = sectionNameVal.replace('Section ', '').toUpperCase();
+    const classNum = classNameVal.trim();
+    const sectionLetter = sectionNameVal.replace(/section\s*/i, '').toUpperCase().trim();
+
+    if (!classNum || !sectionLetter) {
+      setErrorMsg('Class and Section Name are required.');
+      return;
+    }
+
+    const targetClass = classes.find(c => c.id === classNum);
+    if (targetClass) {
+      const exists = targetClass.sections.some(
+        sec => sec.name.replace('Section ', '').toUpperCase().trim() === sectionLetter
+      );
+      if (exists) {
+        setErrorMsg('The section already exists.');
+        return;
+      }
+    }
 
     try {
       await api.createResource('batches', {
@@ -146,12 +202,92 @@ export function Classes() {
         end_date: '2027-05-31',
         status: 'active',
       });
+      localStorage.setItem(`batch_subjects_${classNum}${sectionLetter}`, JSON.stringify(selectedSubjects));
+      localStorage.setItem(`batch_capacity_${classNum}${sectionLetter}`, capacityVal || '40');
       setShowAddSection(false);
       loadClasses();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error adding section:', err);
+      setErrorMsg(err.message || 'Failed to add section. Please try again.');
     }
   };
+
+  const handleDeleteSection = async () => {
+    if (!deleteConfirmSection) return;
+    setDeleting(true);
+    try {
+      await api.deleteResource('batches', deleteConfirmSection.id);
+      setDeleteConfirmSection(null);
+      loadClasses();
+    } catch (err) {
+      console.error('Error deleting section:', err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleEditSectionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editSectionData) return;
+    setErrorMsg(null);
+    const fd = new FormData(e.currentTarget);
+    const classNameVal = fd.get('className') as string;
+    const sectionNameVal = fd.get('sectionName') as string;
+    const teacherIdVal = fd.get('teacherId') as string;
+    const capacityVal = fd.get('capacity') as string;
+
+    const classNum = classNameVal.trim();
+    const sectionLetter = sectionNameVal.replace(/section\s*/i, '').toUpperCase().trim();
+
+    if (!classNum || !sectionLetter) {
+      setErrorMsg('Class and Section Name are required.');
+      return;
+    }
+
+    const originalClassNum = editSectionData.classId;
+    const originalSectionLetter = editSectionData.section.name.replace('Section ', '').toUpperCase().trim();
+
+    if (classNum !== originalClassNum || sectionLetter !== originalSectionLetter) {
+      const targetClass = classes.find(c => c.id === classNum);
+      if (targetClass) {
+        const exists = targetClass.sections.some(
+          sec => sec.name.replace('Section ', '').toUpperCase().trim() === sectionLetter
+        );
+        if (exists) {
+          setErrorMsg('The section already exists.');
+          return;
+        }
+      }
+    }
+
+    try {
+      await api.updateResource('batches', editSectionData.section.id, {
+        name: `${classNum}${sectionLetter}`,
+        class_teacher_id: teacherIdVal ? Number(teacherIdVal) : null,
+      });
+      localStorage.setItem(`batch_subjects_${classNum}${sectionLetter}`, JSON.stringify(selectedSubjects));
+      localStorage.setItem(`batch_capacity_${classNum}${sectionLetter}`, capacityVal || '40');
+      const oldBatchName = `${originalClassNum}${originalSectionLetter}`;
+      if (oldBatchName !== `${classNum}${sectionLetter}`) {
+        localStorage.removeItem(`batch_subjects_${oldBatchName}`);
+        localStorage.removeItem(`batch_capacity_${oldBatchName}`);
+      }
+      setEditSectionData(null);
+      loadClasses();
+    } catch (err: any) {
+      console.error('Error editing section:', err);
+      setErrorMsg(err.message || 'Failed to edit section. Please try again.');
+    }
+  };
+
+  const assignedTeacherIds = new Set<string>();
+  classes.forEach(c => {
+    c.sections.forEach(sec => {
+      if (sec.classTeacherId) {
+        assignedTeacherIds.add(String(sec.classTeacherId));
+      }
+    });
+  });
 
   const totalSections = classes.reduce((s, c) => s + c.sections.length, 0);
   const totalStudents = classes.reduce((s, c) => s + c.sections.reduce((ss, sec) => ss + sec.students, 0), 0);
@@ -171,7 +307,7 @@ export function Classes() {
           Class & Section Management {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setShowAddSection(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
+          <button onClick={() => { setErrorMsg(null); setSelectedSubjects(['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS']); setShowAddSection(true); }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
             <Plus size={12} /> Add Class / Section
           </button>
         </div>
@@ -208,14 +344,34 @@ export function Classes() {
 
             {expandedClass === cls.id && (
               <div className="mt-4 pt-4 border-t border-[var(--b)] grid grid-cols-1 md:grid-cols-2 gap-3">
-                {cls.sections.map((sec) => (
-                  <div key={sec.id} className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3.5">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <div className="text-[12.5px] font-bold text-[var(--tx)]">{cls.name} — {sec.name}</div>
-                        <div className="text-[11px] text-[var(--tx3)]">{sec.students} students enrolled</div>
+                {cls.sections.map((sec) => {
+                  const isMock = sec.id.startsWith('mock-');
+                  return (
+                    <div key={sec.id} className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3.5">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <div className="text-[12.5px] font-bold text-[var(--tx)]">{cls.name} — {sec.name}</div>
+                          <div className="text-[11px] text-[var(--tx3)]">{sec.students} students enrolled · Capacity: {sec.capacity || 40}</div>
+                        </div>
+                        {!isMock && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => { setErrorMsg(null); setSelectedSubjects(sec.subjects); setEditSectionData({ classId: cls.id, section: sec }); }}
+                              className="p-1.5 rounded-lg text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer transition-colors"
+                              title="Edit Section"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmSection(sec)}
+                              className="p-1.5 rounded-lg text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] cursor-pointer transition-colors"
+                              title="Delete Section"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </div>
 
                     {/* Class Teacher */}
                     <div className="flex items-center justify-between bg-[var(--surf)] rounded-lg p-2.5 mb-3">
@@ -240,8 +396,9 @@ export function Classes() {
                         ))}
                       </div>
                     </div>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Card>
@@ -258,22 +415,74 @@ export function Classes() {
             </div>
             <div className="p-5 space-y-3">
               <div>
-                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class *</label>
-                <select name="className" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-                  {classes.map((c) => <option key={c.id}>{c.name}</option>)}
-                </select>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class * (Select or Type Manually)</label>
+                <input
+                  name="className"
+                  list="class-list"
+                  required
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                  placeholder="e.g. 8 or 11"
+                />
+                <datalist id="class-list">
+                  {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </datalist>
               </div>
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Section Name *</label>
                 <input name="sectionName" required className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Section C" />
               </div>
               <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Capacity *</label>
+                <input
+                  name="capacity"
+                  required
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  onKeyDown={handleNumberKeyDown}
+                  onInput={handleNumberInput}
+                  defaultValue="40"
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                  placeholder="e.g. 40"
+                />
+              </div>
+              <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class Teacher</label>
                 <select name="teacherId" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
                   <option value="">Select teacher</option>
-                  {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teachers.filter(t => !assignedTeacherIds.has(String(t.id))).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Subjects</label>
+                <div className="grid grid-cols-2 gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2.5 max-h-[120px] overflow-y-auto">
+                  {ALL_SUBJECTS.map((sub) => (
+                    <label key={sub} className="flex items-center gap-2 text-[11px] text-[var(--tx2)] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        value={sub}
+                        checked={selectedSubjects.includes(sub)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSubjects([...selectedSubjects, sub]);
+                          } else {
+                            setSelectedSubjects(selectedSubjects.filter(s => s !== sub));
+                          }
+                        }}
+                        className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
+                      />
+                      {sub}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
+              {errorMsg && (
+                <div className="p-3 bg-[var(--red-bg)] border border-[var(--red-tx)]/10 text-[var(--red-tx)] rounded-xl text-[11.5px] flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--red)]" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 p-5 pt-0">
               <button type="button" onClick={() => setShowAddSection(false)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
@@ -295,7 +504,7 @@ export function Classes() {
               <button onClick={() => setShowAssignTeacher(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-2 max-h-[300px] overflow-y-auto">
-              {teachers.map((teacher) => (
+              {teachers.filter(t => !assignedTeacherIds.has(String(t.id)) || showAssignTeacher.classTeacherId === String(t.id)).map((teacher) => (
                 <button
                   key={teacher.id}
                   onClick={() => handleAssignTeacher(teacher.id)}
@@ -316,6 +525,138 @@ export function Classes() {
               <button onClick={() => setShowAssignTeacher(null)} className="w-full py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer">Close</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmSection && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden">
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-955/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={24} />
+              </div>
+              <h3 className="text-base font-bold text-[var(--tx)] mb-2">Delete Section</h3>
+              <p className="text-xs text-[var(--tx3)] mb-6">Are you sure you want to delete this section? This action cannot be undone.</p>
+              <div className="flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setDeleteConfirmSection(null)}
+                  disabled={deleting}
+                  className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleDeleteSection}
+                  disabled={deleting}
+                  className="flex-1 py-2 bg-red-600 text-white rounded-xl text-[12px] font-semibold hover:bg-red-700 cursor-pointer disabled:opacity-70 flex items-center justify-center gap-1.5"
+                >
+                  {deleting && <Loader2 size={12} className="animate-spin" />}
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Section Modal */}
+      {editSectionData && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleEditSectionSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div className="text-[14px] font-bold text-[var(--tx)]">Edit Class / Section</div>
+              <button type="button" onClick={() => setEditSectionData(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class * (Select or Type Manually)</label>
+                <input
+                  name="className"
+                  list="class-list"
+                  required
+                  defaultValue={editSectionData.classId}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                  placeholder="e.g. 8 or 11"
+                />
+                <datalist id="class-list">
+                  {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Section Name *</label>
+                <input
+                  name="sectionName"
+                  required
+                  defaultValue={editSectionData.section.name}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                  placeholder="Section C"
+                />
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Capacity *</label>
+                <input
+                  name="capacity"
+                  required
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  onKeyDown={handleNumberKeyDown}
+                  onInput={handleNumberInput}
+                  defaultValue={editSectionData.section.capacity || 40}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                  placeholder="e.g. 40"
+                />
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class Teacher</label>
+                <select
+                  name="teacherId"
+                  defaultValue={editSectionData.section.classTeacherId || ''}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
+                >
+                  <option value="">Select teacher</option>
+                  {teachers.filter(t => !assignedTeacherIds.has(String(t.id)) || editSectionData.section.classTeacherId === String(t.id)).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Subjects</label>
+                <div className="grid grid-cols-2 gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2.5 max-h-[120px] overflow-y-auto">
+                  {ALL_SUBJECTS.map((sub) => (
+                    <label key={sub} className="flex items-center gap-2 text-[11px] text-[var(--tx2)] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        value={sub}
+                        checked={selectedSubjects.includes(sub)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSubjects([...selectedSubjects, sub]);
+                          } else {
+                            setSelectedSubjects(selectedSubjects.filter(s => s !== sub));
+                          }
+                        }}
+                        className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
+                      />
+                      {sub}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
+              {errorMsg && (
+                <div className="p-3 bg-[var(--red-bg)] border border-[var(--red-tx)]/10 text-[var(--red-tx)] rounded-xl text-[11.5px] flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--red)]" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button type="button" onClick={() => setEditSectionData(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button type="submit" className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer">Save Changes</button>
+            </div>
+          </form>
         </div>
       )}
     </div>

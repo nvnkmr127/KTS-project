@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Search, Plus, Upload, UserCheck, GraduationCap,
   Phone, Edit2, Trash2, Eye, X, Loader2, AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText,
+  ArrowRightLeft,
 } from 'lucide-react';
 // @ts-ignore
 import * as XLSX from 'xlsx';
@@ -72,7 +73,7 @@ export function Students() {
         parent: s.father_name || 'N/A',
         phone: s.student_mobile || '',
         address: s.village || '',
-        status: s.status === 'active' ? 'Active' : s.status === 'dropout' ? 'Left' : 'Transferred',
+        status: (s.status === 'active' || s.status === 'Active') ? 'Active' : (s.status === 'left' || s.status === 'dropout' || s.status === 'Left') ? 'Left' : (s.status === 'transfer' || s.status === 'transferred' || s.status === 'Transferred') ? 'Transferred' : 'Active',
         admissionDate: s.admission_date ? s.admission_date.slice(0, 10) : '',
         feeStatus: s.fee_status || 'Paid',
       }));
@@ -106,7 +107,7 @@ export function Students() {
       village: fd.get('address'),
       class: fd.get('class'),
       section: fd.get('section'),
-      status: statusVal === 'Active' ? 'active' : statusVal === 'Left' ? 'dropout' : 'transferred',
+      status: statusVal === 'Active' ? 'active' : statusVal === 'Left' ? 'left' : 'transfer',
     };
 
     try {
@@ -126,20 +127,29 @@ export function Students() {
     }
   };
 
+  const [transferringId, setTransferringId] = useState<string | null>(null);
+
+  const handleTransferClick = async (id: string) => {
+    setTransferringId(id);
+    try {
+      await api.updateResource('students', id, { status: 'transfer' });
+      await loadStudents();
+    } catch (err) {
+      console.error('Error transferring student:', err);
+    } finally {
+      setTransferringId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
     setDeleting(true);
     try {
-      await api.deleteResource('students', deleteConfirmId);
-      // Remove from local state immediately for instant feedback
-      setStudents(prev => prev.filter(s => s.id !== deleteConfirmId));
+      await api.updateResource('students', deleteConfirmId, { status: 'left' });
       setDeleteConfirmId(null);
-      // Then refresh from server to ensure consistency
-      loadStudents();
+      await loadStudents();
     } catch (err: any) {
-      console.error('Error deleting student:', err);
-      // Still try to reload in case of partial success
-      loadStudents();
+      console.error('Error marking student as left:', err);
       setDeleteConfirmId(null);
     } finally {
       setDeleting(false);
@@ -251,14 +261,26 @@ export function Students() {
                   </td>
                   <td className="px-2 py-2.5">
                     {s.status === 'Active' && <Badge variant="green">Active</Badge>}
-                    {s.status === 'Transferred' && <Badge variant="blue">Transferred</Badge>}
-                    {s.status === 'Left' && <Badge variant="gray">Left</Badge>}
+                    {s.status === 'Transferred' && <Badge variant="amber">Transferred</Badge>}
+                    {s.status === 'Left' && <Badge variant="red">Left</Badge>}
                   </td>
                   <td className="px-2 py-2.5">
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => { setSelected(s); setModal('view'); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] transition-colors cursor-pointer"><Eye size={13} /></button>
-                      <button onClick={() => { setSelected(s); setModal('edit'); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] transition-colors cursor-pointer"><Edit2 size={13} /></button>
-                      <button onClick={() => setDeleteConfirmId(s.id)} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer"><Trash2 size={13} /></button>
+                      <button onClick={() => { setSelected(s); setModal('view'); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] transition-colors cursor-pointer" title="View Details"><Eye size={13} /></button>
+                      <button onClick={() => { setSelected(s); setModal('edit'); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] transition-colors cursor-pointer" title="Edit Student"><Edit2 size={13} /></button>
+                      <button 
+                        onClick={() => handleTransferClick(s.id)} 
+                        disabled={transferringId !== null}
+                        className="p-1 rounded text-[var(--tx3)] hover:text-[var(--purple-tx)] hover:bg-[var(--purple-bg)] transition-colors cursor-pointer disabled:opacity-50"
+                        title="Transfer Student"
+                      >
+                        {transferringId === s.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <ArrowRightLeft size={13} />
+                        )}
+                      </button>
+                      <button onClick={() => setDeleteConfirmId(s.id)} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer" title="Mark as Left"><Trash2 size={13} /></button>
                     </div>
                   </td>
                 </tr>
@@ -411,7 +433,7 @@ export function Students() {
                 <div>
                   <div className="text-[15px] font-bold text-[var(--tx)]">{selected.name}</div>
                   <div className="text-[12px] text-[var(--tx3)]">Roll No: {selected.roll}</div>
-                  <div className="mt-1"><Badge variant={selected.status === 'Active' ? 'green' : 'gray'}>{selected.status}</Badge></div>
+                  <div className="mt-1"><Badge variant={selected.status === 'Active' ? 'green' : selected.status === 'Left' ? 'red' : 'amber'}>{selected.status}</Badge></div>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -458,8 +480,8 @@ export function Students() {
               <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-955/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={24} />
               </div>
-              <h3 className="text-base font-bold text-[var(--tx)] mb-2">Delete Student</h3>
-              <p className="text-xs text-[var(--tx3)] mb-6">Are you sure you want to delete this student? This action cannot be undone.</p>
+              <h3 className="text-base font-bold text-[var(--tx)] mb-2">Mark Student as Left</h3>
+              <p className="text-xs text-[var(--tx3)] mb-6">Are you sure you want to mark this student as Left? This will update their status in the directory.</p>
               <div className="flex gap-3">
                 <button 
                   type="button" 
@@ -476,7 +498,7 @@ export function Students() {
                   className="flex-1 py-2 bg-red-600 text-white rounded-xl text-[12px] font-semibold hover:bg-red-700 cursor-pointer disabled:opacity-70 flex items-center justify-center gap-1.5"
                 >
                   {deleting && <Loader2 size={12} className="animate-spin" />}
-                  {deleting ? 'Deleting...' : 'Delete'}
+                  {deleting ? 'Processing...' : 'Confirm'}
                 </button>
               </div>
             </div>
