@@ -1,6 +1,39 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 600000; // 10 minutes cache TTL, relying primarily on mutation-based invalidation
+
+export function clearApiCache(resource?: string) {
+  if (!resource) {
+    cache.clear();
+    return;
+  }
+  const prefix = `/resources/${resource}`;
+  for (const key of cache.keys()) {
+    if (key === prefix || key.startsWith(prefix + '?') || key.startsWith(prefix + '/')) {
+      cache.delete(key);
+    }
+  }
+  if (resource === 'students' || resource === 'batches' || resource === 'leaves') {
+    for (const key of cache.keys()) {
+      if (key.startsWith('/attendance')) {
+        cache.delete(key);
+      }
+    }
+  }
+}
+
 async function request(path: string, options: RequestInit = {}) {
+  const method = options.method || 'GET';
+  
+  // Cache GET requests
+  if (method === 'GET') {
+    const cached = cache.get(path);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+  }
+
   const token = localStorage.getItem('token');
   const headers = {
     'Content-Type': 'application/json',
@@ -19,7 +52,13 @@ async function request(path: string, options: RequestInit = {}) {
     throw new Error(errorData.error || errorData.message || 'API request failed');
   }
 
-  return response.json();
+  const result = await response.json();
+
+  if (method === 'GET') {
+    cache.set(path, { data: result, timestamp: Date.now() });
+  }
+
+  return result;
 }
 
 export const api = {
@@ -34,12 +73,14 @@ export const api = {
     });
     if (res.token) {
       localStorage.setItem('token', res.token);
+      clearApiCache(); // Clear any stale cached data on fresh login
     }
     return res;
   },
 
   logout() {
     localStorage.removeItem('token');
+    clearApiCache(); // Clear cache on logout
   },
 
   async getResources(resource: string, params: Record<string, string> = {}) {
@@ -53,6 +94,7 @@ export const api = {
   },
 
   async createResource(resource: string, data: any) {
+    clearApiCache(resource);
     return request(`/resources/${resource}`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -60,6 +102,7 @@ export const api = {
   },
   
   async bulkCreateResource(resource: string, records: any[]) {
+    clearApiCache(resource);
     return request(`/resources/${resource}/bulk`, {
       method: 'POST',
       body: JSON.stringify({ records }),
@@ -67,6 +110,7 @@ export const api = {
   },
 
   async updateResource(resource: string, id: string, data: any) {
+    clearApiCache(resource);
     return request(`/resources/${resource}/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -74,6 +118,7 @@ export const api = {
   },
 
   async deleteResource(resource: string, id: string) {
+    clearApiCache(resource);
     return request(`/resources/${resource}/${id}`, {
       method: 'DELETE',
     });

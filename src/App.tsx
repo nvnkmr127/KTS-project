@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import { Login } from './pages/Login';
@@ -25,13 +25,87 @@ import { Homework } from './pages/Homework';
 import { Timetable } from './pages/Timetable';
 import type { PageId } from './types';
 
+const PAGE_TO_PATH: Record<PageId, string> = {
+  dashboard: '/dashboard',
+  fee: '/fee-management',
+  attendance: '/attendance',
+  diary: '/daily-diary',
+  bus: '/bus-tracking',
+  faculty: '/faculty',
+  reports: '/reports',
+  students: '/students',
+  staff: '/staff-management',
+  classes: '/classes',
+  salary: '/salary',
+  expenses: '/expenses',
+  whatsapp: '/whatsapp-center',
+  leave: '/leave-management',
+  exams: '/examination',
+  meetings: '/parent-meetings',
+  homework: '/homework',
+  performance: '/performance',
+  'teacher-dashboard': '/teacher-dashboard',
+  timetable: '/timetable',
+};
+
+const PATH_TO_PAGE: Record<string, PageId> = Object.entries(PAGE_TO_PATH).reduce(
+  (acc, [page, path]) => {
+    acc[path] = page as PageId;
+    return acc;
+  },
+  {} as Record<string, PageId>
+);
+
+const getInitialPage = (isTeacher: boolean): PageId => {
+  const path = window.location.pathname;
+  const pageFromPath = PATH_TO_PAGE[path];
+  if (pageFromPath) {
+    if (isTeacher && ['dashboard', 'fee', 'students', 'staff', 'salary', 'expenses', 'reports', 'timetable', 'classes', 'faculty', 'bus', 'whatsapp', 'meetings'].includes(pageFromPath)) {
+      return 'teacher-dashboard';
+    }
+    if (!isTeacher && ['teacher-dashboard', 'homework', 'performance'].includes(pageFromPath)) {
+      return 'dashboard';
+    }
+    return pageFromPath;
+  }
+  return isTeacher ? 'teacher-dashboard' : 'dashboard';
+};
+
 function AppShell() {
   const { user } = useAuth();
   const isTeacher = user?.role === 'teacher';
 
-  const [page, setPage] = useState<PageId>(isTeacher ? 'teacher-dashboard' : 'dashboard');
+  const [page, setPage] = useState<PageId>(() => getInitialPage(isTeacher));
   const [dark, setDark] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      const initialPage = getInitialPage(isTeacher);
+      setPage(initialPage);
+      // Sync URL if on root path
+      if (window.location.pathname === '/' || window.location.pathname === '') {
+        window.history.replaceState({}, '', PAGE_TO_PATH[initialPage]);
+      } else {
+        const path = PAGE_TO_PATH[initialPage];
+        if (path && window.location.pathname !== path) {
+          window.history.replaceState({}, '', path);
+        }
+      }
+    }
+  }, [user, isTeacher]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      const pageFromPath = PATH_TO_PAGE[path];
+      if (pageFromPath) {
+        setPage(pageFromPath);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   if (!user) return <Login />;
 
@@ -40,7 +114,13 @@ function AppShell() {
     document.documentElement.classList.toggle('dark');
   };
 
-  const navigate = (p: PageId) => setPage(p);
+  const navigate = (p: PageId) => {
+    setPage(p);
+    const path = PAGE_TO_PATH[p];
+    if (path && window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg)] flex items-start justify-center md:p-4 md:py-6 p-0">

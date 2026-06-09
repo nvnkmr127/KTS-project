@@ -279,6 +279,7 @@ function ExamScheduleDesigner({
               <button
                 onClick={() => {
                   localStorage.setItem('examinations_schedules', JSON.stringify(schedules));
+                  saveSettingToDb('examinations_schedules', schedules);
                   setSavedMsg(true);
                   setTimeout(() => setSavedMsg(false), 2000);
                   setIsEditing(false);
@@ -447,6 +448,27 @@ function ExamScheduleDesigner({
   );
 }
 
+async function saveSettingToDb(key: string, value: any) {
+  try {
+    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+    const existing = await api.getResources('settings', { key });
+    if (Array.isArray(existing) && existing.length > 0) {
+      const settingId = existing[0].id;
+      await api.updateResource('settings', String(settingId), { value: valueStr });
+    } else {
+      await api.createResource('settings', {
+        key,
+        value: valueStr,
+        group: 'exam',
+        type: 'json',
+        is_public: true,
+      });
+    }
+  } catch (err) {
+    console.error(`Error saving setting ${key} to DB:`, err);
+  }
+}
+
 export function Examinations() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -467,8 +489,48 @@ export function Examinations() {
   });
 
   useEffect(() => {
-    localStorage.setItem('examinations_exams', JSON.stringify(exams));
-  }, [exams]);
+    const syncDb = async () => {
+      try {
+        let currentExams = exams;
+        let currentSchedules = schedules;
+
+        // Sync exams
+        const examsRes = await api.getResources('settings', { key: 'examinations_exams' });
+        if (Array.isArray(examsRes) && examsRes.length > 0 && examsRes[0].value) {
+          try {
+            currentExams = JSON.parse(examsRes[0].value);
+            setExams(currentExams);
+            localStorage.setItem('examinations_exams', JSON.stringify(currentExams));
+          } catch (e) {
+            console.error('Error parsing examinations_exams setting:', e);
+          }
+        } else {
+          // Seed DB
+          await saveSettingToDb('examinations_exams', currentExams);
+        }
+
+        // Sync schedules
+        const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' });
+        if (Array.isArray(schedulesRes) && schedulesRes.length > 0 && schedulesRes[0].value) {
+          try {
+            currentSchedules = JSON.parse(schedulesRes[0].value);
+            setSchedules(currentSchedules);
+            localStorage.setItem('examinations_schedules', JSON.stringify(currentSchedules));
+          } catch (e) {
+            console.error('Error parsing examinations_schedules setting:', e);
+          }
+        } else {
+          // Seed DB
+          await saveSettingToDb('examinations_schedules', currentSchedules);
+        }
+      } catch (err) {
+        console.error('Failed to sync settings from DB:', err);
+      }
+    };
+    syncDb();
+  }, []);
+
+  // Removed automatic sync effects to prevent redundant DB writes on mount
   const [createName, setCreateName] = useState('');
   const [selectedCreateClasses, setSelectedCreateClasses] = useState<string[]>(['All Classes']);
   const [showClassDropdown, setShowClassDropdown] = useState(false);
@@ -531,7 +593,11 @@ export function Examinations() {
       maxMarks: createMaxMarks,
       status: 'Upcoming',
     };
-    setExams((prev) => [...prev, newExam]);
+    const updatedExams = [...exams, newExam];
+    setExams(updatedExams);
+    localStorage.setItem('examinations_exams', JSON.stringify(updatedExams));
+    saveSettingToDb('examinations_exams', updatedExams);
+
     setShowCreate(false);
     setCreateName('');
     setSelectedCreateClasses(['All Classes']);
@@ -542,7 +608,10 @@ export function Examinations() {
   };
 
   const handleDeleteExam = (id: string) => {
-    setExams((prev) => prev.filter((e) => e.id !== id));
+    const updatedExams = exams.filter((e) => e.id !== id);
+    setExams(updatedExams);
+    localStorage.setItem('examinations_exams', JSON.stringify(updatedExams));
+    saveSettingToDb('examinations_exams', updatedExams);
   };
 
   const handleExamCardClick = (exam: Exam) => {

@@ -53,9 +53,11 @@ export function Classes() {
   const loadClasses = async () => {
     setLoading(true);
     try {
-      const batchesData = await api.getResources('batches');
-      const teachersData = await api.getResources('faculty');
-      const studentsData = await api.getResources('students');
+      const [batchesData, teachersData, studentsData] = await Promise.all([
+        api.getResources('batches'),
+        api.getResources('faculty'),
+        api.getResources('students'),
+      ]);
       setTeachers(teachersData);
 
       const classGroups: Record<string, SectionData[]> = {};
