@@ -14,6 +14,22 @@ export function clearApiCache(resource?: string) {
       cache.delete(key);
     }
   }
+  if (resource === 'student-fees') {
+    const studentPrefix = '/resources/students';
+    for (const key of cache.keys()) {
+      if (key === studentPrefix || key.startsWith(studentPrefix + '?') || key.startsWith(studentPrefix + '/')) {
+        cache.delete(key);
+      }
+    }
+  }
+  if (resource === 'students') {
+    const feePrefix = '/resources/student-fees';
+    for (const key of cache.keys()) {
+      if (key === feePrefix || key.startsWith(feePrefix + '?') || key.startsWith(feePrefix + '/')) {
+        cache.delete(key);
+      }
+    }
+  }
   if (resource === 'students' || resource === 'batches' || resource === 'leaves') {
     for (const key of cache.keys()) {
       if (key.startsWith('/attendance')) {

@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { Dashboard } from './pages/Dashboard';
 import { FeeManagement } from './pages/FeeManagement';
+import { FeeCategories } from './pages/FeeCategories';
 import { Attendance } from './pages/Attendance';
 import { DailyDiary } from './pages/DailyDiary';
 import { BusTracking } from './pages/BusTracking';
@@ -28,6 +29,7 @@ import type { PageId } from './types';
 const PAGE_TO_PATH: Record<PageId, string> = {
   dashboard: '/dashboard',
   fee: '/fee-management',
+  'fee-categories': '/fee-categories',
   attendance: '/attendance',
   diary: '/daily-diary',
   bus: '/bus-tracking',
@@ -60,7 +62,7 @@ const getInitialPage = (isTeacher: boolean): PageId => {
   const path = window.location.pathname;
   const pageFromPath = PATH_TO_PAGE[path];
   if (pageFromPath) {
-    if (isTeacher && ['dashboard', 'fee', 'students', 'staff', 'salary', 'expenses', 'reports', 'timetable', 'classes', 'faculty', 'bus', 'whatsapp', 'meetings'].includes(pageFromPath)) {
+    if (isTeacher && ['dashboard', 'fee', 'fee-categories', 'students', 'staff', 'salary', 'expenses', 'reports', 'timetable', 'classes', 'faculty', 'bus', 'whatsapp', 'meetings'].includes(pageFromPath)) {
       return 'teacher-dashboard';
     }
     if (!isTeacher && ['teacher-dashboard', 'homework', 'performance'].includes(pageFromPath)) {
@@ -137,6 +139,7 @@ function AppShell() {
           {/* Admin pages */}
           {page === 'dashboard' && <Dashboard />}
           {page === 'fee' && <FeeManagement />}
+          {page === 'fee-categories' && <FeeCategories />}
           {page === 'attendance' && <Attendance />}
           {page === 'diary' && <DailyDiary />}
           {page === 'bus' && <BusTracking />}

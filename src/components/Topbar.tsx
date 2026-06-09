@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext';
 const PAGE_TITLES: Record<PageId, string> = {
   dashboard: 'Dashboard',
   fee: 'Fee Management',
+  'fee-categories': 'Fee Categories',
   attendance: 'Student Attendance',
   diary: 'Daily Diary',
   bus: 'Bus Tracking',

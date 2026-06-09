@@ -3,6 +3,7 @@ export type Role = 'admin' | 'teacher';
 export type PageId =
   | 'dashboard'
   | 'fee'
+  | 'fee-categories'
   | 'attendance'
   | 'diary'
   | 'bus'

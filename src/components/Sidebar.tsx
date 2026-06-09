@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
   Bus, BarChart2, Settings, School, MessageCircle,
-  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X,
+  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags,
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +40,7 @@ const ADMIN_SECTIONS: NavSection[] = [
   {
     label: 'Finance',
     items: [
+      { icon: <Tags size={14} />, label: 'Fee Categories', page: 'fee-categories' },
       { icon: <DollarSign size={14} />, label: 'Fee Management', page: 'fee' },
       { icon: <Wallet size={14} />, label: 'Salary', page: 'salary' },
       { icon: <ShoppingCart size={14} />, label: 'Expenses', page: 'expenses' },
