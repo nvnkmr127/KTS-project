@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, MapPin, Calendar, Phone, User, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, MapPin, Calendar, Phone, User, AlertTriangle, Printer, Edit } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -17,6 +17,13 @@ interface StudentFeeDisplay {
   bal: number;
   status: 'Paid' | 'Partial' | 'Unpaid';
   studentId: string;
+  dob?: string;
+  admissionDate?: string;
+  parent?: string;
+  phone?: string;
+  address?: string;
+  roll?: string;
+  batchId?: number | string;
 }
 
 const statusBadge = (s: 'Paid' | 'Partial' | 'Unpaid') => {
@@ -39,6 +46,8 @@ export function FeeManagement() {
   const [studentFeesList, setStudentFeesList] = useState<any[]>([]);
   const [selectedFeeId, setSelectedFeeId] = useState<string>('');
   const [payAmount, setPayAmount] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<string>('Cash');
+  const [paymentRemarks, setPaymentRemarks] = useState<string>('');
   const [processingPayment, setProcessingPayment] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [assignedItems, setAssignedItems] = useState<{ category: string; amount: number }[]>([]);
@@ -58,6 +67,38 @@ export function FeeManagement() {
   // Student details screen states
   const [activeDetailStudent, setActiveDetailStudent] = useState<any | null>(null);
   const [selectedStudentAttendance, setSelectedStudentAttendance] = useState<number | null>(null);
+  const [loadingStudentFees, setLoadingStudentFees] = useState(false);
+  const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
+  const [paymentSuccessData, setPaymentSuccessData] = useState<any | null>(null);
+
+  const [showEditPaidModal, setShowEditPaidModal] = useState(false);
+  const [selectedEditFee, setSelectedEditFee] = useState<any | null>(null);
+  const [editPaidAmount, setEditPaidAmount] = useState('');
+  const [savingEditPaid, setSavingEditPaid] = useState(false);
+
+  const handleEditPaidSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedEditFee || editPaidAmount === '') return;
+    setSavingEditPaid(true);
+    try {
+      await api.updateResource('student-fees', selectedEditFee.id, {
+        paid_amount: Number(editPaidAmount),
+      });
+      setShowEditPaidModal(false);
+      setSelectedEditFee(null);
+      setEditPaidAmount('');
+      
+      // Reload details
+      if (activeDetailStudent) {
+        loadStudentFees(activeDetailStudent.studentId);
+      }
+      loadFeesData();
+    } catch (err) {
+      console.error('Error updating paid amount:', err);
+    } finally {
+      setSavingEditPaid(false);
+    }
+  };
 
   const handleViewStudentDetails = async (student: any) => {
     setActiveDetailStudent(student);
@@ -181,9 +222,21 @@ export function FeeManagement() {
           paid: Number(s.fee_paid) || 0,
           bal: Number(s.fee_balance) || 0,
           status: s.fee_status as 'Paid' | 'Partial' | 'Unpaid',
+          dob: s.dob ? s.dob.slice(0, 10) : '',
+          admissionDate: s.admission_date ? s.admission_date.slice(0, 10) : '',
+          parent: s.father_name || 'N/A',
+          phone: s.student_mobile || '',
+          address: s.village || '',
+          roll: s.enrollment_number || 'N/A',
+          batchId: s.batch_id,
         };
       });
       setStudents(mapped);
+      setActiveDetailStudent((prev: any) => {
+        if (!prev) return null;
+        const fresh = mapped.find((s: any) => String(s.studentId) === String(prev.studentId));
+        return fresh || prev;
+      });
       setCategories(categoriesData);
       if (categoriesData.length > 0) {
         setCurrentCategory(categoriesData[0].name);
@@ -202,54 +255,178 @@ export function FeeManagement() {
   }, []);
 
   const loadStudentFees = async (studentId: string) => {
+    setLoadingStudentFees(true);
     try {
       const fees = await api.getResources('student-fees', { student_id: studentId });
       setStudentFeesList(fees);
       if (fees.length > 0) {
-        setSelectedFeeId(String(fees[0].id));
-        const rem = Number(fees[0].amount) - Number(fees[0].paid_amount) - Number(fees[0].concession_amount);
-        setPayAmount(String(Math.max(0, rem)));
+        const outstanding = fees
+          .filter((f: any) => (Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)) > 0);
+        
+        const outstandingFeeIds = outstanding.map((f: any) => String(f.id));
+        setSelectedFeeIds(outstandingFeeIds);
+        
+        const sum = outstanding.reduce((total: number, f: any) => {
+          const rem = Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount);
+          return total + Math.max(0, rem);
+        }, 0);
+        setPayAmount(String(sum));
       } else {
-        setSelectedFeeId('');
+        setSelectedFeeIds([]);
         setPayAmount('');
       }
     } catch (err) {
       console.error('Error fetching fees for student:', err);
+    } finally {
+      setLoadingStudentFees(false);
     }
   };
 
   useEffect(() => {
     if (collectStudent) {
       loadStudentFees(collectStudent.studentId);
-    } else {
+      setPaymentMethod('Cash');
+      setPaymentRemarks('');
+    } else if (!activeDetailStudent) {
       setStudentFeesList([]);
     }
-  }, [collectStudent]);
+  }, [collectStudent, activeDetailStudent]);
 
-  const handleSelectFeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const feeId = e.target.value;
-    setSelectedFeeId(feeId);
-    const fee = studentFeesList.find((f) => String(f.id) === feeId);
-    if (fee) {
-      const rem = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
-      setPayAmount(String(Math.max(0, rem)));
+  const handleCheckboxChange = (feeId: string, checked: boolean) => {
+    let nextIds = [...selectedFeeIds];
+    if (checked) {
+      if (!nextIds.includes(feeId)) nextIds.push(feeId);
+    } else {
+      nextIds = nextIds.filter(id => id !== feeId);
+    }
+    setSelectedFeeIds(nextIds);
+
+    const sum = nextIds.reduce((total, id) => {
+      const fee = studentFeesList.find(f => String(f.id) === id);
+      if (fee) {
+        const rem = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+        return total + Math.max(0, rem);
+      }
+      return total;
+    }, 0);
+    setPayAmount(String(sum));
+  };
+
+  const handlePrint = (data: any) => {
+    const printWindow = window.open('', '_blank', 'width=600,height=600');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Payment Receipt</title>
+            <style>
+              body { font-family: 'Courier New', monospace; padding: 20px; color: #333; }
+              .header { text-align: center; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 15px; }
+              .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+              .subtitle { font-size: 12px; color: #666; }
+              .details { font-size: 13px; margin-bottom: 15px; line-height: 1.5; }
+              .table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+              .table th { border-bottom: 1px dashed #333; text-align: left; font-size: 12px; padding: 5px 0; }
+              .table td { font-size: 12px; padding: 5px 0; }
+              .total { border-top: 1px dashed #333; border-bottom: 1px dashed #333; padding: 8px 0; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; }
+              .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #666; border-top: 1px dashed #ccc; padding-top: 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div class="title">KTS School Portal</div>
+              <div class="subtitle">Official Payment Receipt</div>
+            </div>
+            <div class="details">
+              <strong>Student Name:</strong> \${data.studentName}<br>
+              <strong>Class:</strong> \${data.studentClass}<br>
+              <strong>Receipt No:</strong> REC-\${Date.now()}<br>
+              <strong>Date:</strong> \${new Date().toLocaleDateString()} \${new Date().toLocaleTimeString()}
+            </div>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Fee Component</th>
+                  <th style="text-align: right;">Amount Paid</th>
+                </tr>
+              </thead>
+              <tbody>
+                \${data.allocatedPayments.map((p: any) => \`
+                  <tr>
+                    <td>\${p.name}</td>
+                    <td style="text-align: right;">₹\${p.amount.toLocaleString()}</td>
+                  </tr>
+                \`).join('')}
+              </tbody>
+            </table>
+            <div class="total">
+              <span>Total Paid:</span>
+              <span>₹\${data.totalPaid.toLocaleString()}</span>
+            </div>
+            <div class="footer">
+              Thank you for the payment!<br>
+              This is a computer-generated receipt.
+            </div>
+            <script>
+              window.onload = function() {
+                window.print();
+                window.close();
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
     }
   };
 
   const handleRecordPayment = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedFeeId || !payAmount) return;
+    if (selectedFeeIds.length === 0 || !payAmount || !collectStudent) return;
     setProcessingPayment(true);
     try {
-      const fee = studentFeesList.find((f) => String(f.id) === selectedFeeId);
-      if (fee) {
-        const currentPaid = Number(fee.paid_amount) || 0;
-        await api.updateResource('student-fees', selectedFeeId, {
-          paid_amount: currentPaid + Number(payAmount),
-        });
+      let remainingPayment = Number(payAmount);
+      const allocated: { name: string; amount: number }[] = [];
+      
+      for (const feeId of selectedFeeIds) {
+        if (remainingPayment <= 0) break;
+        
+        const fee = studentFeesList.find((f) => String(f.id) === feeId);
+        if (fee) {
+          const rem = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+          const due = Math.max(0, rem);
+          if (due > 0) {
+            const paymentForThisFee = Math.min(remainingPayment, due);
+            const currentPaid = Number(fee.paid_amount) || 0;
+            
+            await api.updateResource('student-fees', feeId, {
+              paid_amount: currentPaid + paymentForThisFee,
+              payment_method: paymentMethod,
+              remarks: paymentRemarks,
+            });
+            
+            allocated.push({
+              name: fee.feeCategory?.name || fee.category || 'School Fee',
+              amount: paymentForThisFee
+            });
+            
+            remainingPayment -= paymentForThisFee;
+          }
+        }
       }
+      
+      setPaymentSuccessData({
+        studentName: collectStudent.name,
+        studentClass: collectStudent.cls,
+        allocatedPayments: allocated,
+        totalPaid: Number(payAmount) - remainingPayment,
+      });
+      
       setCollectStudent(null);
       loadFeesData();
+      if (activeDetailStudent) {
+        loadStudentFees(activeDetailStudent.studentId);
+      }
     } catch (err) {
       console.error('Error recording payment:', err);
     } finally {
@@ -318,6 +495,32 @@ export function FeeManagement() {
   const renderStudentDetails = () => {
     if (!activeDetailStudent) return null;
     const std = activeDetailStudent;
+
+    const totalFee = studentFeesList.length > 0
+      ? studentFeesList.reduce((sum, f) => sum + Number(f.amount), 0)
+      : std.fee;
+
+    const totalPaid = studentFeesList.length > 0
+      ? studentFeesList.reduce((sum, f) => sum + Number(f.paid_amount), 0)
+      : std.paid;
+
+    const totalDue = studentFeesList.length > 0
+      ? studentFeesList.reduce((sum, f) => sum + Math.max(0, Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)), 0)
+      : std.bal;
+
+    const calculatedStatus = (() => {
+      if (studentFeesList.length === 0) return std.status;
+      const totalAmount = studentFeesList.reduce((sum, f) => sum + Number(f.amount), 0);
+      const totalConcession = studentFeesList.reduce((sum, f) => sum + Number(f.concession_amount), 0);
+      const totalPaid = studentFeesList.reduce((sum, f) => sum + Number(f.paid_amount), 0);
+      const netAmount = totalAmount - totalConcession;
+      if (netAmount > 0) {
+        if (totalPaid >= netAmount) return 'Paid';
+        if (totalPaid > 0) return 'Partial';
+        return 'Unpaid';
+      }
+      return 'Paid';
+    })();
     
     return (
       <div className="space-y-3">
@@ -350,7 +553,7 @@ export function FeeManagement() {
             >
               <Percent size={12} className="text-[var(--blue-tx)]" /> Fee Concession
             </button>
-            {std.status !== 'Paid' && (
+            {calculatedStatus !== 'Paid' && (
               <button
                 onClick={() => setCollectStudent(std)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 cursor-pointer font-medium"
@@ -371,7 +574,7 @@ export function FeeManagement() {
             <div className="text-[11.5px] text-[var(--tx3)] mt-0.5">Admission Number: <span className="font-mono">{std.roll}</span></div>
             <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
               <Badge variant="blue">Class {std.cls}</Badge>
-              {statusBadge(std.status)}
+              {statusBadge(calculatedStatus)}
             </div>
           </div>
         </Card>
@@ -419,34 +622,36 @@ export function FeeManagement() {
           </Card>
 
           {/* Fee & Concession Summary */}
-          <Card className="space-y-4">
-            <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
+          <Card className="space-y-4 lg:h-[400px] lg:flex lg:flex-col">
+            <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5 flex-shrink-0">
               <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
             </div>
 
             {/* Overall totals */}
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 gap-2.5 flex-shrink-0">
               <div className="bg-[var(--surf2)] rounded-xl p-3 text-center">
                 <div className="text-[10px] text-[var(--tx3)] mb-0.5">Total Fee</div>
-                <div className="text-[13.5px] font-bold text-[var(--tx)]">₹{std.fee.toLocaleString()}</div>
+                <div className="text-[13.5px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
               </div>
               <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--teal)]">
                 <div className="text-[10px] text-[var(--tx3)] mb-0.5">Paid Amount</div>
-                <div className="text-[13.5px] font-bold text-[var(--teal-tx)]">₹{std.paid.toLocaleString()}</div>
+                <div className="text-[13.5px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
               </div>
               <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--red)]">
                 <div className="text-[10px] text-[var(--tx3)] mb-0.5">Amount Due</div>
-                <div className="text-[13.5px] font-bold text-[var(--red-tx)]">₹{std.bal.toLocaleString()}</div>
+                <div className="text-[13.5px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
               </div>
             </div>
 
             {/* Fee Items Breakdown */}
-            <div className="space-y-2">
-              <div className="text-[11.5px] font-bold text-[var(--tx)]">Detailed Fee Breakdown</div>
-              {studentFeesList.length === 0 ? (
-                <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic">Loading breakdown...</div>
+            <div className="space-y-2 flex-1 min-h-0 flex flex-col">
+              <div className="text-[11.5px] font-bold text-[var(--tx)] flex-shrink-0">Detailed Fee Breakdown</div>
+              {loadingStudentFees ? (
+                <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
+              ) : studentFeesList.length === 0 ? (
+                <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">No fee records assigned.</div>
               ) : (
-                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                <div className="space-y-2 overflow-y-auto pr-1 max-h-[220px] lg:max-h-none lg:flex-1">
                   {studentFeesList.map((fee) => {
                     const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
                     const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
@@ -461,12 +666,46 @@ export function FeeManagement() {
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          {bal > 0 ? (
-                            <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
-                          ) : (
-                            <Badge variant="teal">Paid</Badge>
-                          )}
-                          <div className="text-[9.5px] text-[var(--tx3)] mt-1">Due Date: {fee.due_date}</div>
+                          <div className="flex items-center gap-2 justify-end mb-1">
+                            {Number(fee.paid_amount) > 0 && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedEditFee(fee);
+                                    setEditPaidAmount(String(fee.paid_amount));
+                                    setShowEditPaidModal(true);
+                                  }}
+                                  className="p-1.5 hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
+                                  title="Edit Paid Amount"
+                                >
+                                  <Edit size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePrint({
+                                    studentName: std.name,
+                                    studentClass: std.cls,
+                                    allocatedPayments: [{
+                                      name: feeName,
+                                      amount: Number(fee.paid_amount)
+                                    }],
+                                    totalPaid: Number(fee.paid_amount)
+                                  })}
+                                  className="p-1.5 hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
+                                  title="Print Receipt"
+                                >
+                                  <Printer size={12} />
+                                </button>
+                              </>
+                            )}
+                            {bal > 0 ? (
+                              <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
+                            ) : (
+                              <Badge variant="teal">Paid</Badge>
+                            )}
+                          </div>
+                          <div className="text-[9.5px] text-[var(--tx3)]">Due Date: {fee.due_date}</div>
                         </div>
                       </div>
                     );
@@ -849,21 +1088,25 @@ export function FeeManagement() {
                 <>
                   <div>
                     <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Fee Dues *</label>
-                    <select
-                      value={selectedFeeId}
-                      onChange={handleSelectFeeChange}
-                      required
-                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
-                    >
+                    <div className="space-y-2 max-h-[160px] overflow-y-auto bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-3">
                       {studentFeesList.map((f) => {
                         const rem = Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount);
+                        const isChecked = selectedFeeIds.includes(String(f.id));
                         return (
-                          <option key={f.id} value={f.id}>
-                            {f.feeCategory?.name || 'School Fee'} (Due: ₹{rem.toLocaleString()})
-                          </option>
+                          <label key={f.id} className="flex items-center gap-2.5 text-[12px] text-[var(--tx)] cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => handleCheckboxChange(String(f.id), e.target.checked)}
+                              className="accent-[var(--blue)] w-3.5 h-3.5 rounded"
+                            />
+                            <span>
+                              {f.feeCategory?.name || f.category || 'School Fee'} (Due: ₹{rem.toLocaleString()})
+                            </span>
+                          </label>
                         );
                       })}
-                    </select>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Amount to Record (₹) *</label>
@@ -873,6 +1116,30 @@ export function FeeManagement() {
                       value={payAmount}
                       onChange={(e) => setPayAmount(e.target.value)}
                       className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Payment Method *</label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Card">Card</option>
+                      <option value="UPI">UPI</option>
+                      <option value="Net Banking">Net Banking</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Note / Remarks</label>
+                    <textarea
+                      value={paymentRemarks}
+                      onChange={(e) => setPaymentRemarks(e.target.value)}
+                      placeholder="Add transaction ID, cheque number or notes..."
+                      rows={2}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] resize-none"
                     />
                   </div>
                 </>
@@ -1018,6 +1285,119 @@ export function FeeManagement() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {showEditPaidModal && selectedEditFee && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleEditPaidSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Edit Paid Amount</div>
+                <div className="text-[11px] text-[var(--tx3)]">
+                  {selectedEditFee.feeCategory?.name || selectedEditFee.category || 'School Fee'}
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setShowEditPaidModal(false);
+                  setSelectedEditFee(null);
+                }} 
+                className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-[11.5px] bg-[var(--surf2)] p-3 rounded-xl">
+                <div>
+                  <span className="text-[var(--tx3)] block">Assigned Amount:</span>
+                  <span className="font-semibold text-[var(--tx)]">₹{Number(selectedEditFee.amount).toLocaleString()}</span>
+                </div>
+                {Number(selectedEditFee.concession_amount) > 0 && (
+                  <div>
+                    <span className="text-[var(--tx3)] block">Concession:</span>
+                    <span className="font-semibold text-[var(--purple-tx)]">₹{Number(selectedEditFee.concession_amount).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Paid Amount (₹) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  max={Number(selectedEditFee.amount) - (Number(selectedEditFee.concession_amount) || 0)}
+                  value={editPaidAmount}
+                  onChange={(e) => setEditPaidAmount(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-bold text-lg"
+                />
+                <span className="text-[10px] text-[var(--tx3)] mt-1.5 block">
+                  Maximum allowed: ₹{(Number(selectedEditFee.amount) - (Number(selectedEditFee.concession_amount) || 0)).toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setShowEditPaidModal(false);
+                  setSelectedEditFee(null);
+                }} 
+                className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingEditPaid}
+                className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {savingEditPaid ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {paymentSuccessData && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={24} />
+            </div>
+            <h3 className="text-base font-bold text-[var(--tx)] mb-1">Payment Recorded!</h3>
+            <p className="text-xs text-[var(--tx3)] mb-4">The payment has been successfully recorded in the system.</p>
+            
+            <div className="bg-[var(--surf2)] rounded-xl p-4 mb-6 text-left space-y-2.5 text-[12px]">
+              <div className="flex justify-between"><span className="text-[var(--tx3)]">Student:</span><span className="font-semibold text-[var(--tx)]">{paymentSuccessData.studentName}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--tx3)]">Amount Paid:</span><span className="font-bold text-[var(--teal-tx)]">₹{paymentSuccessData.totalPaid.toLocaleString()}</span></div>
+              <div className="border-t border-[var(--b)] pt-2 mt-1">
+                <span className="text-[10px] text-[var(--tx3)] font-semibold uppercase tracking-wider block mb-1">Allocation</span>
+                {paymentSuccessData.allocatedPayments.map((p: any, idx: number) => (
+                  <div key={idx} className="flex justify-between text-[11px]"><span className="text-[var(--tx2)]">{p.name}</span><span className="font-medium text-[var(--tx)]">₹{p.amount.toLocaleString()}</span></div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={() => setPaymentSuccessData(null)}
+                className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Close
+              </button>
+              <button 
+                type="button" 
+                onClick={() => handlePrint(paymentSuccessData)}
+                className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Download size={13} /> Print Receipt
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
