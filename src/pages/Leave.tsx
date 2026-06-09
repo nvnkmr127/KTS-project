@@ -6,6 +6,7 @@ import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import { formatDate } from '../utils/date';
 
 const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
   SR: { bg: 'var(--red-bg)', color: 'var(--red-tx)' },
@@ -102,7 +103,7 @@ export function Leave() {
                           {l.type}
                         </Badge>
                       </div>
-                      <div className="text-[11.5px] text-[var(--tx2)]">{l.from} → {l.to} <span className="text-[var(--tx3)]">({l.days} day{l.days > 1 ? 's' : ''})</span></div>
+                      <div className="text-[11.5px] text-[var(--tx2)]">{formatDate(l.from)} → {formatDate(l.to)} <span className="text-[var(--tx3)]">({l.days} day{l.days > 1 ? 's' : ''})</span></div>
                       <div className="text-[11px] text-[var(--tx3)] truncate mt-0.5">{l.reason}</div>
                     </div>
                   </div>
@@ -154,7 +155,7 @@ export function Leave() {
             {leaveRequests.filter((l) => l.status === 'Approved').slice(0, 3).map((l) => (
               <div key={l.id} className="flex items-center justify-between mt-2 text-[11.5px]">
                 <span className="text-[var(--tx2)]">{isAdmin ? l.staffName : l.type}</span>
-                <span className="text-[var(--tx3)]">{l.from}</span>
+                <span className="text-[var(--tx3)]">{formatDate(l.from)}</span>
               </div>
             ))}
           </div>

@@ -7,6 +7,7 @@ import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { api } from '../services/api';
+import { formatDate } from '../utils/date';
 
 interface Expense {
   id: string;
@@ -151,7 +152,7 @@ export function Expenses() {
                     </td>
                     <td className="px-2 py-2.5 text-[var(--tx2)] max-w-[180px] truncate">{e.description}</td>
                     <td className="px-2 py-2.5 text-[var(--tx3)]">{e.vendor}</td>
-                    <td className="px-2 py-2.5 text-[var(--tx3)]">{e.date}</td>
+                    <td className="px-2 py-2.5 text-[var(--tx3)]">{formatDate(e.date)}</td>
                     <td className="px-2 py-2.5 font-semibold text-[var(--tx)]">₹{e.amount.toLocaleString()}</td>
                     <td className="px-2 py-2.5">
                       {e.status === 'Approved' && <Badge variant="teal">Approved</Badge>}

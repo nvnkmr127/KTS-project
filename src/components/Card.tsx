@@ -4,11 +4,13 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
   padding?: boolean;
+  onClick?: () => void;
 }
 
-export function Card({ children, className = '', padding = true }: CardProps) {
+export function Card({ children, className = '', padding = true, onClick }: CardProps) {
   return (
     <div
+      onClick={onClick}
       className={`bg-[var(--surf)] border border-[var(--b)] rounded-xl ${padding ? 'p-3.5' : ''} ${className}`}
     >
       {children}

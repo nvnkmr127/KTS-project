@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import { formatDate } from '../utils/date';
 
 interface Exam {
   id: string;
@@ -85,28 +87,43 @@ const GRADE_BADGE: Record<string, 'teal' | 'blue' | 'amber' | 'red' | 'purple'> 
 const CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'All Subjects'];
 
-const INITIAL_SCHEDULES: Record<string, ClassExamSchedule> = {
-  '8A': {
-    '2026-06-10': [
-      { subject: 'Mathematics', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
-      { subject: 'Science', time: '2:00 PM', duration: '2 hrs', maxMarks: 25 },
-    ],
-    '2026-06-11': [
-      { subject: 'English', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
-    ],
-    '2026-06-12': [
-      { subject: 'Telugu', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
-      { subject: 'Social Studies', time: '2:00 PM', duration: '2 hrs', maxMarks: 25 },
-    ],
+const INITIAL_SCHEDULES_BY_EXAM: Record<string, Record<string, ClassExamSchedule>> = {
+  '1': {
+    '8A': {
+      '2026-06-10': [
+        { subject: 'Mathematics', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
+        { subject: 'Science', time: '2:00 PM', duration: '2 hrs', maxMarks: 25 },
+      ],
+      '2026-06-11': [
+        { subject: 'English', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
+      ],
+      '2026-06-12': [
+        { subject: 'Telugu', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
+        { subject: 'Social Studies', time: '2:00 PM', duration: '2 hrs', maxMarks: 25 },
+      ],
+    }
   },
-  '9A': {
-    '2026-06-14': [
-      { subject: 'Mathematics', time: '10:00 AM', duration: '3 hrs', maxMarks: 50 },
-    ],
-    '2026-06-15': [
-      { subject: 'Science', time: '10:00 AM', duration: '3 hrs', maxMarks: 50 },
-    ],
+  '2': {
+    '8A': {
+      '2026-06-25': [
+        { subject: 'Mathematics', time: '10:00 AM', duration: '3 hrs', maxMarks: 100 },
+      ]
+    }
   },
+  '3': {
+    '8A': {
+      '2026-05-20': [
+        { subject: 'Mathematics', time: '10:00 AM', duration: '2 hrs', maxMarks: 50 },
+      ]
+    }
+  },
+  '4': {
+    '9A': {
+      '2026-05-15': [
+        { subject: 'Mathematics', time: '10:00 AM', duration: '2 hrs', maxMarks: 25 },
+      ]
+    }
+  }
 };
 
 function getDaysInMonth(year: number, month: number) {
@@ -123,11 +140,27 @@ interface AddExamModal {
   dateStr: string;
 }
 
-function ExamScheduleDesigner() {
-  const [selectedClass, setSelectedClass] = useState('8A');
+function ExamScheduleDesigner({
+  isAdmin,
+  selectedClass,
+  setSelectedClass,
+  classList,
+  exam,
+  schedules,
+  setSchedules,
+  onBack,
+}: {
+  isAdmin: boolean;
+  selectedClass: string;
+  setSelectedClass: (c: string) => void;
+  classList: string[];
+  exam: Exam;
+  schedules: Record<string, Record<string, ClassExamSchedule>>;
+  setSchedules: React.Dispatch<React.SetStateAction<Record<string, Record<string, ClassExamSchedule>>>>;
+  onBack: () => void;
+}) {
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState(5);
-  const [schedules, setSchedules] = useState<Record<string, ClassExamSchedule>>(INITIAL_SCHEDULES);
   const [addModal, setAddModal] = useState<AddExamModal | null>(null);
   const [newSubject, setNewSubject] = useState('Mathematics');
   const [newTime, setNewTime] = useState('10:00 AM');
@@ -135,7 +168,25 @@ function ExamScheduleDesigner() {
   const [newMarks, setNewMarks] = useState(50);
   const [savedMsg, setSavedMsg] = useState(false);
 
-  const classSchedule = schedules[selectedClass] ?? {};
+  const [isEditing, setIsEditing] = useState(() => {
+    const examSchedules = schedules[exam.id] ?? {};
+    const totalEntries = Object.values(examSchedules).reduce((sum, clsSched) => {
+      return sum + Object.values(clsSched).reduce((s, arr) => s + arr.length, 0);
+    }, 0);
+    return totalEntries === 0;
+  });
+
+  const activeClassList = classList.length > 0 ? classList : CLASSES;
+  const examClasses = exam.class === 'All Classes' ? activeClassList : exam.class.split(',').map((c) => c.trim());
+
+  useEffect(() => {
+    if (examClasses.length > 0 && !examClasses.includes(selectedClass)) {
+      setSelectedClass(examClasses[0]);
+    }
+  }, [exam.id, selectedClass, examClasses, setSelectedClass]);
+
+  const examSchedules = schedules[exam.id] ?? {};
+  const classSchedule = examSchedules[selectedClass] ?? {};
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -144,40 +195,68 @@ function ExamScheduleDesigner() {
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
 
-  const formatDate = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const getCalendarDateStr = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
   const addExamEntry = () => {
     if (!addModal) return;
     const entry: ExamScheduleEntry = { subject: newSubject, time: newTime, duration: newDuration, maxMarks: newMarks };
-    setSchedules((prev) => ({
-      ...prev,
-      [selectedClass]: {
-        ...(prev[selectedClass] ?? {}),
-        [addModal.dateStr]: [...(prev[selectedClass]?.[addModal.dateStr] ?? []), entry],
-      },
-    }));
+    setSchedules((prev) => {
+      const examPrev = prev[exam.id] ?? {};
+      const classPrev = examPrev[selectedClass] ?? {};
+      const dayPrev = classPrev[addModal.dateStr] ?? [];
+      const updatedSchedules = {
+        ...prev,
+        [exam.id]: {
+          ...examPrev,
+          [selectedClass]: {
+            ...classPrev,
+            [addModal.dateStr]: [...dayPrev, entry],
+          },
+        },
+      };
+      localStorage.setItem('examinations_schedules', JSON.stringify(updatedSchedules));
+      return updatedSchedules;
+    });
     setAddModal(null);
   };
 
   const removeEntry = (dateStr: string, idx: number) => {
     setSchedules((prev) => {
-      const dayEntries = [...(prev[selectedClass]?.[dateStr] ?? [])];
+      const examPrev = prev[exam.id] ?? {};
+      const classPrev = examPrev[selectedClass] ?? {};
+      const dayEntries = [...(classPrev[dateStr] ?? [])];
       dayEntries.splice(idx, 1);
-      const updatedClass = { ...(prev[selectedClass] ?? {}), [dateStr]: dayEntries };
+
+      const updatedClass = { ...classPrev, [dateStr]: dayEntries };
       if (dayEntries.length === 0) delete updatedClass[dateStr];
-      return { ...prev, [selectedClass]: updatedClass };
+
+      const updatedSchedules = {
+        ...prev,
+        [exam.id]: {
+          ...examPrev,
+          [selectedClass]: updatedClass,
+        },
+      };
+      localStorage.setItem('examinations_schedules', JSON.stringify(updatedSchedules));
+      return updatedSchedules;
     });
   };
 
   const totalExams = Object.values(classSchedule).reduce((s, arr) => s + arr.length, 0);
+  const isWritable = isAdmin && isEditing;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center">
         <div className="flex items-center gap-2">
-          <div className="text-[12.5px] font-semibold text-[var(--tx)]">Exam Schedule Designer</div>
-          <div className="flex gap-1">
-            {CLASSES.map((cls) => (
+          <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] text-[var(--tx2)] cursor-pointer" title="Back to Exams">
+            <ChevronLeft size={16} />
+          </button>
+          <div className="text-[12.5px] font-semibold text-[var(--tx)]">
+            {isAdmin ? 'Exam Schedule Designer' : 'Exam Schedule Preview'} — <span className="text-[var(--blue-tx)] font-bold">{exam.name}</span>
+          </div>
+          <div className="flex gap-1 flex-wrap ml-2">
+            {examClasses.map((cls) => (
               <button
                 key={cls}
                 onClick={() => setSelectedClass(cls)}
@@ -195,12 +274,28 @@ function ExamScheduleDesigner() {
         <div className="flex items-center gap-2">
           {savedMsg && <span className="text-[11.5px] text-[var(--teal-tx)]">Saved!</span>}
           <Badge variant="blue">{totalExams} exams scheduled</Badge>
-          <button
-            onClick={() => { setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2000); }}
-            className="flex items-center gap-1 px-3 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90"
-          >
-            <Calendar size={11} /> Save Schedule
-          </button>
+          {isAdmin && (
+            isEditing ? (
+              <button
+                onClick={() => {
+                  localStorage.setItem('examinations_schedules', JSON.stringify(schedules));
+                  setSavedMsg(true);
+                  setTimeout(() => setSavedMsg(false), 2000);
+                  setIsEditing(false);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 font-medium"
+              >
+                <Calendar size={11} /> Save Schedule
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)] font-medium"
+              >
+                Edit Schedule
+              </button>
+            )
+          )}
         </div>
       </div>
 
@@ -225,23 +320,25 @@ function ExamScheduleDesigner() {
           <div className="grid grid-cols-7 gap-0.5">
             {calendarDays.map((day, i) => {
               if (!day) return <div key={i} />;
-              const dateStr = formatDate(day);
+              const dateStr = getCalendarDateStr(day);
               const hasExams = classSchedule[dateStr] && classSchedule[dateStr].length > 0;
               return (
                 <button
                   key={i}
+                  disabled={!isWritable}
                   onClick={() => {
+                    if (!isWritable) return;
                     setAddModal({ dateStr });
                     setNewSubject('Mathematics');
                     setNewTime('10:00 AM');
                     setNewDuration('2 hrs');
                     setNewMarks(50);
                   }}
-                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10.5px] cursor-pointer transition-all relative ${
+                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10.5px] transition-all relative ${
                     hasExams
                       ? 'bg-[var(--blue)] text-white font-bold'
-                      : 'hover:bg-[var(--surf2)] text-[var(--tx)]'
-                  }`}
+                      : 'text-[var(--tx)]'
+                  } ${isWritable ? 'cursor-pointer hover:bg-[var(--surf2)]' : 'cursor-default'}`}
                 >
                   {day}
                   {hasExams && (
@@ -262,7 +359,7 @@ function ExamScheduleDesigner() {
           <div className="text-[12px] font-semibold text-[var(--tx)] mb-3">Class {selectedClass} — Exam Schedule</div>
           {Object.keys(classSchedule).length === 0 ? (
             <div className="text-center py-8 text-[12px] text-[var(--tx3)]">
-              No exams scheduled yet. Click a date on the calendar to add.
+              No exams scheduled yet. {isWritable ? 'Click a date on the calendar to add.' : 'Schedule has not been set yet.'}
             </div>
           ) : (
             <div className="space-y-2 overflow-y-auto max-h-[380px] pr-1">
@@ -271,7 +368,7 @@ function ExamScheduleDesigner() {
                 .map(([dateStr, entries]) => (
                   <div key={dateStr} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl">
                     <div className="text-[11.5px] font-bold text-[var(--tx)] mb-2">
-                      {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}
+                      {`${new Date(dateStr + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short' })}, ${formatDate(dateStr)}`}
                     </div>
                     <div className="space-y-1.5">
                       {entries.map((entry, idx) => (
@@ -282,12 +379,14 @@ function ExamScheduleDesigner() {
                             <span className="text-[11px] text-[var(--tx3)]">{entry.time} · {entry.duration}</span>
                             <Badge variant="gray">{entry.maxMarks} marks</Badge>
                           </div>
-                          <button
-                            onClick={() => removeEntry(dateStr, idx)}
-                            className="p-1 rounded hover:bg-[var(--red-bg)] text-[var(--tx3)] hover:text-[var(--red-tx)] cursor-pointer transition-colors"
-                          >
-                            <X size={11} />
-                          </button>
+                          {isWritable && (
+                            <button
+                              onClick={() => removeEntry(dateStr, idx)}
+                              className="p-1 rounded hover:bg-[var(--red-bg)] text-[var(--tx3)] hover:text-[var(--red-tx)] cursor-pointer transition-colors"
+                            >
+                              <X size={11} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -306,7 +405,7 @@ function ExamScheduleDesigner() {
               <div>
                 <div className="text-[13.5px] font-bold text-[var(--tx)]">Add Exam</div>
                 <div className="text-[11px] text-[var(--tx3)] mt-0.5">
-                  Class {selectedClass} · {new Date(addModal.dateStr + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  Class {selectedClass} · {formatDate(addModal.dateStr)}
                 </div>
               </div>
               <button onClick={() => setAddModal(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
@@ -356,6 +455,108 @@ export function Examinations() {
   const [activeTab, setActiveTab] = useState<Tab>('exams');
   const [showCreate, setShowCreate] = useState(false);
   const [selectedClass, setSelectedClass] = useState('8A');
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+  const [schedules, setSchedules] = useState<Record<string, Record<string, ClassExamSchedule>>>(() => {
+    const saved = localStorage.getItem('examinations_schedules');
+    return saved ? JSON.parse(saved) : INITIAL_SCHEDULES_BY_EXAM;
+  });
+
+  const [exams, setExams] = useState<Exam[]>(() => {
+    const saved = localStorage.getItem('examinations_exams');
+    return saved ? JSON.parse(saved) : EXAMS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('examinations_exams', JSON.stringify(exams));
+  }, [exams]);
+  const [createName, setCreateName] = useState('');
+  const [selectedCreateClasses, setSelectedCreateClasses] = useState<string[]>(['All Classes']);
+  const [showClassDropdown, setShowClassDropdown] = useState(false);
+  const [createSubject, setCreateSubject] = useState('All Subjects');
+  const [createDate, setCreateDate] = useState('');
+  const [createMaxMarks, setCreateMaxMarks] = useState(100);
+  const [classList, setClassList] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadClasses = async () => {
+      try {
+        const batchesData = await api.getResources('batches');
+        const defaultClasses = ['6', '7', '8', '9', '10'];
+        const foundClasses = new Set<string>();
+
+        batchesData.forEach((b: any) => {
+          const batchName = b.name;
+          const match = batchName.match(/^(.+?)([A-Z])$/);
+          if (match) {
+            foundClasses.add(batchName);
+          } else if (batchName === 'Default Batch') {
+            foundClasses.add('8A');
+          } else {
+            foundClasses.add(batchName);
+          }
+        });
+
+        defaultClasses.forEach((cId) => {
+          foundClasses.add(`${cId}A`);
+          foundClasses.add(`${cId}B`);
+        });
+
+        const sorted = Array.from(foundClasses).sort((a, b) => {
+          const numA = parseInt(a, 10);
+          const numB = parseInt(b, 10);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            if (numA !== numB) return numA - numB;
+            return a.localeCompare(b);
+          }
+          return a.localeCompare(b);
+        });
+
+        setClassList(sorted);
+      } catch (err) {
+        console.error('Error fetching classes:', err);
+        setClassList(['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
+      }
+    };
+    loadClasses();
+  }, []);
+
+  const handleCreateExam = () => {
+    if (!createName || !createDate) return;
+    const newExam: Exam = {
+      id: String(exams.length + 1),
+      name: createName,
+      class: selectedCreateClasses.join(', '),
+      subject: createSubject,
+      date: createDate,
+      maxMarks: createMaxMarks,
+      status: 'Upcoming',
+    };
+    setExams((prev) => [...prev, newExam]);
+    setShowCreate(false);
+    setCreateName('');
+    setSelectedCreateClasses(['All Classes']);
+    setShowClassDropdown(false);
+    setCreateSubject('All Subjects');
+    setCreateDate('');
+    setCreateMaxMarks(100);
+  };
+
+  const handleDeleteExam = (id: string) => {
+    setExams((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const handleExamCardClick = (exam: Exam) => {
+    let targetClass = '8A';
+    if (exam.class !== 'All Classes') {
+      const classes = exam.class.split(',').map((c) => c.trim());
+      if (classes.length > 0) {
+        targetClass = classes[0];
+      }
+    }
+    setSelectedClass(targetClass);
+    setSelectedExamId(exam.id);
+    setActiveTab('designer');
+  };
 
   const classAvg = RESULTS.reduce((s, r) => s + r.percentage, 0) / RESULTS.length;
 
@@ -363,16 +564,16 @@ export function Examinations() {
     { id: 'exams', label: 'Exam Schedule' },
     { id: 'results', label: 'Results & Rankings' },
     { id: 'marks', label: 'Marks Entry' },
-    ...(isAdmin ? [{ id: 'designer' as Tab, label: 'Schedule Designer' }] : []),
+    { id: 'designer', label: isAdmin ? 'Schedule Designer' : 'Schedule Preview' },
   ];
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-        <KPICard label="Upcoming Exams" value={EXAMS.filter((e) => e.status === 'Upcoming').length} sub="This month" icon={<BookOpen size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
+        <KPICard label="Upcoming Exams" value={exams.filter((e) => e.status === 'Upcoming').length} sub="This month" icon={<BookOpen size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
         <KPICard label="Class Average" value={`${classAvg.toFixed(1)}%`} sub="Class 8A · Last exam" icon={<BarChart2 size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
         <KPICard label="Top Score" value={`${Math.max(...RESULTS.map((r) => r.percentage))}%`} sub={RESULTS[0].name} icon={<Award size={15} />} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
-        <KPICard label="Results Published" value={EXAMS.filter((e) => e.status === 'Results Published').length} sub="Exams" icon={<TrendingUp size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
+        <KPICard label="Results Published" value={exams.filter((e) => e.status === 'Results Published').length} sub="Exams" icon={<TrendingUp size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
       </div>
 
       {/* Tabs */}
@@ -386,13 +587,19 @@ export function Examinations() {
 
       {activeTab === 'exams' && (
         <div className="space-y-2.5">
-          <div className="flex justify-end mb-2">
-            <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
-              <Plus size={12} /> Create Exam
-            </button>
-          </div>
-          {EXAMS.map((exam) => (
-            <div key={exam.id} className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+          {isAdmin && (
+            <div className="flex justify-end mb-2">
+              <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
+                <Plus size={12} /> Create Exam
+              </button>
+            </div>
+          )}
+          {exams.map((exam) => (
+            <div
+              key={exam.id}
+              onClick={() => handleExamCardClick(exam)}
+              className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:border-[var(--blue)]/50 hover:shadow-md transition-all"
+            >
               <div className="w-12 h-12 rounded-xl bg-[var(--blue-bg)] flex items-center justify-center flex-shrink-0">
                 <BookOpen size={18} className="text-[var(--blue-tx)]" />
               </div>
@@ -406,16 +613,38 @@ export function Examinations() {
                 <div className="flex items-center gap-4 text-[11.5px] text-[var(--tx3)]">
                   <span>Class {exam.class}</span>
                   <span>Subjects: {exam.subject}</span>
-                  <span>Date: {exam.date}</span>
+                  <span>Date: {formatDate(exam.date)}</span>
                   <span>Max Marks: {exam.maxMarks}</span>
                 </div>
               </div>
-              <div className="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
+              <div className="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0 items-center">
                 {exam.status === 'Completed' && (
-                  <button className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium">Enter Marks</button>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium"
+                  >
+                    Enter Marks
+                  </button>
                 )}
                 {exam.status === 'Results Published' && (
-                  <button className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium">View Results</button>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium"
+                  >
+                    View Results
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteExam(exam.id);
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-[var(--red-bg)] text-[var(--tx3)] hover:text-[var(--red-tx)] cursor-pointer transition-colors"
+                    title="Delete Exam"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 )}
               </div>
             </div>
@@ -502,7 +731,7 @@ export function Examinations() {
             <div className="text-[13px] font-semibold text-[var(--tx)]">Marks Entry</div>
             <div className="flex gap-2">
               <select className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
-                {EXAMS.filter((e) => e.status !== 'Results Published').map((e) => <option key={e.id}>{e.name}</option>)}
+                {exams.filter((e) => e.status !== 'Results Published').map((e) => <option key={e.id}>{e.name}</option>)}
               </select>
               <select className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
                 <option>Maths</option><option>Science</option><option>English</option><option>Telugu</option>
@@ -548,7 +777,79 @@ export function Examinations() {
         </Card>
       )}
 
-      {activeTab === 'designer' && <ExamScheduleDesigner />}
+      {activeTab === 'designer' && (
+        selectedExamId === null ? (
+          <div className="space-y-4">
+            <div className="text-[13.5px] font-semibold text-[var(--tx)] mb-2">
+              Select an Exam to {isAdmin ? 'design its schedule' : 'preview its schedule'}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {exams.map((exam) => {
+                const examSchedules = schedules[exam.id] ?? {};
+                const totalScheduledExams = Object.values(examSchedules).reduce((sum, clsSched) => {
+                  return sum + Object.values(clsSched).reduce((s, arr) => s + arr.length, 0);
+                }, 0);
+
+                return (
+                  <Card
+                    key={exam.id}
+                    onClick={() => {
+                      setSelectedExamId(exam.id);
+                      let targetClass = '8A';
+                      if (exam.class !== 'All Classes') {
+                        const classes = exam.class.split(',').map((c) => c.trim());
+                        if (classes.length > 0) {
+                          targetClass = classes[0];
+                        }
+                      }
+                      setSelectedClass(targetClass);
+                    }}
+                    className="cursor-pointer hover:border-[var(--blue)]/50 hover:shadow-md transition-all p-4 flex flex-col justify-between min-h-[140px]"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[13px] font-bold text-[var(--tx)]">{exam.name}</span>
+                        <Badge variant={totalScheduledExams > 0 ? 'teal' : 'gray'}>
+                          {totalScheduledExams > 0 ? 'Scheduled' : 'Not Scheduled'}
+                        </Badge>
+                      </div>
+                      <div className="text-[11.5px] text-[var(--tx3)] space-y-1 mt-1.5">
+                        <div><span className="font-medium text-[var(--tx2)]">Classes:</span> {exam.class}</div>
+                        <div><span className="font-medium text-[var(--tx2)]">Subject:</span> {exam.subject}</div>
+                        <div><span className="font-medium text-[var(--tx2)]">Date:</span> {formatDate(exam.date)}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3.5 pt-3 border-t border-[var(--b)] flex justify-between items-center text-[11px] text-[var(--blue-tx)] font-semibold">
+                      <span>{totalScheduledExams} entries scheduled</span>
+                      <span>{isAdmin ? 'Open Designer →' : 'View Schedule →'}</span>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          (() => {
+            const selectedExam = exams.find((e) => e.id === selectedExamId);
+            if (!selectedExam) {
+              setSelectedExamId(null);
+              return null;
+            }
+            return (
+              <ExamScheduleDesigner
+                isAdmin={isAdmin}
+                selectedClass={selectedClass}
+                setSelectedClass={setSelectedClass}
+                classList={classList}
+                exam={selectedExam}
+                schedules={schedules}
+                setSchedules={setSchedules}
+                onBack={() => setSelectedExamId(null)}
+              />
+            );
+          })()
+        )
+      )}
 
       {/* Create Exam Modal */}
       {showCreate && (
@@ -556,36 +857,89 @@ export function Examinations() {
           <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[440px] shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
               <div className="text-[14px] font-bold text-[var(--tx)]">Create Exam</div>
-              <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
+              <button onClick={() => { setShowCreate(false); setSelectedCreateClasses(['All Classes']); setShowClassDropdown(false); }} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-3">
               <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Exam Name *</label>
-                <input className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Unit Test 2" />
+                <input value={createName} onChange={(e) => setCreateName(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Unit Test 2" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class *</label>
-                  <select className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-                    {['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A'].map((c) => <option key={c}>Class {c}</option>)}
-                  </select>
+                <div className="relative">
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class *</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowClassDropdown(!showClassDropdown)}
+                    className="w-full flex items-center justify-between bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none text-left"
+                  >
+                    <span className="truncate pr-2">{selectedCreateClasses.join(', ')}</span>
+                    <span className="text-[10px] text-[var(--tx3)]">▼</span>
+                  </button>
+                  {showClassDropdown && (
+                    <div className="absolute left-0 right-0 mt-1 bg-[var(--surf)] border border-[var(--b)] rounded-lg shadow-lg max-h-[160px] overflow-y-auto z-[60] p-1.5 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCreateClasses(['All Classes']);
+                          setShowClassDropdown(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-[12px] cursor-pointer transition-colors ${
+                          selectedCreateClasses.includes('All Classes')
+                            ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] font-semibold'
+                            : 'text-[var(--tx)] hover:bg-[var(--surf2)]'
+                        }`}
+                      >
+                        All Classes
+                      </button>
+                      <div className="h-px bg-[var(--b)] my-1" />
+                      {classList.map((c) => {
+                        const isChecked = selectedCreateClasses.includes(c);
+                        return (
+                          <label
+                            key={c}
+                            className="flex items-center gap-2 px-2.5 py-1.5 rounded-md hover:bg-[var(--surf2)] cursor-pointer text-[12px] text-[var(--tx)]"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                if (isChecked) {
+                                  const updated = selectedCreateClasses.filter((item) => item !== c);
+                                  setSelectedCreateClasses(updated.length === 0 ? ['All Classes'] : updated);
+                                } else {
+                                  const updated = selectedCreateClasses.filter((item) => item !== 'All Classes');
+                                  setSelectedCreateClasses([...updated, c]);
+                                }
+                              }}
+                              className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
+                            />
+                            Class {c}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject *</label>
-                  <select className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-                    <option>All Subjects</option><option>Maths</option><option>Science</option><option>English</option>
+                  <select value={createSubject} onChange={(e) => setCreateSubject(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                    <option value="All Subjects">All Subjects</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Science">Science</option>
+                    <option value="English">English</option>
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Exam Date *</label>
-                  <input type="date" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                  <input type="date" value={createDate} onChange={(e) => createDate !== e.target.value && setCreateDate(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
                 </div>
                 <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Max Marks *</label>
-                  <input type="number" defaultValue={100} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                  <input type="number" value={createMaxMarks} onChange={(e) => setCreateMaxMarks(Number(e.target.value))} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
                 </div>
               </div>
             </div>
             <div className="flex gap-2 p-5 pt-0">
-              <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
-              <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer">Create Exam</button>
+              <button onClick={() => { setShowCreate(false); setSelectedCreateClasses(['All Classes']); setShowClassDropdown(false); }} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button onClick={handleCreateExam} className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer">Create Exam</button>
             </div>
           </div>
         </div>

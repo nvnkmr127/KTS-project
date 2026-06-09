@@ -15,6 +15,7 @@ import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
+import { formatDate } from '../utils/date';
 
 interface Student {
   id: string;
@@ -243,7 +244,7 @@ export function Students() {
                       <Avatar initials={s.name.slice(0, 2).toUpperCase()} bg={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.bg || 'var(--blue-bg)'} color={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.color || 'var(--blue-tx)'} />
                       <div>
                         <div className="font-semibold text-[var(--tx)]">{s.name}</div>
-                        <div className="text-[10.5px] text-[var(--tx3)]">{s.gender} · DOB {s.dob}</div>
+                        <div className="text-[10.5px] text-[var(--tx3)]">{s.gender} · DOB {formatDate(s.dob)}</div>
                       </div>
                     </div>
                   </td>
@@ -440,8 +441,8 @@ export function Students() {
                 {[
                   { label: 'Class & Section', value: `Class ${selected.class} — Section ${selected.section}` },
                   { label: 'Gender', value: selected.gender },
-                  { label: 'Date of Birth', value: selected.dob },
-                  { label: 'Admission Date', value: selected.admissionDate },
+                  { label: 'Date of Birth', value: formatDate(selected.dob) },
+                  { label: 'Admission Date', value: formatDate(selected.admissionDate) },
                   { label: 'Parent / Guardian', value: selected.parent },
                   { label: 'Mobile', value: selected.phone },
                 ].map((item) => (

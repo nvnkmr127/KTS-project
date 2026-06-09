@@ -5,6 +5,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { formatDate } from '../utils/date';
 
 interface HomeworkEntry {
   id?: string;
@@ -127,8 +128,8 @@ function AdminHomeworkView() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[var(--tx3)]">
                     <Badge variant="blue">{hw.subject}</Badge>
                     <span>Class {hw.batch_name}</span>
-                    <span>Due: {hw.due_date}</span>
-                    <span>Assigned: {hw.assigned_date}</span>
+                    <span>Due: {formatDate(hw.due_date)}</span>
+                    <span>Assigned: {formatDate(hw.assigned_date)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -303,7 +304,7 @@ function TeacherHomeworkView() {
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-[var(--tx3)]">
                     <Badge variant="blue">{hw.subject}</Badge>
                     <span>Class {hw.batch_name}</span>
-                    <span>Due: {hw.due_date}</span>
+                    <span>Due: {formatDate(hw.due_date)}</span>
                   </div>
                 </div>
                 <div className="text-left sm:text-right">

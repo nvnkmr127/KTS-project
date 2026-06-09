@@ -5,6 +5,7 @@ import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import { formatDate } from '../utils/date';
 
 interface DiaryEntry {
   id?: string;
@@ -89,7 +90,7 @@ function AdminDiaryView() {
           </div>
           <div className="flex items-center gap-2 text-[11.5px] text-[var(--tx3)]">
             <Eye size={13} />
-            <span>Live Sync · {todayStr}</span>
+            <span>Live Sync · {formatDate(todayStr)}</span>
           </div>
         </div>
 
@@ -256,7 +257,7 @@ function TeacherDiaryView() {
                 ))}
               </select>
               <div className="flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx3)] text-center">
-                {todayStr}
+                {formatDate(todayStr)}
               </div>
             </div>
 
@@ -327,7 +328,7 @@ function TeacherDiaryView() {
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[12px] font-semibold text-[var(--tx)]">Class {entry.batch_name}</span>
-                  <Badge variant="teal">{entry.diary_date}</Badge>
+                  <Badge variant="teal">{formatDate(entry.diary_date)}</Badge>
                 </div>
                 <div className="text-[11.5px] text-[var(--tx2)] mb-1">
                   <strong>Topics:</strong> {entry.topics}
