@@ -6,7 +6,24 @@ import { useApp, TIMETABLE_DAYS, TIMETABLE_PERIODS, PERIOD_TIMES } from '../cont
 import type { TimetablePeriod } from '../context/AppContext';
 import { api } from '../services/api';
 
-const CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
+interface PeriodTiming {
+  start: string;
+  end: string;
+  isBreak?: boolean;
+  label?: string;
+}
+
+const DEFAULT_TIMINGS: PeriodTiming[] = [
+  { start: '8:00 AM', end: '9:00 AM' },
+  { start: '9:00 AM', end: '10:00 AM' },
+  { start: '10:00 AM', end: '11:00 AM' },
+  { start: '11:00 AM', end: '11:15 AM', isBreak: true, label: 'Short Break' },
+  { start: '11:15 AM', end: '12:15 PM' },
+  { start: '12:15 PM', end: '1:15 PM' },
+  { start: '1:15 PM', end: '2:00 PM', isBreak: true, label: 'Lunch Break' },
+  { start: '2:00 PM', end: '3:00 PM' },
+  { start: '3:00 PM', end: '4:00 PM' },
+];
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'Library', 'Break'];
 
@@ -58,9 +75,16 @@ export function Timetable() {
   const [editTeacher, setEditTeacher] = useState('');
   const [editRoom, setEditRoom] = useState('Room 12');
   const [savedMsg, setSavedMsg] = useState(false);
+  const [classes, setClasses] = useState<string[]>(['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
+  const [showEditTimings, setShowEditTimings] = useState(false);
+  const [periodTimings, setPeriodTimings] = useState<PeriodTiming[]>(() => {
+    const saved = localStorage.getItem('timetable_period_timings');
+    return saved ? JSON.parse(saved) : DEFAULT_TIMINGS;
+  });
+  const [tempTimings, setTempTimings] = useState<PeriodTiming[]>([]);
 
   useEffect(() => {
-    async function loadTeachers() {
+    async function loadInitialData() {
       try {
         const data = await api.getResources('faculty');
         const list = data.map((t: any) => ({
@@ -71,11 +95,30 @@ export function Timetable() {
         if (list.length > 0) {
           setEditTeacher(list[0].id);
         }
+
+        const batchesData = await api.getResources('batches');
+        if (batchesData && batchesData.length > 0) {
+          const names = batchesData.map((b: any) => b.name).sort((a: string, b: string) => {
+            const numA = parseInt(a);
+            const numB = parseInt(b);
+            if (!isNaN(numA) && !isNaN(numB)) {
+              if (numA !== numB) return numA - numB;
+              return a.localeCompare(b);
+            }
+            if (!isNaN(numA)) return -1;
+            if (!isNaN(numB)) return 1;
+            return a.localeCompare(b);
+          });
+          setClasses(names);
+          if (names.length > 0 && !names.includes(selectedClass)) {
+            setSelectedClass(names[0]);
+          }
+        }
       } catch (err) {
-        console.error('Error loading teachers for timetable:', err);
+        console.error('Error loading timetable initial data:', err);
       }
     }
-    loadTeachers();
+    loadInitialData();
   }, []);
 
   const classTimetable = timetable[selectedClass] ?? {};
@@ -111,7 +154,8 @@ export function Timetable() {
     try {
       const slots: any[] = [];
       for (const day of TIMETABLE_DAYS) {
-        for (let p = 0; p < TIMETABLE_PERIODS; p++) {
+        for (let p = 0; p < periodTimings.length; p++) {
+          if (periodTimings[p].isBreak) continue;
           const cell = classTimetable[day]?.[p];
           if (cell) {
             slots.push({
@@ -142,7 +186,7 @@ export function Timetable() {
   const countFilledPeriods = () => {
     let count = 0;
     for (const day of TIMETABLE_DAYS) {
-      for (let p = 0; p < TIMETABLE_PERIODS; p++) {
+      for (let p = 0; p < periodTimings.length; p++) {
         if (classTimetable[day]?.[p]) count++;
       }
     }
@@ -156,7 +200,7 @@ export function Timetable() {
         <div className="flex items-center gap-3">
           <div className="text-[13px] font-semibold text-[var(--tx)]">Timetable Designer</div>
           <div className="flex gap-1 flex-wrap">
-            {CLASSES.map((cls) => (
+            {classes.map((cls) => (
               <button
                 key={cls}
                 onClick={() => setSelectedClass(cls)}
@@ -175,6 +219,12 @@ export function Timetable() {
           {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
           {savedMsg && <span className="text-[11.5px] text-[var(--teal-tx)] font-medium">Saved!</span>}
           <Badge variant="blue">{countFilledPeriods()} periods assigned</Badge>
+          <button
+            onClick={() => { setTempTimings([...periodTimings]); setShowEditTimings(true); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
+          >
+            <Clock size={12} /> Edit Timings
+          </button>
           <button
             onClick={handleSaveAll}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90"
@@ -199,52 +249,73 @@ export function Timetable() {
               </tr>
             </thead>
             <tbody>
-              {Array.from({ length: TIMETABLE_PERIODS }, (_, p) => (
-                <tr key={p} className="group">
-                  <td className="px-3 py-1.5 border-b border-[var(--b)] align-top">
-                    <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]">
-                      <Clock size={9} />
-                      <span className="font-medium">{PERIOD_TIMES[p]}</span>
-                    </div>
-                    <div className="text-[9.5px] text-[var(--tx3)] mt-0.5">Period {p + 1}</div>
-                  </td>
-                  {TIMETABLE_DAYS.map((day) => {
-                    const cell = classTimetable[day]?.[p];
-                    return (
-                      <td key={day} className="px-1.5 py-1.5 border-b border-[var(--b)] border-l border-[var(--b)] align-top">
-                        <button
-                          onClick={() => openEdit(day, p)}
-                          className="w-full min-h-[52px] rounded-lg p-1.5 text-left transition-all cursor-pointer border border-transparent hover:border-[var(--blue)] group/cell"
-                          style={{
-                            background: cell ? SUBJECT_COLORS[cell.subject] ?? 'var(--surf2)' : 'var(--surf2)',
-                          }}
-                        >
-                          {cell ? (
-                            <>
-                              <div
-                                className="text-[10.5px] font-semibold leading-tight"
-                                style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx)' }}
-                              >
-                                {cell.subject}
-                              </div>
-                              <div className="text-[9.5px] mt-0.5 opacity-80" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx3)' }}>
-                                {cell.teacher.split(' ').slice(-1)[0]}
-                              </div>
-                              <div className="text-[9px] opacity-60" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx3)' }}>
-                                {cell.room}
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-[9.5px] text-[var(--tx3)] opacity-0 group-hover/cell:opacity-100 transition-opacity pt-1 text-center">
-                              + Add
-                            </div>
-                          )}
-                        </button>
+              {periodTimings.map((timing, p) => {
+                if (timing.isBreak) {
+                  return (
+                    <tr key={p} className="bg-[var(--surf3)]/10">
+                      <td className="px-3 py-2.5 border-b border-[var(--b)] align-middle">
+                        <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]">
+                          <Clock size={9} />
+                          <span className="font-semibold">{timing.start} - {timing.end}</span>
+                        </div>
+                        <div className="text-[9.5px] text-[var(--tx3)] font-semibold mt-0.5">{timing.label || 'Break'}</div>
                       </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                      <td colSpan={TIMETABLE_DAYS.length} className="px-3 py-2.5 border-b border-[var(--b)] border-l border-[var(--b)] align-middle text-center font-bold text-[10.5px] text-[var(--tx3)] tracking-wider">
+                        {timing.label?.toUpperCase() || 'BREAK'}
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const displayPeriodIndex = periodTimings.slice(0, p).filter(t => !t.isBreak).length + 1;
+
+                return (
+                  <tr key={p} className="group">
+                    <td className="px-3 py-1.5 border-b border-[var(--b)] align-top">
+                      <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]">
+                        <Clock size={9} />
+                        <span className="font-medium">{timing.start} - {timing.end}</span>
+                      </div>
+                      <div className="text-[9.5px] text-[var(--tx3)] mt-0.5">Period {displayPeriodIndex}</div>
+                    </td>
+                    {TIMETABLE_DAYS.map((day) => {
+                      const cell = classTimetable[day]?.[p];
+                      return (
+                        <td key={day} className="px-1.5 py-1.5 border-b border-[var(--b)] border-l border-[var(--b)] align-top">
+                          <button
+                            onClick={() => openEdit(day, p)}
+                            className="w-full min-h-[52px] rounded-lg p-1.5 text-left transition-all cursor-pointer border border-transparent hover:border-[var(--blue)] group/cell"
+                            style={{
+                              background: cell ? SUBJECT_COLORS[cell.subject] ?? 'var(--surf2)' : 'var(--surf2)',
+                            }}
+                          >
+                            {cell ? (
+                              <>
+                                <div
+                                  className="text-[10.5px] font-semibold leading-tight"
+                                  style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx)' }}
+                                >
+                                  {cell.subject}
+                                </div>
+                                <div className="text-[9.5px] mt-0.5 opacity-80" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx3)' }}>
+                                  {cell.teacher.split(' ').slice(-1)[0]}
+                                </div>
+                                <div className="text-[9px] opacity-60" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx3)' }}>
+                                  {cell.room}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="text-[9.5px] text-[var(--tx3)] opacity-0 group-hover/cell:opacity-100 transition-opacity pt-1 text-center">
+                                + Add
+                              </div>
+                            )}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -268,7 +339,7 @@ export function Timetable() {
               <div>
                 <div className="text-[13.5px] font-bold text-[var(--tx)]">Edit Period</div>
                 <div className="text-[11px] text-[var(--tx3)] mt-0.5">
-                  {editCell.day} · {PERIOD_TIMES[editCell.period]} · Class {selectedClass}
+                  {editCell.day} · {periodTimings[editCell.period]?.start} - {periodTimings[editCell.period]?.end} · Class {selectedClass}
                 </div>
               </div>
               <button onClick={() => setEditCell(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer">
@@ -330,6 +401,145 @@ export function Timetable() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Edit Timings Modal */}
+      {showEditTimings && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setPeriodTimings(tempTimings);
+              localStorage.setItem('timetable_period_timings', JSON.stringify(tempTimings));
+              setShowEditTimings(false);
+            }}
+            className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden"
+          >
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Edit Period Timings</div>
+                <div className="text-[11.5px] text-[var(--tx3)]">Set start and end times for each period</div>
+              </div>
+              <button type="button" onClick={() => setShowEditTimings(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 space-y-3 max-h-[350px] overflow-y-auto border-b border-[var(--b)]">
+              {tempTimings.map((t, idx) => (
+                <div key={idx} className="flex flex-col gap-2 p-3 bg-[var(--surf2)]/20 border border-[var(--b)]/60 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11.5px] font-semibold text-[var(--tx2)]">
+                      {t.isBreak ? 'Break' : `Period`}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={t.isBreak ? 'break' : 'period'}
+                        onChange={(e) => {
+                          const isBrk = e.target.value === 'break';
+                          const newT = [...tempTimings];
+                          newT[idx] = {
+                            ...newT[idx],
+                            isBreak: isBrk,
+                            label: isBrk ? (newT[idx].label || 'Break') : undefined
+                          };
+                          setTempTimings(newT);
+                        }}
+                        className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11px] text-[var(--tx)] outline-none cursor-pointer font-medium"
+                      >
+                        <option value="period">Period</option>
+                        <option value="break">Break</option>
+                      </select>
+                      {t.isBreak && (
+                        <input
+                          type="text"
+                          value={t.label || 'Break'}
+                          onChange={(e) => {
+                            const newT = [...tempTimings];
+                            newT[idx] = { ...newT[idx], label: e.target.value };
+                            setTempTimings(newT);
+                          }}
+                          placeholder="Label (e.g. Lunch)"
+                          className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1 text-[11px] text-[var(--tx)] outline-none w-28"
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={t.start}
+                      onChange={(e) => {
+                        const newT = [...tempTimings];
+                        newT[idx] = { ...newT[idx], start: e.target.value };
+                        setTempTimings(newT);
+                      }}
+                      required
+                      placeholder="Start e.g. 8:00 AM"
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1 text-[11.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    />
+                    <span className="text-[11.5px] text-[var(--tx3)]">to</span>
+                    <input
+                      type="text"
+                      value={t.end}
+                      onChange={(e) => {
+                        const newT = [...tempTimings];
+                        newT[idx] = { ...newT[idx], end: e.target.value };
+                        setTempTimings(newT);
+                      }}
+                      required
+                      placeholder="End e.g. 9:00 AM"
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1 text-[11.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between items-center px-5 py-2.5 bg-[var(--surf2)]/10 border-b border-[var(--b)]">
+              <button
+                type="button"
+                onClick={() => {
+                  const lastTiming = tempTimings[tempTimings.length - 1];
+                  let nextStart = '4:00 PM';
+                  let nextEnd = '5:00 PM';
+                  if (lastTiming) {
+                    nextStart = lastTiming.end;
+                    // simple parsing to add 1 hour to end time
+                    const match = lastTiming.end.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+                    if (match) {
+                      let hour = parseInt(match[1]) + 1;
+                      let ampm = match[3].toUpperCase();
+                      if (hour > 12) {
+                        hour = hour - 12;
+                      } else if (hour === 12) {
+                        ampm = ampm === 'AM' ? 'PM' : 'AM';
+                      }
+                      nextEnd = `${hour}:${match[2]} ${ampm}`;
+                    }
+                  }
+                  setTempTimings([...tempTimings, { start: nextStart, end: nextEnd }]);
+                }}
+                className="text-[12px] text-[var(--blue-tx)] hover:underline cursor-pointer font-medium flex items-center gap-1"
+              >
+                + Add Period
+              </button>
+              {tempTimings.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempTimings(tempTimings.slice(0, -1));
+                  }}
+                  className="text-[12px] text-[var(--red-tx)] hover:underline cursor-pointer font-medium flex items-center gap-1"
+                >
+                  - Remove Last Period
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2 p-5 bg-[var(--surf2)]/20">
+              <button type="button" onClick={() => setShowEditTimings(false)} className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button type="submit" className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer">Save Timings</button>
+            </div>
+          </form>
         </div>
       )}
     </div>

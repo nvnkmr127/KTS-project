@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   CalendarCheck, BookOpen, ClipboardList, Bell, Clock, TrendingUp,
 } from 'lucide-react';
@@ -45,24 +46,45 @@ export function TeacherDashboard() {
   const { user } = useAuth();
   const { timetable, leaveRequests, notifications } = useApp();
 
+  const [periodTimings] = useState<any[]>(() => {
+    const saved = localStorage.getItem('timetable_period_timings');
+    const defaults = [
+      { start: '8:00 AM', end: '9:00 AM' },
+      { start: '9:00 AM', end: '10:00 AM' },
+      { start: '10:00 AM', end: '11:00 AM' },
+      { start: '11:00 AM', end: '11:15 AM', isBreak: true, label: 'Short Break' },
+      { start: '11:15 AM', end: '12:15 PM' },
+      { start: '12:15 PM', end: '1:15 PM' },
+      { start: '1:15 PM', end: '2:00 PM', isBreak: true, label: 'Lunch Break' },
+      { start: '2:00 PM', end: '3:00 PM' },
+      { start: '3:00 PM', end: '4:00 PM' },
+    ];
+    return saved ? JSON.parse(saved) : defaults;
+  });
+
   const today = getTodayDayName();
   const currentPeriod = getCurrentPeriodIndex();
 
-  const teacherClasses = user?.classes ?? [];
+  const teacherClasses = Object.keys(timetable).filter(className => {
+    return Object.values(timetable[className] || {}).some(daySlots => {
+      return Object.values(daySlots).some(slot => slot && String(slot.teacherId) === String(user?.id));
+    });
+  });
 
   const todayClasses: { time: string; subject: string; class: string; room: string; status: ClassStatus; periodIndex: number }[] = [];
 
-  for (const className of teacherClasses) {
+  Object.keys(timetable).forEach((className) => {
     const daySlots = timetable[className]?.[today] ?? {};
-    for (let p = 0; p < PERIOD_TIMES.length; p++) {
+    periodTimings.forEach((timing, p) => {
+      if (timing.isBreak) return;
       const slot = daySlots[p];
-      if (slot && slot.teacherId === user?.id) {
+      if (slot && String(slot.teacherId) === String(user?.id)) {
         let status: ClassStatus;
         if (p < currentPeriod) status = 'Completed';
         else if (p === currentPeriod) status = 'In Progress';
         else status = 'Upcoming';
         todayClasses.push({
-          time: PERIOD_TIMES[p],
+          time: `${timing.start} - ${timing.end}`,
           subject: slot.subject,
           class: className,
           room: slot.room,
@@ -70,8 +92,8 @@ export function TeacherDashboard() {
           periodIndex: p,
         });
       }
-    }
-  }
+    });
+  });
 
   todayClasses.sort((a, b) => a.periodIndex - b.periodIndex);
 
@@ -94,7 +116,7 @@ export function TeacherDashboard() {
         <div className="relative z-10">
           <div className="text-[11px] font-medium opacity-70 uppercase tracking-wider mb-1">Good morning</div>
           <div className="text-[18px] font-bold mb-1">{user?.name}</div>
-          <div className="text-[12.5px] opacity-80">{user?.designation} · {user?.subject} · Classes {user?.classes?.join(', ')}</div>
+          <div className="text-[12px] opacity-80">{user?.designation} · {user?.subject} · Classes {teacherClasses.join(', ')}</div>
           <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-[12px]">
             <span className="flex items-center gap-1 bg-white/20 px-2.5 py-1 rounded-full">
               <Clock size={11} /> {completed}/{total} classes today
