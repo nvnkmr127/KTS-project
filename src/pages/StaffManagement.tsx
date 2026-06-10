@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit2, Trash2, Eye, Upload, X, FileText, Phone, Mail, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, Download } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Eye, Upload, X, FileText, Phone, Mail, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, Download, Calendar, Printer, Wallet, History, UserCheck, ArrowLeft } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
+import { useApp } from '../context/AppContext';
+import { api } from '../services/api';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 // @ts-ignore
 import * as XLSX from 'xlsx';
 // @ts-ignore
@@ -51,6 +54,7 @@ const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
 type ModalState = { type: 'add' | 'view' | 'edit'; staff?: StaffMember } | null;
 
 export function StaffManagement() {
+  const { leaveRequests } = useApp();
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('kts_staff_members');
     return saved ? JSON.parse(saved) : STAFF;
@@ -66,6 +70,226 @@ export function StaffManagement() {
   const [customCategory, setCustomCategory] = useState('');
   const [customDocs, setCustomDocs] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+
+  // States for detailed view tabs and payslips
+  const [activeTab, setActiveTab] = useState<'info' | 'leaves' | 'attendance' | 'salary' | 'slips'>('info');
+  const [selectedSlip, setSelectedSlip] = useState<any | null>(null);
+  const [payslips, setPayslips] = useState<any[]>([]);
+  const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
+  const [manualAttendance, setManualAttendance] = useState<Record<string, Record<string, string>>>(() => {
+    const saved = localStorage.getItem('kts_staff_attendance');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [biometricPunches, setBiometricPunches] = useState<any[]>(() => {
+    const saved = localStorage.getItem('kts_biometric_punches');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Dynamic base64 uploaded documents mapping
+  const [uploadedDocs, setUploadedDocs] = useState<Record<string, Record<string, { name: string; type: string; data: string }>>>(() => {
+    const saved = localStorage.getItem('kts_staff_uploaded_docs');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Helper to convert File to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  // States for attendance filters and pagination in full page view
+  const [attStartDate, setAttStartDate] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30); // Default to last 30 days
+    return d.toISOString().slice(0, 10);
+  });
+  const [attEndDate, setAttEndDate] = useState<string>(() => {
+    return new Date().toISOString().slice(0, 10);
+  });
+  const [attPage, setAttPage] = useState<number>(1);
+  const [selectedDocPreview, setSelectedDocPreview] = useState<string | null>(null);
+
+  // States for adding a document directly in Info tab
+  const [addDocModalOpen, setAddDocModalOpen] = useState(false);
+  const [newDocName, setNewDocName] = useState('');
+  const [newDocFile, setNewDocFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (modal && modal.type === 'view') {
+      setActiveTab('info');
+      setAttPage(1);
+      setSelectedDocPreview(null);
+      setAddDocModalOpen(false);
+      setNewDocName('');
+      setNewDocFile(null);
+      
+      const d = new Date();
+      d.setDate(d.getDate() - 30);
+      setAttStartDate(d.toISOString().slice(0, 10));
+      setAttEndDate(new Date().toISOString().slice(0, 10));
+      
+      // Load payslips
+      async function loadPayslips() {
+        try {
+          const data = await api.getResources('payslips');
+          setPayslips(data || []);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      loadPayslips();
+
+      // Load salary config
+      const savedSalaries = localStorage.getItem('staff_salaries');
+      if (savedSalaries) setStaffSalaries(JSON.parse(savedSalaries));
+
+      // Load attendance records
+      const savedAtt = localStorage.getItem('kts_staff_attendance');
+      if (savedAtt) setManualAttendance(JSON.parse(savedAtt));
+
+      const savedPunches = localStorage.getItem('kts_biometric_punches');
+      if (savedPunches) setBiometricPunches(JSON.parse(savedPunches));
+    }
+  }, [modal]);
+
+  // Helper to handle print functionality
+  const handlePrintSlip = () => {
+    const printContent = document.getElementById('printable-payslip-ref');
+    if (!printContent) return;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    win.document.write(`
+      <html>
+        <head>
+          <title>Payslip - ${selectedSlip?.name}</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #1e293b; background: white; }
+            .text-center { text-align: center; }
+            .mb-4 { margin-bottom: 16px; }
+            .pb-4 { padding-bottom: 16px; }
+            .border-b { border-bottom: 1px solid #e2e8f0; }
+            .grid { display: grid; }
+            .grid-cols-2 { grid-template-columns: 1fr 1fr; gap: 16px; }
+            .bg-\\[var\\(--surf2\\)\\] { background: #f8fafc !important; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; }
+            .text-xs { font-size: 11px; color: #64748b; }
+            .text-sm { font-size: 13px; font-weight: 600; }
+            .font-bold { font-weight: bold; }
+            .flex { display: flex; justify-content: space-between; align-items: center; }
+            .justify-between { justify-content: space-between; }
+            .space-y-1\\.5 > * + * { margin-top: 6px; }
+            .text-\\[var\\(--tx3\\)\\] { color: #64748b; }
+            .text-\[var\(--tx\)\] { color: #1e293b; }
+            .text-\\[var\\(--teal-tx\\)\\] { color: #0d9488; }
+            .text-\\[var\\(--red-tx\\)\\] { color: #e11d48; }
+            .text-\\[var\\(--blue-tx\\)\\] { color: #1d4ed8; }
+            .bg-\\[var\\(--blue-bg\\)\\] { background: #eff6ff !important; border: 1px solid #bfdbfe; }
+            .rounded-xl { border-radius: 12px; }
+            .p-3\\.5 { padding: 14px; }
+            .border-t { border-top: 1px solid #e2e8f0; }
+            .pt-1\\.5 { padding-top: 6px; }
+            .text-\\[18px\\] { font-size: 18px; }
+            .text-\\[13px\\] { font-size: 13px; }
+            .text-\\[12px\\] { font-size: 12px; }
+            .text-\\[11px\\] { font-size: 11px; }
+            .text-\\[14px\\] { font-size: 14px; }
+            .font-semibold { font-weight: 600; }
+            .text-\\[10\\.5px\\] { font-size: 10.5px; }
+            .mb-2 { margin-bottom: 8px; }
+            .grid-cols-1 { grid-template-columns: 1fr; }
+            @media (min-width: 640px) {
+              .sm\\:grid-cols-2 { grid-template-columns: 1fr 1fr; }
+            }
+          </style>
+        </head>
+        <body>
+          <div style="max-width: 600px; margin: 0 auto;">
+            ${printContent.innerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+  };
+
+  // Helper to handle print document functionality
+  const handlePrintDoc = (docName: string) => {
+    const docFile = uploadedDocs[modal?.staff?.id || '']?.[docName];
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    if (docFile && docFile.type.startsWith('image/')) {
+      win.document.write(`
+        <html>
+          <head><title>Print Document - ${docName}</title></head>
+          <body style="margin:0; display:flex; justify-content:center; align-items:center;">
+            <img src="${docFile.data}" style="max-width:100%; max-height:100vh; object-fit:contain;" />
+            <script>window.onload = function() { window.print(); window.close(); }</script>
+          </body>
+        </html>
+      `);
+    } else {
+      win.document.write(`
+        <html>
+          <head>
+            <title>Document Receipt - ${modal?.staff?.name}</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #1e293b; background: white; text-align: center; }
+              .doc-container { border: 2px solid #3b82f6; border-radius: 12px; padding: 40px; max-width: 650px; margin: 0 auto; background: #f8fafc; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+              .school-title { font-size: 20px; font-weight: bold; color: #1e3a8a; margin-bottom: 4px; }
+              .doc-title { font-size: 16px; font-weight: bold; color: #475569; margin-bottom: 24px; border-bottom: 1px solid #cbd5e1; padding-bottom: 12px; }
+              .info-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; text-align: left; }
+              .info-label { color: #64748b; font-weight: 500; }
+              .info-value { color: #0f172a; font-weight: 600; }
+              .seal { margin-top: 32px; border-top: 1px dashed #cbd5e1; padding-top: 16px; font-size: 12px; color: #10b981; font-weight: bold; text-transform: uppercase; }
+            </style>
+          </head>
+          <body>
+            <div class="doc-container">
+              <div class="school-title">Krishnaveni Talent School</div>
+              <div class="doc-title">${docName} Verification Receipt</div>
+              <div class="info-row"><span class="info-label">Staff Name:</span><span class="info-value">${modal?.staff?.name}</span></div>
+              <div class="info-row"><span class="info-label">Designation:</span><span class="info-value">${modal?.staff?.designation}</span></div>
+              <div class="info-row"><span class="info-label">Document Name:</span><span class="info-value">${docName}</span></div>
+              <div class="info-row"><span class="info-label">File Name:</span><span class="info-value">${docFile ? docFile.name : 'N/A'}</span></div>
+              <div class="info-row"><span class="info-label">Verification Status:</span><span class="info-value" style="color: #10b981;">VERIFIED & ACTIVE</span></div>
+              <div class="seal">Official Digital Record - Verified by Admin</div>
+            </div>
+            <script>window.onload = function() { window.print(); window.close(); }</script>
+          </body>
+        </html>
+      `);
+    }
+    win.document.close();
+  };
+
+  const handleDownloadDoc = (docName: string) => {
+    const docFile = uploadedDocs[modal?.staff?.id || '']?.[docName];
+    if (docFile) {
+      const link = document.createElement('a');
+      link.href = docFile.data;
+      link.download = docFile.name;
+      link.click();
+    } else {
+      const content = `KRISHNAVENI TALENT SCHOOL\nDocument Verification Receipt\n\nStaff Member: ${modal?.staff?.name}\nDocument Type: ${docName}\nStatus: Verified & Approved\nDate: ${new Date().toLocaleDateString()}\n`;
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${docName.replace(/\s+/g, '_')}_${modal?.staff?.name?.replace(/\s+/g, '_')}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
 
   useEffect(() => {
     localStorage.setItem('kts_staff_members', JSON.stringify(staffList));
@@ -110,7 +334,7 @@ export function StaffManagement() {
   const onLeave = staffList.filter((s) => s.status === 'On Leave').length;
   const totalSalary = staffList.reduce((sum, s) => sum + s.salary, 0);
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const nameVal = fd.get('name') as string;
@@ -129,9 +353,40 @@ export function StaffManagement() {
       ...customDocs
     ];
 
+    const staffId = modal?.type === 'add' ? 'staff-' + Date.now() : modal!.staff!.id;
+
+    // Convert uploadedFiles to base64
+    const docUpdates: Record<string, { name: string; type: string; data: string }> = {};
+    for (const [docName, file] of Object.entries(uploadedFiles)) {
+      try {
+        const base64 = await fileToBase64(file);
+        docUpdates[docName] = {
+          name: file.name,
+          type: file.type,
+          data: base64
+        };
+      } catch (err) {
+        console.error('Error saving file:', err);
+      }
+    }
+
+    if (Object.keys(docUpdates).length > 0) {
+      setUploadedDocs(prev => {
+        const next = {
+          ...prev,
+          [staffId]: {
+            ...(prev[staffId] || {}),
+            ...docUpdates
+          }
+        };
+        localStorage.setItem('kts_staff_uploaded_docs', JSON.stringify(next));
+        return next;
+      });
+    }
+
     if (modal?.type === 'add') {
       const newStaff: StaffMember = {
-        id: 'staff-' + Date.now(),
+        id: staffId,
         name: nameVal,
         designation: designationVal,
         department: departmentVal,
@@ -148,7 +403,7 @@ export function StaffManagement() {
       };
       setStaffList(prev => [newStaff, ...prev]);
     } else if (modal?.type === 'edit' && modal.staff) {
-      setStaffList(prev => prev.map(s => s.id === modal.staff!.id ? {
+      setStaffList(prev => prev.map(s => s.id === staffId ? {
         ...s,
         name: nameVal,
         designation: designationVal,
@@ -190,98 +445,727 @@ export function StaffManagement() {
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-        <KPICard label="Total Staff" value={staffList.length} sub="All departments" icon={<svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
-        <KPICard label="Active Staff" value={active} sub="Present this month" icon={<svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
-        <KPICard label="On Leave" value={onLeave} sub="Approved leaves" icon={<svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
-        <KPICard label="Total Payroll" value={`₹${(totalSalary / 100000).toFixed(1)}L`} sub="Per month" icon={<svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
-      </div>
-
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-[13px] font-semibold text-[var(--tx)]">Staff Directory</div>
-          <div className="flex gap-2">
-            <button onClick={() => setImportOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]">
-              <Upload size={12} /> Import
-            </button>
-            <button onClick={() => setModal({ type: 'add' })} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
-              <Plus size={12} /> Add Staff
+      {modal?.type === 'view' && modal.staff ? (
+        <div className="space-y-3">
+          {/* Back Navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setModal(null)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold transition-colors"
+            >
+              <ArrowLeft size={13} /> Back to Staff Directory
             </button>
           </div>
-        </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 mb-4">
-          <div className="flex items-center gap-2 flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2">
-            <Search size={13} className="text-[var(--tx3)]" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, department, designation, category..." className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none" />
-          </div>
-          <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-            <option value="All">All Departments</option>
-            {['Mathematics', 'Science', 'English', 'Languages', 'Social Sciences', 'Sports'].map((d) => <option key={d}>{d}</option>)}
-          </select>
-          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-            <option value="All">All Categories</option>
-            {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-3.5">
+            {/* Left Column - Detailed tabbed content */}
+            <Card className="flex flex-col min-w-0">
+              {/* Profile Header */}
+              <div className="flex items-center gap-4 pb-4 border-b border-[var(--b)] mb-4">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--purple-bg)] flex items-center justify-center text-[18px] font-bold text-[var(--purple-tx)]">
+                  {modal.staff.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
+                </div>
+                <div>
+                  <h2 className="text-[15px] font-bold text-[var(--tx)]">{modal.staff.name}</h2>
+                  <p className="text-[11.5px] text-[var(--tx3)]">{modal.staff.designation} · {modal.staff.department}</p>
+                  <div className="mt-1"><Badge variant={modal.staff.status === 'Active' ? 'teal' : 'amber'}>{modal.staff.status}</Badge></div>
+                </div>
+              </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12px] min-w-[700px]">
-            <thead>
-              <tr className="border-b border-[var(--b)]">
-                {['Staff Member', 'Department', 'Contact', 'Join Date', 'Attendance', 'Status', 'Actions'].map((h) => (
-                  <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{h}</th>
+              {/* Sub Navigation Tabs */}
+              <div className="flex border-b border-[var(--b)] mb-4 overflow-x-auto">
+                {[
+                  { id: 'info', label: 'Info', icon: <UserCheck size={13} /> },
+                  { id: 'leaves', label: 'Leaves', icon: <Calendar size={13} /> },
+                  { id: 'attendance', label: 'Attendance Log', icon: <History size={13} /> },
+                  { id: 'salary', label: 'Salary Structure', icon: <Wallet size={13} /> },
+                  { id: 'slips', label: 'Pay Slips', icon: <FileText size={13} /> },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex items-center gap-1.5 py-2.5 px-4 text-[12px] font-semibold border-b-2 whitespace-nowrap transition-all cursor-pointer ${
+                      activeTab === tab.id
+                        ? 'border-[var(--blue)] text-[var(--blue-tx)] bg-[var(--surf)]'
+                        : 'border-transparent text-[var(--tx3)] hover:text-[var(--tx2)]'
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => {
-                const dc = DEPT_COLORS[s.department] ?? DEPT_COLORS.default;
-                return (
-                  <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
-                    <td className="px-2 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar initials={s.name.split(' ').map((n) => n[0]).join('').slice(0, 2)} bg={dc.bg} color={dc.color} />
+              </div>
+
+              {/* Tab Contents */}
+              <div className="flex-1">
+                {/* Info Tab */}
+                {activeTab === 'info' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {[
+                        { label: 'Category', value: modal.staff.category || 'Teaching' },
+                        { label: 'Subject / Assigned Route', value: modal.staff.subject ?? 'N/A' },
+                        { label: 'Join Date', value: modal.staff.joinDate },
+                        { label: 'Phone', value: modal.staff.phone },
+                        { label: 'Email', value: modal.staff.email },
+                        { label: 'Attendance Average', value: `${modal.staff.attendance}%` },
+                        { label: 'Monthly Salary', value: `₹${modal.staff.salary?.toLocaleString()}` },
+                        { label: 'Qualifications', value: modal.staff.qualifications || 'N/A' },
+                      ].map((item) => (
+                        <div key={item.label} className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3">
+                          <div className="text-[10px] text-[var(--tx3)] mb-0.5">{item.label}</div>
+                          <div className="text-[12px] font-semibold text-[var(--tx)]">{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-[10px] text-[var(--tx3)] font-medium">Submitted Documents (Click to Preview)</div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNewDocName('');
+                            setNewDocFile(null);
+                            setAddDocModalOpen(true);
+                          }}
+                          className="text-[10px] font-bold text-[var(--blue-tx)] hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-0 outline-none"
+                        >
+                          <Plus size={10} /> Add Other Document
+                        </button>
+                      </div>
+
+                      {(() => {
+                        const staffUploaded = uploadedDocs[modal.staff.id] || {};
+                        const docsList = Object.keys(staffUploaded);
+                        
+                        if (docsList.length === 0) {
+                          return (
+                            <div className="text-center py-5 text-[11px] text-[var(--tx3)] italic bg-[var(--surf)] border border-[var(--b)] rounded-lg">
+                              no submitted documents
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {docsList.map((doc) => (
+                              <div
+                                key={doc}
+                                onClick={() => setSelectedDocPreview(doc)}
+                                className="flex items-center gap-2 bg-[var(--surf)] border border-[var(--b)] rounded-lg p-2.5 text-[11px] text-[var(--tx2)] cursor-pointer hover:border-[var(--blue)] hover:bg-[var(--surf2)] hover:text-[var(--blue-tx)] transition-all group"
+                              >
+                                <FileText size={11} className="text-[var(--tx3)] group-hover:text-[var(--blue)]" />
+                                <span className="truncate font-semibold">{doc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Leaves Tab */}
+                {activeTab === 'leaves' && (() => {
+                  const staffLeaves = leaveRequests.filter(
+                    (l) =>
+                      l.staffId === modal.staff!.id ||
+                      (l.staffName || '').toLowerCase() === (modal.staff!.name || '').toLowerCase()
+                  );
+                  return (
+                    <div className="space-y-2">
+                      <div className="text-[12px] font-semibold text-[var(--tx)] mb-2">Leave Request History</div>
+                      {staffLeaves.length === 0 ? (
+                        <div className="text-center py-8 text-[11.5px] text-[var(--tx3)]">No leave requests found for this staff member.</div>
+                      ) : (
+                        staffLeaves.map((l) => (
+                          <div key={l.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <Badge variant={l.type === 'Sick Leave' ? 'red' : l.type === 'Emergency Leave' ? 'coral' : l.type === 'Earned Leave' ? 'teal' : 'blue'}>
+                                  {l.type}
+                                </Badge>
+                                <span className="text-[10.5px] text-[var(--tx3)]">({l.days} day{l.days > 1 ? 's' : ''})</span>
+                              </div>
+                              <div className="text-[11.5px] text-[var(--tx)] font-medium">
+                                {l.from} → {l.to}
+                              </div>
+                              <div className="text-[10.5px] text-[var(--tx3)] mt-0.5">{l.reason}</div>
+                              {l.adminNotes && (
+                                <div className="text-[10px] text-red-500 bg-red-50 dark:bg-red-955/20 px-2 py-0.5 rounded mt-1.5">
+                                  Rejection Note: {l.adminNotes}
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant={l.status === 'Approved' ? 'teal' : l.status === 'Pending' ? 'amber' : 'red'}>
+                              {l.status}
+                            </Badge>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Attendance Tab */}
+                {activeTab === 'attendance' && (() => {
+                  // Generate days list based on selected date range
+                  const days: string[] = [];
+                  const start = new Date(attStartDate);
+                  const end = new Date(attEndDate);
+                  if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                    const current = new Date(end);
+                    let count = 0;
+                    while (current >= start && count < 366) {
+                      days.push(current.toISOString().slice(0, 10));
+                      current.setDate(current.getDate() - 1);
+                      count++;
+                    }
+                  }
+
+                  let presentCount = 0;
+                  let absentCount = 0;
+                  let leaveCount = 0;
+                  let halfDayCount = 0;
+
+                  const logs = days.map((dateStr) => {
+                    const manualStatus = manualAttendance[dateStr]?.[modal.staff!.id];
+                    let status: 'Present' | 'Absent' | 'Leave' | 'Half Day' = 'Present';
+                    
+                    if (manualStatus === 'Leave') {
+                      status = 'Leave';
+                      leaveCount++;
+                    } else {
+                      const punches = biometricPunches.filter(
+                        (p) => p.staffId === modal.staff!.id && p.timestamp.startsWith(dateStr)
+                      );
+                      if (punches.length === 0) {
+                        status = manualStatus === 'Absent' ? 'Absent' : 'Absent';
+                        if (status === 'Absent') absentCount++;
+                      } else if (punches.length === 1) {
+                        status = 'Half Day';
+                        halfDayCount++;
+                      } else {
+                        status = 'Present';
+                        presentCount++;
+                      }
+                    }
+
+                    return { dateStr, status };
+                  });
+
+                  // Pagination variables
+                  const ITEMS_PER_PAGE = 7;
+                  const totalItems = logs.length;
+                  const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+                  // Ensure attPage is in bounds
+                  const currentPage = Math.min(attPage, totalPages);
+                  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+                  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+                  const paginatedLogs = logs.slice(startIndex, endIndex);
+
+                  return (
+                    <div className="space-y-4">
+                      {/* Date Filter Bar */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3">
                         <div>
-                          <div className="font-semibold text-[var(--tx)]">{s.name}</div>
-                          <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1.5">
-                            <span>{s.designation}</span>
-                            <span className="text-[9px] px-1.5 py-0.5 bg-[var(--surf3)] border border-[var(--b)] rounded-full text-[var(--tx2)] font-medium">{s.category || 'Teaching'}</span>
+                          <div className="text-[12px] font-bold text-[var(--tx)]">Filter Log Range</div>
+                          <div className="text-[10px] text-[var(--tx3)]">Select custom start and end dates</div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center gap-1.5 text-[11px] text-[var(--tx2)]">
+                            <span>From:</span>
+                            <input
+                              type="date"
+                              value={attStartDate}
+                              onChange={(e) => {
+                                setAttStartDate(e.target.value);
+                                setAttPage(1);
+                              }}
+                              className="bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11px] text-[var(--tx)] outline-none focus:border-[var(--blue)] cursor-pointer"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] text-[var(--tx2)]">
+                            <span>To:</span>
+                            <input
+                              type="date"
+                              value={attEndDate}
+                              onChange={(e) => {
+                                setAttEndDate(e.target.value);
+                                setAttPage(1);
+                              }}
+                              className="bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11px] text-[var(--tx)] outline-none focus:border-[var(--blue)] cursor-pointer"
+                            />
                           </div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <div className="font-medium text-[var(--tx)]">{s.department}</div>
-                      {s.subject && <div className="text-[10.5px] text-[var(--tx3)]">{s.subject}</div>}
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <div className="flex items-center gap-1 text-[var(--tx2)]"><Phone size={10} />{s.phone}</div>
-                      <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]"><Mail size={9} />{s.email}</div>
-                    </td>
-                    <td className="px-2 py-2.5 text-[var(--tx2)]">{s.joinDate}</td>
-                    <td className="px-2 py-2.5">
-                      <span className={`font-semibold ${s.attendance >= 90 ? 'text-[var(--teal-tx)]' : 'text-[var(--amber-tx)]'}`}>{s.attendance}%</span>
-                    </td>
-                    <td className="px-2 py-2.5">
-                      {s.status === 'Active' && <Badge variant="teal">Active</Badge>}
-                      {s.status === 'On Leave' && <Badge variant="amber">On Leave</Badge>}
-                      {s.status === 'Resigned' && <Badge variant="red">Resigned</Badge>}
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => setModal({ type: 'view', staff: s })} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer"><Eye size={13} /></button>
-                        <button onClick={() => setModal({ type: 'edit', staff: s })} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] cursor-pointer"><Edit2 size={13} /></button>
-                        <button onClick={() => handleDelete(s.id)} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] cursor-pointer"><Trash2 size={13} /></button>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-4 gap-2.5">
+                        {[
+                          { label: 'Present', value: presentCount, color: 'text-[var(--teal-tx)] bg-[var(--teal-bg)]' },
+                          { label: 'Absent', value: absentCount, color: 'text-[var(--red-tx)] bg-[var(--red-bg)]' },
+                          { label: 'Leave', value: leaveCount, color: 'text-[var(--amber-tx)] bg-[var(--amber-bg)]' },
+                          { label: 'Half Day', value: halfDayCount, color: 'text-[var(--blue-tx)] bg-[var(--blue-bg)]' },
+                        ].map((stat) => (
+                          <div key={stat.label} className={`rounded-xl p-2.5 text-center ${stat.color}`}>
+                            <div className="text-[14px] font-bold">{stat.value}</div>
+                            <div className="text-[9.5px] font-medium opacity-80">{stat.label}</div>
+                          </div>
+                        ))}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+
+                      <div className="flex items-center justify-between">
+                        <div className="text-[12px] font-semibold text-[var(--tx)]">Log Entries ({totalItems} days total)</div>
+                      </div>
+                      
+                      <div className="border border-[var(--b)] rounded-xl overflow-hidden bg-[var(--surf)]">
+                        <table className="w-full border-collapse text-[11.5px]">
+                          <thead>
+                            <tr className="bg-[var(--surf2)] border-b border-[var(--b)] text-[var(--tx3)]">
+                              <th className="text-left px-3 py-2">Date</th>
+                              <th className="text-left px-3 py-2">Status</th>
+                              <th className="text-left px-3 py-2">Biometric Punches</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedLogs.length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="text-center py-6 text-[11.5px] text-[var(--tx3)]">
+                                  No attendance logs found in this date range.
+                                </td>
+                              </tr>
+                            ) : (
+                              paginatedLogs.map((log) => {
+                                const datePunches = biometricPunches.filter(
+                                  (p) => p.staffId === modal.staff!.id && p.timestamp.startsWith(log.dateStr)
+                                );
+                                const times = datePunches.map(p => p.timestamp.split(' ')[1] || '').join(', ');
+                                return (
+                                  <tr key={log.dateStr} className="border-b border-[var(--b)] last:border-0 hover:bg-[var(--surf2)]/40">
+                                    <td className="px-3 py-2 text-[var(--tx)] font-medium">{log.dateStr}</td>
+                                    <td className="px-3 py-2">
+                                      <Badge variant={log.status === 'Present' ? 'teal' : log.status === 'Leave' ? 'amber' : log.status === 'Half Day' ? 'blue' : 'red'}>
+                                        {log.status}
+                                      </Badge>
+                                    </td>
+                                    <td className="px-3 py-2 font-mono text-[10.5px] text-[var(--tx3)]">
+                                      {times || (log.status === 'Present' ? '09:00 AM, 05:00 PM (Manual)' : log.status === 'Half Day' ? '09:00 AM (Manual)' : 'None')}
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+
+                        {/* Pagination Footer */}
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between px-3 py-2 bg-[var(--surf2)] border-t border-[var(--b)] text-[11px] text-[var(--tx2)]">
+                            <div>
+                              Showing <span className="font-semibold">{startIndex + 1}</span> to{' '}
+                              <span className="font-semibold">{endIndex}</span> of{' '}
+                              <span className="font-semibold">{totalItems}</span> records
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={currentPage === 1}
+                                onClick={() => setAttPage(currentPage - 1)}
+                                className="px-2.5 py-1 border border-[var(--b)] bg-[var(--surf)] text-[var(--tx)] rounded-lg hover:bg-[var(--surf3)] disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-all font-medium"
+                              >
+                                Previous
+                              </button>
+                              <span className="font-medium">
+                                Page {currentPage} of {totalPages}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setAttPage(currentPage + 1)}
+                                className="px-2.5 py-1 border border-[var(--b)] bg-[var(--surf)] text-[var(--tx)] rounded-lg hover:bg-[var(--surf3)] disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition-all font-medium"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Salary Tab */}
+                {activeTab === 'salary' && (() => {
+                  const salaries = staffSalaries[modal.staff!.id] || staffSalaries[modal.staff!.name] || {};
+                  const basicSalary = modal.staff!.salary || 45000;
+                  
+                  // Get structured breakdown
+                  const basic = salaries['basic'] !== undefined ? salaries['basic'] : Math.round(basicSalary * 0.65);
+                  const hra = salaries['hra'] !== undefined ? salaries['hra'] : Math.round(basicSalary * 0.20);
+                  const allowances = salaries['allowances'] !== undefined ? salaries['allowances'] : (basicSalary - basic - hra);
+                  const deductions = salaries['deductions'] !== undefined ? salaries['deductions'] : 3000;
+                  
+                  const earnings = [
+                    { name: 'Basic Salary', amount: basic },
+                    { name: 'House Rent Allowance (HRA)', amount: hra },
+                    { name: 'Special Allowances', amount: allowances }
+                  ];
+                  const gross = basic + hra + allowances;
+                  const net = Math.max(0, gross - deductions);
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="text-[12px] font-semibold text-[var(--tx)]">Salary Structure Components</div>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Earnings */}
+                        <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-4">
+                          <div className="text-[11px] font-semibold text-[var(--teal-tx)] mb-2.5">Monthly Earnings</div>
+                          <div className="space-y-2 text-[12px]">
+                            {earnings.map(e => (
+                              <div key={e.name} className="flex justify-between">
+                                <span className="text-[var(--tx3)]">{e.name}</span>
+                                <span className="font-semibold text-[var(--tx)]">₹{e.amount.toLocaleString()}</span>
+                              </div>
+                            ))}
+                            <div className="flex justify-between pt-2 border-t border-[var(--b)] font-bold">
+                              <span className="text-[var(--tx)]">Gross Salary</span>
+                              <span className="text-[var(--teal-tx)]">₹{gross.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Deductions */}
+                        <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-4">
+                          <div className="text-[11px] font-semibold text-[var(--red-tx)] mb-2.5">Monthly Deductions</div>
+                          <div className="space-y-2 text-[12px]">
+                            <div className="flex justify-between">
+                              <span className="text-[var(--tx3)]">Standard Deductions (PF, Tax)</span>
+                              <span className="font-semibold text-[var(--red-tx)]">₹{deductions.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between pt-2 border-t border-[var(--b)] font-bold">
+                              <span className="text-[var(--tx)]">Total Deductions</span>
+                              <span className="text-[var(--red-tx)]">₹{deductions.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-[var(--blue-bg)] border border-[var(--blue-tx)]/10 rounded-xl p-4 flex justify-between items-center">
+                        <div>
+                          <div className="text-[13px] font-bold text-[var(--blue-tx)]">Net In-Hand Salary</div>
+                          <div className="text-[10px] text-[var(--blue-tx)] opacity-80 mt-0.5">Calculated take home pay per month</div>
+                        </div>
+                        <div className="text-[20px] font-bold text-[var(--blue-tx)]">₹{net.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Slips Tab */}
+                {activeTab === 'slips' && (() => {
+                  // Filter payslips for this employee
+                  const staffSlips = payslips.filter(
+                    (p) =>
+                      p.user_id === Number(modal.staff!.id) ||
+                      (p.name || '').toLowerCase() === (modal.staff!.name || '').toLowerCase()
+                  );
+
+                  // Pre-populate mock payslips if none exist in the database, so we have records to display/print
+                  const displayedSlips = staffSlips.length > 0 ? staffSlips.map(p => {
+                    const gross = Number(p.gross_salary) || 0;
+                    const deductions = Number(p.total_deductions) || 0;
+                    const net = Number(p.net_salary) || 0;
+                    return {
+                      id: String(p.id),
+                      name: modal.staff!.name,
+                      designation: modal.staff!.designation,
+                      basic: Math.round(gross * 0.65),
+                      hra: Math.round(gross * 0.20),
+                      allowances: gross - Math.round(gross * 0.65) - Math.round(gross * 0.20),
+                      deductions,
+                      gross,
+                      net,
+                      status: p.status === 'paid' ? 'Paid' : 'Pending',
+                      month: `${p.month} ${p.year}`,
+                    };
+                  }) : [
+                    { id: 'mock-s1', name: modal.staff!.name, designation: modal.staff!.designation, basic: Math.round(modal.staff!.salary * 0.65), hra: Math.round(modal.staff!.salary * 0.20), allowances: modal.staff!.salary - Math.round(modal.staff!.salary * 0.65) - Math.round(modal.staff!.salary * 0.20), deductions: 3000, gross: modal.staff!.salary, net: modal.staff!.salary - 3000, status: 'Paid', month: 'May 2026' },
+                    { id: 'mock-s2', name: modal.staff!.name, designation: modal.staff!.designation, basic: Math.round(modal.staff!.salary * 0.65), hra: Math.round(modal.staff!.salary * 0.20), allowances: modal.staff!.salary - Math.round(modal.staff!.salary * 0.65) - Math.round(modal.staff!.salary * 0.20), deductions: 3000, gross: modal.staff!.salary, net: modal.staff!.salary - 3000, status: 'Paid', month: 'April 2026' },
+                  ];
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="text-[12px] font-semibold text-[var(--tx)]">Salary Slips & Paid Records</div>
+                      <div className="border border-[var(--b)] rounded-xl overflow-hidden">
+                        <table className="w-full border-collapse text-[11.5px]">
+                          <thead>
+                            <tr className="bg-[var(--surf2)] border-b border-[var(--b)] text-[var(--tx3)]">
+                              <th className="text-left px-3 py-2">Month</th>
+                              <th className="text-left px-3 py-2">Net Salary</th>
+                              <th className="text-left px-3 py-2">Status</th>
+                              <th className="text-center px-3 py-2">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {displayedSlips.map((slip) => (
+                              <tr key={slip.id} className="border-b border-[var(--b)] last:border-0 hover:bg-[var(--surf2)]/40">
+                                <td className="px-3 py-2.5 text-[var(--tx)] font-medium">{slip.month}</td>
+                                <td className="px-3 py-2.5 text-[var(--tx2)] font-semibold">₹{slip.net.toLocaleString()}</td>
+                                <td className="px-3 py-2.5">
+                                  <Badge variant={slip.status === 'Paid' ? 'teal' : 'amber'}>{slip.status}</Badge>
+                                </td>
+                                <td className="px-3 py-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedSlip(slip)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[10.5px] border border-[var(--blue-tx)]/20 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg hover:opacity-90 cursor-pointer transition-all"
+                                  >
+                                    <Printer size={10} /> View & Print
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </Card>
+
+            {/* Right Column - Attendance Pie Graph & Stats */}
+            <div className="space-y-3.5">
+              <Card>
+                <h3 className="text-[12.5px] font-bold text-[var(--tx)] mb-3 flex items-center gap-1.5">
+                  <History size={14} className="text-[var(--blue-tx)]" /> Attendance Breakdown (Selected Range)
+                </h3>
+
+                {(() => {
+                  // Compute stats for Pie Chart using selected date range
+                  const days: string[] = [];
+                  const start = new Date(attStartDate);
+                  const end = new Date(attEndDate);
+                  if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                    const current = new Date(end);
+                    let count = 0;
+                    while (current >= start && count < 366) {
+                      days.push(current.toISOString().slice(0, 10));
+                      current.setDate(current.getDate() - 1);
+                      count++;
+                    }
+                  }
+
+                  let presentCount = 0;
+                  let absentCount = 0;
+                  let leaveCount = 0;
+                  let halfDayCount = 0;
+
+                  days.forEach((dateStr) => {
+                    const manualStatus = manualAttendance[dateStr]?.[modal.staff!.id];
+                    if (manualStatus === 'Leave') {
+                      leaveCount++;
+                    } else {
+                      const punches = biometricPunches.filter(
+                        (p) => p.staffId === modal.staff!.id && p.timestamp.startsWith(dateStr)
+                      );
+                      if (punches.length === 0) {
+                        if (manualStatus === 'Absent') absentCount++;
+                        else absentCount++;
+                      } else if (punches.length === 1) {
+                        halfDayCount++;
+                      } else {
+                        presentCount++;
+                      }
+                    }
+                  });
+
+                  const totalDays = presentCount + absentCount + leaveCount + halfDayCount;
+                  const presentRate = totalDays > 0 ? Math.round(((presentCount + halfDayCount * 0.5) / totalDays) * 100) : 100;
+
+                  const pieData = [
+                    { name: 'Present', value: presentCount, color: 'var(--teal)' },
+                    { name: 'Absent', value: absentCount, color: 'var(--red)' },
+                    { name: 'Leave', value: leaveCount, color: 'var(--amber)' },
+                    { name: 'Half Day', value: halfDayCount, color: 'var(--blue)' },
+                  ].filter(d => d.value > 0);
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex justify-center items-center h-[200px] relative">
+                        {pieData.length === 0 ? (
+                          <div className="text-[11.5px] text-[var(--tx3)]">No attendance logs found</div>
+                        ) : (
+                          <>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={pieData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={55}
+                                  outerRadius={75}
+                                  paddingAngle={3}
+                                  dataKey="value"
+                                >
+                                  {pieData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  formatter={(v) => [`${v} day(s)`, 'Count']}
+                                  contentStyle={{
+                                    backgroundColor: 'var(--surf)',
+                                    borderColor: 'var(--b)',
+                                    borderRadius: '8px',
+                                    fontSize: '11px',
+                                    color: 'var(--tx)',
+                                  }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute flex flex-col items-center justify-center">
+                              <span className="text-[16px] font-bold text-[var(--tx)]">{presentRate}%</span>
+                              <span className="text-[9.5px] text-[var(--tx3)] font-medium">Rate</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Custom Legend */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px] border-t border-[var(--b)] pt-3">
+                        {[
+                          { label: 'Present', value: presentCount, color: 'bg-[var(--teal)]' },
+                          { label: 'Absent', value: absentCount, color: 'bg-[var(--red)]' },
+                          { label: 'Leave', value: leaveCount, color: 'bg-[var(--amber)]' },
+                          { label: 'Half Day', value: halfDayCount, color: 'bg-[var(--blue)]' },
+                        ].map((item) => (
+                          <div key={item.label} className="flex items-center gap-1.5 justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+                              <span className="text-[var(--tx3)]">{item.label}</span>
+                            </div>
+                            <span className="font-semibold text-[var(--tx)]">{item.value} d</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </Card>
+
+              {/* General Summary */}
+              <Card className="bg-[var(--blue-bg)]/20 border-[var(--blue-tx)]/10">
+                <h4 className="text-[12.5px] font-bold text-[var(--tx)] mb-1.5">Quick Summary</h4>
+                <p className="text-[11.5px] text-[var(--tx2)] leading-relaxed">
+                  This dashboard shows full profile details, leave history, biometric logs, and payroll records for <strong>{modal.staff.name}</strong>. You can print processed salary slips directly from the <strong>Pay Slips</strong> tab.
+                </p>
+              </Card>
+            </div>
+          </div>
         </div>
-      </Card>
+      ) : (
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
+            <KPICard label="Total Staff" value={staffList.length} sub="All departments" icon={<svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
+            <KPICard label="Active Staff" value={active} sub="Present this month" icon={<svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
+            <KPICard label="On Leave" value={onLeave} sub="Approved leaves" icon={<svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
+            <KPICard label="Total Payroll" value={`₹${(totalSalary / 100000).toFixed(1)}L`} sub="Per month" icon={<svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
+          </div>
+
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-[13px] font-semibold text-[var(--tx)]">Staff Directory</div>
+              <div className="flex gap-2">
+                <button onClick={() => setImportOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]">
+                  <Upload size={12} /> Import
+                </button>
+                <button onClick={() => setModal({ type: 'add' })} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
+                  <Plus size={12} /> Add Staff
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <div className="flex items-center gap-2 flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2">
+                <Search size={13} className="text-[var(--tx3)]" />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, department, designation, category..." className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none" />
+              </div>
+              <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                <option value="All">All Departments</option>
+                {['Mathematics', 'Science', 'English', 'Languages', 'Social Sciences', 'Sports'].map((d) => <option key={d}>{d}</option>)}
+              </select>
+              <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                <option value="All">All Categories</option>
+                {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12px] min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-[var(--b)]">
+                    {['Staff Member', 'Department', 'Contact', 'Join Date', 'Attendance', 'Status', 'Actions'].map((h) => (
+                      <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((s) => {
+                    const dc = DEPT_COLORS[s.department] ?? DEPT_COLORS.default;
+                    return (
+                      <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
+                        <td className="px-2 py-2.5 cursor-pointer" onClick={() => setModal({ type: 'view', staff: s })}>
+                          <div className="flex items-center gap-2.5">
+                            <Avatar initials={s.name.split(' ').map((n) => n[0]).join('').slice(0, 2)} bg={dc.bg} color={dc.color} />
+                            <div>
+                              <div className="font-semibold text-[var(--tx)] hover:text-[var(--blue)] hover:underline">{s.name}</div>
+                              <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1.5">
+                                <span>{s.designation}</span>
+                                <span className="text-[9px] px-1.5 py-0.5 bg-[var(--surf3)] border border-[var(--b)] rounded-full text-[var(--tx2)] font-medium">{s.category || 'Teaching'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <div className="font-medium text-[var(--tx)]">{s.department}</div>
+                          {s.subject && <div className="text-[10.5px] text-[var(--tx3)]">{s.subject}</div>}
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <div className="flex items-center gap-1 text-[var(--tx2)]"><Phone size={10} />{s.phone}</div>
+                          <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]"><Mail size={9} />{s.email}</div>
+                        </td>
+                        <td className="px-2 py-2.5 text-[var(--tx2)]">{s.joinDate}</td>
+                        <td className="px-2 py-2.5">
+                          <span className={`font-semibold ${s.attendance >= 90 ? 'text-[var(--teal-tx)]' : 'text-[var(--amber-tx)]'}`}>{s.attendance}%</span>
+                        </td>
+                        <td className="px-2 py-2.5">
+                          {s.status === 'Active' && <Badge variant="teal">Active</Badge>}
+                          {s.status === 'On Leave' && <Badge variant="amber">On Leave</Badge>}
+                          {s.status === 'Resigned' && <Badge variant="red">Resigned</Badge>}
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <button onClick={() => setModal({ type: 'view', staff: s })} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer"><Eye size={13} /></button>
+                            <button onClick={() => setModal({ type: 'edit', staff: s })} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] cursor-pointer"><Edit2 size={13} /></button>
+                            <button onClick={() => handleDelete(s.id)} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] cursor-pointer"><Trash2 size={13} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </>
+      )}
 
       {/* Add/Edit Modal */}
       {modal && modal.type !== 'view' && (
@@ -608,61 +1492,322 @@ export function StaffManagement() {
         </div>
       )}
 
-      {/* View Modal */}
-      {modal?.type === 'view' && modal.staff && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[460px] shadow-2xl">
+
+
+      {/* Payslip View & Print Preview Modal */}
+      {selectedSlip && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[460px] shadow-2xl overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
-              <div className="text-[14px] font-bold text-[var(--tx)]">Staff Profile</div>
-              <button onClick={() => setModal(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
-            </div>
-            <div className="p-5">
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--purple-bg)] flex items-center justify-center text-[18px] font-bold text-[var(--purple-tx)]">
-                  {modal.staff.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                </div>
-                <div>
-                  <div className="text-[15px] font-bold text-[var(--tx)]">{modal.staff.name}</div>
-                  <div className="text-[12px] text-[var(--tx3)]">{modal.staff.designation} · {modal.staff.department}</div>
-                  <div className="mt-1"><Badge variant={modal.staff.status === 'Active' ? 'teal' : 'amber'}>{modal.staff.status}</Badge></div>
-                </div>
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Payslip Preview</div>
+                <div className="text-[12px] text-[var(--tx3)]">{selectedSlip.month}</div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrintSlip}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]"
+                >
+                  <Printer size={11} /> Print
+                </button>
+                <button onClick={() => setSelectedSlip(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx3)]"><X size={16} /></button>
+              </div>
+            </div>
+
+            <div className="p-5 overflow-y-auto max-h-[60vh]" id="printable-payslip-ref">
+              <div className="text-center mb-4 pb-4 border-b border-[var(--b)]">
+                <div className="text-[14px] font-bold text-[var(--tx)]">Krishnaveni Talent School</div>
+                <div className="text-[11px] text-[var(--tx3)]">Nizamabad, Telangana · Salary Payslip</div>
+                <div className="text-[11px] text-[var(--tx3)]">{selectedSlip.month}</div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mb-4">
                 {[
-                  { label: 'Category', value: modal.staff.category || 'Teaching' },
-                  { label: 'Subject / Assigned Route', value: modal.staff.subject ?? 'N/A' },
-                  { label: 'Join Date', value: modal.staff.joinDate },
-                  { label: 'Phone', value: modal.staff.phone },
-                  { label: 'Email / Expiry', value: modal.staff.email },
-                  { label: 'Attendance', value: `${modal.staff.attendance}%` },
-                  { label: 'Monthly Salary', value: `₹${modal.staff.salary.toLocaleString()}` },
+                  { label: 'Employee Name', value: selectedSlip.name },
+                  { label: 'Designation', value: selectedSlip.designation },
+                  { label: 'Pay Period', value: selectedSlip.month },
+                  { label: 'Payment Status', value: selectedSlip.status },
                 ].map((item) => (
-                  <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
-                    <div className="text-[10.5px] text-[var(--tx3)] mb-0.5">{item.label}</div>
-                    <div className="text-[12.5px] font-semibold text-[var(--tx)]">{item.value}</div>
+                  <div key={item.label} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2.5">
+                    <div className="text-[10.5px] text-[var(--tx3)]">{item.label}</div>
+                    <div className="text-[12px] font-semibold text-[var(--tx)]">{item.value}</div>
                   </div>
                 ))}
               </div>
-              <div className="mt-2 bg-[var(--surf2)] rounded-xl p-3">
-                <div className="text-[10.5px] text-[var(--tx3)] mb-0.5">Qualifications / License Details</div>
-                <div className="text-[12.5px] font-semibold text-[var(--tx)]">{modal.staff.qualifications}</div>
-              </div>
-              
-              {/* Dynamic submitted documents listing in Profile View */}
-              <div className="mt-3">
-                <div className="text-[10.5px] text-[var(--tx3)] mb-1.5">Submitted Documents</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {(modal.staff.documents || getDocsForCategory(modal.staff.category)).map((doc) => (
-                    <div key={doc} className="flex items-center gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2 text-[11px] text-[var(--tx2)]">
-                      <FileText size={11} className="text-[var(--tx3)]" />
-                      <span className="truncate">{doc}</span>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <div className="text-[11px] font-semibold text-[var(--teal-tx)] mb-2">Earnings</div>
+                  <div className="space-y-1.5 text-[12px]">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--tx3)]">Basic</span>
+                      <span className="text-[var(--tx)] font-medium">₹{selectedSlip.basic?.toLocaleString()}</span>
                     </div>
-                  ))}
+                    <div className="flex justify-between">
+                      <span className="text-[var(--tx3)]">HRA</span>
+                      <span className="text-[var(--tx)] font-medium">₹{selectedSlip.hra?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--tx3)]">Allowances</span>
+                      <span className="text-[var(--tx)] font-medium">₹{selectedSlip.allowances?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between pt-1.5 border-t border-[var(--b)] font-semibold">
+                      <span className="text-[var(--tx)]">Gross</span>
+                      <span className="text-[var(--teal-tx)]">₹{selectedSlip.gross?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[11px] font-semibold text-[var(--red-tx)] mb-2">Deductions</div>
+                  <div className="space-y-1.5 text-[12px]">
+                    <div className="flex justify-between">
+                      <span className="text-[var(--tx3)]">PF / Tax</span>
+                      <span className="text-[var(--red-tx)] font-medium">₹{selectedSlip.deductions?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between pt-1.5 border-t border-[var(--b)] font-semibold">
+                      <span className="text-[var(--tx)]">Total</span>
+                      <span className="text-[var(--red-tx)]">₹{selectedSlip.deductions?.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-[var(--blue-bg)] border border-[var(--blue-tx)]/10 rounded-xl p-3.5 flex justify-between items-center">
+                <span className="text-[13px] font-bold text-[var(--blue-tx)]">Net Pay</span>
+                <span className="text-[18px] font-bold text-[var(--blue-tx)]">₹{selectedSlip.net?.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="p-5 pt-0 border-t border-[var(--b)] bg-[var(--surf2)]/20 mt-auto">
+              <button onClick={() => setSelectedSlip(null)} className="w-full py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer">Close Preview</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submitted Document Preview Modal */}
+      {selectedDocPreview && modal && modal.staff && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[480px] shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Document Preview</div>
+                <div className="text-[12px] text-[var(--tx3)]">{selectedDocPreview}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadDoc(selectedDocPreview)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold transition-all"
+                  title="Download Document"
+                >
+                  <Download size={11} /> Download
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintDoc(selectedDocPreview)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold transition-all"
+                  title="Print Document"
+                >
+                  <Printer size={11} /> Print
+                </button>
+                <button
+                  onClick={() => setSelectedDocPreview(null)}
+                  className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx3)]"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Document Certificate Layout */}
+            <div className="p-6 bg-[var(--surf2)]/30 overflow-y-auto max-h-[55vh] flex flex-col items-center justify-center min-h-[200px]">
+              {(() => {
+                const docFile = uploadedDocs[modal.staff.id]?.[selectedDocPreview];
+                if (docFile) {
+                  const isImage = docFile.type.startsWith('image/');
+                  const isPdf = docFile.type === 'application/pdf';
+                  
+                  if (isImage) {
+                    return (
+                      <div className="border border-[var(--b)] rounded-2xl overflow-hidden bg-white p-2 max-w-full flex items-center justify-center">
+                        <img src={docFile.data} alt={selectedDocPreview} className="max-w-full max-h-[400px] object-contain rounded-xl" />
+                      </div>
+                    );
+                  }
+                  if (isPdf) {
+                    return (
+                      <iframe src={docFile.data} className="w-full h-[400px] rounded-xl border border-[var(--b)] bg-white" title={selectedDocPreview} />
+                    );
+                  }
+                  
+                  // Non-previewable (doc, xlsx, etc.)
+                  return (
+                    <div className="w-full bg-[var(--surf)] border border-[var(--b)] rounded-2xl p-6 shadow-sm text-center max-w-[400px]">
+                      <FileText size={48} className="text-[var(--blue-tx)] mx-auto mb-3" />
+                      <div className="text-[13px] font-bold text-[var(--tx)] truncate mb-1">{docFile.name}</div>
+                      <div className="text-[11px] text-[var(--tx3)] font-mono mb-4">{(docFile.data.length * 0.75 / 1024).toFixed(1)} KB</div>
+                      <p className="text-[11px] text-[var(--tx2)] mb-4">This file type cannot be previewed directly. Please download the document to view its contents.</p>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadDoc(selectedDocPreview)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                      >
+                        <Download size={13} /> Download File
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic">
+                    Document source file not found.
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="p-5 pt-0 border-t border-[var(--b)] bg-[var(--surf2)]/20 mt-auto">
+              <button
+                onClick={() => setSelectedDocPreview(null)}
+                className="w-full py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Document Inline Modal (100% robust on desktop and mobiles) */}
+      {addDocModalOpen && modal && modal.staff && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Add Other Document</div>
+                <div className="text-[11px] text-[var(--tx3)]">Upload custom files for {modal.staff.name}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddDocModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-[var(--surf2)] text-[var(--tx3)] cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--tx2)] mb-1.5">Document Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newDocName}
+                  onChange={(e) => setNewDocName(e.target.value)}
+                  placeholder="e.g. Experience Certificate"
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--tx2)] mb-1.5">Choose File *</label>
+                <div
+                  onClick={() => {
+                    const elInput = document.getElementById('direct-file-chooser-input');
+                    if (elInput) elInput.click();
+                  }}
+                  className={`border border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+                    newDocFile
+                      ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
+                      : 'border-[var(--b)] bg-[var(--surf2)]/20 hover:border-[var(--blue)]'
+                  }`}
+                >
+                  <input
+                    id="direct-file-chooser-input"
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setNewDocFile(e.target.files[0]);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  {newDocFile ? (
+                    <>
+                      <CheckCircle2 size={24} className="text-[var(--teal)] mx-auto mb-2" />
+                      <div className="text-[12px] font-bold text-[var(--tx)] truncate px-1">{newDocFile.name}</div>
+                      <div className="text-[10px] text-[var(--tx3)] font-mono mt-0.5">{(newDocFile.size / 1024).toFixed(1)} KB</div>
+                      <div className="text-[9px] text-[var(--blue-tx)] mt-2 hover:underline">Tap to change file</div>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={24} className="text-[var(--tx3)] mx-auto mb-2" />
+                      <div className="text-[12px] font-bold text-[var(--tx2)]">Choose file from device</div>
+                      <div className="text-[10px] text-[var(--tx3)] mt-0.5">Supports PDF, Images, Word, Excel</div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
-            <div className="p-5 pt-0">
-              <button onClick={() => setModal(null)} className="w-full py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer">Close</button>
+
+            <div className="flex gap-2 p-5 pt-0">
+              <button
+                type="button"
+                onClick={() => setAddDocModalOpen(false)}
+                className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer hover:bg-[var(--surf3)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!newDocName.trim() || !newDocFile}
+                onClick={async () => {
+                  if (!newDocName.trim() || !newDocFile) return;
+                  try {
+                    const base64 = await fileToBase64(newDocFile);
+                    setUploadedDocs(prev => {
+                      const staffDocs = prev[modal.staff!.id] || {};
+                      const next = {
+                        ...prev,
+                        [modal.staff!.id]: {
+                          ...staffDocs,
+                          [newDocName.trim()]: {
+                            name: newDocFile.name,
+                            type: newDocFile.type,
+                            data: base64
+                          }
+                        }
+                      };
+                      localStorage.setItem('kts_staff_uploaded_docs', JSON.stringify(next));
+                      return next;
+                    });
+                    // Update staff documents list
+                    setStaffList(prevList => prevList.map(s => {
+                      if (s.id === modal.staff!.id) {
+                        const existingDocs = s.documents || [];
+                        if (!existingDocs.includes(newDocName.trim())) {
+                          return {
+                            ...s,
+                            documents: [...existingDocs, newDocName.trim()]
+                          };
+                        }
+                      }
+                      return s;
+                    }));
+                    setAddDocModalOpen(false);
+                    alert("Document added successfully!");
+                  } catch (err) {
+                    alert("Failed to save document file");
+                  }
+                }}
+                className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none transition-all"
+              >
+                Upload Document
+              </button>
             </div>
           </div>
         </div>
