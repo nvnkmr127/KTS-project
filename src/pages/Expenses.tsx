@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Plus, X, DollarSign, TrendingDown, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { Plus, X, DollarSign, TrendingDown, AlertTriangle, CheckCircle, Loader2, Calendar, Download } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -43,6 +43,9 @@ export function Expenses() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('Electricity');
+  const [customCategory, setCustomCategory] = useState('');
 
   const loadExpenses = async () => {
     setLoading(true);
@@ -106,8 +109,10 @@ export function Expenses() {
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const catValue = selectedCategory === 'manual_entry' ? customCategory.trim() : selectedCategory;
+    
     const data = {
-      category: fd.get('category'),
+      category: catValue || 'General',
       amount: parseFloat(fd.get('amount') as string) || 0,
       description: fd.get('description'),
       vendor: fd.get('vendor'),
@@ -125,7 +130,7 @@ export function Expenses() {
       // Fallback local add if API fails
       const localNew: Expense = {
         id: 'local-' + Date.now(),
-        category: (fd.get('category') as string) || 'General',
+        category: catValue || 'General',
         description: (fd.get('description') as string) || '',
         amount: parseFloat(fd.get('amount') as string) || 0,
         vendor: (fd.get('vendor') as string) || 'N/A',
@@ -151,6 +156,34 @@ export function Expenses() {
     }
   };
 
+  const handleExport = () => {
+    const headers = ['Category', 'Description', 'Vendor', 'Date', 'Amount', 'Status'];
+    const rows = filtered.map((e) => [
+      e.category,
+      e.description,
+      e.vendor,
+      formatDate(e.date),
+      e.amount,
+      e.status,
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(val => `"${String(val ?? '').replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    const dateStr = (startDate || endDate) ? `${startDate || 'start'}_to_${endDate || 'end'}` : 'all';
+    link.setAttribute('download', `expenses_ledger_${dateStr}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filtered = expenses.filter((e) => {
     const matchCategory = catFilter === 'All' || e.category === catFilter;
     const matchStart = !startDate || e.date >= startDate;
@@ -164,6 +197,29 @@ export function Expenses() {
 
   const categoryTotals = filtered.reduce((acc, e) => ({ ...acc, [e.category]: (acc[e.category] ?? 0) + e.amount }), {} as Record<string, number>);
   const categoryData = Object.entries(categoryTotals).map(([name, value]) => ({ name, value }));
+
+  const allCategories = Array.from(new Set(expenses.map(e => e.category)));
+
+  const getCategoryColor = (category: string, index: number) => {
+    if (CATEGORY_COLORS[category]) {
+      return CATEGORY_COLORS[category];
+    }
+    const colors = [
+      'var(--teal)',
+      'var(--coral)',
+      'var(--pink)',
+      'var(--purple)',
+      'var(--blue)',
+      'var(--amber)',
+      '#ef4444',
+      '#10b981',
+      '#3b82f6',
+      '#f59e0b',
+      '#8b5cf6',
+      '#ec4899',
+    ];
+    return colors[index % colors.length];
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
@@ -181,29 +237,90 @@ export function Expenses() {
               Expense Ledger {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-stretch sm:items-center">
-              <div className="flex items-center gap-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-[11.5px]">
-                <span className="text-[var(--tx3)]">From:</span>
-                <input 
-                  type="date" 
-                  value={startDate} 
-                  onChange={(e) => setStartDate(e.target.value)} 
-                  className="bg-transparent text-[var(--tx)] outline-none cursor-pointer w-[105px] h-[16px] text-[10.5px]"
-                />
+              <div className="relative">
+                <button
+                  onClick={() => setShowDatePicker(!showDatePicker)}
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11.5px] bg-[var(--surf2)] border border-[var(--b)] text-[var(--tx)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] w-full sm:w-auto"
+                  title="Filter by Date"
+                >
+                  <Calendar size={13} />
+                  <span>
+                    {startDate || endDate 
+                      ? `${startDate || 'Start'} to ${endDate || 'End'}`
+                      : 'Date Filter'}
+                  </span>
+                </button>
+                {showDatePicker && (
+                  <div className="absolute right-0 mt-1.5 bg-[var(--surf)] border border-[var(--b)] rounded-xl shadow-xl p-3 z-30 min-w-[240px] space-y-2">
+                    <div className="flex items-center justify-between text-[11.5px] font-semibold text-[var(--tx)] pb-1 border-b border-[var(--b)]">
+                      <span>Select Date Range</span>
+                      <button type="button" onClick={() => setShowDatePicker(false)} className="hover:bg-[var(--surf2)] p-0.5 rounded text-[var(--tx3)]"><X size={12} /></button>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[10.5px] text-[var(--tx3)] mb-1">From Date</label>
+                        <input 
+                          type="date" 
+                          value={startDate} 
+                          onChange={(e) => setStartDate(e.target.value)} 
+                          className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] text-[var(--tx)] outline-none cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] text-[var(--tx3)] mb-1">To Date</label>
+                        <input 
+                          type="date" 
+                          value={endDate} 
+                          onChange={(e) => setEndDate(e.target.value)} 
+                          className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] text-[var(--tx)] outline-none cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setStartDate('');
+                          setEndDate('');
+                          setShowDatePicker(false);
+                        }} 
+                        className="flex-1 py-1 text-[11px] border border-[var(--b)] bg-[var(--surf2)] rounded-md text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setShowDatePicker(false)} 
+                        className="flex-1 py-1 text-[11px] bg-[var(--blue)] text-white rounded-md hover:opacity-90 cursor-pointer"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-[11.5px]">
-                <span className="text-[var(--tx3)]">To:</span>
-                <input 
-                  type="date" 
-                  value={endDate} 
-                  onChange={(e) => setEndDate(e.target.value)} 
-                  className="bg-transparent text-[var(--tx)] outline-none cursor-pointer w-[105px] h-[16px] text-[10.5px]"
-                />
-              </div>
+
+              <button
+                onClick={handleExport}
+                className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-[11.5px] bg-[var(--surf2)] border border-[var(--b)] text-[var(--tx)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] w-full sm:w-auto"
+                title="Export to Excel"
+              >
+                <Download size={13} />
+                <span>Export</span>
+              </button>
+
               <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] text-[var(--tx)] cursor-pointer outline-none w-full sm:w-auto">
                 <option value="All">All Categories</option>
-                {Object.keys(CATEGORY_COLORS).map((c) => <option key={c}>{c}</option>)}
+                {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-              <button onClick={() => setShowAdd(true)} className="flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 w-full sm:w-auto flex-shrink-0">
+              <button
+                onClick={() => {
+                  setSelectedCategory('Electricity');
+                  setCustomCategory('');
+                  setShowAdd(true);
+                }}
+                className="flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 w-full sm:w-auto flex-shrink-0"
+              >
                 <Plus size={11} /> Add Expense
               </button>
             </div>
@@ -222,7 +339,7 @@ export function Expenses() {
                   <tr key={e.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
                     <td className="px-2 py-2.5">
                       <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full" style={{ background: CATEGORY_COLORS[e.category] ?? 'var(--tx3)' }} />
+                        <span className="w-2 h-2 rounded-full" style={{ background: getCategoryColor(e.category, filtered.findIndex(x => x.category === e.category)) }} />
                         <span className="font-medium text-[var(--tx)]">{e.category}</span>
                       </span>
                     </td>
@@ -255,18 +372,18 @@ export function Expenses() {
                 <PieChart>
                   <Pie data={categoryData} cx="50%" cy="50%" outerRadius={52} paddingAngle={2} dataKey="value">
                     {categoryData.map((entry, i) => (
-                      <Cell key={i} fill={CATEGORY_COLORS[entry.name] ?? 'var(--tx3)'} />
+                      <Cell key={i} fill={getCategoryColor(entry.name, i)} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`₹${v.toLocaleString()}`]} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-col gap-1.5 mt-1">
-              {categoryData.slice(0, 4).map((d) => (
+            <div className="flex flex-col gap-1.5 mt-1 max-h-[140px] overflow-y-auto pr-1">
+              {categoryData.map((d, i) => (
                 <div key={d.name} className="flex items-center justify-between text-[11px]">
                   <span className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-sm" style={{ background: CATEGORY_COLORS[d.name] ?? 'var(--tx3)' }} />
+                    <span className="w-2 h-2 rounded-sm" style={{ background: getCategoryColor(d.name, i) }} />
                     <span className="text-[var(--tx2)]">{d.name}</span>
                   </span>
                   <span className="font-medium text-[var(--tx)]">₹{d.value.toLocaleString()}</span>
@@ -303,14 +420,32 @@ export function Expenses() {
             <div className="p-5 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Category *</label>
-                  <select name="category" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                  >
                     {Object.keys(CATEGORY_COLORS).map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value="manual_entry">Manual Entry</option>
                   </select>
                 </div>
                 <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Amount (₹) *</label>
                   <input type="number" name="amount" required className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="15000" />
                 </div>
               </div>
+              {selectedCategory === 'manual_entry' && (
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Custom Category *</label>
+                  <input
+                    type="text"
+                    required
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    placeholder="e.g. Office Supplies"
+                  />
+                </div>
+              )}
               <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Description *</label>
                 <input name="description" required className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Describe the expense..." />
               </div>
