@@ -152,7 +152,9 @@ export function Salary() {
       setPayroll([...mockSalaries, ...mapped]);
       // MOCK DATA END
 
-      const mappedStaff = STAFF.map((s) => ({
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
+      const mappedStaff = currentStaffList.map((s: any) => ({
         id: s.id,
         name: s.name,
         subject: s.subject || s.designation || 'Staff',
