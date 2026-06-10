@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { BadgeIcon, CheckCircle, XCircle, Wallet, Lock, Plus, Loader2, Edit2, Trash2, X, Search } from 'lucide-react';
+import { BadgeIcon, CheckCircle, XCircle, Wallet, Lock, Plus, Loader2, Edit2, Trash2, X, Search, CheckCircle2, FileText } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { api } from '../services/api';
+import { STAFF, StaffMember } from './StaffManagement';
+import { useApp } from '../context/AppContext';
 
 interface FacultyMember {
   id: string;
@@ -45,10 +47,10 @@ const tooltipStyle = {
   color: 'var(--tx)',
 };
 
-const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'Library'];
-const DESIGNATIONS = ['Senior Teacher', 'Teacher', 'PT Teacher', 'Librarian', 'Head of Dept'];
+
 
 export function Faculty() {
+  const { timetable } = useApp();
   const [faculty, setFaculty] = useState<FacultyMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -56,26 +58,112 @@ export function Faculty() {
   const [selected, setSelected] = useState<FacultyMember | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  const [customDocs, setCustomDocs] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
+
+  const getTeacherClasses = (teacherName: string, teacherId: string) => {
+    const assignedClasses = new Set<string>();
+    try {
+      Object.entries(timetable || {}).forEach(([className, days]) => {
+        Object.values(days || {}).forEach((periods) => {
+          Object.values(periods || {}).forEach((period) => {
+            if (period && (String(period.teacherId) === String(teacherId) || period.teacher.toLowerCase() === teacherName.toLowerCase())) {
+              assignedClasses.add(className);
+            }
+          });
+        });
+      });
+    } catch (err) {
+      console.error('Error parsing timetable classes:', err);
+    }
+    return assignedClasses.size > 0 ? Array.from(assignedClasses).join(', ') : 'N/A';
+  };
+
+  const normalizeName = (name: string) => {
+    if (!name || typeof name !== 'string') return '';
+    return name
+      .toLowerCase()
+      .replace(/^(mr|mrs|ms|dr)\.?\s+/i, '')
+      .replace(/[^a-z0-9]/g, '')
+      .trim();
+  };
+
   const loadFaculty = async () => {
     setLoading(true);
     try {
-      const users = await api.getResources('faculty');
-      const mapped = users.map((u: any) => {
-        const initials = collectInitials(u.name);
+      let currentStaffList: any[] = [];
+      try {
+        const savedStaffStr = localStorage.getItem('kts_staff_members');
+        if (savedStaffStr) {
+          const parsed = JSON.parse(savedStaffStr);
+          if (Array.isArray(parsed)) {
+            currentStaffList = parsed;
+          } else {
+            currentStaffList = STAFF;
+          }
+        } else {
+          currentStaffList = STAFF;
+        }
+      } catch (err) {
+        console.error('Error parsing kts_staff_members from localStorage:', err);
+        currentStaffList = STAFF;
+      }
+
+      const teachingStaff = currentStaffList.filter((s: any) => {
+        const cat = (s.category || 'Teaching').toString().trim().toLowerCase();
+        const desig = (s.designation || '').toString().trim().toLowerCase();
+        if (cat === 'non-teaching' || cat.includes('non-teach')) {
+          return false;
+        }
+        return cat === 'teaching' || cat.includes('teach') || desig.includes('teacher');
+      });
+
+      const mappedLocal: FacultyMember[] = teachingStaff.map((s: any) => {
         return {
-          id: String(u.id),
-          name: u.name,
-          email: u.email || '',
-          phone: u.phone || '',
-          init: initials,
-          subject: u.subject || 'Academics',
-          classes: Array.isArray(u.classes) ? u.classes.join(', ') : u.classes || 'N/A',
-          designation: u.department || 'Teacher',
-          att: u.attendance_percentage || 95,
-          present: u.is_present ?? true,
+          id: String(s.id),
+          name: s.name,
+          email: s.email || '',
+          phone: s.phone || '',
+          init: collectInitials(s.name),
+          subject: s.subject || 'Academics',
+          classes: getTeacherClasses(s.name, String(s.id)),
+          designation: s.designation || 'Teacher',
+          att: s.attendance || 95,
+          present: s.status === 'Active',
         };
       });
-      setFaculty(mapped);
+
+      let mappedApi: FacultyMember[] = [];
+      try {
+        const users = await api.getResources('faculty');
+        mappedApi = users.map((u: any) => {
+          const initials = collectInitials(u.name);
+          return {
+            id: String(u.id),
+            name: u.name,
+            email: u.email || '',
+            phone: u.phone || '',
+            init: initials,
+            subject: u.subject || 'Academics',
+            classes: getTeacherClasses(u.name, String(u.id)),
+            designation: u.department || 'Teacher',
+            att: u.attendance_percentage || 95,
+            present: u.is_present ?? true,
+          };
+        });
+      } catch (apiErr) {
+        console.error('Error loading faculty from API:', apiErr);
+      }
+
+      const uniqueApi = mappedApi.filter(
+        (am) => !mappedLocal.some((lm) => {
+          const normLm = normalizeName(lm.name);
+          const normAm = normalizeName(am.name);
+          return normLm === normAm || String(lm.id) === String(am.id);
+        })
+      );
+
+      setFaculty([...mappedLocal, ...uniqueApi]);
     } catch (err) {
       console.error('Error loading faculty:', err);
     } finally {
@@ -85,11 +173,40 @@ export function Faculty() {
 
   useEffect(() => {
     loadFaculty();
-  }, []);
+  }, [timetable]);
+
+  useEffect(() => {
+    if (modal === 'edit' && selected) {
+      try {
+        const savedStaffStr = localStorage.getItem('kts_staff_members');
+        if (savedStaffStr) {
+          const parsed = JSON.parse(savedStaffStr);
+          if (Array.isArray(parsed)) {
+            const selectedStaff = parsed.find(
+              (s) => String(s.id) === String(selected.id) || s.name.toLowerCase() === selected.name.toLowerCase()
+            );
+            if (selectedStaff) {
+              const standardDocs = ['Aadhar Card', 'Degree Certificate', 'Experience Letter'];
+              const staffDocs = selectedStaff.documents || [];
+              const customOnes = staffDocs.filter((d: string) => !standardDocs.includes(d));
+              setCustomDocs(customOnes);
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    setCustomDocs([]);
+    setUploadedFiles({});
+  }, [modal, selected]);
 
   const collectInitials = (name: string) => {
+    if (!name || typeof name !== 'string') return 'SM';
     return name
-      .split(' ')
+      .trim()
+      .split(/\s+/)
       .map((n) => n[0] ?? '')
       .join('')
       .toUpperCase()
@@ -99,43 +216,156 @@ export function Faculty() {
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const firstName = fd.get('firstName') as string;
-    const lastName = fd.get('lastName') as string;
+    const fullName = (fd.get('name') as string) || '';
+    const email = (fd.get('email') as string) || '';
+    const phone = (fd.get('phone') as string) || '';
+    const designation = (fd.get('designation') as string) || 'Teacher';
+    const department = (fd.get('department') as string) || 'Mathematics';
+    const subject = (fd.get('subject') as string) || 'Mathematics';
+    const joinDate = (fd.get('joinDate') as string) || new Date().toISOString().slice(0, 10);
+    const salary = Number(fd.get('salary')) || 45000;
+    const qualifications = (fd.get('qualifications') as string) || 'B.Ed';
+    const password = (fd.get('password') as string) || 'password';
+
     const data: any = {
-      name: `${firstName} ${lastName}`,
-      email: fd.get('email'),
-      phone: fd.get('phone'),
-      department: fd.get('designation'),
-      subject: fd.get('subject'),
+      name: fullName,
+      email: email,
+      phone: phone,
+      department: department,
+      subject: subject,
       status: 'active',
+      password: password,
     };
 
-    if (modal === 'add') {
-      data.password = fd.get('password') || 'password';
-    }
+    let savedId = 'staff-' + Date.now();
 
     try {
       if (modal === 'add') {
-        await api.createResource('faculty', data);
+        const res = await api.createResource('faculty', data);
+        if (res && res.id) {
+          savedId = String(res.id);
+        }
       } else if (modal === 'edit' && selected) {
         await api.updateResource('faculty', selected.id, data);
+        savedId = selected.id;
       }
-      setModal(null);
-      loadFaculty();
     } catch (err) {
-      console.error('Error saving faculty member:', err);
+      console.error('Error saving faculty member to API:', err);
     }
+
+    try {
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      const currentStaffList: StaffMember[] = savedStaffStr ? JSON.parse(savedStaffStr) : [...STAFF];
+
+      const documentsVal = [
+        'Aadhar Card',
+        'Degree Certificate',
+        'Experience Letter',
+        ...customDocs
+      ];
+
+      if (modal === 'add') {
+        const newStaff: StaffMember = {
+          id: savedId,
+          name: fullName,
+          designation: designation,
+          department: department,
+          category: 'Teaching',
+          subject: subject,
+          phone: phone,
+          email: email,
+          joinDate: joinDate,
+          attendance: 100,
+          status: 'Active',
+          salary: salary,
+          qualifications: qualifications,
+          documents: documentsVal,
+        };
+        currentStaffList.unshift(newStaff);
+      } else if (modal === 'edit' && selected) {
+        const idx = currentStaffList.findIndex((s) => String(s.id) === String(selected.id) || s.name.toLowerCase() === selected.name.toLowerCase());
+        if (idx !== -1) {
+          currentStaffList[idx] = {
+            ...currentStaffList[idx],
+            id: savedId,
+            name: fullName,
+            email: email,
+            phone: phone,
+            designation: designation,
+            department: department,
+            subject: subject,
+            joinDate: joinDate,
+            salary: salary,
+            qualifications: qualifications,
+            documents: documentsVal,
+          };
+        } else {
+          const newStaff: StaffMember = {
+            id: savedId,
+            name: fullName,
+            designation: designation,
+            department: department,
+            category: 'Teaching',
+            subject: subject,
+            phone: phone,
+            email: email,
+            joinDate: joinDate,
+            attendance: selected.att,
+            status: selected.present ? 'Active' : 'On Leave',
+            salary: salary,
+            qualifications: qualifications,
+            documents: documentsVal,
+          };
+          currentStaffList.unshift(newStaff);
+        }
+      }
+      localStorage.setItem('kts_staff_members', JSON.stringify(currentStaffList));
+
+      // Save credentials to kts_staff_access so it shows up in Staff Access tab
+      const savedAccessStr = localStorage.getItem('kts_staff_access');
+      const accessRecords = savedAccessStr ? JSON.parse(savedAccessStr) : {};
+      accessRecords[savedId] = {
+        staffId: savedId,
+        email: email,
+        isActive: true,
+        hasAccess: true,
+      };
+      localStorage.setItem('kts_staff_access', JSON.stringify(accessRecords));
+
+    } catch (err) {
+      console.error('Error saving faculty member to localStorage:', err);
+    }
+
+    setModal(null);
+    loadFaculty();
   };
 
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
     try {
       await api.deleteResource('faculty', deleteConfirmId);
-      setDeleteConfirmId(null);
-      loadFaculty();
     } catch (err) {
-      console.error('Error deleting faculty:', err);
+      console.error('Error deleting faculty from API:', err);
     }
+
+    try {
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      if (savedStaffStr) {
+        const currentStaffList: StaffMember[] = JSON.parse(savedStaffStr);
+        const selectedToDelete = faculty.find(f => f.id === deleteConfirmId);
+        const filtered = currentStaffList.filter((s) => {
+          if (String(s.id) === String(deleteConfirmId)) return false;
+          if (selectedToDelete && s.name.toLowerCase() === selectedToDelete.name.toLowerCase()) return false;
+          return true;
+        });
+        localStorage.setItem('kts_staff_members', JSON.stringify(filtered));
+      }
+    } catch (err) {
+      console.error('Error deleting faculty from localStorage:', err);
+    }
+
+    setDeleteConfirmId(null);
+    loadFaculty();
   };
 
   const filtered = faculty.filter((f) => {
@@ -179,7 +409,12 @@ export function Faculty() {
         />
         <KPICard
           label="Monthly Payroll"
-          value="₹3.8L"
+          value={`₹${((faculty.reduce((sum, f) => {
+            const savedStaffStr = localStorage.getItem('kts_staff_members');
+            const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
+            const staff = currentStaffList.find((s: any) => s.name.toLowerCase() === f.name.toLowerCase());
+            return sum + (staff?.salary || 45000);
+          }, 0)) / 100000).toFixed(1)}L`}
           sub="Due end of month"
           icon={<Wallet size={15} />}
           iconBg="var(--amber-bg)"
@@ -310,124 +545,327 @@ export function Faculty() {
       </div>
 
       {/* Add / Edit Faculty Modal */}
-      {(modal === 'add' || modal === 'edit') && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleSave} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[500px] shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-[var(--b)] sticky top-0 bg-[var(--surf)] z-10">
-              <div>
-                <div className="text-[14px] font-bold text-[var(--tx)]">
-                  {modal === 'add' ? 'Add New Faculty Member' : 'Edit Faculty Details'}
-                </div>
-                <div className="text-[12px] text-[var(--tx3)]">Fill in the teacher's profile details</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setModal(null)}
-                className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {(modal === 'add' || modal === 'edit') && (() => {
+        // Load details from kts_staff_members for prepopulating
+        let selectedStaff: any = null;
+        if (selected) {
+          try {
+            const savedStaffStr = localStorage.getItem('kts_staff_members');
+            if (savedStaffStr) {
+              const parsed = JSON.parse(savedStaffStr);
+              if (Array.isArray(parsed)) {
+                selectedStaff = parsed.find(
+                  (s) => String(s.id) === String(selected.id) || s.name.toLowerCase() === selected.name.toLowerCase()
+                );
+              }
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        return (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <form onSubmit={handleSave} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[500px] shadow-2xl overflow-y-auto max-h-[90vh]">
+              <div className="flex items-center justify-between p-5 border-b border-[var(--b)] sticky top-0 bg-[var(--surf)] z-10">
                 <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">First Name *</label>
-                  <input
-                    name="firstName"
-                    required
-                    defaultValue={selected?.name.split(' ')[0] ?? ''}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
-                    placeholder="Lakshmi"
-                  />
+                  <div className="text-[14px] font-bold text-[var(--tx)]">
+                    {modal === 'add' ? 'Add New Faculty Member' : 'Edit Faculty Details'}
+                  </div>
+                  <div className="text-[12px] text-[var(--tx3)]">Fill in the teacher's profile details</div>
                 </div>
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Last Name *</label>
-                  <input
-                    name="lastName"
-                    required
-                    defaultValue={selected?.name.split(' ').slice(1).join(' ') ?? ''}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
-                    placeholder="Devi"
-                  />
+                <button
+                  type="button"
+                  onClick={() => setModal(null)}
+                  className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Full Name *</label>
+                    <input
+                      name="name"
+                      required
+                      defaultValue={selected?.name ?? ''}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      placeholder="Mrs. Lakshmi Devi"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Designation *</label>
+                    <input
+                      name="designation"
+                      required
+                      defaultValue={selected?.designation ?? 'Teacher'}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      placeholder="Senior Teacher"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Phone *</label>
+                    <input
+                      name="phone"
+                      required
+                      defaultValue={selected?.phone ?? ''}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      placeholder="9876543210"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Join Date</label>
+                    <input
+                      name="joinDate"
+                      type="date"
+                      defaultValue={selectedStaff?.joinDate || new Date().toISOString().slice(0, 10)}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Department *</label>
+                    <select
+                      name="department"
+                      defaultValue={selectedStaff?.department || selected?.designation || 'Mathematics'}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                    >
+                      <option>Mathematics</option>
+                      <option>Science</option>
+                      <option>English</option>
+                      <option>Languages</option>
+                      <option>Social Sciences</option>
+                      <option>Sports</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject(s)</label>
+                    <input
+                      name="subject"
+                      defaultValue={selected?.subject ?? ''}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      placeholder="Physics, Chemistry"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Email Address *</label>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      defaultValue={selected?.email ?? ''}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      placeholder="teacher@krishnaveni.edu"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Password *</label>
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      defaultValue="password"
+                      placeholder="••••••••"
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Monthly Salary (₹)</label>
+                    <input
+                      name="salary"
+                      type="number"
+                      defaultValue={selectedStaff?.salary || 45000}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Qualifications</label>
+                    <input
+                      name="qualifications"
+                      defaultValue={selectedStaff?.qualifications || 'B.Ed'}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      placeholder="M.Sc, B.Ed"
+                    />
+                  </div>
+                </div>
+
+                {/* Documents Required */}
+                <div className="border-t border-[var(--b)] pt-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)]">Documents Required</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const docName = prompt("Enter the name of the other document:");
+                        if (docName && docName.trim()) {
+                          setCustomDocs(prev => [...prev, docName.trim()]);
+                        }
+                      }}
+                      className="flex items-center gap-1 text-[10.5px] text-[var(--blue-tx)] hover:underline cursor-pointer"
+                    >
+                      <Plus size={10} /> Add Other Document
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Standard Docs for Teaching Category */}
+                    {['Aadhar Card', 'Degree Certificate', 'Experience Letter'].map((doc) => {
+                      const file = uploadedFiles[doc];
+                      return (
+                        <div
+                          key={doc}
+                          onClick={() => {
+                            const input = document.getElementById(`faculty-file-input-${doc}`);
+                            if (input) input.click();
+                          }}
+                          className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${
+                            file
+                              ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
+                              : 'border-[var(--b)] bg-[var(--surf2)]/20 hover:border-[var(--blue)]'
+                          }`}
+                        >
+                          <input
+                            id={`faculty-file-input-${doc}`}
+                            type="file"
+                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                const selectedFile = e.target.files[0];
+                                setUploadedFiles(prev => ({
+                                  ...prev,
+                                  [doc]: selectedFile
+                                }));
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          {file ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setUploadedFiles(prev => {
+                                    const next = { ...prev };
+                                    delete next[doc];
+                                    return next;
+                                  });
+                                }}
+                                className="absolute top-1 right-1 p-0.5 rounded-full hover:bg-[var(--surf2)] text-[var(--red)] cursor-pointer flex items-center justify-center z-10"
+                                title="Delete File"
+                              >
+                                <X size={10} />
+                              </button>
+                              <CheckCircle2 size={14} className="text-[var(--teal)] mx-auto mb-1" />
+                              <div className="text-[10.5px] text-[var(--tx)] font-semibold truncate px-1">{doc}</div>
+                              <div className="text-[9px] text-[var(--tx3)] truncate px-1">{file.name}</div>
+                            </>
+                          ) : (
+                            <>
+                              <FileText size={14} className="text-[var(--tx3)] mx-auto mb-1" />
+                              <div className="text-[10.5px] text-[var(--tx3)] font-medium">{doc}</div>
+                              <div className="text-[9px] text-[var(--tx3)] opacity-60">Click to upload</div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {/* Custom Docs */}
+                    {customDocs.map((doc, index) => {
+                      const file = uploadedFiles[doc];
+                      return (
+                        <div
+                          key={doc + '-' + index}
+                          onClick={() => {
+                            const input = document.getElementById(`faculty-file-input-${doc}`);
+                            if (input) input.click();
+                          }}
+                          className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${
+                            file
+                              ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
+                              : 'border-[var(--blue)] bg-[var(--blue-bg)]/10 hover:border-[var(--blue)]'
+                          }`}
+                        >
+                          <input
+                            id={`faculty-file-input-${doc}`}
+                            type="file"
+                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                const selectedFile = e.target.files[0];
+                                setUploadedFiles(prev => ({
+                                  ...prev,
+                                  [doc]: selectedFile
+                                }));
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCustomDocs(prev => prev.filter((_, idx) => idx !== index));
+                              setUploadedFiles(prev => {
+                                const next = { ...prev };
+                                delete next[doc];
+                                return next;
+                              });
+                            }}
+                            className="absolute top-1 right-1 p-0.5 rounded-full hover:bg-[var(--surf2)] text-[var(--red)] cursor-pointer flex items-center justify-center z-10"
+                            title="Remove Document"
+                          >
+                            <X size={10} />
+                          </button>
+                          {file ? (
+                            <>
+                              <CheckCircle2 size={14} className="text-[var(--teal)] mx-auto mb-1" />
+                              <div className="text-[10.5px] text-[var(--tx)] font-semibold truncate px-2">{doc}</div>
+                              <div className="text-[9px] text-[var(--tx3)] truncate px-2">{file.name}</div>
+                            </>
+                          ) : (
+                            <>
+                              <FileText size={14} className="text-[var(--blue-tx)] mx-auto mb-1" />
+                              <div className="text-[10.5px] text-[var(--tx2)] font-medium truncate px-2">{doc}</div>
+                              <div className="text-[9px] text-[var(--tx3)] opacity-60">Click to upload</div>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Email Address *</label>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  defaultValue={selected?.email ?? ''}
-                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
-                  placeholder="teacher@krishnaveni.edu"
-                />
+              <div className="flex gap-2 p-5 pt-0">
+                <button
+                  type="button"
+                  onClick={() => setModal(null)}
+                  className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold hover:opacity-90 cursor-pointer"
+                >
+                  {modal === 'add' ? 'Add Teacher' : 'Save Changes'}
+                </button>
               </div>
-              {modal === 'add' && (
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Password *</label>
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    defaultValue="password"
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
-                  />
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Primary Subject *</label>
-                  <select
-                    name="subject"
-                    defaultValue={selected?.subject ?? 'Mathematics'}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
-                  >
-                    {SUBJECTS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Designation *</label>
-                  <select
-                    name="designation"
-                    defaultValue={selected?.designation ?? 'Teacher'}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
-                  >
-                    {DESIGNATIONS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Phone Number</label>
-                <input
-                  name="phone"
-                  defaultValue={selected?.phone ?? ''}
-                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
-                  placeholder="9876543210"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 p-5 pt-0">
-              <button
-                type="button"
-                onClick={() => setModal(null)}
-                className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold hover:opacity-90 cursor-pointer"
-              >
-                {modal === 'add' ? 'Add Teacher' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        );
+      })()}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

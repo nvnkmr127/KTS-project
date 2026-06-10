@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
   Bus, BarChart2, Settings, School, MessageCircle,
-  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags,
+  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock,
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -51,8 +51,10 @@ const ADMIN_SECTIONS: NavSection[] = [
     label: 'Staff',
     items: [
       { icon: <BadgeIcon size={14} />, label: 'Staff Management', page: 'staff' },
+      { icon: <CalendarCheck size={14} />, label: 'Staff Attendance', page: 'staff-attendance' },
       { icon: <Clock size={14} />, label: 'Faculty', page: 'faculty' },
       { icon: <Calendar size={14} />, label: 'Leave', page: 'leave' },
+      { icon: <Lock size={14} />, label: 'Staff Access', page: 'staff-access' },
     ],
   },
   {

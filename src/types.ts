@@ -11,6 +11,8 @@ export type PageId =
   | 'reports'
   | 'students'
   | 'staff'
+  | 'staff-attendance'
+  | 'staff-access'
   | 'classes'
   | 'salary'
   | 'salary-categories'

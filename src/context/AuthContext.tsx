@@ -25,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (e) {
           console.error("Failed to refresh user profile:", e);
+          logout();
         }
       }
     }
@@ -39,6 +40,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     refreshUser();
   }, []);
+
+  // Poll server to check if user status has been changed to inactive while logged in
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.getMe();
+        if (res.user && res.user.status && res.user.status.toLowerCase() === 'inactive') {
+          logout();
+          alert('Account is inactive, contact admin.');
+        }
+      } catch (e: any) {
+        // If profile fetch fails (e.g. returns 403 Forbidden because account was set to inactive)
+        logout();
+        alert(e.message || 'Account is inactive, contact admin.');
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   const login = async (email: string, password: string) => {
     try {

@@ -25,6 +25,8 @@ import { Meetings } from './pages/Meetings';
 import { TeacherDashboard } from './pages/TeacherDashboard';
 import { Homework } from './pages/Homework';
 import { Timetable } from './pages/Timetable';
+import { StaffAttendance } from './pages/StaffAttendance';
+import { StaffAccess } from './pages/StaffAccess';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -38,12 +40,14 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   reports: '/reports',
   students: '/students',
   staff: '/staff-management',
+  'staff-attendance': '/staff-attendance',
   classes: '/classes',
   salary: '/salary',
   'salary-categories': '/salary-categories',
   expenses: '/expenses',
   whatsapp: '/whatsapp-center',
   leave: '/leave-management',
+  'staff-access': '/staff-access',
   exams: '/examination',
   meetings: '/parent-meetings',
   homework: '/homework',
@@ -149,12 +153,14 @@ function AppShell() {
           {page === 'reports' && <Reports />}
           {page === 'students' && <Students />}
           {page === 'staff' && <StaffManagement />}
+          {page === 'staff-attendance' && <StaffAttendance />}
           {page === 'classes' && <Classes />}
           {page === 'salary' && <Salary />}
           {page === 'salary-categories' && <SalaryCategories />}
           {page === 'expenses' && <Expenses />}
           {page === 'whatsapp' && <WhatsApp />}
           {page === 'leave' && <Leave />}
+          {page === 'staff-access' && <StaffAccess />}
           {page === 'exams' && <Examinations />}
           {page === 'meetings' && <Meetings />}
           {page === 'timetable' && <Timetable />}

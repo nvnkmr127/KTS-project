@@ -210,6 +210,11 @@ export function TeacherDashboard() {
                       <div className="text-[12px] font-semibold text-[var(--tx)]">{l.type}</div>
                       <div className="text-[11px] text-[var(--tx3)]">{l.from} → {l.to} · {l.days} day{l.days > 1 ? 's' : ''}</div>
                       <div className="text-[11px] text-[var(--tx3)] mt-0.5 truncate max-w-[220px]">{l.reason}</div>
+                      {l.status === 'Rejected' && l.adminNotes && (
+                        <div className="text-[10px] text-[var(--red-tx)] bg-[var(--red-bg)] px-2 py-0.5 rounded border border-[var(--red-tx)]/10 mt-1 max-w-[220px] truncate" title={l.adminNotes}>
+                          Reason: {l.adminNotes}
+                        </div>
+                      )}
                     </div>
                     <div className="flex-shrink-0">
                       {l.status === 'Approved' && <Badge variant="teal">Approved</Badge>}

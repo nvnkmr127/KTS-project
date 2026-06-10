@@ -13,6 +13,7 @@ export interface LeaveRequest {
   reason: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   appliedOn: string;
+  adminNotes?: string;
 }
 
 export interface Notification {
@@ -125,7 +126,7 @@ interface AppContextValue {
   timetable: SchoolTimetable;
   addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'appliedOn'>) => Promise<void>;
   approveLeave: (id: string) => Promise<void>;
-  rejectLeave: (id: string) => Promise<void>;
+  rejectLeave: (id: string, notes?: string) => Promise<void>;
   markNotificationsRead: () => void;
   setTimetablePeriod: (className: string, day: string, periodIndex: number, period: TimetablePeriod | null) => void;
 }
@@ -161,6 +162,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           reason: d.reason || '',
           status: d.status || 'Pending',
           appliedOn: d.created_at ? d.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+          adminNotes: d.admin_notes || '',
         }));
         setLeaveRequests(mappedLeaves);
 
@@ -245,6 +247,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: String(res.id),
         appliedOn: new Date().toISOString().slice(0, 10),
         status: 'Pending',
+        adminNotes: '',
       };
       setLeaveRequests((prev) => [newReq, ...prev]);
 
@@ -285,18 +288,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const rejectLeave = async (id: string) => {
+  const rejectLeave = async (id: string, notes?: string) => {
     try {
-      await api.updateResource('leaves', id, { status: 'Rejected' });
+      await api.updateResource('leaves', id, { status: 'Rejected', admin_notes: notes });
       setLeaveRequests((prev) =>
-        prev.map((l) => (l.id === id ? { ...l, status: 'Rejected' } : l))
+        prev.map((l) => (l.id === id ? { ...l, status: 'Rejected', adminNotes: notes } : l))
       );
       const req = leaveRequests.find((l) => l.id === id);
       if (req) {
         const notif: Notification = {
           id: 'nr' + id,
           type: 'leave_rejected',
-          message: `Your ${req.type} request has been rejected`,
+          message: `Your ${req.type} request has been rejected.${notes ? ` Reason: ${notes}` : ''}`,
           time: 'Just now',
           read: false,
           refId: id,

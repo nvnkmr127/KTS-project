@@ -7,6 +7,7 @@ import { Avatar } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { formatDate } from '../utils/date';
+import { STAFF } from './StaffManagement';
 
 const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
   SR: { bg: 'var(--red-bg)', color: 'var(--red-tx)' },
@@ -34,8 +35,47 @@ export function Leave() {
   const [applyTo, setApplyTo] = useState('');
   const [applyReason, setApplyReason] = useState('');
 
+  // Rejection modal states
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectionMessage, setRejectionMessage] = useState('');
+
+  const handleRejectClick = (id: string) => {
+    setRejectingId(id);
+    setRejectionMessage('');
+    setRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = () => {
+    if (!rejectingId) return;
+    rejectLeave(rejectingId, rejectionMessage);
+    setRejectModalOpen(false);
+    setRejectingId(null);
+    setRejectionMessage('');
+  };
+
+  // Load staff list to filter leaves by staff present in the staff directory
+  const staffList = (() => {
+    const saved = localStorage.getItem('kts_staff_members');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter(Boolean);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return STAFF.filter(Boolean);
+  })();
+
   const visibleRequests = isAdmin
-    ? leaveRequests
+    ? leaveRequests.filter((l) =>
+        staffList.some(
+          (s) => (s.name || '').toLowerCase() === (l.staffName || '').toLowerCase()
+        )
+      )
     : leaveRequests.filter((l) => l.staffId === user?.id);
 
   const pending = leaveRequests.filter((l) => l.status === 'Pending').length;
@@ -105,6 +145,11 @@ export function Leave() {
                       </div>
                       <div className="text-[11.5px] text-[var(--tx2)]">{formatDate(l.from)} → {formatDate(l.to)} <span className="text-[var(--tx3)]">({l.days} day{l.days > 1 ? 's' : ''})</span></div>
                       <div className="text-[11px] text-[var(--tx3)] truncate mt-0.5">{l.reason}</div>
+                      {l.status === 'Rejected' && l.adminNotes && (
+                        <div className="text-[10.5px] text-[var(--red-tx)] bg-[var(--red-bg)] px-2.5 py-1 rounded-lg border border-[var(--red-tx)]/10 mt-1.5 max-w-md">
+                          <span className="font-semibold">Reason for Rejection:</span> {l.adminNotes}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-1.5 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 border-[var(--b)] sm:border-none flex-shrink-0">
@@ -114,7 +159,7 @@ export function Leave() {
                     {isAdmin && l.status === 'Pending' && (
                       <div className="flex gap-1">
                         <button onClick={() => approveLeave(l.id)} className="px-2 py-0.5 text-[10.5px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium hover:opacity-80">Approve</button>
-                        <button onClick={() => rejectLeave(l.id)} className="px-2 py-0.5 text-[10.5px] bg-[var(--red-bg)] text-[var(--red-tx)] rounded-lg cursor-pointer font-medium hover:opacity-80">Reject</button>
+                        <button onClick={() => handleRejectClick(l.id)} className="px-2 py-0.5 text-[10.5px] bg-[var(--red-bg)] text-[var(--red-tx)] rounded-lg cursor-pointer font-medium hover:opacity-80">Reject</button>
                       </div>
                     )}
                   </div>
@@ -214,6 +259,44 @@ export function Leave() {
                 className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer disabled:opacity-50"
               >
                 Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Leave Request Modal */}
+      {rejectModalOpen && rejectingId && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Reject Leave Request</div>
+                <div className="text-[11.5px] text-[var(--tx3)] mt-0.5">Please provide a reason for rejecting this leave application.</div>
+              </div>
+              <button onClick={() => { setRejectModalOpen(false); setRejectingId(null); }} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Rejection Message / Reason *</label>
+                <textarea
+                  required
+                  value={rejectionMessage}
+                  onChange={(e) => setRejectionMessage(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none resize-none focus:border-[var(--blue)]"
+                  rows={3}
+                  placeholder="Enter rejection reason..."
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button onClick={() => { setRejectModalOpen(false); setRejectingId(null); }} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button
+                onClick={handleConfirmReject}
+                disabled={!rejectionMessage.trim()}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-[12.5px] font-semibold cursor-pointer disabled:opacity-50 hover:bg-red-700 transition-colors"
+              >
+                Reject Request
               </button>
             </div>
           </div>

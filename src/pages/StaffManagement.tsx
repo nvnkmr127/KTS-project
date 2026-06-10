@@ -16,6 +16,7 @@ export interface StaffMember {
   name: string;
   designation: string;
   department: string;
+  category: string;
   subject?: string;
   phone: string;
   email: string;
@@ -24,16 +25,17 @@ export interface StaffMember {
   status: 'Active' | 'On Leave' | 'Resigned';
   salary: number;
   qualifications: string;
+  documents?: string[];
 }
 
 export const STAFF: StaffMember[] = [
-  { id: '1', name: 'Mrs. Lakshmi Devi', designation: 'Senior Teacher', department: 'Mathematics', subject: 'Maths', phone: '9876501234', email: 'lakshmi@krishnaveni.edu', joinDate: '2015-06-01', attendance: 96, status: 'Active', salary: 62000, qualifications: 'M.Sc Mathematics, B.Ed' },
-  { id: '2', name: 'Mr. Venkat Rao', designation: 'Teacher', department: 'Science', subject: 'Physics, Chemistry', phone: '9876502345', email: 'venkat@krishnaveni.edu', joinDate: '2017-06-01', attendance: 92, status: 'Active', salary: 58000, qualifications: 'M.Sc Physics, B.Ed' },
-  { id: '3', name: 'Mrs. Suma Reddy', designation: 'Teacher', department: 'English', subject: 'English', phone: '9876503456', email: 'suma@krishnaveni.edu', joinDate: '2018-06-01', attendance: 88, status: 'On Leave', salary: 55000, qualifications: 'MA English, B.Ed' },
-  { id: '4', name: 'Mr. Raju Sharma', designation: 'Teacher', department: 'Languages', subject: 'Telugu, Hindi', phone: '9876504567', email: 'raju@krishnaveni.edu', joinDate: '2016-06-01', attendance: 94, status: 'Active', salary: 48000, qualifications: 'MA Telugu, B.Ed' },
-  { id: '5', name: 'Mrs. Savitha Kumar', designation: 'Teacher', department: 'Social Sciences', subject: 'History, Geography', phone: '9876505678', email: 'savitha@krishnaveni.edu', joinDate: '2019-06-01', attendance: 90, status: 'Active', salary: 45000, qualifications: 'MA History, B.Ed' },
-  { id: '6', name: 'Mr. Prakash Nair', designation: 'Physical Education', department: 'Sports', phone: '9876506789', email: 'prakash@krishnaveni.edu', joinDate: '2020-06-01', attendance: 98, status: 'Active', salary: 40000, qualifications: 'B.P.Ed' },
-  { id: '7', name: 'Mrs. Radha Krishnan', designation: 'Lab Assistant', department: 'Science', phone: '9876507890', email: 'radha@krishnaveni.edu', joinDate: '2021-06-01', attendance: 95, status: 'Active', salary: 30000, qualifications: 'B.Sc' },
+  { id: '1', name: 'Mrs. Lakshmi Devi', designation: 'Senior Teacher', department: 'Mathematics', category: 'Teaching', subject: 'Maths', phone: '9876501234', email: 'lakshmi@krishnaveni.edu', joinDate: '2015-06-01', attendance: 96, status: 'Active', salary: 62000, qualifications: 'M.Sc Mathematics, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '2', name: 'Mr. Venkat Rao', designation: 'Teacher', department: 'Science', category: 'Teaching', subject: 'Physics, Chemistry', phone: '9876502345', email: 'venkat@krishnaveni.edu', joinDate: '2017-06-01', attendance: 92, status: 'Active', salary: 58000, qualifications: 'M.Sc Physics, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '3', name: 'Mrs. Suma Reddy', designation: 'Teacher', department: 'English', category: 'Teaching', subject: 'English', phone: '9876503456', email: 'suma@krishnaveni.edu', joinDate: '2018-06-01', attendance: 88, status: 'On Leave', salary: 55000, qualifications: 'MA English, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '4', name: 'Mr. Raju Sharma', designation: 'Teacher', department: 'Languages', category: 'Teaching', subject: 'Telugu, Hindi', phone: '9876504567', email: 'raju@krishnaveni.edu', joinDate: '2016-06-01', attendance: 94, status: 'Active', salary: 48000, qualifications: 'MA Telugu, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '5', name: 'Mrs. Savitha Kumar', designation: 'Teacher', department: 'Social Sciences', category: 'Teaching', subject: 'History, Geography', phone: '9876505678', email: 'savitha@krishnaveni.edu', joinDate: '2019-06-01', attendance: 90, status: 'Active', salary: 45000, qualifications: 'MA History, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '6', name: 'Mr. Prakash Nair', designation: 'Physical Education', department: 'Sports', category: 'Teaching', phone: '9876506789', email: 'prakash@krishnaveni.edu', joinDate: '2020-06-01', attendance: 98, status: 'Active', salary: 40000, qualifications: 'B.P.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '7', name: 'Mrs. Radha Krishnan', designation: 'Lab Assistant', department: 'Science', category: 'Non-Teaching', phone: '9876507890', email: 'radha@krishnaveni.edu', joinDate: '2021-06-01', attendance: 95, status: 'Active', salary: 30000, qualifications: 'B.Sc', documents: ['Aadhar Card', 'Degree Certificate'] },
 ];
 
 const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
@@ -56,20 +58,52 @@ export function StaffManagement() {
 
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
+  const [catFilter, setCatFilter] = useState('All');
   const [modal, setModal] = useState<ModalState>(null);
   const [importOpen, setImportOpen] = useState(false);
+
+  const [selectedCategory, setSelectedCategory] = useState('Teaching');
+  const [customCategory, setCustomCategory] = useState('');
+  const [customDocs, setCustomDocs] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
 
   useEffect(() => {
     localStorage.setItem('kts_staff_members', JSON.stringify(staffList));
   }, [staffList]);
 
+  useEffect(() => {
+    if (modal && modal.staff) {
+      const cat = modal.staff.category || 'Teaching';
+      const standards = ['Teaching', 'Non-Teaching', 'House Keeping', 'Driver', 'Cleaner', 'Watchman'];
+      if (standards.includes(cat)) {
+        setSelectedCategory(cat);
+        setCustomCategory('');
+      } else {
+        setSelectedCategory('manual_entry');
+        setCustomCategory(cat);
+      }
+
+      const standardDocs = getDocsForCategory(cat);
+      const staffDocs = modal.staff.documents || [];
+      const customOnes = staffDocs.filter(d => !standardDocs.includes(d));
+      setCustomDocs(customOnes);
+    } else {
+      setSelectedCategory('Teaching');
+      setCustomCategory('');
+      setCustomDocs([]);
+      setUploadedFiles({});
+    }
+  }, [modal]);
+
   const filtered = staffList.filter((s) => {
     const matchSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.designation.toLowerCase().includes(search.toLowerCase()) ||
-      s.department.toLowerCase().includes(search.toLowerCase());
+      s.department.toLowerCase().includes(search.toLowerCase()) ||
+      s.category.toLowerCase().includes(search.toLowerCase());
     const matchDept = deptFilter === 'All' || s.department === deptFilter;
-    return matchSearch && matchDept;
+    const matchCat = catFilter === 'All' || s.category === catFilter;
+    return matchSearch && matchDept && matchCat;
   });
 
   const active = staffList.filter((s) => s.status === 'Active').length;
@@ -81,13 +115,19 @@ export function StaffManagement() {
     const fd = new FormData(e.currentTarget);
     const nameVal = fd.get('name') as string;
     const designationVal = fd.get('designation') as string;
-    const departmentVal = fd.get('department') as string;
-    const subjectVal = fd.get('subject') as string;
+    const departmentVal = (fd.get('department') as string) || 'Mathematics';
+    const subjectVal = (fd.get('subject') as string) || '';
     const phoneVal = fd.get('phone') as string;
-    const emailVal = fd.get('email') as string;
+    const emailVal = (fd.get('email') as string) || '';
     const joinDateVal = fd.get('joinDate') as string;
     const salaryVal = parseFloat(fd.get('salary') as string) || 0;
-    const qualificationsVal = fd.get('qualifications') as string;
+    const qualificationsVal = (fd.get('qualifications') as string) || 'N/A';
+
+    const categoryVal = selectedCategory === 'manual_entry' ? customCategory.trim() : selectedCategory;
+    const documentsVal = [
+      ...getDocsForCategory(categoryVal || 'Teaching'),
+      ...customDocs
+    ];
 
     if (modal?.type === 'add') {
       const newStaff: StaffMember = {
@@ -95,6 +135,7 @@ export function StaffManagement() {
         name: nameVal,
         designation: designationVal,
         department: departmentVal,
+        category: categoryVal || 'Teaching',
         subject: subjectVal,
         phone: phoneVal,
         email: emailVal || `${nameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}@krishnaveni.edu`,
@@ -102,7 +143,8 @@ export function StaffManagement() {
         attendance: 100,
         status: 'Active',
         salary: salaryVal,
-        qualifications: qualificationsVal || 'N/A',
+        qualifications: qualificationsVal,
+        documents: documentsVal,
       };
       setStaffList(prev => [newStaff, ...prev]);
     } else if (modal?.type === 'edit' && modal.staff) {
@@ -111,12 +153,14 @@ export function StaffManagement() {
         name: nameVal,
         designation: designationVal,
         department: departmentVal,
+        category: categoryVal || 'Teaching',
         subject: subjectVal,
         phone: phoneVal,
         email: emailVal,
         joinDate: joinDateVal,
         salary: salaryVal,
         qualifications: qualificationsVal,
+        documents: documentsVal,
       } : s));
     }
     setModal(null);
@@ -126,6 +170,22 @@ export function StaffManagement() {
     if (confirm('Are you sure you want to remove this staff member?')) {
       setStaffList(prev => prev.filter(s => s.id !== id));
     }
+  };
+
+  const allCategories = Array.from(new Set(staffList.map(s => s.category || 'Teaching')));
+
+  const getDocsForCategory = (cat: string) => {
+    const common = ['Aadhar Card'];
+    if (cat === 'Teaching') {
+      return [...common, 'Degree Certificate', 'Experience Letter'];
+    }
+    if (cat === 'Non-Teaching') {
+      return [...common, 'Degree Certificate'];
+    }
+    if (cat === 'Driver') {
+      return [...common, 'Driving License Copy'];
+    }
+    return [...common, 'Police NOC / Verification'];
   };
 
   return (
@@ -153,11 +213,15 @@ export function StaffManagement() {
         <div className="flex flex-col sm:flex-row gap-2 mb-4">
           <div className="flex items-center gap-2 flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2">
             <Search size={13} className="text-[var(--tx3)]" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, department, designation..." className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, department, designation, category..." className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none" />
           </div>
           <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
             <option value="All">All Departments</option>
             {['Mathematics', 'Science', 'English', 'Languages', 'Social Sciences', 'Sports'].map((d) => <option key={d}>{d}</option>)}
+          </select>
+          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+            <option value="All">All Categories</option>
+            {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
@@ -180,7 +244,10 @@ export function StaffManagement() {
                         <Avatar initials={s.name.split(' ').map((n) => n[0]).join('').slice(0, 2)} bg={dc.bg} color={dc.color} />
                         <div>
                           <div className="font-semibold text-[var(--tx)]">{s.name}</div>
-                          <div className="text-[10.5px] text-[var(--tx3)]">{s.designation}</div>
+                          <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1.5">
+                            <span>{s.designation}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 bg-[var(--surf3)] border border-[var(--b)] rounded-full text-[var(--tx2)] font-medium">{s.category || 'Teaching'}</span>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -220,7 +287,7 @@ export function StaffManagement() {
       {modal && modal.type !== 'view' && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <form onSubmit={handleSave} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[540px] max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-[var(--b)] sticky top-0 bg-[var(--surf)]">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)] sticky top-0 bg-[var(--surf)] z-10">
               <div>
                 <div className="text-[14px] font-bold text-[var(--tx)]">{modal.type === 'add' ? 'Add New Staff' : 'Edit Staff Profile'}</div>
                 <div className="text-[12px] text-[var(--tx3)]">Fill in all staff details</div>
@@ -228,32 +295,308 @@ export function StaffManagement() {
               <button type="button" onClick={() => setModal(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-4">
+              {/* Category Selector on Top */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Full Name *</label><input name="name" required defaultValue={modal.staff?.name} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Mrs. Lakshmi Devi" /></div>
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Designation *</label><input name="designation" required defaultValue={modal.staff?.designation} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Senior Teacher" /></div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Staff Category *</label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                  >
+                    <option value="Teaching">Teaching</option>
+                    <option value="Non-Teaching">Non-Teaching</option>
+                    <option value="House Keeping">House Keeping</option>
+                    <option value="Driver">Driver</option>
+                    <option value="Cleaner">Cleaner</option>
+                    <option value="Watchman">Watchman</option>
+                    <option value="manual_entry">Manual Entry</option>
+                  </select>
+                </div>
+                {selectedCategory === 'manual_entry' && (
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Custom Category *</label>
+                    <input
+                      type="text"
+                      required
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      placeholder="e.g. Accountant"
+                    />
+                  </div>
+                )}
               </div>
+
+              {/* Common Fields for Every Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[var(--b)] pt-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Full Name *</label>
+                  <input name="name" required defaultValue={modal.staff?.name} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Mrs. Lakshmi Devi" />
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Designation *</label>
+                  <input name="designation" required defaultValue={modal.staff?.designation} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Senior Teacher" />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Department *</label><select name="department" defaultValue={modal.staff?.department} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"><option>Mathematics</option><option>Science</option><option>English</option><option>Languages</option><option>Social Sciences</option><option>Sports</option></select></div>
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject(s)</label><input name="subject" defaultValue={modal.staff?.subject} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Physics, Chemistry" /></div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Phone *</label>
+                  <input name="phone" required defaultValue={modal.staff?.phone} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="9876501234" />
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Join Date</label>
+                  <input name="joinDate" type="date" defaultValue={modal.staff?.joinDate || new Date().toISOString().slice(0, 10)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Phone *</label><input name="phone" required defaultValue={modal.staff?.phone} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" /></div>
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Email</label><input name="email" defaultValue={modal.staff?.email} type="email" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" /></div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Join Date</label><input name="joinDate" type="date" defaultValue={modal.staff?.joinDate} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" /></div>
-                <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Monthly Salary (₹)</label><input name="salary" type="number" defaultValue={modal.staff?.salary} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" /></div>
-              </div>
-              <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Qualifications</label><input name="qualifications" defaultValue={modal.staff?.qualifications} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="M.Sc, B.Ed" /></div>
-              <div>
-                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Documents</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {['Aadhar Card', 'Degree Certificate', 'Experience Letter'].map((doc) => (
-                    <div key={doc} className="border border-dashed border-[var(--b)] rounded-lg p-2.5 text-center cursor-pointer hover:border-[var(--blue)] transition-colors">
-                      <FileText size={14} className="text-[var(--tx3)] mx-auto mb-1" />
-                      <div className="text-[10.5px] text-[var(--tx3)]">{doc}</div>
+
+              {/* Conditional Fields based on Category Selection */}
+              {selectedCategory === 'Teaching' && (
+                <div className="space-y-4 border-t border-[var(--b)] pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Department *</label>
+                      <select name="department" defaultValue={modal.staff?.department || 'Mathematics'} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                        <option>Mathematics</option><option>Science</option><option>English</option><option>Languages</option><option>Social Sciences</option><option>Sports</option>
+                      </select>
                     </div>
-                  ))}
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject(s)</label>
+                      <input name="subject" defaultValue={modal.staff?.subject} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Physics, Chemistry" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Email</label>
+                      <input name="email" defaultValue={modal.staff?.email} type="email" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="email@krishnaveni.edu" />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Monthly Salary (₹)</label>
+                      <input name="salary" type="number" defaultValue={modal.staff?.salary || 45000} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Qualifications</label>
+                    <input name="qualifications" defaultValue={modal.staff?.qualifications} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="M.Sc, B.Ed" />
+                  </div>
+                </div>
+              )}
+
+              {selectedCategory === 'Non-Teaching' && (
+                <div className="space-y-4 border-t border-[var(--b)] pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Department *</label>
+                      <select name="department" defaultValue={modal.staff?.department || 'Science'} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                        <option>Admin</option><option>Science</option><option>Sports</option><option>Office</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Email</label>
+                      <input name="email" defaultValue={modal.staff?.email} type="email" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="email@krishnaveni.edu" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Monthly Salary (₹)</label>
+                      <input name="salary" type="number" defaultValue={modal.staff?.salary || 30000} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Qualifications</label>
+                      <input name="qualifications" defaultValue={modal.staff?.qualifications} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="B.Sc, B.Com" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedCategory === 'Driver' && (
+                <div className="space-y-4 border-t border-[var(--b)] pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Driving License Number *</label>
+                      <input name="qualifications" required defaultValue={modal.staff?.qualifications} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="DL-142026XXXXXX" />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Vehicle Assigned / Route</label>
+                      <input name="subject" defaultValue={modal.staff?.subject} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Bus Route 4" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Monthly Salary (₹)</label>
+                      <input name="salary" type="number" defaultValue={modal.staff?.salary || 25000} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">License Expiry Date</label>
+                      <input name="email" type="date" defaultValue={modal.staff?.email?.includes('@') ? '' : modal.staff?.email} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {selectedCategory !== 'Teaching' && selectedCategory !== 'Non-Teaching' && selectedCategory !== 'Driver' && (
+                <div className="space-y-4 border-t border-[var(--b)] pt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Monthly Salary (₹)</label>
+                      <input name="salary" type="number" defaultValue={modal.staff?.salary || 18000} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Shift Assigned / Timing</label>
+                      <input name="subject" defaultValue={modal.staff?.subject} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Day Shift (8 AM - 4 PM)" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Qualifications / Experience Details</label>
+                    <input name="qualifications" defaultValue={modal.staff?.qualifications} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="e.g. 3 years experience" />
+                  </div>
+                </div>
+              )}
+
+              {/* Dynamic Documents List based on Category with Custom Document Adding option */}
+              <div className="border-t border-[var(--b)] pt-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)]">Documents Required</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const docName = prompt("Enter the name of the other document:");
+                      if (docName && docName.trim()) {
+                        setCustomDocs(prev => [...prev, docName.trim()]);
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[10.5px] text-[var(--blue-tx)] hover:underline cursor-pointer"
+                  >
+                    <Plus size={10} /> Add Other Document
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* Standard Docs */}
+                  {getDocsForCategory(selectedCategory).map((doc) => {
+                    const file = uploadedFiles[doc];
+                    return (
+                      <div
+                        key={doc}
+                        onClick={() => {
+                          const input = document.getElementById(`file-input-${doc}`);
+                          if (input) input.click();
+                        }}
+                        className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${
+                          file
+                            ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
+                            : 'border-[var(--b)] bg-[var(--surf2)]/20 hover:border-[var(--blue)]'
+                        }`}
+                      >
+                        <input
+                          id={`file-input-${doc}`}
+                          type="file"
+                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              const selectedFile = e.target.files[0];
+                              setUploadedFiles(prev => ({
+                                ...prev,
+                                [doc]: selectedFile
+                              }));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        {file ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUploadedFiles(prev => {
+                                  const next = { ...prev };
+                                  delete next[doc];
+                                  return next;
+                                });
+                              }}
+                              className="absolute top-1 right-1 p-0.5 rounded-full hover:bg-[var(--surf2)] text-[var(--red)] cursor-pointer flex items-center justify-center z-10"
+                              title="Delete File"
+                            >
+                              <X size={10} />
+                            </button>
+                            <CheckCircle2 size={14} className="text-[var(--teal)] mx-auto mb-1" />
+                            <div className="text-[10.5px] text-[var(--tx)] font-semibold truncate px-1">{doc}</div>
+                            <div className="text-[9px] text-[var(--tx3)] truncate px-1">{file.name}</div>
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={14} className="text-[var(--tx3)] mx-auto mb-1" />
+                            <div className="text-[10.5px] text-[var(--tx3)] font-medium">{doc}</div>
+                            <div className="text-[9px] text-[var(--tx3)] opacity-60">Click to upload</div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Custom Docs */}
+                  {customDocs.map((doc, index) => {
+                    const file = uploadedFiles[doc];
+                    return (
+                      <div
+                        key={doc + '-' + index}
+                        onClick={() => {
+                          const input = document.getElementById(`file-input-${doc}`);
+                          if (input) input.click();
+                        }}
+                        className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${
+                          file
+                            ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
+                            : 'border-[var(--blue)] bg-[var(--blue-bg)]/10 hover:border-[var(--blue)]'
+                        }`}
+                      >
+                        <input
+                          id={`file-input-${doc}`}
+                          type="file"
+                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              const selectedFile = e.target.files[0];
+                              setUploadedFiles(prev => ({
+                                ...prev,
+                                [doc]: selectedFile
+                              }));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCustomDocs(prev => prev.filter((_, idx) => idx !== index));
+                            setUploadedFiles(prev => {
+                              const next = { ...prev };
+                              delete next[doc];
+                              return next;
+                            });
+                          }}
+                          className="absolute top-1 right-1 p-0.5 rounded-full hover:bg-[var(--surf2)] text-[var(--red)] cursor-pointer flex items-center justify-center z-10"
+                          title="Remove Document"
+                        >
+                          <X size={10} />
+                        </button>
+                        {file ? (
+                          <>
+                            <CheckCircle2 size={14} className="text-[var(--teal)] mx-auto mb-1" />
+                            <div className="text-[10.5px] text-[var(--tx)] font-semibold truncate px-2">{doc}</div>
+                            <div className="text-[9px] text-[var(--tx3)] truncate px-2">{file.name}</div>
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={14} className="text-[var(--blue-tx)] mx-auto mb-1" />
+                            <div className="text-[10.5px] text-[var(--tx2)] font-medium truncate px-2">{doc}</div>
+                            <div className="text-[9px] text-[var(--tx3)] opacity-60">Click to upload</div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -286,10 +629,11 @@ export function StaffManagement() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {[
-                  { label: 'Subject(s)', value: modal.staff.subject ?? 'N/A' },
+                  { label: 'Category', value: modal.staff.category || 'Teaching' },
+                  { label: 'Subject / Assigned Route', value: modal.staff.subject ?? 'N/A' },
                   { label: 'Join Date', value: modal.staff.joinDate },
                   { label: 'Phone', value: modal.staff.phone },
-                  { label: 'Email', value: modal.staff.email },
+                  { label: 'Email / Expiry', value: modal.staff.email },
                   { label: 'Attendance', value: `${modal.staff.attendance}%` },
                   { label: 'Monthly Salary', value: `₹${modal.staff.salary.toLocaleString()}` },
                 ].map((item) => (
@@ -300,8 +644,21 @@ export function StaffManagement() {
                 ))}
               </div>
               <div className="mt-2 bg-[var(--surf2)] rounded-xl p-3">
-                <div className="text-[10.5px] text-[var(--tx3)] mb-0.5">Qualifications</div>
+                <div className="text-[10.5px] text-[var(--tx3)] mb-0.5">Qualifications / License Details</div>
                 <div className="text-[12.5px] font-semibold text-[var(--tx)]">{modal.staff.qualifications}</div>
+              </div>
+              
+              {/* Dynamic submitted documents listing in Profile View */}
+              <div className="mt-3">
+                <div className="text-[10.5px] text-[var(--tx3)] mb-1.5">Submitted Documents</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(modal.staff.documents || getDocsForCategory(modal.staff.category)).map((doc) => (
+                    <div key={doc} className="flex items-center gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2 text-[11px] text-[var(--tx2)]">
+                      <FileText size={11} className="text-[var(--tx3)]" />
+                      <span className="truncate">{doc}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="p-5 pt-0">
@@ -333,6 +690,7 @@ const STAFF_SYNONYMS: Record<string, string[]> = {
   name: ['full name', 'name', 'staff name', 'staff_name', 'employee name', 'employee_name', 'teacher name', 'teacher_name'],
   designation: ['designation', 'role', 'job title', 'job_title', 'position'],
   department: ['department', 'dept'],
+  category: ['category', 'group', 'type'],
   subject: ['subject', 'subjects', 'subject(s)', 'specialization'],
   phone: ['mobile number', 'mobile', 'phone', 'phone number', 'contact', 'mobile_no', 'phone_no'],
   email: ['email', 'email address', 'email_address', 'mail'],
@@ -572,6 +930,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
           const rawName = colMap.name !== undefined ? row[colMap.name] : '';
           const rawDesignation = colMap.designation !== undefined ? row[colMap.designation] : '';
           const rawDepartment = colMap.department !== undefined ? row[colMap.department] : '';
+          const rawCategory = colMap.category !== undefined ? row[colMap.category] : '';
           const rawSubject = colMap.subject !== undefined ? row[colMap.subject] : '';
           const rawPhone = colMap.phone !== undefined ? row[colMap.phone] : '';
           const rawEmail = colMap.email !== undefined ? row[colMap.email] : '';
@@ -585,6 +944,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
             name: nameVal,
             designation: rawDesignation ? String(rawDesignation).trim() : 'Teacher',
             department: cleanDepartment(rawDepartment),
+            category: rawCategory ? String(rawCategory).trim() : 'Teaching',
             subject: rawSubject ? String(rawSubject).trim() : '',
             phone: rawPhone ? String(rawPhone).trim() : 'N/A',
             email: rawEmail ? String(rawEmail).trim() : `${nameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}@krishnaveni.edu`,
@@ -642,6 +1002,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
       name: '',
       designation: 'Teacher',
       department: 'Mathematics',
+      category: 'Teaching',
       subject: '',
       phone: '',
       email: '',
@@ -671,12 +1032,12 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
   };
 
   const SAMPLE_HEADERS = [
-    'Full Name', 'Designation', 'Department', 'Subject(s)', 'Phone',
+    'Full Name', 'Designation', 'Department', 'Category', 'Subject(s)', 'Phone',
     'Email', 'Join Date', 'Monthly Salary', 'Qualifications'
   ];
   const SAMPLE_ROWS = [
-    ['Mr. V. Suresh', 'Social Studies Teacher', 'Social Sciences', 'History, Civics', '9876543210', 'suresh@krishnaveni.edu', '2020-06-01', '35000', 'M.A., B.Ed'],
-    ['Mrs. Lakshmi Devi', 'Senior Teacher', 'Mathematics', 'Maths', '9876501234', 'lakshmi@krishnaveni.edu', '2015-06-01', '62000', 'M.Sc, B.Ed'],
+    ['Mr. V. Suresh', 'Social Studies Teacher', 'Social Sciences', 'Teaching', 'History, Civics', '9876543210', 'suresh@krishnaveni.edu', '2020-06-01', '35000', 'M.A., B.Ed'],
+    ['Mrs. Lakshmi Devi', 'Senior Teacher', 'Mathematics', 'Teaching', 'Maths', '9876501234', 'lakshmi@krishnaveni.edu', '2015-06-01', '62000', 'M.Sc, B.Ed'],
   ];
 
   const downloadTemplate = (format: 'xlsx' | 'csv') => {
@@ -805,12 +1166,13 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
                     { n: '1', label: 'Full Name', req: true },
                     { n: '2', label: 'Designation', req: true },
                     { n: '3', label: 'Department', req: true },
-                    { n: '4', label: 'Subject(s)', req: false },
-                    { n: '5', label: 'Phone', req: true },
-                    { n: '6', label: 'Email', req: false },
-                    { n: '7', label: 'Join Date', req: true },
-                    { n: '8', label: 'Monthly Salary', req: true },
-                    { n: '9', label: 'Qualifications', req: false },
+                    { n: '4', label: 'Category', req: true },
+                    { n: '5', label: 'Subject(s)', req: false },
+                    { n: '6', label: 'Phone', req: true },
+                    { n: '7', label: 'Email', req: false },
+                    { n: '8', label: 'Join Date', req: true },
+                    { n: '9', label: 'Monthly Salary', req: true },
+                    { n: '10', label: 'Qualifications', req: false },
                   ].map(col => (
                     <div
                       key={col.n}
@@ -830,7 +1192,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
                 <div className="bg-[var(--surf2)] rounded-lg p-2.5 overflow-x-auto">
                   <div className="text-[10px] text-[var(--tx3)] mb-1.5 font-medium uppercase tracking-wider">Example row</div>
                   <div className="flex gap-2 text-[10.5px] text-[var(--tx2)] whitespace-nowrap">
-                    {['Mr. V. Suresh', 'Social Studies Teacher', 'Social Sciences', 'History', '9876543210', 'suresh@edu.com', '2020-06-01', '35000', 'M.A., B.Ed'].map((v, i) => (
+                    {['Mr. V. Suresh', 'Social Studies Teacher', 'Social Sciences', 'Teaching', 'History', '9876543210', 'suresh@edu.com', '2020-06-01', '35000', 'M.A., B.Ed'].map((v, i) => (
                       <span key={i} className="px-2 py-0.5 bg-[var(--surf)] border border-[var(--b)] rounded font-mono text-[10px]">{v}</span>
                     ))}
                   </div>
@@ -868,6 +1230,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
                       <th className="px-2 py-2 text-left font-medium w-[150px]">Full Name *</th>
                       <th className="px-2 py-2 text-left font-medium w-[130px]">Designation *</th>
                       <th className="px-2 py-2 text-left font-medium w-[130px]">Department *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Category *</th>
                       <th className="px-2 py-2 text-left font-medium w-[130px]">Subject(s)</th>
                       <th className="px-2 py-2 text-left font-medium w-[120px]">Phone *</th>
                       <th className="px-2 py-2 text-left font-medium w-[150px]">Email</th>
@@ -918,6 +1281,13 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
                                 <option key={d} value={d}>{d}</option>
                               ))}
                             </select>
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.category}
+                              onChange={(e) => updateStaffField(s.id, 'category', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.category ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
