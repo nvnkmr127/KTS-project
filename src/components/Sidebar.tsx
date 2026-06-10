@@ -42,6 +42,7 @@ const ADMIN_SECTIONS: NavSection[] = [
     items: [
       { icon: <Tags size={14} />, label: 'Fee Categories', page: 'fee-categories' },
       { icon: <DollarSign size={14} />, label: 'Fee Management', page: 'fee' },
+      { icon: <Tags size={14} />, label: 'Salary Categories', page: 'salary-categories' },
       { icon: <Wallet size={14} />, label: 'Salary', page: 'salary' },
       { icon: <ShoppingCart size={14} />, label: 'Expenses', page: 'expenses' },
     ],

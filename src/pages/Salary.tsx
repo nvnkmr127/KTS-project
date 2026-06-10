@@ -8,9 +8,11 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { api } from '../services/api';
+import { STAFF } from './StaffManagement';
 
 interface StaffPayroll {
   id: string;
+  userId?: string;
   name: string;
   init: string;
   designation: string;
@@ -46,6 +48,23 @@ const tooltipStyle = { backgroundColor: 'var(--surf)', border: '0.5px solid var(
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const YEARS = [2026, 2027];
 
+const getComponentAmt = (
+  comp: { id: string; type: 'earning' | 'deduction'; calculationType?: 'flat' | 'percentage' },
+  salaries: Record<string, number>,
+  basicAmt: number,
+  fallbackAmt: number
+) => {
+  if (comp.id === 'basic') return basicAmt;
+  const val = salaries[comp.id];
+  if (val !== undefined) {
+    if (comp.calculationType === 'percentage') {
+      return Math.round((val / 100) * basicAmt);
+    }
+    return val;
+  }
+  return fallbackAmt;
+};
+
 export function Salary() {
   const [payroll, setPayroll] = useState<StaffPayroll[]>([]);
   const [faculty, setFaculty] = useState<any[]>([]);
@@ -53,6 +72,46 @@ export function Salary() {
   const [selectedSlip, setSelectedSlip] = useState<StaffPayroll | null>(null);
   const [showProcessModal, setShowProcessModal] = useState(false);
   const [monthFilter, setMonthFilter] = useState('May 2026');
+  const [components, setComponents] = useState<any[]>([]);
+  const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
+  const [modalValues, setModalValues] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (selectedStaffId) {
+      const staff = faculty.find(f => String(f.id) === selectedStaffId);
+      const salaries = staff ? ((staffSalaries[staff.id] || staffSalaries[staff.name] || {})) : {};
+      const initial: Record<string, number> = {};
+      components.forEach((comp) => {
+        const defaultVal = comp.id === 'basic' ? 25000 : comp.id === 'hra' ? 8000 : comp.id === 'allowances' ? 5000 : comp.id === 'deductions' ? 3000 : 0;
+        initial[comp.id] = salaries[comp.id] !== undefined
+          ? salaries[comp.id]
+          : (comp.calculationType === 'percentage' ? 0 : defaultVal);
+      });
+      setModalValues(initial);
+    } else {
+      setModalValues({});
+    }
+  }, [selectedStaffId, components, staffSalaries, faculty]);
+
+  useEffect(() => {
+    const savedComps = localStorage.getItem('salary_components');
+    if (savedComps) {
+      setComponents(JSON.parse(savedComps));
+    } else {
+      setComponents([
+        { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat' },
+        { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat' },
+        { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat' },
+        { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat' },
+      ]);
+    }
+
+    const savedSalaries = localStorage.getItem('staff_salaries');
+    if (savedSalaries) {
+      setStaffSalaries(JSON.parse(savedSalaries));
+    }
+  }, []);
 
   const loadPayroll = async () => {
     setLoading(true);
@@ -69,6 +128,7 @@ export function Salary() {
 
         return {
           id: String(p.id),
+          userId: String(p.user_id || ''),
           name: p.name || 'Staff Member',
           init: p.init || 'SM',
           designation: p.designation || 'Senior Teacher',
@@ -82,10 +142,22 @@ export function Salary() {
           month: `${p.month} ${p.year}`,
         };
       });
-      setPayroll(mapped);
+      // MOCK DATA START
+      const mockSalaries = [
+        { id: 'mock-s1', userId: '2', name: 'Mrs. Lakshmi Devi', init: 'LD', designation: 'Mathematics Teacher', basic: 22750, hra: 7000, allowances: 5250, deductions: 3000, gross: 35000, net: 32000, status: 'Paid', month: 'May 2026' },
+        { id: 'mock-s2', userId: '3', name: 'Mr. R. K. Prasad', init: 'RP', designation: 'Science Teacher', basic: 26000, hra: 8000, allowances: 6000, deductions: 3500, gross: 40000, net: 36500, status: 'Paid', month: 'May 2026' },
+        { id: 'mock-s3', userId: '4', name: 'Ms. S. Anitha', init: 'SA', designation: 'English Teacher', basic: 19500, hra: 6000, allowances: 4500, deductions: 2500, gross: 30000, net: 27500, status: 'Pending', month: 'May 2026' },
+        { id: 'mock-s4', userId: '5', name: 'Mr. V. Suresh', init: 'VS', designation: 'Social Studies Teacher', basic: 21125, hra: 6500, allowances: 4875, deductions: 2800, gross: 32500, net: 29700, status: 'On Hold', month: 'May 2026' },
+      ];
+      setPayroll([...mockSalaries, ...mapped]);
+      // MOCK DATA END
 
-      const teachers = await api.getResources('faculty');
-      setFaculty(teachers);
+      const mappedStaff = STAFF.map((s) => ({
+        id: s.id,
+        name: s.name,
+        subject: s.subject || s.designation || 'Staff',
+      }));
+      setFaculty(mappedStaff);
     } catch (err) {
       console.error('Error loading payroll data:', err);
     } finally {
@@ -101,20 +173,32 @@ export function Salary() {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const userId = fd.get('userId') as string;
-    const basic = Number(fd.get('basic')) || 0;
-    const hra = Number(fd.get('hra')) || 0;
-    const allowances = Number(fd.get('allowances')) || 0;
-    const deductions = Number(fd.get('deductions')) || 0;
 
-    const gross = basic + hra + allowances;
-    const net = gross - deductions;
+    const basicInputVal = modalValues['basic'] || 25000;
+    let gross = 0;
+    let totalDeductions = 0;
+
+    components.forEach((c) => {
+      const inputVal = modalValues[c.id] || 0;
+      const amt = c.calculationType === 'percentage'
+        ? Math.round((inputVal / 100) * basicInputVal)
+        : inputVal;
+
+      if (c.type === 'earning') {
+        gross += amt;
+      } else {
+        totalDeductions += amt;
+      }
+    });
+
+    const net = Math.max(0, gross - totalDeductions);
 
     const data = {
       user_id: Number(userId),
       month: fd.get('month') as string,
       year: Number(fd.get('year')),
       gross_salary: gross,
-      total_deductions: deductions,
+      total_deductions: totalDeductions,
       net_salary: net,
       status: (fd.get('status') as string).toLowerCase().replace(' ', '_'),
       working_days: 30,
@@ -132,14 +216,206 @@ export function Salary() {
     }
   };
 
-  const filtered = payroll.filter((p) => {
-    if (monthFilter === 'All') return true;
-    return p.month === monthFilter;
-  });
+  const handleExport = () => {
+    // Generate CSV content
+    const headers = ['Staff Name', 'Designation', 'Month', ...components.map(c => c.name), 'Net Pay', 'Status'];
+    const rows = filtered.map((p) => {
+      const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+      const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+      
+      // Calculate dynamic net pay
+      let earningsSum = 0;
+      let deductionsSum = 0;
+      let hasCustomAssignment = false;
+      components.forEach((c) => {
+        const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : c.id === 'deductions' ? p.deductions : 0;
+        const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+        if (salaries[c.id] !== undefined) {
+          hasCustomAssignment = true;
+        }
+        if (c.type === 'earning') earningsSum += amt;
+        else deductionsSum += amt;
+      });
+      const rowNetPay = hasCustomAssignment ? Math.max(0, earningsSum - deductionsSum) : p.net;
 
-  const totalGross = filtered.reduce((s, p) => s + p.gross, 0);
-  const totalNet = filtered.reduce((s, p) => s + p.net, 0);
-  const totalDeductions = filtered.reduce((s, p) => s + p.deductions, 0);
+      const compValues = components.map(c => {
+        const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : c.id === 'deductions' ? p.deductions : 0;
+        return getComponentAmt(c, salaries, basicAmt, fallback);
+      });
+
+      return [
+        p.name,
+        p.designation,
+        p.month,
+        ...compValues,
+        rowNetPay,
+        p.status
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `monthly_payroll_${monthFilter.toLowerCase().replace(' ', '_')}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrint = () => {
+    const printContent = document.getElementById('printable-payslip');
+    if (!printContent) return;
+
+    const win = window.open('', '_blank');
+    if (!win) return;
+
+    win.document.write(`
+      <html>
+        <head>
+          <title>Payslip - ${selectedSlip?.name}</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #1e293b; background: white; }
+            .text-center { text-align: center; }
+            .mb-4 { margin-bottom: 16px; }
+            .pb-4 { padding-bottom: 16px; }
+            .border-b { border-bottom: 1px solid #e2e8f0; }
+            .grid { display: grid; }
+            .grid-cols-2 { grid-template-columns: 1fr 1fr; gap: 16px; }
+            .bg-\\[var\\(--surf2\\)\\] { background: #f8fafc !important; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; }
+            .text-xs { font-size: 11px; color: #64748b; }
+            .text-sm { font-size: 13px; font-weight: 600; }
+            .font-bold { font-weight: bold; }
+            .flex { display: flex; justify-content: space-between; align-items: center; }
+            .justify-between { justify-content: space-between; }
+            .space-y-1\\.5 > * + * { margin-top: 6px; }
+            .text-\\[var\\(--tx3\\)\\] { color: #64748b; }
+            .text-\[var\(--tx\)\] { color: #1e293b; }
+            .text-\\[var\\(--teal-tx\\)\\] { color: #0d9488; }
+            .text-\\[var\\(--red-tx\\)\\] { color: #e11d48; }
+            .text-\\[var\\(--blue-tx\\)\\] { color: #1d4ed8; }
+            .bg-\\[var\\(--blue-bg\\)\\] { background: #eff6ff !important; border: 1px solid #bfdbfe; }
+            .rounded-xl { border-radius: 12px; }
+            .p-3\\.5 { padding: 14px; }
+            .border-t { border-top: 1px solid #e2e8f0; }
+            .pt-1\\.5 { padding-top: 6px; }
+            .text-\\[18px\\] { font-size: 18px; }
+            .text-\\[13px\\] { font-size: 13px; }
+            .text-\\[12px\\] { font-size: 12px; }
+            .text-\\[11px\\] { font-size: 11px; }
+            .text-\\[14px\\] { font-size: 14px; }
+            .font-semibold { font-weight: 600; }
+            .text-\\[10\\.5px\\] { font-size: 10.5px; }
+            .mb-2 { margin-bottom: 8px; }
+            .grid-cols-1 { grid-template-columns: 1fr; }
+            @media (min-width: 640px) {
+              .sm\\:grid-cols-2 { grid-template-columns: 1fr 1fr; }
+            }
+          </style>
+        </head>
+        <body>
+          <div style="max-width: 600px; margin: 0 auto;">
+            ${printContent.innerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+  };
+
+  const filtered = monthFilter === 'All'
+    ? payroll
+    : STAFF.map((s) => {
+        const processed = payroll.find(p => 
+          p.name.toLowerCase() === s.name.toLowerCase() && 
+          p.month === monthFilter
+        );
+        if (processed) return processed;
+
+        const init = s.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+        const basic = s.salary ? Math.round(s.salary * 0.65) : 25000;
+        const hra = s.salary ? Math.round(s.salary * 0.20) : 8000;
+        const allowances = s.salary ? s.salary - basic - hra : 5000;
+
+        return {
+          id: `virtual-${s.id}`,
+          userId: s.id,
+          name: s.name,
+          init,
+          designation: s.designation,
+          basic,
+          hra,
+          allowances,
+          deductions: 3000,
+          gross: s.salary || 38000,
+          net: s.salary ? s.salary - 3000 : 35000,
+          status: 'Pending' as const,
+          month: monthFilter
+        };
+      });
+
+  const totalGross = filtered.reduce((s, p) => {
+    const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+    const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+    let earningsSum = 0;
+    let hasCustomAssignment = false;
+    components.forEach((c) => {
+      const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : 0;
+      const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+      if (salaries[c.id] !== undefined) {
+        hasCustomAssignment = true;
+      }
+      if (c.type === 'earning') {
+        earningsSum += amt;
+      }
+    });
+    return s + (hasCustomAssignment ? earningsSum : p.gross);
+  }, 0);
+
+  const totalNet = filtered.reduce((s, p) => {
+    const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+    const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+    let earningsSum = 0;
+    let deductionsSum = 0;
+    let hasCustomAssignment = false;
+    components.forEach((c) => {
+      const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : c.id === 'deductions' ? p.deductions : 0;
+      const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+      if (salaries[c.id] !== undefined) {
+        hasCustomAssignment = true;
+      }
+      if (c.type === 'earning') earningsSum += amt;
+      else deductionsSum += amt;
+    });
+    return s + (hasCustomAssignment ? Math.max(0, earningsSum - deductionsSum) : p.net);
+  }, 0);
+
+  const totalDeductions = filtered.reduce((s, p) => {
+    const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+    const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+    let deductionsSum = 0;
+    let hasCustomAssignment = false;
+    components.forEach((c) => {
+      const fallback = c.id === 'deductions' ? p.deductions : 0;
+      const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+      if (salaries[c.id] !== undefined) {
+        hasCustomAssignment = true;
+        if (c.type === 'deduction') deductionsSum += amt;
+      }
+    });
+    return s + (hasCustomAssignment ? deductionsSum : p.deductions);
+  }, 0);
+
   const paid = filtered.filter((p) => p.status === 'Paid').length;
 
   return (
@@ -162,11 +438,17 @@ export function Salary() {
                 <option value="All">All Months</option>
                 {['May 2026', 'April 2026', 'March 2026', 'February 2026'].map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
-              <button className="flex items-center gap-1 px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]">
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]"
+              >
                 <Download size={11} /> Export
               </button>
               <button
-                onClick={() => setShowProcessModal(true)}
+                onClick={() => {
+                  setSelectedStaffId('');
+                  setShowProcessModal(true);
+                }}
                 className="flex items-center gap-1 px-2.5 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90"
               >
                 <Plus size={11} /> Process Payroll
@@ -178,43 +460,73 @@ export function Salary() {
             <table className="w-full border-collapse text-[12px] min-w-[700px]">
               <thead>
                 <tr className="border-b border-[var(--b)]">
-                  {['Staff', 'Basic', 'HRA', 'Allowances', 'Deductions', 'Net Pay', 'Status', ''].map((h) => (
-                    <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{h}</th>
+                  <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Staff</th>
+                  {components.map((comp) => (
+                    <th key={comp.id} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{comp.name}</th>
                   ))}
+                  <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Net Pay</th>
+                  <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Status</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p) => (
-                  <tr key={p.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
-                    <td className="px-2 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <Avatar initials={p.init} bg={AVATAR_COLORS[p.init]?.bg ?? 'var(--surf3)'} color={AVATAR_COLORS[p.init]?.color ?? 'var(--tx2)'} />
-                        <div>
-                          <div className="font-semibold text-[var(--tx)]">{p.name}</div>
-                          <div className="text-[10.5px] text-[var(--tx3)]">{p.designation} · {p.month}</div>
+                {filtered.map((p) => {
+                  const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+                  
+                  // Calculate dynamic net pay
+                  let earningsSum = 0;
+                  let deductionsSum = 0;
+                  let hasCustomAssignment = false;
+                  const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+                  components.forEach((c) => {
+                    const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : c.id === 'deductions' ? p.deductions : 0;
+                    const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+                    if (salaries[c.id] !== undefined) {
+                      hasCustomAssignment = true;
+                    }
+                    if (c.type === 'earning') earningsSum += amt;
+                    else deductionsSum += amt;
+                  });
+                  const rowNetPay = hasCustomAssignment ? Math.max(0, earningsSum - deductionsSum) : p.net;
+
+                  return (
+                    <tr key={p.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <Avatar initials={p.init} bg={AVATAR_COLORS[p.init]?.bg ?? 'var(--surf3)'} color={AVATAR_COLORS[p.init]?.color ?? 'var(--tx2)'} />
+                          <div>
+                            <div className="font-semibold text-[var(--tx)]">{p.name}</div>
+                            <div className="text-[10.5px] text-[var(--tx3)]">{p.designation} · {p.month}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2.5 text-[var(--tx2)]">₹{p.basic.toLocaleString()}</td>
-                    <td className="px-2 py-2.5 text-[var(--tx2)]">₹{p.hra.toLocaleString()}</td>
-                    <td className="px-2 py-2.5 text-[var(--tx2)]">₹{p.allowances.toLocaleString()}</td>
-                    <td className="px-2 py-2.5 text-[var(--red-tx)]">-₹{p.deductions.toLocaleString()}</td>
-                    <td className="px-2 py-2.5 font-semibold text-[var(--tx)]">₹{p.net.toLocaleString()}</td>
-                    <td className="px-2 py-2.5">
-                      {p.status === 'Paid' && <Badge variant="teal">Paid</Badge>}
-                      {p.status === 'Pending' && <Badge variant="amber">Pending</Badge>}
-                      {p.status === 'On Hold' && <Badge variant="red">On Hold</Badge>}
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <button onClick={() => setSelectedSlip(p)} className="text-[11px] text-[var(--blue-tx)] hover:underline cursor-pointer flex items-center gap-0.5">
-                        <FileText size={11} /> Slip
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      {components.map((comp) => {
+                        const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+                        const fallback = comp.id === 'basic' ? p.basic : comp.id === 'hra' ? p.hra : comp.id === 'allowances' ? p.allowances : comp.id === 'deductions' ? p.deductions : 0;
+                        const amt = getComponentAmt(comp, salaries, basicAmt, fallback);
+                        return (
+                          <td key={comp.id} className={`px-2 py-2.5 ${comp.type === 'deduction' ? 'text-[var(--red-tx)]' : 'text-[var(--tx2)]'}`}>
+                            {comp.type === 'deduction' ? '-' : ''}₹{amt.toLocaleString()}
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-2.5 font-semibold text-[var(--tx)]">₹{rowNetPay.toLocaleString()}</td>
+                      <td className="px-2 py-2.5">
+                        {p.status === 'Paid' && <Badge variant="teal">Paid</Badge>}
+                        {p.status === 'Pending' && <Badge variant="amber">Pending</Badge>}
+                        {p.status === 'On Hold' && <Badge variant="red">On Hold</Badge>}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <button onClick={() => setSelectedSlip(p)} className="text-[11px] text-[var(--blue-tx)] hover:underline cursor-pointer flex items-center gap-0.5">
+                          <FileText size={11} /> Slip
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center py-6 text-[12px] text-[var(--tx3)]">
+                    <td colSpan={components.length + 4} className="text-center py-6 text-[12px] text-[var(--tx3)]">
                       No payroll records processed for this period.
                     </td>
                   </tr>
@@ -269,7 +581,13 @@ export function Salary() {
             <div className="p-5 space-y-4">
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Staff *</label>
-                <select name="userId" required className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                <select
+                  name="userId"
+                  required
+                  value={selectedStaffId}
+                  onChange={(e) => setSelectedStaffId(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                >
                   <option value="">Choose teacher...</option>
                   {faculty.map((f) => (
                     <option key={f.id} value={f.id}>{f.name} ({f.subject})</option>
@@ -290,26 +608,50 @@ export function Salary() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Basic Salary (₹) *</label>
-                  <input type="number" name="basic" required defaultValue="35000" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+              {selectedStaffId && (
+                <div key={selectedStaffId} className="space-y-3 border-t border-[var(--b)] pt-3">
+                  <div className="text-[11.5px] font-bold text-[var(--tx)]">Component Breakdown</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {components.map((comp) => {
+                      return (
+                        <div key={comp.id}>
+                          <label className="block text-[11px] font-medium text-[var(--tx2)] mb-1">
+                            {comp.name} {comp.calculationType === 'percentage' ? '(%)' : '(₹)'} *
+                          </label>
+                          <input
+                            type="number"
+                            name={`comp_${comp.id}`}
+                            required
+                            value={modalValues[comp.id] ?? 0}
+                            onChange={(e) => setModalValues({ ...modalValues, [comp.id]: Number(e.target.value) || 0 })}
+                            className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {(() => {
+                    const basicAmt = modalValues['basic'] || 0;
+                    let grossSum = 0;
+                    let deductionsSum = 0;
+                    components.forEach((c) => {
+                      const inputVal = modalValues[c.id] || 0;
+                      const amt = c.calculationType === 'percentage'
+                        ? Math.round((inputVal / 100) * basicAmt)
+                        : inputVal;
+                      if (c.type === 'earning') grossSum += amt;
+                      else deductionsSum += amt;
+                    });
+                    const netPay = Math.max(0, grossSum - deductionsSum);
+                    return (
+                      <div className="bg-[var(--blue-bg)] rounded-xl p-3.5 flex justify-between items-center mt-3">
+                        <span className="text-[12.5px] font-bold text-[var(--blue-tx)]">Net Pay (In-Hand)</span>
+                        <span className="text-[16px] font-bold text-[var(--blue-tx)]">₹{netPay.toLocaleString()}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">HRA (₹) *</label>
-                  <input type="number" name="hra" required defaultValue="10000" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Allowances (₹)</label>
-                  <input type="number" name="allowances" defaultValue="5000" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
-                </div>
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Deductions (₹)</label>
-                  <input type="number" name="deductions" defaultValue="3000" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
-                </div>
-              </div>
+              )}
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Status *</label>
                 <select name="status" defaultValue="Paid" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
@@ -337,13 +679,13 @@ export function Salary() {
                 <div className="text-[12px] text-[var(--tx3)]">{selectedSlip.month}</div>
               </div>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-1 px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer">
+                <button onClick={handlePrint} className="flex items-center gap-1 px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]">
                   <Printer size={11} /> Print
                 </button>
                 <button onClick={() => setSelectedSlip(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
               </div>
             </div>
-            <div className="p-5">
+            <div className="p-5" id="printable-payslip">
               <div className="text-center mb-4 pb-4 border-b border-[var(--b)]">
                 <div className="text-[14px] font-bold text-[var(--tx)]">Krishnaveni Talent School</div>
                 <div className="text-[11px] text-[var(--tx3)]">Nizamabad, Telangana · Salary Payslip</div>
@@ -364,51 +706,83 @@ export function Salary() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                <div>
-                  <div className="text-[11px] font-semibold text-[var(--teal-tx)] mb-2">Earnings</div>
-                  <div className="space-y-1.5">
-                    {[
-                      { label: 'Basic Salary', amount: selectedSlip.basic },
-                      { label: 'HRA', amount: selectedSlip.hra },
-                      { label: 'Allowances', amount: selectedSlip.allowances },
-                    ].map((e) => (
-                      <div key={e.label} className="flex justify-between text-[12px]">
-                        <span className="text-[var(--tx3)]">{e.label}</span>
-                        <span className="text-[var(--tx)] font-medium">₹{e.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between text-[12px] pt-1.5 border-t border-[var(--b)] font-semibold">
-                      <span className="text-[var(--tx)]">Gross</span>
-                      <span className="text-[var(--teal-tx)]">₹{selectedSlip.gross.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-semibold text-[var(--red-tx)] mb-2">Deductions</div>
-                  <div className="space-y-1.5">
-                    {[
-                      { label: 'PF (12%)', amount: Math.round(selectedSlip.basic * 0.12) },
-                      { label: 'Professional Tax', amount: 200 },
-                      { label: 'Other Deductions', amount: selectedSlip.deductions - Math.round(selectedSlip.basic * 0.12) - 200 },
-                    ].map((e) => (
-                      <div key={e.label} className="flex justify-between text-[12px]">
-                        <span className="text-[var(--tx3)]">{e.label}</span>
-                        <span className="text-[var(--red-tx)] font-medium">₹{Math.max(0, e.amount).toLocaleString()}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between text-[12px] pt-1.5 border-t border-[var(--b)] font-semibold">
-                      <span className="text-[var(--tx)]">Total</span>
-                      <span className="text-[var(--red-tx)]">₹{selectedSlip.deductions.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {(() => {
+                const salaries = staffSalaries[selectedSlip.name] || (selectedSlip.userId ? staffSalaries[selectedSlip.userId] : undefined) || {};
+                let earningsSum = 0;
+                let deductionsSum = 0;
+                let hasCustomAssignment = false;
+                const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : selectedSlip.basic;
+                
+                components.forEach((c) => {
+                  const fallback = c.id === 'basic' ? selectedSlip.basic : c.id === 'hra' ? selectedSlip.hra : c.id === 'allowances' ? selectedSlip.allowances : c.id === 'deductions' ? selectedSlip.deductions : 0;
+                  const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+                  if (salaries[c.id] !== undefined) {
+                    hasCustomAssignment = true;
+                  }
+                  if (c.type === 'earning') earningsSum += amt;
+                  else deductionsSum += amt;
+                });
 
-              <div className="bg-[var(--blue-bg)] rounded-xl p-3.5 flex justify-between items-center">
-                <span className="text-[13px] font-bold text-[var(--blue-tx)]">Net Pay</span>
-                <span className="text-[18px] font-bold text-[var(--blue-tx)]">₹{selectedSlip.net.toLocaleString()}</span>
-              </div>
+                const earnings = components.filter(c => c.type === 'earning').map(c => ({
+                  label: c.name,
+                  amount: getComponentAmt(c, salaries, basicAmt, c.id === 'basic' ? selectedSlip.basic : c.id === 'hra' ? selectedSlip.hra : c.id === 'allowances' ? selectedSlip.allowances : 0)
+                }));
+
+                const deductions = components.filter(c => c.type === 'deduction').map(c => ({
+                  label: c.name,
+                  amount: getComponentAmt(c, salaries, basicAmt, c.id === 'deductions' ? selectedSlip.deductions : 0)
+                }));
+
+                const grossVal = hasCustomAssignment ? earningsSum : selectedSlip.gross;
+                const deductionsVal = hasCustomAssignment ? deductionsSum : selectedSlip.deductions;
+                const netVal = hasCustomAssignment ? Math.max(0, earningsSum - deductionsSum) : selectedSlip.net;
+
+                return (
+                  <>
+                    <div className={`grid grid-cols-1 ${deductions.length > 0 ? 'sm:grid-cols-2' : ''} gap-3 mb-4`}>
+                      {earnings.length > 0 && (
+                        <div>
+                          <div className="text-[11px] font-semibold text-[var(--teal-tx)] mb-2">Earnings</div>
+                          <div className="space-y-1.5">
+                            {earnings.map((e) => (
+                              <div key={e.label} className="flex justify-between text-[12px]">
+                                <span className="text-[var(--tx3)]">{e.label}</span>
+                                <span className="text-[var(--tx)] font-medium">₹{e.amount.toLocaleString()}</span>
+                              </div>
+                            ))}
+                            <div className="flex justify-between text-[12px] pt-1.5 border-t border-[var(--b)] font-semibold">
+                              <span className="text-[var(--tx)]">Gross</span>
+                              <span className="text-[var(--teal-tx)]">₹{grossVal.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {deductions.length > 0 && (
+                        <div>
+                          <div className="text-[11px] font-semibold text-[var(--red-tx)] mb-2">Deductions</div>
+                          <div className="space-y-1.5">
+                            {deductions.map((e) => (
+                              <div key={e.label} className="flex justify-between text-[12px]">
+                                <span className="text-[var(--tx3)]">{e.label}</span>
+                                <span className="text-[var(--red-tx)] font-medium">₹{e.amount.toLocaleString()}</span>
+                              </div>
+                            ))}
+                            <div className="flex justify-between text-[12px] pt-1.5 border-t border-[var(--b)] font-semibold">
+                              <span className="text-[var(--tx)]">Total</span>
+                              <span className="text-[var(--red-tx)]">₹{deductionsVal.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-[var(--blue-bg)] rounded-xl p-3.5 flex justify-between items-center">
+                      <span className="text-[13px] font-bold text-[var(--blue-tx)]">Net Pay</span>
+                      <span className="text-[18px] font-bold text-[var(--blue-tx)]">₹{netVal.toLocaleString()}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
             <div className="p-5 pt-0">
               <button onClick={() => setSelectedSlip(null)} className="w-full py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Close</button>

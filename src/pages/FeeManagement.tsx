@@ -313,59 +313,92 @@ export function FeeManagement() {
   };
 
   const handlePrint = (data: any) => {
-    const printWindow = window.open('', '_blank', 'width=600,height=600');
+    const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
         <html>
           <head>
-            <title>Payment Receipt</title>
+            <title>Fee Receipt - ${data.studentName}</title>
             <style>
-              body { font-family: 'Courier New', monospace; padding: 20px; color: #333; }
-              .header { text-align: center; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 15px; }
-              .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-              .subtitle { font-size: 12px; color: #666; }
-              .details { font-size: 13px; margin-bottom: 15px; line-height: 1.5; }
-              .table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-              .table th { border-bottom: 1px dashed #333; text-align: left; font-size: 12px; padding: 5px 0; }
-              .table td { font-size: 12px; padding: 5px 0; }
-              .total { border-top: 1px dashed #333; border-bottom: 1px dashed #333; padding: 8px 0; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; }
-              .footer { text-align: center; margin-top: 20px; font-size: 11px; color: #666; border-top: 1px dashed #ccc; padding-top: 10px; }
+              body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #1e293b; background: white; }
+              .text-center { text-align: center; }
+              .mb-4 { margin-bottom: 16px; }
+              .pb-4 { padding-bottom: 16px; }
+              .border-b { border-bottom: 1px solid #e2e8f0; }
+              .grid { display: grid; }
+              .grid-cols-2 { grid-template-columns: 1fr 1fr; gap: 16px; }
+              .bg-slate { background: #f8fafc !important; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; }
+              .text-xs { font-size: 11px; color: #64748b; }
+              .text-sm { font-size: 12px; font-weight: 600; color: #1e293b; }
+              .font-bold { font-weight: bold; }
+              .flex { display: flex; justify-content: space-between; align-items: center; }
+              .justify-between { justify-content: space-between; }
+              .space-y-1\\.5 > * + * { margin-top: 6px; }
+              .text-gray { color: #64748b; font-size: 12px; }
+              .text-dark { color: #1e293b; font-size: 12px; font-weight: 500; }
+              .bg-blue { background: #eff6ff !important; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px; }
+              .text-blue-tx { color: #1d4ed8; }
+              .text-teal-tx { color: #0d9488; }
+              .rounded-xl { border-radius: 12px; }
+              .border-t { border-top: 1px solid #e2e8f0; }
+              .pt-2 { padding-top: 8px; }
+              .mt-4 { margin-top: 16px; }
+              .text-lg { font-size: 18px; }
+              .text-md { font-size: 13px; }
+              .text-header-sm { font-size: 11px; color: #64748b; }
+              .text-header-lg { font-size: 14px; font-weight: bold; color: #1e293b; }
+              .font-semibold { font-weight: 600; }
+              .mb-2 { margin-bottom: 8px; }
             </style>
           </head>
           <body>
-            <div class="header">
-              <div class="title">KTS School Portal</div>
-              <div class="subtitle">Official Payment Receipt</div>
-            </div>
-            <div class="details">
-              <strong>Student Name:</strong> \${data.studentName}<br>
-              <strong>Class:</strong> \${data.studentClass}<br>
-              <strong>Receipt No:</strong> REC-\${Date.now()}<br>
-              <strong>Date:</strong> \${new Date().toLocaleDateString()} \${new Date().toLocaleTimeString()}
-            </div>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Fee Component</th>
-                  <th style="text-align: right;">Amount Paid</th>
-                </tr>
-              </thead>
-              <tbody>
-                \${data.allocatedPayments.map((p: any) => \`
-                  <tr>
-                    <td>\${p.name}</td>
-                    <td style="text-align: right;">₹\${p.amount.toLocaleString()}</td>
-                  </tr>
-                \`).join('')}
-              </tbody>
-            </table>
-            <div class="total">
-              <span>Total Paid:</span>
-              <span>₹\${data.totalPaid.toLocaleString()}</span>
-            </div>
-            <div class="footer">
-              Thank you for the payment!<br>
-              This is a computer-generated receipt.
+            <div style="max-width: 500px; margin: 0 auto;">
+              <div class="text-center mb-4 pb-4 border-b">
+                <div class="text-header-lg">Krishnaveni Talent School</div>
+                <div class="text-xs" style="color: #64748b;">Nizamabad, Telangana · Fee Receipt</div>
+                <div class="text-xs" style="color: #64748b;">Receipt No: REC-${Date.now()}</div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 mb-4" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div class="bg-slate">
+                  <div class="text-xs" style="color: #64748b;">Student Name</div>
+                  <div class="text-sm" style="font-weight: 600;">${data.studentName}</div>
+                </div>
+                <div class="bg-slate">
+                  <div class="text-xs" style="color: #64748b;">Class</div>
+                  <div class="text-sm" style="font-weight: 600;">${data.studentClass}</div>
+                </div>
+                <div class="bg-slate">
+                  <div class="text-xs" style="color: #64748b;">Date</div>
+                  <div class="text-sm" style="font-weight: 600;">${new Date().toLocaleDateString()}</div>
+                </div>
+                <div class="bg-slate">
+                  <div class="text-xs" style="color: #64748b;">Payment Method</div>
+                  <div class="text-sm" style="font-weight: 600;">Cash</div>
+                </div>
+              </div>
+
+              <div style="margin-bottom: 16px;">
+                <div class="text-xs" style="font-weight: 600; color: #0d9488; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Paid Items</div>
+                <div class="space-y-1.5" style="display: flex; flex-direction: column; gap: 6px;">
+                  ${data.allocatedPayments.map((p: any) => `
+                    <div class="flex" style="display: flex; justify-content: space-between;">
+                      <span class="text-gray">${p.name}</span>
+                      <span class="text-dark">₹${p.amount.toLocaleString()}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="bg-blue flex" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <span class="text-md font-bold text-blue-tx" style="font-size: 13px;">Total Paid</span>
+                <span class="text-lg font-bold text-blue-tx" style="font-size: 18px;">₹${data.totalPaid.toLocaleString()}</span>
+              </div>
+
+              <div class="text-center" style="margin-top: 30px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 15px;">
+                Thank you for your payment!<br>
+                This is an official computer-generated receipt.
+              </div>
             </div>
             <script>
               window.onload = function() {

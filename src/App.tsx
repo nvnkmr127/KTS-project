@@ -16,6 +16,7 @@ import { Students } from './pages/Students';
 import { StaffManagement } from './pages/StaffManagement';
 import { Classes } from './pages/Classes';
 import { Salary } from './pages/Salary';
+import { SalaryCategories } from './pages/SalaryCategories';
 import { Expenses } from './pages/Expenses';
 import { WhatsApp } from './pages/WhatsApp';
 import { Leave } from './pages/Leave';
@@ -39,6 +40,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   staff: '/staff-management',
   classes: '/classes',
   salary: '/salary',
+  'salary-categories': '/salary-categories',
   expenses: '/expenses',
   whatsapp: '/whatsapp-center',
   leave: '/leave-management',
@@ -149,6 +151,7 @@ function AppShell() {
           {page === 'staff' && <StaffManagement />}
           {page === 'classes' && <Classes />}
           {page === 'salary' && <Salary />}
+          {page === 'salary-categories' && <SalaryCategories />}
           {page === 'expenses' && <Expenses />}
           {page === 'whatsapp' && <WhatsApp />}
           {page === 'leave' && <Leave />}

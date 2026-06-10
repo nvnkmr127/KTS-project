@@ -20,7 +20,7 @@ interface StaffMember {
   qualifications: string;
 }
 
-const STAFF: StaffMember[] = [
+export const STAFF: StaffMember[] = [
   { id: '1', name: 'Mrs. Lakshmi Devi', designation: 'Senior Teacher', department: 'Mathematics', subject: 'Maths', phone: '9876501234', email: 'lakshmi@krishnaveni.edu', joinDate: '2015-06-01', attendance: 96, status: 'Active', salary: 62000, qualifications: 'M.Sc Mathematics, B.Ed' },
   { id: '2', name: 'Mr. Venkat Rao', designation: 'Teacher', department: 'Science', subject: 'Physics, Chemistry', phone: '9876502345', email: 'venkat@krishnaveni.edu', joinDate: '2017-06-01', attendance: 92, status: 'Active', salary: 58000, qualifications: 'M.Sc Physics, B.Ed' },
   { id: '3', name: 'Mrs. Suma Reddy', designation: 'Teacher', department: 'English', subject: 'English', phone: '9876503456', email: 'suma@krishnaveni.edu', joinDate: '2018-06-01', attendance: 88, status: 'On Leave', salary: 55000, qualifications: 'MA English, B.Ed' },
