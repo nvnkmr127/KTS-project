@@ -10,6 +10,22 @@ import { Avatar } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
+import { StaffMember, STAFF } from './StaffManagement';
+
+export interface Invigilation {
+  id: string;
+  examId: string;
+  examName: string;
+  class: string;
+  subject: string;
+  date: string;
+  timeSlot: string;
+  room: string;
+  staffId: string;
+  staffName: string;
+  staffEmail: string;
+}
+
 
 interface Exam {
   id: string;
@@ -473,7 +489,7 @@ export function Examinations() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
-  type Tab = 'exams' | 'results' | 'marks' | 'designer';
+  type Tab = 'exams' | 'results' | 'marks' | 'designer' | 'invisilation';
   const [activeTab, setActiveTab] = useState<Tab>('exams');
   const [showCreate, setShowCreate] = useState(false);
   const [selectedClass, setSelectedClass] = useState('8A');
@@ -488,11 +504,19 @@ export function Examinations() {
     return saved ? JSON.parse(saved) : EXAMS;
   });
 
+  const [invigilations, setInvigilations] = useState<Invigilation[]>(() => {
+    const saved = localStorage.getItem('kts_exam_invigilations');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+
   useEffect(() => {
     const syncDb = async () => {
       try {
         let currentExams = exams;
         let currentSchedules = schedules;
+        let currentInvigilations = invigilations;
 
         // Sync exams
         const examsRes = await api.getResources('settings', { key: 'examinations_exams' });
@@ -523,11 +547,39 @@ export function Examinations() {
           // Seed DB
           await saveSettingToDb('examinations_schedules', currentSchedules);
         }
+
+        // Sync invigilations
+        const invigilationsRes = await api.getResources('settings', { key: 'kts_exam_invigilations' });
+        if (Array.isArray(invigilationsRes) && invigilationsRes.length > 0 && invigilationsRes[0].value) {
+          try {
+            currentInvigilations = JSON.parse(invigilationsRes[0].value);
+            setInvigilations(currentInvigilations);
+            localStorage.setItem('kts_exam_invigilations', JSON.stringify(currentInvigilations));
+          } catch (e) {
+            console.error('Error parsing kts_exam_invigilations setting:', e);
+          }
+        } else {
+          // Seed DB
+          await saveSettingToDb('kts_exam_invigilations', currentInvigilations);
+        }
       } catch (err) {
         console.error('Failed to sync settings from DB:', err);
       }
     };
     syncDb();
+
+    // Load staff members
+    const savedStaff = localStorage.getItem('kts_staff_members');
+    if (savedStaff) {
+      try {
+        setStaffList(JSON.parse(savedStaff));
+      } catch (e) {
+        console.error(e);
+        setStaffList(STAFF);
+      }
+    } else {
+      setStaffList(STAFF);
+    }
   }, []);
 
   // Removed automatic sync effects to prevent redundant DB writes on mount
@@ -538,6 +590,16 @@ export function Examinations() {
   const [createDate, setCreateDate] = useState('');
   const [createMaxMarks, setCreateMaxMarks] = useState(100);
   const [classList, setClassList] = useState<string[]>([]);
+
+  // Invigilation allotment form states
+  const [showAllotModal, setShowAllotModal] = useState(false);
+  const [allotExamId, setAllotExamId] = useState('');
+  const [allotClass, setAllotClass] = useState('8A');
+  const [allotSubject, setAllotSubject] = useState('Mathematics');
+  const [allotDate, setAllotDate] = useState('');
+  const [allotTimeSlot, setAllotTimeSlot] = useState('10:00 AM');
+  const [allotRoom, setAllotRoom] = useState('Room 101');
+  const [allotStaffId, setAllotStaffId] = useState('');
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -614,6 +676,41 @@ export function Examinations() {
     saveSettingToDb('examinations_exams', updatedExams);
   };
 
+  const handleAddInvigilation = () => {
+    if (!allotStaffId) return;
+    const selectedStaff = staffList.find((s) => s.id === allotStaffId);
+    if (!selectedStaff) return;
+    
+    const selectedExam = exams.find((e) => e.id === allotExamId) || exams[0];
+
+    const newInv: Invigilation = {
+      id: 'inv-' + Date.now(),
+      examId: selectedExam ? selectedExam.id : 'custom',
+      examName: selectedExam ? selectedExam.name : 'Custom Exam',
+      class: allotClass,
+      subject: allotSubject,
+      date: allotDate || selectedExam?.date || new Date().toISOString().slice(0, 10),
+      timeSlot: allotTimeSlot,
+      room: allotRoom,
+      staffId: selectedStaff.id,
+      staffName: selectedStaff.name,
+      staffEmail: selectedStaff.email || ''
+    };
+
+    const updated = [...invigilations, newInv];
+    setInvigilations(updated);
+    localStorage.setItem('kts_exam_invigilations', JSON.stringify(updated));
+    saveSettingToDb('kts_exam_invigilations', updated);
+    setShowAllotModal(false);
+  };
+
+  const handleDeleteInvigilation = (id: string) => {
+    const updated = invigilations.filter((i) => i.id !== id);
+    setInvigilations(updated);
+    localStorage.setItem('kts_exam_invigilations', JSON.stringify(updated));
+    saveSettingToDb('kts_exam_invigilations', updated);
+  };
+
   const handleExamCardClick = (exam: Exam) => {
     let targetClass = '8A';
     if (exam.class !== 'All Classes') {
@@ -634,6 +731,7 @@ export function Examinations() {
     { id: 'results', label: 'Results & Rankings' },
     { id: 'marks', label: 'Marks Entry' },
     { id: 'designer', label: isAdmin ? 'Schedule Designer' : 'Schedule Preview' },
+    { id: 'invisilation', label: isAdmin ? 'Allot Invisilation' : 'Exam Invisilation' },
   ];
 
   return (
@@ -918,6 +1016,254 @@ export function Examinations() {
             );
           })()
         )
+      )}
+
+      {activeTab === 'invisilation' && (
+        <Card>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <div className="text-[13.5px] font-bold text-[var(--tx)]">
+                {isAdmin ? 'Exam Invisilation Allotment' : 'My Exam Invisilation Duties'}
+              </div>
+              <div className="text-[11px] text-[var(--tx3)] mt-0.5">
+                {isAdmin ? 'Manage exam invigilator assignments for all staff members' : 'List of exam invigilation duties assigned to you'}
+              </div>
+            </div>
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setShowAllotModal(true);
+                  if (exams.length > 0) {
+                    setAllotExamId(exams[0].id);
+                    setAllotSubject(exams[0].subject === 'All Subjects' ? 'Mathematics' : exams[0].subject);
+                    setAllotDate(exams[0].date);
+                    let cls = '8A';
+                    if (exams[0].class !== 'All Classes') {
+                      cls = exams[0].class.split(',')[0].trim();
+                    }
+                    setAllotClass(cls);
+                  }
+                  if (staffList.length > 0) {
+                    setAllotStaffId(staffList[0].id);
+                  }
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 font-semibold"
+              >
+                <Plus size={12} /> Allot Invisilator
+              </button>
+            )}
+          </div>
+
+          {(() => {
+            const displayList = isAdmin
+              ? invigilations
+              : invigilations.filter(
+                  (inv) =>
+                    inv.staffName.toLowerCase() === (user?.name || '').toLowerCase() ||
+                    inv.staffEmail.toLowerCase() === (user?.email || '').toLowerCase()
+                );
+
+            if (displayList.length === 0) {
+              return (
+                <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
+                  {isAdmin ? 'No invigilation duties scheduled.' : 'You have no exam invigilation duties assigned.'}
+                </div>
+              );
+            }
+
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[12px] min-w-[750px]">
+                  <thead>
+                    <tr className="border-b border-[var(--b)] text-[var(--tx3)]">
+                      {['Date', 'Time Slot', 'Exam Name', 'Class', 'Subject', 'Room No', isAdmin ? 'Assigned Invisilator' : '', isAdmin ? 'Action' : ''].filter(Boolean).map((h) => (
+                        <th key={h} className="text-[10.5px] font-medium text-left px-3 py-2 whitespace-nowrap">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayList.map((inv) => (
+                      <tr key={inv.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)]/40 transition-colors last:border-0">
+                        <td className="px-3 py-2.5 text-[var(--tx)] font-medium">{formatDate(inv.date)}</td>
+                        <td className="px-3 py-2.5 text-[var(--tx2)]">{inv.timeSlot}</td>
+                        <td className="px-3 py-2.5 text-[var(--tx)] font-semibold">{inv.examName}</td>
+                        <td className="px-3 py-2.5 text-[var(--tx2)]">Class {inv.class}</td>
+                        <td className="px-3 py-2.5 text-[var(--blue-tx)] font-semibold">{inv.subject}</td>
+                        <td className="px-3 py-2.5 font-mono text-[11px] text-[var(--tx)]">{inv.room}</td>
+                        {isAdmin && (
+                          <td className="px-3 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <Avatar initials={inv.staffName.split(' ').map((n) => n[0]).join('').slice(0, 2)} bg="var(--purple-bg)" color="var(--purple-tx)" />
+                              <div>
+                                <span className="font-semibold text-[var(--tx)]">{inv.staffName}</span>
+                                {inv.staffEmail && <div className="text-[9.5px] text-[var(--tx3)]">{inv.staffEmail}</div>}
+                              </div>
+                            </div>
+                          </td>
+                        )}
+                        {isAdmin && (
+                          <td className="px-3 py-2.5">
+                            <button
+                              onClick={() => handleDeleteInvigilation(inv.id)}
+                              className="p-1 rounded-lg hover:bg-[var(--red-bg)] text-[var(--tx3)] hover:text-[var(--red-tx)] cursor-pointer transition-colors"
+                              title="Remove Assignment"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+        </Card>
+      )}
+
+      {/* Allot Invisilation Modal */}
+      {showAllotModal && isAdmin && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[445px] shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Allot Exam Invisilator</div>
+                <div className="text-[11px] text-[var(--tx3)] mt-0.5 font-medium">Assign a staff member to examination duty</div>
+              </div>
+              <button onClick={() => setShowAllotModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx3)]"><X size={16} /></button>
+            </div>
+            
+            <div className="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Scheduled Exam *</label>
+                <select
+                  value={allotExamId}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    setAllotExamId(selectedId);
+                    const selectedExam = exams.find((ex) => ex.id === selectedId);
+                    if (selectedExam) {
+                      setAllotSubject(selectedExam.subject === 'All Subjects' ? 'Mathematics' : selectedExam.subject);
+                      setAllotDate(selectedExam.date);
+                      let cls = '8A';
+                      if (selectedExam.class !== 'All Classes') {
+                        cls = selectedExam.class.split(',')[0].trim();
+                      }
+                      setAllotClass(cls);
+                    }
+                  }}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                >
+                  <option value="">-- Choose Exam --</option>
+                  {exams.map((ex) => (
+                    <option key={ex.id} value={ex.id}>
+                      {ex.name} (Class {ex.class} · {formatDate(ex.date)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class Room *</label>
+                  <select
+                    value={allotClass}
+                    onChange={(e) => setAllotClass(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
+                  >
+                    {classList.map((c) => (
+                      <option key={c} value={c}>
+                        Class {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Exam Subject *</label>
+                  <select
+                    value={allotSubject}
+                    onChange={(e) => setAllotSubject(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
+                  >
+                    {SUBJECTS.map((sub) => (
+                      <option key={sub} value={sub}>
+                        {sub}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Date *</label>
+                  <input
+                    type="date"
+                    value={allotDate}
+                    onChange={(e) => setAllotDate(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5 font-semibold">Time Slot *</label>
+                  <select
+                    value={allotTimeSlot}
+                    onChange={(e) => setAllotTimeSlot(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
+                  >
+                    {['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM'].map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Room Number *</label>
+                  <input
+                    type="text"
+                    value={allotRoom}
+                    onChange={(e) => setAllotRoom(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    placeholder="Room 101"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5 font-semibold text-[var(--blue-tx)]">Assigned Invisilator *</label>
+                  <select
+                    value={allotStaffId}
+                    onChange={(e) => setAllotStaffId(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none font-semibold focus:border-[var(--blue)]"
+                  >
+                    <option value="">-- Select Staff Member --</option>
+                    {staffList.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.name} ({st.category || 'Teaching'} · {st.designation})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 p-5 pt-0">
+              <button onClick={() => setShowAllotModal(false)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button
+                onClick={handleAddInvigilation}
+                disabled={!allotStaffId}
+                className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-bold cursor-pointer hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none transition-all"
+              >
+                Allot Duty
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Create Exam Modal */}
