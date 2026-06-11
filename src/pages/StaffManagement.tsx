@@ -1125,7 +1125,7 @@ export function StaffManagement() {
                           <div className="flex items-center gap-2.5">
                             <Avatar initials={s.name.split(' ').map((n) => n[0]).join('').slice(0, 2)} bg={dc.bg} color={dc.color} />
                             <div>
-                              <div className="font-semibold text-[var(--tx)] hover:text-[var(--blue)] hover:underline">{s.name}</div>
+                              <div className="font-semibold text-[var(--tx)] hover:text-[var(--blue)]">{s.name}</div>
                               <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1.5">
                                 <span>{s.designation}</span>
                                 <span className="text-[9px] px-1.5 py-0.5 bg-[var(--surf3)] border border-[var(--b)] rounded-full text-[var(--tx2)] font-medium">{s.category || 'Teaching'}</span>

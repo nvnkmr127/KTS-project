@@ -861,7 +861,7 @@ export function FeeManagement() {
               {filtered.map((s, index) => (
                 <tr key={s.studentId} className="hover:bg-[var(--surf2)] transition-colors group">
                   <td className="px-2 py-2 text-[var(--tx3)]">{index + 1}</td>
-                  <td className="px-2 py-2 cursor-pointer hover:underline text-[var(--blue-tx)] font-medium" onClick={() => handleViewStudentDetails(s)}>
+                  <td className="px-2 py-2 cursor-pointer text-[var(--blue-tx)] font-medium" onClick={() => handleViewStudentDetails(s)}>
                     <div className="flex items-center gap-2">
                       <Avatar initials={s.init} bg="var(--blue-bg)" color="var(--blue-tx)" />
                       <span>{s.name}</span>
