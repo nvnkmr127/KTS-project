@@ -4,6 +4,7 @@ import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { api } from '../services/api';
+import { useApp } from '../context/AppContext';
 
 interface ClassData {
   id: string;
@@ -24,6 +25,7 @@ interface SectionData {
 const ALL_SUBJECTS = ['Maths', 'Physics', 'Chemistry', 'Biology', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS', 'Computer Science', 'Physical Education'];
 
 export function Classes() {
+  const { selectedAcademicYearId } = useApp();
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,11 +55,12 @@ export function Classes() {
   const loadClasses = async () => {
     setLoading(true);
     try {
-      const [batchesData, teachersData, studentsData] = await Promise.all([
+      const [allBatches, teachersData, studentsData] = await Promise.all([
         api.getResources('batches'),
         api.getResources('faculty'),
         api.getResources('students'),
       ]);
+      const batchesData = allBatches.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
       setTeachers(teachersData);
 
       const classGroups: Record<string, SectionData[]> = {};
@@ -136,7 +139,7 @@ export function Classes() {
 
   useEffect(() => {
     loadClasses();
-  }, []);
+  }, [selectedAcademicYearId]);
 
   const handleAssignTeacher = async (teacherId: string) => {
     if (!showAssignTeacher) return;

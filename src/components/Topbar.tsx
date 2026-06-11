@@ -30,6 +30,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   'teacher-dashboard': 'Teacher Dashboard',
   'allot-attendance': 'Allot Attendance',
   timetable: 'Timetable Designer',
+  promotion: 'Student Promotion',
 };
 
 interface TopbarProps {
@@ -41,7 +42,7 @@ interface TopbarProps {
 
 export function Topbar({ current, dark, onToggleDark, onMenuClick }: TopbarProps) {
   const { user } = useAuth();
-  const { notifications, markNotificationsRead } = useApp();
+  const { notifications, markNotificationsRead, academicYears, selectedAcademicYearId, setSelectedAcademicYearId } = useApp();
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -78,9 +79,26 @@ export function Topbar({ current, dark, onToggleDark, onMenuClick }: TopbarProps
         <Menu size={14} />
       </button>
 
-      <div className="flex-1 text-[14px] font-bold text-[var(--tx)] truncate">
+      <div className="text-[14px] font-bold text-[var(--tx)] truncate mr-2">
         {PAGE_TITLES[current]}
       </div>
+
+      {academicYears.length > 0 && (
+        <div className="flex items-center gap-1.5 mr-auto">
+          <span className="text-[10px] text-[var(--tx3)] font-semibold uppercase tracking-wider hidden lg:inline">Academic Year:</span>
+          <select
+            value={selectedAcademicYearId}
+            onChange={(e) => setSelectedAcademicYearId(e.target.value)}
+            className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-0.5 text-[11px] text-[var(--tx)] font-semibold outline-none cursor-pointer hover:bg-[var(--surf3)] transition-colors"
+          >
+            {academicYears.map((ay) => (
+              <option key={ay.id} value={ay.id}>
+                {ay.name} {ay.is_current ? '(Current)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="hidden sm:flex items-center gap-1.5 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx3)] w-44 cursor-text">
         <Search size={12} />

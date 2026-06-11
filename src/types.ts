@@ -25,6 +25,7 @@ export type PageId =
   | 'performance'
   | 'teacher-dashboard'
   | 'allot-attendance'
+  | 'promotion'
   | 'timetable';
 
 export type ColorVariant =

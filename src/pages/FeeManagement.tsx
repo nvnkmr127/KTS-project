@@ -6,6 +6,7 @@ import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { TabBar } from '../components/ui';
 import { api } from '../services/api';
+import { useApp } from '../context/AppContext';
 
 interface StudentFeeDisplay {
   id: string;
@@ -33,6 +34,7 @@ const statusBadge = (s: 'Paid' | 'Partial' | 'Unpaid') => {
 };
 
 export function FeeManagement() {
+  const { selectedAcademicYearId } = useApp();
   const [tab, setTab] = useState(0);
   const [students, setStudents] = useState<StudentFeeDisplay[]>([]);
   const [search, setSearch] = useState('');
@@ -206,10 +208,14 @@ export function FeeManagement() {
     setLoading(true);
     try {
       const [studentsData, categoriesData] = await Promise.all([
-        api.getResources('students'),
+        api.getResources('students', { with: 'batch' }),
         api.getResources('fee-categories').catch(() => []),
       ]);
-      const activeStudents = studentsData.filter((s: any) => s.status === 'active' || s.status === 'Active');
+      const activeStudents = studentsData.filter((s: any) => {
+        const isActive = s.status === 'active' || s.status === 'Active';
+        const matchAy = !s.batch || String(s.batch.academic_year_id) === String(selectedAcademicYearId);
+        return isActive && matchAy;
+      });
       const mapped = activeStudents.map((s: any, idx: number) => {
         const initials = s.name.split(' ').map((n: any) => n[0] ?? '').join('').toUpperCase().slice(0, 2);
         return {
@@ -252,7 +258,7 @@ export function FeeManagement() {
 
   useEffect(() => {
     loadFeesData();
-  }, []);
+  }, [selectedAcademicYearId]);
 
   const loadStudentFees = async (studentId: string) => {
     setLoadingStudentFees(true);

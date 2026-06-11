@@ -28,6 +28,7 @@ import { Timetable } from './pages/Timetable';
 import { StaffAttendance } from './pages/StaffAttendance';
 import { StaffAccess } from './pages/StaffAccess';
 import { AllotAttendance } from './pages/AllotAttendance';
+import { Promotion } from './pages/Promotion';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -55,6 +56,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   performance: '/performance',
   'teacher-dashboard': '/teacher-dashboard',
   'allot-attendance': '/allot-attendance',
+  promotion: '/promotion',
   timetable: '/timetable',
 };
 
@@ -166,6 +168,7 @@ function AppShell() {
           {page === 'exams' && <Examinations />}
           {page === 'meetings' && <Meetings />}
           {page === 'timetable' && <Timetable />}
+          {page === 'promotion' && <Promotion />}
 
           {/* Teacher pages */}
           {page === 'teacher-dashboard' && <TeacherDashboard />}

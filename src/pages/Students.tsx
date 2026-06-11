@@ -16,6 +16,7 @@ import { Avatar } from '../components/ui';
 import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
+import { useApp } from '../context/AppContext';
 
 interface Student {
   id: string;
@@ -31,6 +32,8 @@ interface Student {
   status: 'Active' | 'Transferred' | 'Left';
   admissionDate: string;
   feeStatus: 'Paid' | 'Partial' | 'Unpaid';
+  academicYearId?: string;
+  academicYearName?: string;
 }
 
 const INITIALS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -41,10 +44,19 @@ const INITIALS_COLORS: Record<string, { bg: string; color: string }> = {
 type ModalType = 'add' | 'view' | 'edit' | null;
 
 export function Students() {
+  const { selectedAcademicYearId } = useApp();
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
+  const [ayFilter, setAyFilter] = useState(() => localStorage.getItem('selected_academic_year_id') || 'All');
+
+  useEffect(() => {
+    if (selectedAcademicYearId) {
+      setAyFilter(selectedAcademicYearId);
+    }
+  }, [selectedAcademicYearId]);
   const [modal, setModal] = useState<ModalType>(null);
   const [selected, setSelected] = useState<Student | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,15 +71,19 @@ export function Students() {
   const [attendancePercentage, setAttendancePercentage] = useState<number | null>(null);
 
   useEffect(() => {
-    async function loadBatches() {
+    async function loadInitialData() {
       try {
-        const data = await api.getResources('batches');
-        setBatchesList(data);
+        const [batchesData, ayData] = await Promise.all([
+          api.getResources('batches'),
+          api.getResources('academic-years'),
+        ]);
+        setBatchesList(batchesData);
+        setAcademicYears((ayData || []).map((ay: any) => ({ id: String(ay.id), name: ay.name })));
       } catch (e) {
         console.error(e);
       }
     }
-    loadBatches();
+    loadInitialData();
   }, []);
 
   useEffect(() => {
@@ -99,12 +115,12 @@ export function Students() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, classFilter, statusFilter]);
+  }, [search, classFilter, statusFilter, ayFilter]);
 
   const loadStudents = async () => {
     setLoading(true);
     try {
-      const data = await api.getResources('students');
+      const data = await api.getResources('students', { with: 'batch.academicYear', limit: '1000' });
       const mapped = data.map((s: any) => ({
         id: String(s.id),
         name: s.name,
@@ -119,6 +135,8 @@ export function Students() {
         status: (s.status === 'active' || s.status === 'Active') ? 'Active' : (s.status === 'left' || s.status === 'dropout' || s.status === 'Left') ? 'Left' : (s.status === 'transfer' || s.status === 'transferred' || s.status === 'Transferred') ? 'Transferred' : 'Active',
         admissionDate: s.admission_date ? s.admission_date.slice(0, 10) : '',
         feeStatus: s.fee_status || 'Paid',
+        academicYearId: s.batch && s.batch.academic_year ? String(s.batch.academic_year.id) : '',
+        academicYearName: s.batch && s.batch.academic_year ? s.batch.academic_year.name : 'N/A',
       }));
       setStudents(mapped);
     } catch (err) {
@@ -206,7 +224,8 @@ export function Students() {
       s.parent.toLowerCase().includes(search.toLowerCase());
     const matchClass = classFilter === 'All' || s.class === classFilter;
     const matchStatus = statusFilter === 'All' || s.status === statusFilter;
-    return matchSearch && matchClass && matchStatus;
+    const matchAy = ayFilter === 'All' || String(s.academicYearId) === ayFilter;
+    return matchSearch && matchClass && matchStatus && matchAy;
   });
 
   const ITEMS_PER_PAGE = 10;
@@ -260,6 +279,12 @@ export function Students() {
               className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none"
             />
           </div>
+          <select value={ayFilter} onChange={(e) => setAyFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+            <option value="All">All Academic Years</option>
+            {academicYears.map((ay) => (
+              <option key={ay.id} value={ay.id}>{ay.name}</option>
+            ))}
+          </select>
           <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
             {['All', '6', '7', '8', '9', '10'].map((c) => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
           </select>

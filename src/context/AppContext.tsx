@@ -146,6 +146,9 @@ interface AppContextValue {
   unreadCount: number;
   timetable: SchoolTimetable;
   periodTimings: PeriodTiming[];
+  academicYears: { id: string; name: string; is_current: boolean }[];
+  selectedAcademicYearId: string;
+  setSelectedAcademicYearId: (id: string) => void;
   addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'appliedOn'>) => Promise<void>;
   approveLeave: (id: string) => Promise<void>;
   rejectLeave: (id: string, notes?: string) => Promise<void>;
@@ -172,6 +175,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('timetable_period_timings');
     return saved ? JSON.parse(saved) : DEFAULT_TIMINGS;
   });
+  const [academicYears, setAcademicYears] = useState<{ id: string; name: string; is_current: boolean }[]>([]);
+  const [selectedAcademicYearId, setSelectedAcademicYearIdState] = useState<string>(() => {
+    return localStorage.getItem('selected_academic_year_id') || '';
+  });
+
+  const setSelectedAcademicYearId = (id: string) => {
+    setSelectedAcademicYearIdState(id);
+    localStorage.setItem('selected_academic_year_id', id);
+  };
 
   const { user } = useAuth();
 
@@ -180,10 +192,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLeaveRequests([]);
       setNotifications([]);
       setTimetable(buildDefaultTimetable());
+      setAcademicYears([]);
       return;
     }
 
     async function loadInitialData() {
+      // Load Academic Years
+      try {
+        const ays = await api.getResources('academic-years');
+        if (ays && ays.length > 0) {
+          const mapped = ays.map((ay: any) => ({
+            id: String(ay.id),
+            name: ay.name,
+            is_current: !!ay.is_current,
+          }));
+          setAcademicYears(mapped);
+          
+          const savedId = localStorage.getItem('selected_academic_year_id');
+          if (!savedId) {
+            const current = mapped.find((ay: any) => ay.is_current) || mapped[0];
+            setSelectedAcademicYearId(current.id);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading academic years in AppContext:', err);
+      }
+
       // Load leaves
       try {
         const leavesData = await api.getResources('leaves');
@@ -441,6 +475,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       unreadCount,
       timetable,
       periodTimings,
+      academicYears,
+      selectedAcademicYearId,
+      setSelectedAcademicYearId,
       addLeaveRequest,
       approveLeave,
       rejectLeave,

@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
   Bus, BarChart2, Settings, School, MessageCircle,
-  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock,
+  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -34,7 +34,8 @@ const ADMIN_SECTIONS: NavSection[] = [
       { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary' },
       { icon: <ClipboardList size={14} />, label: 'Examinations', page: 'exams' },
       { icon: <Grid3X3 size={14} />, label: 'Timetable', page: 'timetable' },
-      { icon: <GraduationCap size={14} />, label: 'Classes', page: 'classes' },
+      { icon: <School size={14} />, label: 'Classes', page: 'classes' },
+      { icon: <GraduationCap size={14} />, label: 'Promotion', page: 'promotion' },
     ],
   },
   {
