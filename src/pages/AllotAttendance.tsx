@@ -13,6 +13,7 @@ interface Student {
   roll: string;
   class: string;
   section: string;
+  status: string;
 }
 
 interface Batch {
@@ -116,7 +117,8 @@ export function AllotAttendance() {
           name: s.name,
           roll: s.enrollment_number || 'N/A',
           class: s.class || '8',
-          section: s.section || 'A'
+          section: s.section || 'A',
+          status: s.status || 'active'
         })));
 
         // Load and sync attendance records from settings
@@ -212,10 +214,10 @@ export function AllotAttendance() {
     }
   }, [selectedClass, isClassTeacherForSelected, teachesAfterLunchForSelected]);
 
-  // Filter students in selected class
+  // Filter students in selected class (active status only)
   const classStudents = students.filter(s => {
     const studentClassFormatted = `${s.class}${s.section}`;
-    return studentClassFormatted.toLowerCase() === selectedClass.toLowerCase();
+    return studentClassFormatted.toLowerCase() === selectedClass.toLowerCase() && s.status.toLowerCase() === 'active';
   });
 
   // Load existing attendance status if already marked
