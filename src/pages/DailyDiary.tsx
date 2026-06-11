@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Send, Clock, MessageCircle, Eye, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { BookOpen, Send, Clock, MessageCircle, Eye, CheckCircle2, AlertCircle, Loader2, ChevronDown, ChevronUp, Calendar, User, ArrowLeft } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
+import { useApp } from '../context/AppContext';
 
 interface DiaryEntry {
   id?: string;
@@ -23,6 +24,10 @@ const DEFAULT_CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', 
 function AdminDiaryView() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [selectedClassDetail, setSelectedClassDetail] = useState<string | null>(null);
+
+  const { timetable, periodTimings } = useApp();
 
   const loadEntries = async () => {
     setLoading(true);
@@ -40,40 +45,259 @@ function AdminDiaryView() {
     loadEntries();
   }, []);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayEntries = entries.filter((e) => e.diary_date === todayStr);
+  const activeEntries = entries.filter((e) => e.diary_date === selectedDate);
 
-  // Map default classes to submission status
+  // Helper to match teacher names loosely
+  const matchTeacher = (t1: string, t2: string) => {
+    const clean1 = t1.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|dr\.)\s+/g, '').trim();
+    const clean2 = t2.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|dr\.)\s+/g, '').trim();
+    return clean1.includes(clean2) || clean2.includes(clean1);
+  };
+
+  // Map default classes to submission status, entries, and scheduled teachers counts
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dateObj = new Date(selectedDate);
+  const dayName = daysOfWeek[dateObj.getDay()];
+
   const submissionList = DEFAULT_CLASSES.map((clsName) => {
-    const entry = todayEntries.find((e) => e.batch_name === clsName);
-    if (entry) {
-      return {
-        cls: `Class ${clsName}`,
-        teacher: entry.teacher_name,
-        time: 'Today',
-        topics: entry.topics,
-        homework: entry.homework,
-        notes: entry.notes,
-        status: 'sent' as const,
-        parents: entry.parents_count,
-      };
-    } else {
-      return {
-        cls: `Class ${clsName}`,
-        teacher: 'Pending update',
-        time: '',
-        topics: 'Not yet updated for today',
-        homework: '',
-        notes: '',
-        status: 'pending' as const,
-        parents: 0,
-      };
-    }
+    const classEntries = activeEntries.filter((e) => e.batch_name === clsName);
+    const classTimetable = timetable[clsName] ?? {};
+    const dayTimetable = classTimetable[dayName] ?? {};
+
+    // Get unique teachers scheduled for today (excluding breaks)
+    const scheduledTeachers = Array.from(new Set(
+      Object.keys(dayTimetable)
+        .map(p => dayTimetable[Number(p)])
+        .filter((slot): slot is NonNullable<typeof slot> => !!slot && !!slot.teacher)
+        .map(slot => slot.teacher)
+    ));
+
+    const submittedTeachers = scheduledTeachers.filter(st =>
+      classEntries.some(e => matchTeacher(e.teacher_name, st))
+    );
+
+    const submittedCount = submittedTeachers.length;
+    const pendingCountForClass = Math.max(0, scheduledTeachers.length - submittedCount);
+
+    // If timetable is empty, fallback to activeEntries count
+    const finalSubmitted = scheduledTeachers.length === 0 ? classEntries.length : submittedCount;
+    const finalPending = scheduledTeachers.length === 0 ? 0 : pendingCountForClass;
+
+    const isSubmitted = finalSubmitted > 0;
+    const isFullySubmitted = scheduledTeachers.length > 0 ? finalPending === 0 : isSubmitted;
+
+    return {
+      cls: `Class ${clsName}`,
+      clsName,
+      status: isFullySubmitted ? 'sent' as const : 'pending' as const,
+      submittedCount: finalSubmitted,
+      pendingCount: finalPending,
+      totalScheduled: scheduledTeachers.length,
+      entries: classEntries,
+    };
   });
 
-  const sentCount = submissionList.filter((s) => s.status === 'sent').length;
-  const pendingCount = submissionList.filter((s) => s.status === 'pending').length;
-  const totalParents = submissionList.reduce((sum, s) => sum + s.parents, 0);
+  const sentCount = submissionList.filter((s) => s.submittedCount > 0).length;
+  const pendingCount = submissionList.filter((s) => s.pendingCount > 0).length;
+  const totalParents = activeEntries.reduce((sum, e) => sum + e.parents_count, 0);
+
+  // If a class is clicked, render the detailed period-wise teacher screen
+  if (selectedClassDetail) {
+    const classTimetable = timetable[selectedClassDetail] ?? {};
+    const dayTimetable = classTimetable[dayName] ?? {};
+
+    // Get all daily diary entries submitted for this class on the selected date
+    const classEntriesForDate = activeEntries.filter((e) => e.batch_name === selectedClassDetail);
+
+    // Keep track of which entries are displayed in the timeline so we can show unmatched ones at the bottom
+    const matchedEntryIds = new Set<string>();
+
+    return (
+      <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
+        <div className="flex items-center gap-3 mb-4">
+          <button
+            onClick={() => setSelectedClassDetail(null)}
+            className="p-1.5 hover:bg-[var(--surf2)] rounded-lg text-[var(--tx2)] hover:text-[var(--tx)] cursor-pointer border border-[var(--b)] bg-[var(--surf)]"
+          >
+            <ArrowLeft size={14} />
+          </button>
+          <div>
+            <h2 className="text-[14px] font-bold text-[var(--tx)]">Class {selectedClassDetail} Submissions</h2>
+            <p className="text-[10.5px] text-[var(--tx3)]">Period-wise breakdown of scheduled teachers and diaries</p>
+          </div>
+        </div>
+
+        <Card>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-[var(--b)]">
+            <div className="text-[12px] font-semibold text-[var(--tx)] flex items-center gap-2">
+              Timeline for {dayName}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1">
+                <Calendar size={12} className="text-[var(--tx3)]" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-transparent border-none text-[11px] text-[var(--tx)] focus:outline-none cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {dayName === 'Sunday' ? (
+              <div className="text-center py-6 text-[12px] text-[var(--tx3)]">
+                Sunday - No scheduled classes.
+              </div>
+            ) : (
+              periodTimings.map((timing, p) => {
+                if (timing.isBreak) {
+                  return (
+                    <div key={p} className="p-2.5 bg-[var(--surf3)]/20 border border-[var(--b)] border-dashed rounded-xl text-center text-[10.5px] text-[var(--tx3)] font-semibold">
+                      {timing.label || 'Break'} ({timing.start} - {timing.end})
+                    </div>
+                  );
+                }
+
+                const displayPeriodIndex = periodTimings.slice(0, p).filter(t => !t.isBreak).length + 1;
+                const slot = dayTimetable[p];
+
+                if (!slot) {
+                  return (
+                    <div key={p} className="p-3 bg-[var(--surf2)]/20 border border-[var(--b)] rounded-xl text-[11px] text-[var(--tx3)]">
+                      Period {displayPeriodIndex} ({timing.start} - {timing.end}) : No subject scheduled
+                    </div>
+                  );
+                }
+
+                // Find the entry that matches this teacher
+                const entry = classEntriesForDate.find((e) => matchTeacher(e.teacher_name, slot.teacher));
+                if (entry && entry.id) {
+                  matchedEntryIds.add(entry.id);
+                }
+
+                return (
+                  <div key={p} className="space-y-1.5">
+                    <div className="text-[11px] font-bold text-[var(--tx3)] pl-1 flex items-center justify-between">
+                      <span>Period {displayPeriodIndex} ({timing.start} - {timing.end}) · {slot.subject}</span>
+                      <span className="text-[10px] bg-[var(--blue-bg)] text-[var(--blue-tx)] px-2 py-0.5 rounded-full font-semibold">Scheduled</span>
+                    </div>
+
+                    {entry ? (
+                      <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-[var(--blue-bg)] text-[var(--blue-tx)] flex items-center justify-center">
+                              <User size={15} />
+                            </div>
+                            <div>
+                              <span className="text-[12.5px] font-bold text-[var(--tx)]">{entry.teacher_name}</span>
+                              <div className="text-[10px] text-[var(--tx3)]">{slot.subject} · Scheduled Teacher</div>
+                            </div>
+                          </div>
+                          <span className="text-[11px] text-[var(--tx3)] font-medium">
+                            {formatDate(entry.diary_date).split('-').reverse().join('-')}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 text-[12px] pl-1.5 pt-1">
+                          <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                            <span className="text-[11.5px] font-semibold text-[var(--tx3)]">Topics:</span>
+                            <span className="text-[12px] text-[var(--tx)]">{entry.topics}</span>
+                          </div>
+                          {entry.homework && (
+                            <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                              <span className="text-[11.5px] font-semibold text-[var(--tx3)]">Homework:</span>
+                              <span className="text-[12px] text-[var(--tx)]">{entry.homework}</span>
+                            </div>
+                          )}
+                          {entry.notes && (
+                            <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                              <span className="text-[11.5px] font-semibold text-[var(--tx3)]">Notes:</span>
+                              <span className="text-[12px] text-[var(--amber-tx)]">{entry.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-[var(--surf2)]/40 border border-[var(--b)] border-dashed rounded-xl p-4 opacity-70">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-[var(--surf3)] text-[var(--tx3)] flex items-center justify-center">
+                              <User size={15} />
+                            </div>
+                            <div>
+                              <span className="text-[12.5px] font-semibold text-[var(--tx2)]">{slot.teacher}</span>
+                              <div className="text-[10px] text-[var(--tx3)]">{slot.subject} · Awaiting diary update</div>
+                            </div>
+                          </div>
+                          <Badge variant="amber">
+                            <AlertCircle size={9} className="inline mr-0.5" />Pending
+                          </Badge>
+                        </div>
+                        <div className="text-[11px] text-[var(--tx3)] mt-2 pl-1.5 border-l-2 border-[var(--b)]/60">
+                          Diary not yet submitted for this scheduled period
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+
+            {/* List unmatched submissions */}
+            {classEntriesForDate.filter((e) => !e.id || !matchedEntryIds.has(e.id)).length > 0 && (
+              <div className="mt-6 pt-4 border-t border-[var(--b)] space-y-3">
+                <div className="text-[11px] font-bold text-[var(--tx3)] pl-1">
+                  Additional Diary Submissions (Non-scheduled periods)
+                </div>
+                {classEntriesForDate
+                  .filter((e) => !e.id || !matchedEntryIds.has(e.id))
+                  .map((entry, idx) => (
+                    <div key={idx} className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 space-y-3 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-[var(--blue-bg)] text-[var(--blue-tx)] flex items-center justify-center">
+                            <User size={15} />
+                          </div>
+                          <div>
+                            <span className="text-[12.5px] font-bold text-[var(--tx)]">{entry.teacher_name}</span>
+                            <div className="text-[10px] text-[var(--tx3)]">General Diary Submission</div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-[var(--tx3)] font-medium">
+                          {formatDate(entry.diary_date).split('-').reverse().join('-')}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 text-[12px] pl-1.5 pt-1">
+                        <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                          <span className="text-[11.5px] font-semibold text-[var(--tx3)]">Topics:</span>
+                          <span className="text-[12px] text-[var(--tx)]">{entry.topics}</span>
+                        </div>
+                        {entry.homework && (
+                          <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                            <span className="text-[11.5px] font-semibold text-[var(--tx3)]">Homework:</span>
+                            <span className="text-[12px] text-[var(--tx)]">{entry.homework}</span>
+                          </div>
+                        )}
+                        {entry.notes && (
+                          <div className="grid grid-cols-[80px_1fr] gap-2 items-start">
+                            <span className="text-[11.5px] font-semibold text-[var(--tx3)]">Notes:</span>
+                            <span className="text-[12px] text-[var(--amber-tx)]">{entry.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
@@ -84,79 +308,78 @@ function AdminDiaryView() {
       </div>
 
       <Card>
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="text-[13px] font-semibold text-[var(--tx)] flex items-center gap-2">
-            Today's Diary Submissions {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
+            Diary Submissions {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
           </div>
-          <div className="flex items-center gap-2 text-[11.5px] text-[var(--tx3)]">
-            <Eye size={13} />
-            <span>Live Sync · {formatDate(todayStr)}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1">
+              <Calendar size={12} className="text-[var(--tx3)]" />
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                }}
+                className="bg-transparent border-none text-[11px] text-[var(--tx)] focus:outline-none cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-[var(--tx3)]">
+              <Eye size={12} />
+              <span>Live Sync</span>
+            </div>
           </div>
         </div>
 
         <div className="space-y-2">
-          {submissionList.map((entry, i) => (
-            <div
-              key={i}
-              className={`p-3.5 rounded-xl border ${
-                entry.status === 'pending'
-                  ? 'border-[var(--b)] opacity-60 bg-[var(--surf2)]/40'
-                  : 'border-[var(--b)] bg-[var(--surf2)]'
-              }`}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-[12.5px] font-bold text-[var(--tx)]">{entry.cls}</span>
-                    {entry.status === 'sent' ? (
-                      <Badge variant="teal">
-                        <CheckCircle2 size={9} className="inline mr-0.5" />Submitted
-                      </Badge>
-                    ) : (
-                      <Badge variant="amber">
-                        <AlertCircle size={9} className="inline mr-0.5" />Pending
-                      </Badge>
-                    )}
+          {submissionList.map((entry, i) => {
+            const hasSubmissions = entry.submittedCount > 0;
+            const hasPending = entry.pendingCount > 0;
+
+            return (
+              <div
+                key={i}
+                onClick={() => {
+                  setSelectedClassDetail(entry.clsName);
+                }}
+                className={`p-3.5 rounded-xl border transition-all duration-200 cursor-pointer border-[var(--b)] bg-[var(--surf2)] hover:border-[var(--blue-tx)] hover:shadow-sm`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[12.5px] font-bold text-[var(--tx)]">{entry.cls}</span>
+                      {entry.totalScheduled > 0 ? (
+                        <Badge variant={entry.pendingCount === 0 ? "teal" : "amber"}>
+                          {entry.pendingCount === 0 ? "All Submitted" : "In Progress"}
+                        </Badge>
+                      ) : (
+                        <Badge variant={hasSubmissions ? "teal" : "gray"}>
+                          {hasSubmissions ? "Submitted" : "No Schedule"}
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 mt-1 text-[11px]">
+                      <span className="text-[var(--teal-tx)] font-semibold flex items-center gap-1">
+                        <CheckCircle2 size={11} />
+                        {entry.submittedCount} {entry.submittedCount === 1 ? "Teacher" : "Teachers"} Submitted
+                      </span>
+                      {entry.totalScheduled > 0 && entry.pendingCount > 0 && (
+                        <span className="text-[var(--amber-tx)] font-semibold flex items-center gap-1">
+                          <AlertCircle size={11} />
+                          {entry.pendingCount} {entry.pendingCount === 1 ? "Teacher" : "Teachers"} Pending
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {entry.status === 'sent' ? (
-                    <div className="space-y-1.5">
-                      <div className="flex gap-2">
-                        <span className="text-[10.5px] font-semibold text-[var(--tx3)] w-20 flex-shrink-0">Topics:</span>
-                        <span className="text-[11.5px] text-[var(--tx)]">{entry.topics}</span>
-                      </div>
-                      {entry.homework && (
-                        <div className="flex gap-2">
-                          <span className="text-[10.5px] font-semibold text-[var(--tx3)] w-20 flex-shrink-0">Homework:</span>
-                          <span className="text-[11.5px] text-[var(--tx)]">{entry.homework}</span>
-                        </div>
-                      )}
-                      {entry.notes && (
-                        <div className="flex gap-2">
-                          <span className="text-[10.5px] font-semibold text-[var(--tx3)] w-20 flex-shrink-0">Notes:</span>
-                          <span className="text-[11.5px] text-[var(--amber-tx)]">{entry.notes}</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-[11.5px] text-[var(--tx3)]">Diary not submitted for today</div>
-                  )}
-                </div>
-
-                <div className="text-left sm:text-right flex-shrink-0 space-y-1">
-                  <div className="text-[12px] font-medium text-[var(--tx2)]">{entry.teacher}</div>
-                  {entry.time && (
-                    <div className="text-[10.5px] text-[var(--tx3)]">{entry.time}</div>
-                  )}
-                  {entry.parents > 0 && (
-                    <div className="flex items-center gap-1 text-[10.5px] text-[var(--teal-tx)] justify-start sm:justify-end">
-                      <MessageCircle size={9} /> {entry.parents} sent
-                    </div>
-                  )}
+                  <div className="text-left sm:text-right flex-shrink-0 text-[10.5px] text-[var(--blue-tx)] font-semibold">
+                    Click to view details &rarr;
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </div>
@@ -295,21 +518,12 @@ function TeacherDiaryView() {
               />
             </div>
 
-            {selectedClass && (
-              <div className="flex items-center gap-2 p-2.5 bg-[var(--teal-bg)] rounded-lg mb-3">
-                <MessageCircle size={15} className="text-[var(--teal-tx)] flex-shrink-0" />
-                <span className="text-[11.5px] text-[var(--teal-tx)]">
-                  Will be sent to all parents of Class {selectedClass} via WhatsApp + SMS on save
-                </span>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={submitting || !selectedClass || !topics}
               className="w-full flex items-center justify-center gap-1.5 bg-[var(--blue)] text-white rounded-lg py-2 text-[12px] font-medium hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer animate-none"
             >
-              <Send size={13} /> {submitting ? 'Sending...' : 'Save & Send Diary'}
+              <Send size={13} /> {submitting ? 'Saving...' : 'Save Diary'}
             </button>
           </form>
         </Card>
@@ -339,7 +553,7 @@ function TeacherDiaryView() {
                   </div>
                 )}
                 <div className="text-[10.5px] text-[var(--tx3)]">
-                  {entry.teacher_name} · {entry.parents_count} parents notified
+                  {entry.teacher_name}
                 </div>
               </div>
             ))}
