@@ -203,10 +203,10 @@ export function Salary() {
       });
       // MOCK DATA START
       const mockSalaries = [
-        { id: 'mock-s1', userId: '2', name: 'Mrs. Lakshmi Devi', init: 'LD', designation: 'Mathematics Teacher', basic: 22750, hra: 7000, allowances: 5250, deductions: 3000, gross: 35000, net: 32000, status: 'Paid', month: 'May 2026' },
-        { id: 'mock-s2', userId: '3', name: 'Mr. R. K. Prasad', init: 'RP', designation: 'Science Teacher', basic: 26000, hra: 8000, allowances: 6000, deductions: 3500, gross: 40000, net: 36500, status: 'Paid', month: 'May 2026' },
-        { id: 'mock-s3', userId: '4', name: 'Ms. S. Anitha', init: 'SA', designation: 'English Teacher', basic: 19500, hra: 6000, allowances: 4500, deductions: 2500, gross: 30000, net: 27500, status: 'Pending', month: 'May 2026' },
-        { id: 'mock-s4', userId: '5', name: 'Mr. V. Suresh', init: 'VS', designation: 'Social Studies Teacher', basic: 21125, hra: 6500, allowances: 4875, deductions: 2800, gross: 32500, net: 29700, status: 'On Hold', month: 'May 2026' },
+        { id: 'mock-s1', userId: '3', name: 'Mrs. Lakshmi Devi', init: 'LD', designation: 'Mathematics Teacher', basic: 22750, hra: 7000, allowances: 5250, deductions: 3000, gross: 35000, net: 32000, status: 'Paid', month: 'May 2026' },
+        { id: 'mock-s2', userId: '4', name: 'Mr. R. K. Prasad', init: 'RP', designation: 'Science Teacher', basic: 26000, hra: 8000, allowances: 6000, deductions: 3500, gross: 40000, net: 36500, status: 'Paid', month: 'May 2026' },
+        { id: 'mock-s3', userId: '5', name: 'Ms. S. Anitha', init: 'SA', designation: 'English Teacher', basic: 19500, hra: 6000, allowances: 4500, deductions: 2500, gross: 30000, net: 27500, status: 'Pending', month: 'May 2026' },
+        { id: 'mock-s4', userId: '6', name: 'Mr. V. Suresh', init: 'VS', designation: 'Social Studies Teacher', basic: 21125, hra: 6500, allowances: 4875, deductions: 2800, gross: 32500, net: 29700, status: 'On Hold', month: 'May 2026' },
       ];
       setPayroll([...mockSalaries, ...mapped]);
       // MOCK DATA END
