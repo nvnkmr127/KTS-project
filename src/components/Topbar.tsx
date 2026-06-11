@@ -31,6 +31,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   'allot-attendance': 'Allot Attendance',
   timetable: 'Timetable Designer',
   promotion: 'Student Promotion',
+  'my-salary': 'My Salary & Payslips',
 };
 
 interface TopbarProps {

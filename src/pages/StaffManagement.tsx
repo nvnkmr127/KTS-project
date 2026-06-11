@@ -60,6 +60,26 @@ export function StaffManagement() {
     return saved ? JSON.parse(saved) : STAFF;
   });
 
+  useEffect(() => {
+    async function syncFromDb() {
+      try {
+        const settings = await api.getResources('settings');
+        const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
+        if (staffSetting && staffSetting.value) {
+          localStorage.setItem('kts_staff_members', staffSetting.value);
+          setStaffList(JSON.parse(staffSetting.value));
+        } else {
+          const saved = localStorage.getItem('kts_staff_members');
+          const current = saved ? JSON.parse(saved) : STAFF;
+          saveSettingToDb('kts_staff_members', JSON.stringify(current));
+        }
+      } catch (err) {
+        console.error('Error syncing staff list from DB in StaffManagement:', err);
+      }
+    }
+    syncFromDb();
+  }, []);
+
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [catFilter, setCatFilter] = useState('All');
@@ -291,8 +311,23 @@ export function StaffManagement() {
   };
 
 
+  const saveSettingToDb = async (key: string, value: string) => {
+    try {
+      const settings = await api.getResources('settings');
+      const existing = settings.find((s: any) => s.key === key);
+      if (existing) {
+        await api.updateResource('settings', existing.id, { key, value });
+      } else {
+        await api.createResource('settings', { key, value, group: 'general', type: 'json', is_public: false, is_encrypted: false });
+      }
+    } catch (err) {
+      console.error(`Error saving setting ${key} to DB:`, err);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem('kts_staff_members', JSON.stringify(staffList));
+    saveSettingToDb('kts_staff_members', JSON.stringify(staffList));
   }, [staffList]);
 
   useEffect(() => {

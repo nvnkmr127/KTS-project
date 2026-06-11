@@ -58,6 +58,20 @@ export function Faculty() {
   const [selected, setSelected] = useState<FacultyMember | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  const saveSettingToDb = async (key: string, value: string) => {
+    try {
+      const settings = await api.getResources('settings');
+      const existing = settings.find((s: any) => s.key === key);
+      if (existing) {
+        await api.updateResource('settings', existing.id, { key, value });
+      } else {
+        await api.createResource('settings', { key, value, group: 'general', type: 'json', is_public: false, is_encrypted: false });
+      }
+    } catch (err) {
+      console.error(`Error saving setting ${key} to DB:`, err);
+    }
+  };
+
   const [customDocs, setCustomDocs] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File>>({});
 
@@ -320,6 +334,7 @@ export function Faculty() {
         }
       }
       localStorage.setItem('kts_staff_members', JSON.stringify(currentStaffList));
+      saveSettingToDb('kts_staff_members', JSON.stringify(currentStaffList));
 
       // Save credentials to kts_staff_access so it shows up in Staff Access tab
       const savedAccessStr = localStorage.getItem('kts_staff_access');
@@ -359,6 +374,7 @@ export function Faculty() {
           return true;
         });
         localStorage.setItem('kts_staff_members', JSON.stringify(filtered));
+        saveSettingToDb('kts_staff_members', JSON.stringify(filtered));
       }
     } catch (err) {
       console.error('Error deleting faculty from localStorage:', err);

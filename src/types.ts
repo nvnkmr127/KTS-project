@@ -26,7 +26,8 @@ export type PageId =
   | 'teacher-dashboard'
   | 'allot-attendance'
   | 'promotion'
-  | 'timetable';
+  | 'timetable'
+  | 'my-salary';
 
 export type ColorVariant =
   | 'blue'

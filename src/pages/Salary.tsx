@@ -8,7 +8,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { api } from '../services/api';
-import { STAFF } from './StaffManagement';
+import { STAFF, StaffMember } from './StaffManagement';
 
 interface StaffPayroll {
   id: string;
@@ -65,6 +65,23 @@ const getComponentAmt = (
   return fallbackAmt;
 };
 
+const getFallbackAmt = (
+  comp: { id: string; name: string },
+  p: { basic: number; hra: number; allowances: number; deductions: number; gross: number }
+) => {
+  const id = comp.id.toLowerCase();
+  const name = comp.name.toLowerCase();
+  if (id === 'basic' || name === 'basic') return p.basic;
+  if (id === 'hra' || name === 'hra') return p.hra;
+  if (id === 'allowances' || name.includes('allowance') || name.includes('earning')) {
+    return p.allowances !== undefined ? p.allowances : Math.max(0, p.gross - p.basic - p.hra);
+  }
+  if (id === 'deductions' || id === 'deduction' || name.includes('deduction')) {
+    return p.deductions !== undefined ? p.deductions : 3000;
+  }
+  return 0;
+};
+
 export function Salary() {
   const [payroll, setPayroll] = useState<StaffPayroll[]>([]);
   const [faculty, setFaculty] = useState<any[]>([]);
@@ -76,6 +93,10 @@ export function Salary() {
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [modalValues, setModalValues] = useState<Record<string, number>>({});
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => {
+    const saved = localStorage.getItem('kts_staff_members');
+    return saved ? JSON.parse(saved) : STAFF;
+  });
 
   useEffect(() => {
     if (selectedStaffId) {
@@ -94,23 +115,61 @@ export function Salary() {
     }
   }, [selectedStaffId, components, staffSalaries, faculty]);
 
-  useEffect(() => {
-    const savedComps = localStorage.getItem('salary_components');
-    if (savedComps) {
-      setComponents(JSON.parse(savedComps));
-    } else {
-      setComponents([
-        { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat' },
-        { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat' },
-        { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat' },
-        { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat' },
-      ]);
-    }
+  const [dbSyncCompleted, setDbSyncCompleted] = useState(false);
 
-    const savedSalaries = localStorage.getItem('staff_salaries');
-    if (savedSalaries) {
-      setStaffSalaries(JSON.parse(savedSalaries));
+  useEffect(() => {
+    async function syncFromDb() {
+      try {
+        const settings = await api.getResources('settings');
+        
+        const compSetting = settings.find((s: any) => s.key === 'salary_components');
+        if (compSetting && compSetting.value) {
+          localStorage.setItem('salary_components', compSetting.value);
+          setComponents(JSON.parse(compSetting.value));
+        } else {
+          const savedComps = localStorage.getItem('salary_components');
+          if (savedComps) setComponents(JSON.parse(savedComps));
+        }
+
+        const salariesSetting = settings.find((s: any) => s.key === 'staff_salaries');
+        if (salariesSetting && salariesSetting.value) {
+          localStorage.setItem('staff_salaries', salariesSetting.value);
+          setStaffSalaries(JSON.parse(salariesSetting.value));
+        } else {
+          const savedSalaries = localStorage.getItem('staff_salaries');
+          if (savedSalaries) setStaffSalaries(JSON.parse(savedSalaries));
+        }
+        
+        const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
+        if (staffSetting && staffSetting.value) {
+          localStorage.setItem('kts_staff_members', staffSetting.value);
+          setStaffMembers(JSON.parse(staffSetting.value));
+        } else {
+          const savedStaff = localStorage.getItem('kts_staff_members');
+          if (savedStaff) setStaffMembers(JSON.parse(savedStaff));
+        }
+      } catch (err) {
+        console.error('Error syncing settings from DB in Salary:', err);
+        const savedComps = localStorage.getItem('salary_components');
+        if (savedComps) {
+          setComponents(JSON.parse(savedComps));
+        } else {
+          setComponents([
+            { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat' },
+            { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat' },
+            { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat' },
+            { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat' },
+          ]);
+        }
+        const savedSalaries = localStorage.getItem('staff_salaries');
+        if (savedSalaries) setStaffSalaries(JSON.parse(savedSalaries));
+        const savedStaff = localStorage.getItem('kts_staff_members');
+        if (savedStaff) setStaffMembers(JSON.parse(savedStaff));
+      } finally {
+        setDbSyncCompleted(true);
+      }
     }
+    syncFromDb();
   }, []);
 
   const loadPayroll = async () => {
@@ -154,6 +213,7 @@ export function Salary() {
 
       const savedStaffStr = localStorage.getItem('kts_staff_members');
       const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
+      setStaffMembers(currentStaffList);
       const mappedStaff = currentStaffList.map((s: any) => ({
         id: s.id,
         name: s.name,
@@ -168,8 +228,10 @@ export function Salary() {
   };
 
   useEffect(() => {
-    loadPayroll();
-  }, []);
+    if (dbSyncCompleted) {
+      loadPayroll();
+    }
+  }, [dbSyncCompleted]);
 
   const handleProcessPayroll = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -228,20 +290,16 @@ export function Salary() {
       // Calculate dynamic net pay
       let earningsSum = 0;
       let deductionsSum = 0;
-      let hasCustomAssignment = false;
       components.forEach((c) => {
-        const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : c.id === 'deductions' ? p.deductions : 0;
+        const fallback = getFallbackAmt(c, p);
         const amt = getComponentAmt(c, salaries, basicAmt, fallback);
-        if (salaries[c.id] !== undefined) {
-          hasCustomAssignment = true;
-        }
         if (c.type === 'earning') earningsSum += amt;
         else deductionsSum += amt;
       });
-      const rowNetPay = hasCustomAssignment ? Math.max(0, earningsSum - deductionsSum) : p.net;
+      const rowNetPay = Math.max(0, earningsSum - deductionsSum);
 
       const compValues = components.map(c => {
-        const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : c.id === 'deductions' ? p.deductions : 0;
+        const fallback = getFallbackAmt(c, p);
         return getComponentAmt(c, salaries, basicAmt, fallback);
       });
 
@@ -337,7 +395,7 @@ export function Salary() {
 
   const filtered = monthFilter === 'All'
     ? payroll
-    : STAFF.map((s) => {
+    : staffMembers.map((s) => {
         const processed = payroll.find(p => 
           p.name.toLowerCase() === s.name.toLowerCase() && 
           p.month === monthFilter
@@ -370,18 +428,14 @@ export function Salary() {
     const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
     let earningsSum = 0;
-    let hasCustomAssignment = false;
     components.forEach((c) => {
-      const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : 0;
+      const fallback = getFallbackAmt(c, p);
       const amt = getComponentAmt(c, salaries, basicAmt, fallback);
-      if (salaries[c.id] !== undefined) {
-        hasCustomAssignment = true;
-      }
       if (c.type === 'earning') {
         earningsSum += amt;
       }
     });
-    return s + (hasCustomAssignment ? earningsSum : p.gross);
+    return s + earningsSum;
   }, 0);
 
   const totalNet = filtered.reduce((s, p) => {
@@ -389,33 +443,25 @@ export function Salary() {
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
     let earningsSum = 0;
     let deductionsSum = 0;
-    let hasCustomAssignment = false;
     components.forEach((c) => {
-      const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : c.id === 'deductions' ? p.deductions : 0;
+      const fallback = getFallbackAmt(c, p);
       const amt = getComponentAmt(c, salaries, basicAmt, fallback);
-      if (salaries[c.id] !== undefined) {
-        hasCustomAssignment = true;
-      }
       if (c.type === 'earning') earningsSum += amt;
       else deductionsSum += amt;
     });
-    return s + (hasCustomAssignment ? Math.max(0, earningsSum - deductionsSum) : p.net);
+    return s + Math.max(0, earningsSum - deductionsSum);
   }, 0);
 
   const totalDeductions = filtered.reduce((s, p) => {
     const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
     let deductionsSum = 0;
-    let hasCustomAssignment = false;
     components.forEach((c) => {
-      const fallback = c.id === 'deductions' ? p.deductions : 0;
+      const fallback = getFallbackAmt(c, p);
       const amt = getComponentAmt(c, salaries, basicAmt, fallback);
-      if (salaries[c.id] !== undefined) {
-        hasCustomAssignment = true;
-        if (c.type === 'deduction') deductionsSum += amt;
-      }
+      if (c.type === 'deduction') deductionsSum += amt;
     });
-    return s + (hasCustomAssignment ? deductionsSum : p.deductions);
+    return s + deductionsSum;
   }, 0);
 
   const paid = filtered.filter((p) => p.status === 'Paid').length;
@@ -472,24 +518,20 @@ export function Salary() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((p) => {
+                 {filtered.map((p) => {
                   const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
                   
                   // Calculate dynamic net pay
                   let earningsSum = 0;
                   let deductionsSum = 0;
-                  let hasCustomAssignment = false;
                   const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
                   components.forEach((c) => {
-                    const fallback = c.id === 'basic' ? p.basic : c.id === 'hra' ? p.hra : c.id === 'allowances' ? p.allowances : c.id === 'deductions' ? p.deductions : 0;
+                    const fallback = getFallbackAmt(c, p);
                     const amt = getComponentAmt(c, salaries, basicAmt, fallback);
-                    if (salaries[c.id] !== undefined) {
-                      hasCustomAssignment = true;
-                    }
                     if (c.type === 'earning') earningsSum += amt;
                     else deductionsSum += amt;
                   });
-                  const rowNetPay = hasCustomAssignment ? Math.max(0, earningsSum - deductionsSum) : p.net;
+                  const rowNetPay = Math.max(0, earningsSum - deductionsSum);
 
                   return (
                     <tr key={p.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
@@ -504,7 +546,7 @@ export function Salary() {
                       </td>
                       {components.map((comp) => {
                         const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
-                        const fallback = comp.id === 'basic' ? p.basic : comp.id === 'hra' ? p.hra : comp.id === 'allowances' ? p.allowances : comp.id === 'deductions' ? p.deductions : 0;
+                        const fallback = getFallbackAmt(comp, p);
                         const amt = getComponentAmt(comp, salaries, basicAmt, fallback);
                         return (
                           <td key={comp.id} className={`px-2 py-2.5 ${comp.type === 'deduction' ? 'text-[var(--red-tx)]' : 'text-[var(--tx2)]'}`}>
@@ -712,32 +754,28 @@ export function Salary() {
                 const salaries = staffSalaries[selectedSlip.name] || (selectedSlip.userId ? staffSalaries[selectedSlip.userId] : undefined) || {};
                 let earningsSum = 0;
                 let deductionsSum = 0;
-                let hasCustomAssignment = false;
                 const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : selectedSlip.basic;
                 
                 components.forEach((c) => {
-                  const fallback = c.id === 'basic' ? selectedSlip.basic : c.id === 'hra' ? selectedSlip.hra : c.id === 'allowances' ? selectedSlip.allowances : c.id === 'deductions' ? selectedSlip.deductions : 0;
+                  const fallback = getFallbackAmt(c, selectedSlip);
                   const amt = getComponentAmt(c, salaries, basicAmt, fallback);
-                  if (salaries[c.id] !== undefined) {
-                    hasCustomAssignment = true;
-                  }
                   if (c.type === 'earning') earningsSum += amt;
                   else deductionsSum += amt;
                 });
 
                 const earnings = components.filter(c => c.type === 'earning').map(c => ({
                   label: c.name,
-                  amount: getComponentAmt(c, salaries, basicAmt, c.id === 'basic' ? selectedSlip.basic : c.id === 'hra' ? selectedSlip.hra : c.id === 'allowances' ? selectedSlip.allowances : 0)
+                  amount: getComponentAmt(c, salaries, basicAmt, getFallbackAmt(c, selectedSlip))
                 }));
 
                 const deductions = components.filter(c => c.type === 'deduction').map(c => ({
                   label: c.name,
-                  amount: getComponentAmt(c, salaries, basicAmt, c.id === 'deductions' ? selectedSlip.deductions : 0)
+                  amount: getComponentAmt(c, salaries, basicAmt, getFallbackAmt(c, selectedSlip))
                 }));
 
-                const grossVal = hasCustomAssignment ? earningsSum : selectedSlip.gross;
-                const deductionsVal = hasCustomAssignment ? deductionsSum : selectedSlip.deductions;
-                const netVal = hasCustomAssignment ? Math.max(0, earningsSum - deductionsSum) : selectedSlip.net;
+                const grossVal = earningsSum;
+                const deductionsVal = deductionsSum;
+                const netVal = Math.max(0, earningsSum - deductionsSum);
 
                 return (
                   <>

@@ -48,46 +48,107 @@ export function SalaryCategories() {
     return defaultVal;
   };
 
+  const saveSettingToDb = async (key: string, value: string) => {
+    try {
+      const settings = await api.getResources('settings');
+      const existing = settings.find((s: any) => s.key === key);
+      if (existing) {
+        await api.updateResource('settings', existing.id, { key, value });
+      } else {
+        await api.createResource('settings', { key, value, group: 'general', type: 'json', is_public: false, is_encrypted: false });
+      }
+    } catch (err) {
+      console.error(`Error saving setting ${key} to DB:`, err);
+    }
+  };
+
   // Initialize data
   useEffect(() => {
-    // Load components from localStorage or default
-    const savedComps = localStorage.getItem('salary_components');
-    if (savedComps) {
-      setComponents(JSON.parse(savedComps));
-    } else {
-      const defaultComps: SalaryComponent[] = [
-        { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat' },
-        { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat' },
-        { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat' },
-        { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat' },
-      ];
-      setComponents(defaultComps);
-      localStorage.setItem('salary_components', JSON.stringify(defaultComps));
-    }
+    async function syncFromDb() {
+      try {
+        const settings = await api.getResources('settings');
+        
+        const compSetting = settings.find((s: any) => s.key === 'salary_components');
+        if (compSetting && compSetting.value) {
+          localStorage.setItem('salary_components', compSetting.value);
+          setComponents(JSON.parse(compSetting.value));
+        } else {
+          const savedComps = localStorage.getItem('salary_components');
+          if (savedComps) {
+            setComponents(JSON.parse(savedComps));
+            saveSettingToDb('salary_components', savedComps);
+          } else {
+            const defaultComps: SalaryComponent[] = [
+              { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat' },
+              { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat' },
+              { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat' },
+              { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat' },
+            ];
+            setComponents(defaultComps);
+            localStorage.setItem('salary_components', JSON.stringify(defaultComps));
+            saveSettingToDb('salary_components', JSON.stringify(defaultComps));
+          }
+        }
 
-    // Load staff salaries from localStorage
-    const savedSalaries = localStorage.getItem('staff_salaries');
-    if (savedSalaries) {
-      setStaffSalaries(JSON.parse(savedSalaries));
+        const salariesSetting = settings.find((s: any) => s.key === 'staff_salaries');
+        if (salariesSetting && salariesSetting.value) {
+          localStorage.setItem('staff_salaries', salariesSetting.value);
+          setStaffSalaries(JSON.parse(salariesSetting.value));
+        } else {
+          const savedSalaries = localStorage.getItem('staff_salaries');
+          if (savedSalaries) {
+            setStaffSalaries(JSON.parse(savedSalaries));
+            saveSettingToDb('staff_salaries', savedSalaries);
+          }
+        }
+
+        const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
+        if (staffSetting && staffSetting.value) {
+          localStorage.setItem('kts_staff_members', staffSetting.value);
+        }
+      } catch (err) {
+        console.error('Error syncing settings from DB in SalaryCategories:', err);
+        const savedComps = localStorage.getItem('salary_components');
+        if (savedComps) {
+          setComponents(JSON.parse(savedComps));
+        } else {
+          const defaultComps: SalaryComponent[] = [
+            { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat' },
+            { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat' },
+            { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat' },
+            { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat' },
+          ];
+          setComponents(defaultComps);
+          localStorage.setItem('salary_components', JSON.stringify(defaultComps));
+        }
+        const savedSalaries = localStorage.getItem('staff_salaries');
+        if (savedSalaries) setStaffSalaries(JSON.parse(savedSalaries));
+      } finally {
+        loadFaculty();
+      }
     }
 
     // Load faculty
     const loadFaculty = () => {
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
       // Map staff directory members to matching structure
-      const mappedStaff = STAFF.map((s) => ({
+      const mappedStaff = currentStaffList.map((s: any) => ({
         id: s.id,
         name: s.name,
         subject: s.subject || s.designation || 'Staff',
       }));
       setFaculty(mappedStaff);
     };
-    loadFaculty();
+
+    syncFromDb();
   }, []);
 
   // Save components helper
   const saveComponents = (newComps: SalaryComponent[]) => {
     setComponents(newComps);
     localStorage.setItem('salary_components', JSON.stringify(newComps));
+    saveSettingToDb('salary_components', JSON.stringify(newComps));
   };
 
   // Add Component
@@ -135,6 +196,7 @@ export function SalaryCategories() {
       });
       setStaffSalaries(updatedSalaries);
       localStorage.setItem('staff_salaries', JSON.stringify(updatedSalaries));
+      saveSettingToDb('staff_salaries', JSON.stringify(updatedSalaries));
     }
   };
 
@@ -167,6 +229,7 @@ export function SalaryCategories() {
 
     setStaffSalaries(updated);
     localStorage.setItem('staff_salaries', JSON.stringify(updated));
+    saveSettingToDb('staff_salaries', JSON.stringify(updated));
     setEditingStaff(null);
   };
 

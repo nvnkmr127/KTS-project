@@ -29,6 +29,7 @@ import { StaffAttendance } from './pages/StaffAttendance';
 import { StaffAccess } from './pages/StaffAccess';
 import { AllotAttendance } from './pages/AllotAttendance';
 import { Promotion } from './pages/Promotion';
+import { MySalary } from './pages/MySalary';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -58,6 +59,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   'allot-attendance': '/allot-attendance',
   promotion: '/promotion',
   timetable: '/timetable',
+  'my-salary': '/my-salary',
 };
 
 const PATH_TO_PAGE: Record<string, PageId> = Object.entries(PAGE_TO_PATH).reduce(
@@ -175,6 +177,7 @@ function AppShell() {
           {page === 'homework' && <Homework />}
           {page === 'allot-attendance' && <AllotAttendance />}
           {page === 'performance' && <Examinations />}
+          {page === 'my-salary' && <MySalary />}
         </div>
       </div>
     </div>

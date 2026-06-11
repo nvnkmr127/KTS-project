@@ -108,6 +108,12 @@ const TEACHER_SECTIONS: NavSection[] = [
       { icon: <Calendar size={14} />, label: 'Leave Management', page: 'leave' },
     ],
   },
+  {
+    label: 'Finance',
+    items: [
+      { icon: <Wallet size={14} />, label: 'My Salary', page: 'my-salary' },
+    ],
+  },
 ];
 
 interface SidebarProps {
