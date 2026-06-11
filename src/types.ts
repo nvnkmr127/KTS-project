@@ -24,6 +24,7 @@ export type PageId =
   | 'homework'
   | 'performance'
   | 'teacher-dashboard'
+  | 'allot-attendance'
   | 'timetable';
 
 export type ColorVariant =

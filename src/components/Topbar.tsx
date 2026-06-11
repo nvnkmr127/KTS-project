@@ -28,6 +28,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   homework: 'Homework Management',
   performance: 'Student Performance',
   'teacher-dashboard': 'Teacher Dashboard',
+  'allot-attendance': 'Allot Attendance',
   timetable: 'Timetable Designer',
 };
 

@@ -91,6 +91,7 @@ const TEACHER_SECTIONS: NavSection[] = [
       { icon: <CalendarCheck size={14} />, label: 'Attendance', page: 'attendance' },
       { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary' },
       { icon: <ClipboardList size={14} />, label: 'Homework', page: 'homework' },
+      { icon: <CalendarCheck size={14} />, label: 'Allot Attendance', page: 'allot-attendance' },
     ],
   },
   {

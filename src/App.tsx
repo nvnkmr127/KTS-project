@@ -27,6 +27,7 @@ import { Homework } from './pages/Homework';
 import { Timetable } from './pages/Timetable';
 import { StaffAttendance } from './pages/StaffAttendance';
 import { StaffAccess } from './pages/StaffAccess';
+import { AllotAttendance } from './pages/AllotAttendance';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -53,6 +54,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   homework: '/homework',
   performance: '/performance',
   'teacher-dashboard': '/teacher-dashboard',
+  'allot-attendance': '/allot-attendance',
   timetable: '/timetable',
 };
 
@@ -168,6 +170,7 @@ function AppShell() {
           {/* Teacher pages */}
           {page === 'teacher-dashboard' && <TeacherDashboard />}
           {page === 'homework' && <Homework />}
+          {page === 'allot-attendance' && <AllotAttendance />}
           {page === 'performance' && <Examinations />}
         </div>
       </div>

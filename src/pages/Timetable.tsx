@@ -2,28 +2,9 @@ import { useState, useEffect } from 'react';
 import { X, Clock, Save, Loader2 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { useApp, TIMETABLE_DAYS, TIMETABLE_PERIODS, PERIOD_TIMES } from '../context/AppContext';
-import type { TimetablePeriod } from '../context/AppContext';
+import { useApp, TIMETABLE_DAYS, TIMETABLE_PERIODS, PERIOD_TIMES, DEFAULT_TIMINGS } from '../context/AppContext';
+import type { TimetablePeriod, PeriodTiming } from '../context/AppContext';
 import { api } from '../services/api';
-
-interface PeriodTiming {
-  start: string;
-  end: string;
-  isBreak?: boolean;
-  label?: string;
-}
-
-const DEFAULT_TIMINGS: PeriodTiming[] = [
-  { start: '8:00 AM', end: '9:00 AM' },
-  { start: '9:00 AM', end: '10:00 AM' },
-  { start: '10:00 AM', end: '11:00 AM' },
-  { start: '11:00 AM', end: '11:15 AM', isBreak: true, label: 'Short Break' },
-  { start: '11:15 AM', end: '12:15 PM' },
-  { start: '12:15 PM', end: '1:15 PM' },
-  { start: '1:15 PM', end: '2:00 PM', isBreak: true, label: 'Lunch Break' },
-  { start: '2:00 PM', end: '3:00 PM' },
-  { start: '3:00 PM', end: '4:00 PM' },
-];
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'Library', 'Break'];
 
@@ -66,7 +47,7 @@ interface EditCell {
 }
 
 export function Timetable() {
-  const { timetable, setTimetablePeriod } = useApp();
+  const { timetable, setTimetablePeriod, periodTimings, savePeriodTimings } = useApp();
   const [selectedClass, setSelectedClass] = useState('8A');
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,10 +58,6 @@ export function Timetable() {
   const [savedMsg, setSavedMsg] = useState(false);
   const [classes, setClasses] = useState<string[]>(['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
   const [showEditTimings, setShowEditTimings] = useState(false);
-  const [periodTimings, setPeriodTimings] = useState<PeriodTiming[]>(() => {
-    const saved = localStorage.getItem('timetable_period_timings');
-    return saved ? JSON.parse(saved) : DEFAULT_TIMINGS;
-  });
   const [tempTimings, setTempTimings] = useState<PeriodTiming[]>([]);
 
   useEffect(() => {
@@ -410,8 +387,7 @@ export function Timetable() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              setPeriodTimings(tempTimings);
-              localStorage.setItem('timetable_period_timings', JSON.stringify(tempTimings));
+              savePeriodTimings(tempTimings);
               setShowEditTimings(false);
             }}
             className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden"

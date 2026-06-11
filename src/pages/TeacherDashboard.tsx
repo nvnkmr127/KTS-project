@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import {
+
   CalendarCheck, BookOpen, ClipboardList, Bell, Clock, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -44,23 +44,7 @@ function getCurrentPeriodIndex(): number {
 
 export function TeacherDashboard() {
   const { user } = useAuth();
-  const { timetable, leaveRequests, notifications } = useApp();
-
-  const [periodTimings] = useState<any[]>(() => {
-    const saved = localStorage.getItem('timetable_period_timings');
-    const defaults = [
-      { start: '8:00 AM', end: '9:00 AM' },
-      { start: '9:00 AM', end: '10:00 AM' },
-      { start: '10:00 AM', end: '11:00 AM' },
-      { start: '11:00 AM', end: '11:15 AM', isBreak: true, label: 'Short Break' },
-      { start: '11:15 AM', end: '12:15 PM' },
-      { start: '12:15 PM', end: '1:15 PM' },
-      { start: '1:15 PM', end: '2:00 PM', isBreak: true, label: 'Lunch Break' },
-      { start: '2:00 PM', end: '3:00 PM' },
-      { start: '3:00 PM', end: '4:00 PM' },
-    ];
-    return saved ? JSON.parse(saved) : defaults;
-  });
+  const { timetable, leaveRequests, notifications, periodTimings } = useApp();
 
   const today = getTodayDayName();
   const currentPeriod = getCurrentPeriodIndex();

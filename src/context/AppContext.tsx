@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useAuth } from './AuthContext';
+
 
 export interface LeaveRequest {
   id: string;
@@ -119,16 +121,37 @@ function buildDefaultTimetable(): SchoolTimetable {
   return timetable;
 }
 
+export interface PeriodTiming {
+  start: string;
+  end: string;
+  isBreak?: boolean;
+  label?: string;
+}
+
+export const DEFAULT_TIMINGS: PeriodTiming[] = [
+  { start: '8:00 AM', end: '9:00 AM' },
+  { start: '9:00 AM', end: '10:00 AM' },
+  { start: '10:00 AM', end: '11:00 AM' },
+  { start: '11:00 AM', end: '11:15 AM', isBreak: true, label: 'Short Break' },
+  { start: '11:15 AM', end: '12:15 PM' },
+  { start: '12:15 PM', end: '1:15 PM' },
+  { start: '1:15 PM', end: '2:00 PM', isBreak: true, label: 'Lunch Break' },
+  { start: '2:00 PM', end: '3:00 PM' },
+  { start: '3:00 PM', end: '4:00 PM' },
+];
+
 interface AppContextValue {
   leaveRequests: LeaveRequest[];
   notifications: Notification[];
   unreadCount: number;
   timetable: SchoolTimetable;
+  periodTimings: PeriodTiming[];
   addLeaveRequest: (req: Omit<LeaveRequest, 'id' | 'appliedOn'>) => Promise<void>;
   approveLeave: (id: string) => Promise<void>;
   rejectLeave: (id: string, notes?: string) => Promise<void>;
   markNotificationsRead: () => void;
   setTimetablePeriod: (className: string, day: string, periodIndex: number, period: TimetablePeriod | null) => void;
+  savePeriodTimings: (newTimings: PeriodTiming[]) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -145,27 +168,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [timetable, setTimetable] = useState<SchoolTimetable>(buildDefaultTimetable);
+  const [periodTimings, setPeriodTimings] = useState<PeriodTiming[]>(() => {
+    const saved = localStorage.getItem('timetable_period_timings');
+    return saved ? JSON.parse(saved) : DEFAULT_TIMINGS;
+  });
+
+  const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) {
+      setLeaveRequests([]);
+      setNotifications([]);
+      setTimetable(buildDefaultTimetable());
+      return;
+    }
+
     async function loadInitialData() {
+      // Load leaves
       try {
         const leavesData = await api.getResources('leaves');
-        const mappedLeaves = leavesData.map((d: any) => ({
-          id: String(d.id),
-          staffId: String(d.user_id),
-          staffName: d.staff_name || 'Staff Member',
-          init: d.init || (d.staff_name ? d.staff_name.split(' ').map((n: any) => n[0] ?? '').join('') : 'SM'),
-          type: (typeof d.leave_type === 'object' && d.leave_type ? d.leave_type.name : d.leave_type) || 'Sick Leave',
-          from: d.start_date || d.from,
-          to: d.end_date || d.to,
-          days: d.days || 1,
-          reason: d.reason || '',
-          status: d.status || 'Pending',
-          appliedOn: d.created_at ? d.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-          adminNotes: d.admin_notes || '',
-        }));
-        setLeaveRequests(mappedLeaves);
+        if (leavesData) {
+          const mappedLeaves = leavesData.map((d: any) => ({
+            id: String(d.id),
+            staffId: String(d.user_id),
+            staffName: d.staff_name || 'Staff Member',
+            init: d.init || (d.staff_name ? d.staff_name.split(' ').map((n: any) => n[0] ?? '').join('') : 'SM'),
+            type: (typeof d.leave_type === 'object' && d.leave_type ? d.leave_type.name : d.leave_type) || 'Sick Leave',
+            from: d.start_date || d.from,
+            to: d.end_date || d.to,
+            days: d.days || 1,
+            reason: d.reason || '',
+            status: d.status || 'Pending',
+            appliedOn: d.created_at ? d.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+            adminNotes: d.admin_notes || '',
+          }));
+          setLeaveRequests(mappedLeaves);
+        }
+      } catch (err) {
+        console.error('Error loading leaves in AppContext:', err);
+      }
 
+      // Load notifications
+      try {
         const notifData = await api.getResources('notifications').catch(() => []);
         setNotifications((notifData || []).map((n: any) => ({
           id: String(n.id),
@@ -174,58 +218,92 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           time: 'Recently',
           read: !!n.read_at,
         })));
+      } catch (err) {
+        console.error('Error loading notifications in AppContext:', err);
+      }
 
-        // Fetch timetable from database
-        try {
-          const timetableData = await api.getResources('timetable');
-          if (timetableData && timetableData.length > 0) {
-            const dayMap: Record<string, string> = {
-              '2026-06-01': 'Monday',
-              '2026-06-02': 'Tuesday',
-              '2026-06-03': 'Wednesday',
-              '2026-06-04': 'Thursday',
-              '2026-06-05': 'Friday',
-              '2026-06-06': 'Saturday',
-            };
-            
-            const loadedTimetable: SchoolTimetable = {};
-            const classes = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
-            for (const cls of classes) {
-              loadedTimetable[cls] = {};
-              for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
-                loadedTimetable[cls][day] = {};
-                for (let p = 0; p < 8; p++) {
-                  loadedTimetable[cls][day][p] = null;
-                }
-              }
-            }
-
-            timetableData.forEach((slot: any) => {
-              const cls = slot.batch_name;
-              const day = dayMap[slot.date];
-              const p = slot.period;
-              if (cls && day && p !== undefined && p >= 0 && p < 8) {
-                if (loadedTimetable[cls]) {
-                  loadedTimetable[cls][day][p] = {
-                    subject: slot.subject,
-                    teacher: slot.teacher,
-                    teacherId: String(slot.teacherId),
-                    room: slot.room,
-                  };
-                }
-              }
-            });
-            setTimetable(loadedTimetable);
-          }
-        } catch (tErr) {
-          console.error('Error loading timetable in AppContext:', tErr);
+      // Fetch period timings from settings
+      try {
+        const settingsRes = await api.getResources('settings', { key: 'timetable_period_timings' });
+        if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
+          const parsed = JSON.parse(settingsRes[0].value);
+          setPeriodTimings(parsed);
+          localStorage.setItem('timetable_period_timings', JSON.stringify(parsed));
         }
       } catch (err) {
-        console.error('Error loading API data in AppContext:', err);
+        console.error('Error loading period timings in AppContext:', err);
+      }
+
+      // Fetch student attendance records from settings
+      try {
+        const settingsRes = await api.getResources('settings', { key: 'kts_student_attendance_records' });
+        if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
+          localStorage.setItem('kts_student_attendance_records', settingsRes[0].value);
+        }
+      } catch (err) {
+        console.error('Error loading kts_student_attendance_records in AppContext:', err);
+      }
+
+      // Fetch timetable from database
+      try {
+        const timetableData = await api.getResources('timetable', { limit: '1000' });
+        if (timetableData && timetableData.length > 0) {
+          const dayMap: Record<string, string> = {
+            '2026-06-01': 'Monday',
+            '2026-06-02': 'Tuesday',
+            '2026-06-03': 'Wednesday',
+            '2026-06-04': 'Thursday',
+            '2026-06-05': 'Friday',
+            '2026-06-06': 'Saturday',
+          };
+          
+          const loadedTimetable: SchoolTimetable = {};
+          const classes = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
+          for (const cls of classes) {
+            loadedTimetable[cls] = {};
+            for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
+              loadedTimetable[cls][day] = {};
+              for (let p = 0; p < 12; p++) {
+                loadedTimetable[cls][day][p] = null;
+              }
+            }
+          }
+
+          timetableData.forEach((slot: any) => {
+            const rawCls = slot.batch_name;
+            if (!rawCls) return;
+            
+            const cls = rawCls.trim();
+            const day = slot.day || dayMap[slot.date];
+            const p = slot.period;
+            if (day && p !== undefined && p >= 0 && p < 12) {
+              // Dynamically initialize class and day structures if not present
+              if (!loadedTimetable[cls]) {
+                loadedTimetable[cls] = {};
+              }
+              if (!loadedTimetable[cls][day]) {
+                loadedTimetable[cls][day] = {};
+                for (let i = 0; i < 12; i++) {
+                  loadedTimetable[cls][day][i] = null;
+                }
+              }
+
+              loadedTimetable[cls][day][p] = {
+                subject: slot.subject,
+                teacher: slot.teacher,
+                teacherId: String(slot.teacherId),
+                room: slot.room,
+              };
+            }
+          });
+          setTimetable(loadedTimetable);
+        }
+      } catch (tErr) {
+        console.error('Error loading timetable in AppContext:', tErr);
       }
     }
     loadInitialData();
-  }, []);
+  }, [user]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -333,17 +411,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
+  const savePeriodTimings = async (newTimings: PeriodTiming[]) => {
+    setPeriodTimings(newTimings);
+    localStorage.setItem('timetable_period_timings', JSON.stringify(newTimings));
+    try {
+      const valueStr = JSON.stringify(newTimings);
+      const existing = await api.getResources('settings', { key: 'timetable_period_timings' });
+      if (Array.isArray(existing) && existing.length > 0) {
+        const settingId = existing[0].id;
+        await api.updateResource('settings', String(settingId), { value: valueStr });
+      } else {
+        await api.createResource('settings', {
+          key: 'timetable_period_timings',
+          value: valueStr,
+          group: 'timetable',
+          type: 'json',
+          is_public: true,
+        });
+      }
+    } catch (err) {
+      console.error('Error saving period timings to DB:', err);
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       leaveRequests,
       notifications,
       unreadCount,
       timetable,
+      periodTimings,
       addLeaveRequest,
       approveLeave,
       rejectLeave,
       markNotificationsRead,
       setTimetablePeriod,
+      savePeriodTimings,
     }}>
       {children}
     </AppContext.Provider>
