@@ -21,6 +21,7 @@ import { Expenses } from './pages/Expenses';
 import { WhatsApp } from './pages/WhatsApp';
 import { Leave } from './pages/Leave';
 import { Examinations } from './pages/Examinations';
+import { Performance } from './pages/Performance';
 import { Meetings } from './pages/Meetings';
 import { TeacherDashboard } from './pages/TeacherDashboard';
 import { Homework } from './pages/Homework';
@@ -176,7 +177,7 @@ function AppShell() {
           {page === 'teacher-dashboard' && <TeacherDashboard />}
           {page === 'homework' && <Homework />}
           {page === 'allot-attendance' && <AllotAttendance />}
-          {page === 'performance' && <Examinations />}
+          {page === 'performance' && <Performance />}
           {page === 'my-salary' && <MySalary />}
         </div>
       </div>

@@ -510,6 +510,12 @@ export function Examinations() {
   });
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [selectedMarksClass, setSelectedMarksClass] = useState('8A');
+  const [students, setStudents] = useState<any[]>([]);
+  const [selectedMarksExamId, setSelectedMarksExamId] = useState<string>('');
+  const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>('Mathematics');
+  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number>>>>({});
+  const [savingMarks, setSavingMarks] = useState(false);
 
   useEffect(() => {
     const syncDb = async () => {
@@ -562,6 +568,18 @@ export function Examinations() {
           // Seed DB
           await saveSettingToDb('kts_exam_invigilations', currentInvigilations);
         }
+
+        // Sync student marks
+        const marksRes = await api.getResources('settings', { key: 'kts_student_marks' });
+        if (Array.isArray(marksRes) && marksRes.length > 0 && marksRes[0].value) {
+          try {
+            const parsed = JSON.parse(marksRes[0].value);
+            setStudentMarks(parsed);
+            localStorage.setItem('kts_student_marks', JSON.stringify(parsed));
+          } catch (e) {
+            console.error('Error parsing kts_student_marks setting:', e);
+          }
+        }
       } catch (err) {
         console.error('Failed to sync settings from DB:', err);
       }
@@ -580,7 +598,58 @@ export function Examinations() {
     } else {
       setStaffList(STAFF);
     }
+
+    // Load students
+    const loadStudents = async () => {
+      try {
+        const data = await api.getResources('students', { limit: '1000' });
+        setStudents(data || []);
+      } catch (err) {
+        console.error('Error loading students:', err);
+      }
+    };
+    loadStudents();
   }, []);
+
+  // Initialize and validate filter selections
+  useEffect(() => {
+    const availableExams = isAdmin 
+      ? exams.filter((e) => e.status !== 'Results Published') 
+      : exams.filter((e) => e.status === 'Completed');
+    if (availableExams.length > 0) {
+      if (!selectedMarksExamId || !availableExams.some(e => e.id === selectedMarksExamId)) {
+        setSelectedMarksExamId(availableExams[0].id);
+      }
+    } else {
+      setSelectedMarksExamId('');
+    }
+  }, [exams, selectedMarksExamId, isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin && user) {
+      const teacherClasses = user.classes || [];
+      if (teacherClasses.length > 0 && !teacherClasses.includes(selectedMarksClass)) {
+        setSelectedMarksClass(teacherClasses[0]);
+      }
+      if (user.subject && selectedMarksSubject !== user.subject) {
+        setSelectedMarksSubject(user.subject);
+      }
+    }
+  }, [user, isAdmin, selectedMarksClass, selectedMarksSubject]);
+
+  const handleSaveMarks = async () => {
+    setSavingMarks(true);
+    try {
+      localStorage.setItem('kts_student_marks', JSON.stringify(studentMarks));
+      await saveSettingToDb('kts_student_marks', studentMarks);
+      alert('Marks saved successfully!');
+    } catch (err) {
+      console.error('Error saving marks:', err);
+      alert('Failed to save marks.');
+    } finally {
+      setSavingMarks(false);
+    }
+  };
 
   // Removed automatic sync effects to prevent redundant DB writes on mount
   const [createName, setCreateName] = useState('');
@@ -724,12 +793,54 @@ export function Examinations() {
     setActiveTab('designer');
   };
 
+  const activeClassList = classList.length > 0 ? classList : CLASSES;
+  const filteredClassList = isAdmin ? activeClassList : (user?.classes && user.classes.length > 0 ? user.classes : activeClassList);
+  const marksExams = isAdmin 
+    ? exams.filter((e) => e.status !== 'Results Published') 
+    : exams.filter((e) => e.status === 'Completed');
+
+  const getFilteredStudentsForMarks = () => {
+    const dbFiltered = students.filter((s: any) => {
+      const studentClass = s.batch?.name || (s.class && s.section ? `${s.class}${s.section}` : s.class || '');
+      return studentClass.toUpperCase() === selectedMarksClass.toUpperCase();
+    });
+
+    const mapStudent = (name: string, roll: string, init: string, defaultMark: number, id?: string) => {
+      const savedMark = studentMarks[selectedMarksExamId]?.[selectedMarksSubject]?.[roll];
+      const maths = savedMark !== undefined ? savedMark : defaultMark;
+      return {
+        name,
+        init,
+        roll,
+        maths,
+        maxMarks: 100,
+        id
+      };
+    };
+
+    if (dbFiltered.length > 0) {
+      return dbFiltered.map((s: any, idx: number) => {
+        const initials = s.name.trim().split(/\s+/).map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+        const roll = s.enrollment_number || `${selectedMarksClass}-${String(idx + 1).padStart(3, '0')}`;
+        const defaultMark = 70 + (parseInt(s.id) || idx) % 26;
+        return mapStudent(s.name, roll, initials || 'ST', defaultMark, s.id);
+      });
+    }
+    return RESULTS.filter((r) => {
+      const rollClass = r.roll.split('-')[0];
+      return rollClass.toUpperCase() === selectedMarksClass.toUpperCase();
+    }).map((r) => {
+      return mapStudent(r.name, r.roll, r.init, r.maths);
+    });
+  };
+  const studentsToShow = getFilteredStudentsForMarks();
+
   const classAvg = RESULTS.reduce((s, r) => s + r.percentage, 0) / RESULTS.length;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'exams', label: 'Exam Schedule' },
     { id: 'results', label: 'Results & Rankings' },
-    { id: 'marks', label: 'Marks Entry' },
+    { id: 'marks', label: isAdmin ? 'Marks Preview' : 'Marks Entry' },
     { id: 'designer', label: isAdmin ? 'Schedule Designer' : 'Schedule Preview' },
     { id: 'invisilation', label: isAdmin ? 'Allot Invisilation' : 'Exam Invisilation' },
   ];
@@ -803,12 +914,13 @@ export function Examinations() {
                 )}
                 {isAdmin && (
                   <button
+                    disabled={exam.status !== 'Upcoming'}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDeleteExam(exam.id);
                     }}
-                    className="p-1.5 rounded-lg hover:bg-[var(--red-bg)] text-[var(--tx3)] hover:text-[var(--red-tx)] cursor-pointer transition-colors"
-                    title="Delete Exam"
+                    className="p-1.5 rounded-lg text-[var(--tx3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent enabled:hover:bg-[var(--red-bg)] enabled:hover:text-[var(--red-tx)] enabled:cursor-pointer"
+                    title={exam.status === 'Upcoming' ? "Delete Exam" : "Cannot delete completed or published exam"}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -895,52 +1007,135 @@ export function Examinations() {
       {activeTab === 'marks' && (
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <div className="text-[13px] font-semibold text-[var(--tx)]">Marks Entry</div>
+            <div className="text-[13px] font-semibold text-[var(--tx)]">
+              {isAdmin ? 'Marks Preview' : 'Marks Entry'}
+            </div>
             <div className="flex gap-2">
-              <select className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
-                {exams.filter((e) => e.status !== 'Results Published').map((e) => <option key={e.id}>{e.name}</option>)}
+              <select
+                value={selectedMarksClass}
+                onChange={(e) => setSelectedMarksClass(e.target.value)}
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
+              >
+                {filteredClassList.map((c) => (
+                  <option key={c} value={c}>Class {c}</option>
+                ))}
               </select>
-              <select className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
-                <option>Maths</option><option>Science</option><option>English</option><option>Telugu</option>
+              <select
+                value={selectedMarksExamId}
+                onChange={(e) => setSelectedMarksExamId(e.target.value)}
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
+              >
+                {marksExams.map((e) => (
+                  <option key={e.id} value={e.id}>{e.name}</option>
+                ))}
+              </select>
+              <select
+                value={selectedMarksSubject}
+                onChange={(e) => setSelectedMarksSubject(e.target.value)}
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
+                disabled={!isAdmin}
+              >
+                {isAdmin ? (
+                  SUBJECTS.filter((s) => s !== 'All Subjects').map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))
+                ) : (
+                  <option value={user?.subject || 'Mathematics'}>{user?.subject || 'Mathematics'}</option>
+                )}
               </select>
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[12px] min-w-[600px]">
-              <thead>
-                <tr className="border-b border-[var(--b)]">
-                  {['Student', 'Roll No', 'Max Marks', 'Marks Obtained', 'Percentage', ''].map((h) => (
-                    <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {RESULTS.map((r) => (
-                  <tr key={r.roll} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] last:border-0">
-                    <td className="px-2 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <Avatar initials={r.init} bg={AVATAR_COLORS[r.init]?.bg ?? 'var(--surf3)'} color={AVATAR_COLORS[r.init]?.color ?? 'var(--tx2)'} />
-                        <span className="font-semibold text-[var(--tx)]">{r.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2.5 font-mono text-[11px] text-[var(--tx3)]">{r.roll}</td>
-                    <td className="px-2 py-2.5 text-[var(--tx3)]">100</td>
-                    <td className="px-2 py-2.5">
-                      <input type="number" defaultValue={r.maths} min={0} max={100} className="w-16 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] text-center" />
-                    </td>
-                    <td className="px-2 py-2.5 font-semibold text-[var(--tx)]">{r.maths}%</td>
-                    <td className="px-2 py-2.5">
-                      <Badge variant={r.maths >= 90 ? 'teal' : r.maths >= 75 ? 'blue' : 'amber'}>{r.maths >= 90 ? 'A+' : r.maths >= 75 ? 'A' : 'B'}</Badge>
-                    </td>
+            {marksExams.length === 0 ? (
+              <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
+                No completed exams available for marks entry.
+              </div>
+            ) : studentsToShow.length === 0 ? (
+              <div className="text-center py-8 text-[12px] text-[var(--tx3)]">
+                No students found in Class {selectedMarksClass}.
+              </div>
+            ) : (
+              <table className="w-full border-collapse text-[12px] min-w-[600px]">
+                <thead>
+                  <tr className="border-b border-[var(--b)]">
+                    {['Student', 'Roll No', 'Max Marks', 'Marks Obtained', 'Percentage', ''].map((h) => (
+                      <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {studentsToShow.map((r) => (
+                    <tr key={r.roll} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] last:border-0">
+                      <td className="px-2 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <Avatar initials={r.init} bg={AVATAR_COLORS[r.init]?.bg ?? 'var(--surf3)'} color={AVATAR_COLORS[r.init]?.color ?? 'var(--tx2)'} />
+                          <span className="font-semibold text-[var(--tx)]">{r.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2.5 font-mono text-[11px] text-[var(--tx3)]">{r.roll}</td>
+                      <td className="px-2 py-2.5 text-[var(--tx3)]">{r.maxMarks}</td>
+                      <td className="px-2 py-2.5">
+                        {isAdmin ? (
+                          <span className="font-semibold text-[13px] text-[var(--tx)]">{r.maths}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            value={r.maths}
+                            min={0}
+                            max={r.maxMarks}
+                            onChange={(e) => {
+                              const val = Math.min(r.maxMarks, Math.max(0, Number(e.target.value) || 0));
+                              setStudentMarks((prev) => {
+                                const examPrev = prev[selectedMarksExamId] ?? {};
+                                const subPrev = examPrev[selectedMarksSubject] ?? {};
+                                return {
+                                  ...prev,
+                                  [selectedMarksExamId]: {
+                                    ...examPrev,
+                                    [selectedMarksSubject]: {
+                                      ...subPrev,
+                                      [r.roll]: val,
+                                    },
+                                  },
+                                };
+                              });
+                            }}
+                            className="w-16 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] text-center"
+                          />
+                        )}
+                      </td>
+                      <td className="px-2 py-2.5 font-semibold text-[var(--tx)]">
+                        {Math.round((r.maths / r.maxMarks) * 100)}%
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <Badge variant={r.maths >= 90 ? 'teal' : r.maths >= 75 ? 'blue' : 'amber'}>
+                          {r.maths >= 90 ? 'A+' : r.maths >= 75 ? 'A' : 'B'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-          <div className="mt-3 flex justify-end gap-2">
-            <button className="px-4 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] text-[var(--tx)] cursor-pointer">Save Draft</button>
-            <button className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-90">Submit & Publish</button>
-          </div>
+          {!isAdmin && (
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                onClick={handleSaveMarks}
+                disabled={savingMarks}
+                className="px-4 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] text-[var(--tx)] cursor-pointer disabled:opacity-50"
+              >
+                {savingMarks ? 'Saving...' : 'Save Draft'}
+              </button>
+              <button
+                onClick={handleSaveMarks}
+                disabled={savingMarks}
+                className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-90 disabled:opacity-50"
+              >
+                {savingMarks ? 'Saving...' : 'Submit & Publish'}
+              </button>
+            </div>
+          )}
         </Card>
       )}
 
