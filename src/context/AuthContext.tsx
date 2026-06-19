@@ -16,7 +16,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function refreshUser() {
       const token = localStorage.getItem('token');
-      if (token) {
+      // Skip API call for demo token — no backend needed
+      if (token && token !== 'demo-token') {
         try {
           const res = await api.getMe();
           if (res.user) {
@@ -44,7 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Poll server to check if user status has been changed to inactive while logged in
   useEffect(() => {
     if (!user) return;
-    
+    // Skip polling for demo users — no backend to verify against
+    const token = localStorage.getItem('token');
+    if (token === 'demo-token') return;
+
     const interval = setInterval(async () => {
       try {
         const res = await api.getMe();
@@ -62,7 +66,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Demo users for offline / no-backend usage
+  const DEMO_USERS: Record<string, { email: string; password: string; user: User }> = {
+    'admin@krishnaveni.edu': {
+      email: 'admin@krishnaveni.edu',
+      password: 'admin123',
+      user: {
+        id: '1',
+        name: 'Admin User',
+        email: 'admin@krishnaveni.edu',
+        role: 'admin',
+        initials: 'AU',
+        designation: 'Administrator',
+      },
+    },
+    'teacher@krishnaveni.edu': {
+      email: 'teacher@krishnaveni.edu',
+      password: 'teacher123',
+      user: {
+        id: '2',
+        name: 'Teacher User',
+        email: 'teacher@krishnaveni.edu',
+        role: 'teacher',
+        initials: 'TU',
+        designation: 'Teacher',
+      },
+    },
+  };
+
   const login = async (email: string, password: string) => {
+    // Check demo credentials first (works without backend)
+    const demo = DEMO_USERS[email.trim().toLowerCase()];
+    if (demo && password === demo.password) {
+      localStorage.setItem('token', 'demo-token');
+      localStorage.setItem('user', JSON.stringify(demo.user));
+      setUser(demo.user);
+      return { ok: true };
+    }
+
     try {
       const res = await api.login({ email, password });
       if (res.user) {
