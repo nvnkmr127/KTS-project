@@ -1,0 +1,148 @@
+<?php
+
+namespace App\Imports;
+
+use App\Models\Course;
+use App\Models\Enquiry;
+use App\Models\Student;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
+
+class EnquiriesImport implements ToModel, WithHeadingRow
+{
+    protected $assignedTo;
+
+    protected $leadDistribution;
+
+    protected $defaultSource;
+
+    public $importedCount = 0;
+
+    public $skippedCount = 0;
+
+    public $duplicates = [];
+
+    public function __construct($assignedTo = null, $leadDistribution = null, $defaultSource = null)
+    {
+        $this->assignedTo = $assignedTo;
+        $this->leadDistribution = $leadDistribution;
+        $this->defaultSource = is_string($defaultSource) ? trim($defaultSource) : null;
+        $this->duplicates = [];
+    }
+
+    public function model(array $row)
+    {
+        // DEBUG: Log the row to see what keys Laravel Excel is reading
+        // Check storage/logs/laravel.log if imports fail silently
+        // Log::info('CSV Row:', $row);
+
+        // 1. Sanitize Phone (Handle mismatched headers gracefully)
+        $rawPhone = $row['mobile_number'] ?? $row['phone'] ?? $row['mobile'] ?? null;
+        if (empty($rawPhone)) {
+            $this->skippedCount++;
+
+            return null;
+        }
+
+        $phone = preg_replace('/[^0-9]/', '', (string) $rawPhone);
+        $searchSuffix = strlen($phone) >= 10 ? substr($phone, -10) : $phone;
+
+        // 2. Basic Validation — must be at least 10 digits
+        if (strlen($phone) < 6) { // Allowing shorter numbers just in case, but usually 10
+            $this->skippedCount++;
+
+            return null;
+        }
+
+        // 3. Smart Duplicate Check (Students)
+        $duplicateStudent = Student::where('student_mobile', 'LIKE', "%{$searchSuffix}")
+            ->orWhere('father_mobile', 'LIKE', "%{$searchSuffix}")
+            ->first();
+
+        if ($duplicateStudent) {
+            $this->skippedCount++;
+            $this->duplicates[] = [
+                'name' => $row['name'] ?? $row['student_name'] ?? 'N/A',
+                'phone' => $phone,
+                'reason' => 'Duplicate (Existing Student: '.$duplicateStudent->name.')',
+            ];
+
+            return null;
+        }
+
+        // 4. Smart Duplicate Check (Enquiries)
+        $existingEnquiry = Enquiry::where('phone_number', 'LIKE', "%{$searchSuffix}")->first();
+        if ($existingEnquiry) {
+            $this->skippedCount++;
+            $this->duplicates[] = [
+                'name' => $row['name'] ?? $row['student_name'] ?? 'N/A',
+                'phone' => $phone,
+                'reason' => 'Duplicate (Existing Enquiry: '.$existingEnquiry->student_name.')',
+            ];
+
+            return null;
+        }
+
+        // 5. Course Matching — exact match first, then partial fallback
+        $courseId = null;
+        if (! empty($row['course'])) {
+            $courseName = trim($row['course']);
+            $course = Course::where('name', $courseName)->first()
+                ?? Course::where('name', 'LIKE', '%'.$courseName.'%')->first();
+            $courseId = $course ? $course->id : null;
+        }
+
+        // Determine Assignment
+        // Priority: 1. Manually selected user 2. Round-Robin College Admin 3. Current User (Auth::id())
+        $assignedId = $this->assignedTo;
+
+        if (! $assignedId && $this->leadDistribution) {
+            $assignedId = $this->leadDistribution->getNextCollegeAdminId();
+        }
+
+        // Fallback to current user if still null
+        if (! $assignedId) {
+            $assignedId = Auth::id();
+        }
+
+        // 6. Name Validation
+        $name = $row['name'] ?? $row['student_name'] ?? $row['student'] ?? null;
+        if (empty($name)) {
+            $this->skippedCount++;
+
+            return null;
+        }
+
+        $this->importedCount++;
+
+        // Support common sheet header variants, then fallback to modal default, then system default.
+        $rowSource = $row['source']
+            ?? $row['lead_source']
+            ?? $row['enquiry_source']
+            ?? $row['source_of_enquiry']
+            ?? null;
+
+        $resolvedSource = is_string($rowSource) ? trim($rowSource) : null;
+        if (empty($resolvedSource)) {
+            $resolvedSource = $this->defaultSource;
+        }
+        if (empty($resolvedSource)) {
+            $resolvedSource = 'Bulk Import';
+        }
+
+        return new Enquiry([
+            'student_name' => $name,
+            'phone_number' => $phone,
+            'address' => $row['address'] ?? null,
+            'email' => $row['email'] ?? null,
+            'course_id' => $courseId,
+            'source' => $resolvedSource,
+            'notes' => $row['notes'] ?? null,
+            'status' => 'New',
+            'assigned_to_user_id' => $assignedId,
+            // next_follow_up_date intentionally null — counselor should set it after review
+        ]);
+    }
+}

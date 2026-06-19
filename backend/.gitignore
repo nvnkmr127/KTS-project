@@ -1,0 +1,91 @@
+# Environment
+.env
+.env.backup
+.env.production
+.env.local
+.env.*.local
+auth.json
+
+# Git
+.git/
+
+# Logs
+/storage/logs/*
+!/storage/logs/.gitignore
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+error_log
+error_log.old
+
+# Laravel / Storage
+/storage/app/*
+!/storage/app/.gitignore
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+/storage/*.key
+
+# Cache & Bootstrap
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+/cache
+/cache/
+
+# Uploads and generated files
+/public/storage
+/public/hot
+/public/build
+/public/css
+/public/images
+/public/docs
+/public/info.php
+/public/notification-demo.html
+
+# Debug / developer scripts
+test.php
+debug_*.php
+check_*.php
+verify_*.php
+fix_permissions.php
+gdrive_diagnosis.php
+redis-test.php
+routes.json
+sample_certificate.html
+push-to-github.sh
+crontab_backup.txt
+deploy.sh
+scratch_*.php
+temp_*.php
+
+# IDE / Editor
+.DS_Store
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.phpunit.result.cache
+
+# Package Managers
+/node_modules
+/vendor
+composer.phar
+composer.lock.backup
+
+# Misc
+*.bak
+*.bak*
+
+# Tools
+.phpstan.cache/
+.phpstan.result.cache
+.phpunit.cache/

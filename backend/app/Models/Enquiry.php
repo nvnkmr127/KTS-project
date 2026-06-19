@@ -1,0 +1,89 @@
+<?php
+
+namespace App\Models;
+
+use App\Traits\WebhookEnabled;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+
+class Enquiry extends Model
+{
+    use HasFactory, LogsActivity;
+    use WebhookEnabled;
+
+    /** Single source of truth for all enquiry source options */
+    const SOURCES = [
+        'Website' => 'Website / Google',
+        'Social Media' => 'Social Media',
+        'Agent' => 'Agent',
+        'Referrals' => 'Referrals',
+        'Student Refer' => 'Student Referral',
+        'Walk-in' => 'Walk-in',
+        'Other' => 'Other',
+    ];
+
+    protected $fillable = [
+        'student_name',
+        'phone_number',
+        'gender',
+        'date_of_birth',
+        'address',
+        'education_qualification',
+        'course_id',
+        'source',
+        'referral_name',
+        'notes',
+        'next_follow_up_date',
+        'status',
+        'assigned_to_user_id',
+        'agreed_fee',
+        'email',
+        'test_attended',
+        'test_marks',
+        'discount_offered',
+        'include_uniform',
+        'uniform_price',
+        'include_books',
+        'books_price',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'date_of_birth' => 'date',
+        'next_follow_up_date' => 'date',
+        'include_uniform' => 'boolean',
+        'uniform_price' => 'decimal:2',
+        'include_books' => 'boolean',
+        'books_price' => 'decimal:2',
+        'agreed_fee' => 'decimal:2',
+    ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['status', 'next_follow_up_date', 'assigned_to_user_id'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName) => "The enquiry for '{$this->student_name}' has been {$eventName}");
+    }
+
+    public function course(): BelongsTo
+    {
+        return $this->belongsTo(Course::class);
+    }
+
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
+    public function followUps(): MorphMany
+    {
+        return $this->morphMany(FollowUp::class, 'followable');
+    }
+}
