@@ -84,7 +84,7 @@ export function Topbar({ current, dark, onToggleDark, onMenuClick }: TopbarProps
         {PAGE_TITLES[current]}
       </div>
 
-      {academicYears.length > 0 && (
+      {academicYears.length > 0 ? (
         <div className="flex items-center gap-1.5 mr-auto">
           <span className="text-[10px] text-[var(--tx3)] font-semibold uppercase tracking-wider hidden lg:inline">Academic Year:</span>
           <select
@@ -99,6 +99,8 @@ export function Topbar({ current, dark, onToggleDark, onMenuClick }: TopbarProps
             ))}
           </select>
         </div>
+      ) : (
+        <div className="flex-1" />
       )}
 
       <div className="hidden sm:flex items-center gap-1.5 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx3)] w-44 cursor-text">

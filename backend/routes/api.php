@@ -141,6 +141,23 @@ Route::prefix('v1')->group(function () {
 
 // Health check endpoints
 Route::get('/ping', function () {
+    // Proactively seed academic years if missing
+    try {
+        if (\Schema::hasTable('academic_years') && \App\Models\AcademicYear::count() < 4) {
+            $years = [
+                ['name' => '2023-2024', 'start_date' => '2023-04-01', 'end_date' => '2024-03-31', 'is_current' => false],
+                ['name' => '2024-2025', 'start_date' => '2024-04-01', 'end_date' => '2025-03-31', 'is_current' => false],
+                ['name' => '2025-2026', 'start_date' => '2025-04-01', 'end_date' => '2026-03-31', 'is_current' => false],
+                ['name' => '2026-2027', 'start_date' => '2026-04-01', 'end_date' => '2027-03-31', 'is_current' => true],
+            ];
+            foreach ($years as $yr) {
+                \App\Models\AcademicYear::updateOrCreate(['name' => $yr['name']], $yr);
+            }
+        }
+    } catch (\Exception $e) {
+        // Silently catch database or missing model exceptions
+    }
+
     return response()->json([
         'status' => 'success',
         'message' => 'PONG',
