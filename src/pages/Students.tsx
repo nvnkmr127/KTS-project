@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Search, Plus, Upload, UserCheck, GraduationCap,
   Phone, Edit2, Trash2, Eye, X, Loader2, AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText,
-  ArrowRightLeft, Users,
+  ArrowRightLeft, Users, ChevronLeft, ChevronRight, ArrowLeft,
 } from 'lucide-react';
 // @ts-ignore
 import * as XLSX from 'xlsx';
@@ -72,6 +72,52 @@ export function Students() {
   const [attendancePercentage, setAttendancePercentage] = useState<number | null>(null);
   const [studentFeesList, setStudentFeesList] = useState<any[]>([]);
   const [loadingStudentFees, setLoadingStudentFees] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+
+  useEffect(() => {
+    if (modal !== 'view') {
+      setShowCalendar(false);
+      setCurrentMonth(new Date());
+    }
+  }, [modal]);
+
+  useEffect(() => {
+    if (selected && modal === 'view') {
+      setLoadingAttendance(true);
+      api.getResources('settings', { key: 'kts_student_attendance_records' })
+        .then(res => {
+          if (Array.isArray(res) && res.length > 0 && res[0].value) {
+            try {
+              const parsed = JSON.parse(res[0].value);
+              setAttendanceRecords(parsed);
+              localStorage.setItem('kts_student_attendance_records', JSON.stringify(parsed));
+            } catch (e) {
+              console.error('Error parsing kts_student_attendance_records:', e);
+              const local = localStorage.getItem('kts_student_attendance_records');
+              if (local) setAttendanceRecords(JSON.parse(local));
+            }
+          } else {
+            const local = localStorage.getItem('kts_student_attendance_records');
+            if (local) {
+              setAttendanceRecords(JSON.parse(local));
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Error loading attendance settings:', err);
+          const local = localStorage.getItem('kts_student_attendance_records');
+          if (local) setAttendanceRecords(JSON.parse(local));
+        })
+        .finally(() => {
+          setLoadingAttendance(false);
+        });
+    } else {
+      setAttendanceRecords([]);
+    }
+  }, [selected, modal]);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -526,6 +572,53 @@ export function Students() {
         const totalPaid = studentFeesList.reduce((sum, f) => sum + Number(f.paid_amount), 0);
         const totalDue = studentFeesList.reduce((sum, f) => sum + Math.max(0, Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)), 0);
 
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+
+        const firstDayOfMonth = new Date(year, month, 1);
+        const startDayOfWeek = firstDayOfMonth.getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const getDayAttendanceInfo = (dateStr: string) => {
+          const dayRecords = attendanceRecords.filter(
+            r => String(r.studentId) === String(selected.id) && r.date === dateStr
+          );
+          if (dayRecords.length === 0) return null;
+
+          const presentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'present' || r.status?.toLowerCase() === 'late').length;
+          const absentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'absent').length;
+
+          if (presentCount > 0 && absentCount > 0) {
+            return {
+              status: 'partial' as const,
+              className: 'bg-[var(--purple-bg)] text-[var(--purple-tx)] border-[var(--purple-tx)]/25',
+              label: 'Partial',
+              details: `${presentCount} P / ${absentCount} A`
+            };
+          } else if (presentCount > 0) {
+            return {
+              status: 'present' as const,
+              className: 'bg-[var(--green-bg)] text-[var(--green-tx)] border-[var(--green-tx)]/25',
+              label: 'Present',
+              details: `${presentCount} Present`
+            };
+          } else if (absentCount > 0) {
+            return {
+              status: 'absent' as const,
+              className: 'bg-[var(--red-bg)] text-[var(--red-tx)] border-[var(--red-tx)]/25',
+              label: 'Absent',
+              details: `${absentCount} Absent`
+            };
+          }
+          return null;
+        };
+
+        const monthNames = [
+          "January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ];
+        const formattedMonthYear = `${monthNames[month]} ${year}`;
+
         return (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[780px] shadow-2xl flex flex-col max-h-[90vh]">
@@ -555,112 +648,245 @@ export function Students() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Left Column: Personal Info */}
-                  <div className="space-y-3">
-                    <div className="text-[12px] font-bold text-[var(--tx)] pb-1.5 border-b border-[var(--b)] flex items-center gap-1.5">
-                      <GraduationCap size={13} className="text-[var(--tx3)]" /> Personal & Academic Details
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {[
-                        { label: 'Gender', value: selected.gender },
-                        { label: 'Date of Birth', value: formatDate(selected.dob) },
-                        { label: 'Admission Date', value: formatDate(selected.admissionDate) },
-                        { label: 'Parent / Guardian', value: selected.parent },
-                        { label: 'Mobile', value: selected.phone, icon: <Phone size={10} className="inline mr-1 text-[var(--tx3)]" /> },
-                      ].map((item) => (
-                        <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-2.5">
-                          <div className="text-[9.5px] text-[var(--tx3)] mb-0.5">{item.label}</div>
-                          <div className="text-[11.5px] font-semibold text-[var(--tx)]">
-                            {item.icon}{item.value}
+                {!showCalendar ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Left Column: Personal Info */}
+                    <div className="space-y-3">
+                      <div className="text-[12px] font-bold text-[var(--tx)] pb-1.5 border-b border-[var(--b)] flex items-center gap-1.5">
+                        <GraduationCap size={13} className="text-[var(--tx3)]" /> Personal & Academic Details
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {[
+                          { label: 'Gender', value: selected.gender },
+                          { label: 'Date of Birth', value: formatDate(selected.dob) },
+                          { label: 'Admission Date', value: formatDate(selected.admissionDate) },
+                          { label: 'Parent / Guardian', value: selected.parent },
+                          { label: 'Mobile', value: selected.phone, icon: <Phone size={10} className="inline mr-1 text-[var(--tx3)]" /> },
+                        ].map((item) => (
+                          <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-2.5">
+                            <div className="text-[9.5px] text-[var(--tx3)] mb-0.5">{item.label}</div>
+                            <div className="text-[11.5px] font-semibold text-[var(--tx)]">
+                              {item.icon}{item.value}
+                            </div>
+                          </div>
+                        ))}
+                        {/* Overall Attendance */}
+                        <div
+                          onClick={() => setShowCalendar(true)}
+                          className="bg-[var(--surf2)] rounded-xl p-2.5 sm:col-span-2 cursor-pointer hover:bg-[var(--surf3)] border border-transparent hover:border-[var(--blue-tx)]/20 transition-all group"
+                        >
+                          <div className="text-[9.5px] text-[var(--tx3)] mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1"><Users size={11} /> Overall Attendance</span>
+                            <span className="text-[8.5px] text-[var(--blue-tx)] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to view calendar →</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 mt-0.5">
+                            <span className={`text-[12px] font-bold ${
+                              attendancePercentage !== null && attendancePercentage >= 75 ? 'text-[var(--teal-tx)]' : attendancePercentage !== null && attendancePercentage >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
+                            }`}>{attendancePercentage !== null ? `${attendancePercentage}%` : 'Loading...'}</span>
+                            {attendancePercentage !== null && (
+                              <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${
+                                  attendancePercentage >= 75 ? 'bg-[var(--teal)]' : attendancePercentage >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
+                                }`} style={{ width: `${attendancePercentage}%` }} />
+                              </div>
+                            )}
                           </div>
                         </div>
-                      ))}
-                      {/* Overall Attendance */}
-                      <div className="bg-[var(--surf2)] rounded-xl p-2.5 sm:col-span-2">
-                        <div className="text-[9.5px] text-[var(--tx3)] mb-1 flex items-center gap-1"><Users size={11} /> Overall Attendance</div>
-                        <div className="flex items-center gap-2.5 mt-0.5">
-                          <span className={`text-[12px] font-bold ${
-                            attendancePercentage !== null && attendancePercentage >= 75 ? 'text-[var(--teal-tx)]' : attendancePercentage !== null && attendancePercentage >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
-                          }`}>{attendancePercentage !== null ? `${attendancePercentage}%` : 'Loading...'}</span>
-                          {attendancePercentage !== null && (
-                            <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full ${
-                                attendancePercentage >= 75 ? 'bg-[var(--teal)]' : attendancePercentage >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
-                              }`} style={{ width: `${attendancePercentage}%` }} />
+                      </div>
+                      <div className="bg-[var(--surf2)] rounded-xl p-2.5">
+                        <div className="text-[9.5px] text-[var(--tx3)] mb-0.5">Address</div>
+                        <div className="text-[11.5px] font-semibold text-[var(--tx)]">{selected.address || 'N/A'}</div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Fee Details */}
+                    <div className="space-y-3 flex flex-col">
+                      <div className="text-[12px] font-bold text-[var(--tx)] pb-1.5 border-b border-[var(--b)] flex items-center gap-1.5">
+                        <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
+                      </div>
+
+                      {/* Overall totals */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center">
+                          <div className="text-[9px] text-[var(--tx3)] mb-0.5">Total Fee</div>
+                          <div className="text-[12px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--teal)]">
+                          <div className="text-[9px] text-[var(--tx3)] mb-0.5">Paid</div>
+                          <div className="text-[12px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
+                        </div>
+                        <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--red)]">
+                          <div className="text-[9px] text-[var(--tx3)] mb-0.5">Due</div>
+                          <div className="text-[12px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
+                        </div>
+                      </div>
+
+                      {/* Fee Items Breakdown */}
+                      <div className="space-y-1.5 flex-1 min-h-0 flex flex-col">
+                        <div className="text-[11px] font-bold text-[var(--tx)] mt-1.5">Detailed Fee Breakdown</div>
+                        {loadingStudentFees ? (
+                          <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
+                        ) : studentFeesList.length === 0 ? (
+                          <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">No fee records assigned.</div>
+                        ) : (
+                          <div className="space-y-1.5 overflow-y-auto pr-1 max-h-[160px] md:max-h-[220px]">
+                            {studentFeesList.map((fee) => {
+                              const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
+                              const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+                              return (
+                                <div key={fee.id} className="p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="text-[11px] font-bold text-[var(--tx)] truncate">{feeName}</div>
+                                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-[var(--tx3)] mt-0.5">
+                                      <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
+                                      {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
+                                      <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right flex-shrink-0">
+                                    <div className="flex items-center gap-1.5 justify-end mb-0.5">
+                                      {bal > 0 ? (
+                                        <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
+                                      ) : (
+                                        <Badge variant="teal">Paid</Badge>
+                                      )}
+                                    </div>
+                                    <div className="text-[8px] text-[var(--tx3)]">Due Date: {fee.due_date}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // Calendar View
+                  <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4.5 space-y-4">
+                    {/* Calendar Header */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3.5 border-b border-[var(--b)]">
+                      <button
+                        onClick={() => setShowCalendar(false)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] transition-all cursor-pointer"
+                      >
+                        <ArrowLeft size={12} /> Back to Profile
+                      </button>
+                      
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+                          className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer"
+                          title="Previous Month"
+                        >
+                          <ChevronLeft size={13} />
+                        </button>
+
+                        <select
+                          value={month}
+                          onChange={(e) => setCurrentMonth(new Date(year, parseInt(e.target.value), 1))}
+                          className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none hover:bg-[var(--surf3)] transition-all"
+                          title="Select Month"
+                        >
+                          {monthNames.map((name, idx) => (
+                            <option key={name} value={idx}>{name}</option>
+                          ))}
+                        </select>
+
+                        <select
+                          value={year}
+                          onChange={(e) => setCurrentMonth(new Date(parseInt(e.target.value), month, 1))}
+                          className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none hover:bg-[var(--surf3)] transition-all"
+                          title="Select Year"
+                        >
+                          {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+
+                        <button
+                          onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+                          className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer"
+                          title="Next Month"
+                        >
+                          <ChevronRight size={13} />
+                        </button>
+                      </div>
+
+                      {/* Legend */}
+                      <div className="flex items-center gap-3 text-[10px] font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-md bg-[var(--green-bg)] border border-[var(--green-tx)]/20 inline-block"></span>
+                          <span className="text-[var(--tx2)]">Present</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-md bg-[var(--purple-bg)] border border-[var(--purple-tx)]/20 inline-block"></span>
+                          <span className="text-[var(--tx2)]">Partial</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-md bg-[var(--red-bg)] border border-[var(--red-tx)]/20 inline-block"></span>
+                          <span className="text-[var(--tx2)]">Absent</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Loader when fetching records */}
+                    {loadingAttendance ? (
+                      <div className="flex flex-col justify-center items-center py-12 text-[var(--tx3)] gap-2">
+                        <Loader2 className="animate-spin text-[var(--blue-tx)]" size={20} />
+                        <span className="text-xs">Loading attendance details...</span>
+                      </div>
+                    ) : (
+                      /* Calendar Grid */
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {/* Weekday headers */}
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                          <div key={d} className="text-center text-[10px] font-bold text-[var(--tx3)] uppercase py-1">
+                            {d}
+                          </div>
+                        ))}
+                        
+                        {/* Empty slots for starting offset */}
+                        {Array.from({ length: startDayOfWeek }).map((_, idx) => (
+                          <div key={`empty-${idx}`} className="aspect-square bg-transparent rounded-lg"></div>
+                        ))}
+                        
+                        {/* Active month days */}
+                        {Array.from({ length: daysInMonth }).map((_, idx) => {
+                          const dayNum = idx + 1;
+                          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                          const dayRecords = attendanceRecords.filter(
+                            r => String(r.studentId) === String(selected.id) && r.date === dateStr
+                          );
+                          const att = getDayAttendanceInfo(dateStr);
+                          
+                          const tooltipText = att 
+                            ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
+                            : `${dayNum} ${monthNames[month]}: No attendance marked`;
+                          
+                          return (
+                            <div
+                              key={`day-${dayNum}`}
+                              title={tooltipText}
+                              className={`aspect-square p-2 rounded-xl flex flex-col justify-between border transition-all ${
+                                att 
+                                  ? att.className 
+                                  : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
+                              }`}
+                            >
+                              <span className="text-[11px] font-bold">{dayNum}</span>
+                              {att && (
+                                <span className="text-[9px] font-bold opacity-90 text-right truncate">
+                                  {att.status === 'present' ? 'P' : att.status === 'absent' ? 'A' : '1/2'}
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <div className="bg-[var(--surf2)] rounded-xl p-2.5">
-                      <div className="text-[9.5px] text-[var(--tx3)] mb-0.5">Address</div>
-                      <div className="text-[11.5px] font-semibold text-[var(--tx)]">{selected.address || 'N/A'}</div>
-                    </div>
+                    )}
                   </div>
-
-                  {/* Right Column: Fee Details */}
-                  <div className="space-y-3 flex flex-col">
-                    <div className="text-[12px] font-bold text-[var(--tx)] pb-1.5 border-b border-[var(--b)] flex items-center gap-1.5">
-                      <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
-                    </div>
-
-                    {/* Overall totals */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center">
-                        <div className="text-[9px] text-[var(--tx3)] mb-0.5">Total Fee</div>
-                        <div className="text-[12px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
-                      </div>
-                      <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--teal)]">
-                        <div className="text-[9px] text-[var(--tx3)] mb-0.5">Paid</div>
-                        <div className="text-[12px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
-                      </div>
-                      <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--red)]">
-                        <div className="text-[9px] text-[var(--tx3)] mb-0.5">Due</div>
-                        <div className="text-[12px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
-                      </div>
-                    </div>
-
-                    {/* Fee Items Breakdown */}
-                    <div className="space-y-1.5 flex-1 min-h-0 flex flex-col">
-                      <div className="text-[11px] font-bold text-[var(--tx)] mt-1.5">Detailed Fee Breakdown</div>
-                      {loadingStudentFees ? (
-                        <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
-                      ) : studentFeesList.length === 0 ? (
-                        <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">No fee records assigned.</div>
-                      ) : (
-                        <div className="space-y-1.5 overflow-y-auto pr-1 max-h-[160px] md:max-h-[220px]">
-                          {studentFeesList.map((fee) => {
-                            const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
-                            const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
-                            return (
-                              <div key={fee.id} className="p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-[11px] font-bold text-[var(--tx)] truncate">{feeName}</div>
-                                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-[var(--tx3)] mt-0.5">
-                                    <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
-                                    {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
-                                    <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
-                                  </div>
-                                </div>
-                                <div className="text-right flex-shrink-0">
-                                  <div className="flex items-center gap-1.5 justify-end mb-0.5">
-                                    {bal > 0 ? (
-                                      <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
-                                    ) : (
-                                      <Badge variant="teal">Paid</Badge>
-                                    )}
-                                  </div>
-                                  <div className="text-[8px] text-[var(--tx3)]">Due Date: {fee.due_date}</div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Footer */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, MapPin, Calendar, Phone, User, AlertTriangle, Printer, Edit } from 'lucide-react';
+import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, MapPin, Calendar, Phone, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -25,6 +25,7 @@ interface StudentFeeDisplay {
   address?: string;
   roll?: string;
   batchId?: number | string;
+  assignedCategories?: string[];
 }
 
 const statusBadge = (s: 'Paid' | 'Partial' | 'Unpaid') => {
@@ -39,6 +40,7 @@ export function FeeManagement() {
   const [students, setStudents] = useState<StudentFeeDisplay[]>([]);
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('All');
+  const [feeCategoryFilter, setFeeCategoryFilter] = useState('All');
   const [loading, setLoading] = useState(false);
 
   // Modals state
@@ -72,6 +74,47 @@ export function FeeManagement() {
   const [loadingStudentFees, setLoadingStudentFees] = useState(false);
   const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
   const [paymentSuccessData, setPaymentSuccessData] = useState<any | null>(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+
+  useEffect(() => {
+    if (activeDetailStudent) {
+      setLoadingAttendance(true);
+      api.getResources('settings', { key: 'kts_student_attendance_records' })
+        .then(res => {
+          if (Array.isArray(res) && res.length > 0 && res[0].value) {
+            try {
+              const parsed = JSON.parse(res[0].value);
+              setAttendanceRecords(parsed);
+              localStorage.setItem('kts_student_attendance_records', JSON.stringify(parsed));
+            } catch (e) {
+              console.error('Error parsing kts_student_attendance_records:', e);
+              const local = localStorage.getItem('kts_student_attendance_records');
+              if (local) setAttendanceRecords(JSON.parse(local));
+            }
+          } else {
+            const local = localStorage.getItem('kts_student_attendance_records');
+            if (local) {
+              setAttendanceRecords(JSON.parse(local));
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Error loading attendance settings:', err);
+          const local = localStorage.getItem('kts_student_attendance_records');
+          if (local) setAttendanceRecords(JSON.parse(local));
+        })
+        .finally(() => {
+          setLoadingAttendance(false);
+        });
+    } else {
+      setAttendanceRecords([]);
+      setShowCalendar(false);
+      setCurrentMonth(new Date());
+    }
+  }, [activeDetailStudent]);
 
   const [showEditPaidModal, setShowEditPaidModal] = useState(false);
   const [selectedEditFee, setSelectedEditFee] = useState<any | null>(null);
@@ -207,10 +250,27 @@ export function FeeManagement() {
   const loadFeesData = async () => {
     setLoading(true);
     try {
-      const [studentsData, categoriesData] = await Promise.all([
+      const [studentsData, categoriesData, allStudentFees] = await Promise.all([
         api.getResources('students', { with: 'batch' }),
         api.getResources('fee-categories').catch(() => []),
+        api.getResources('student-fees', { limit: '10000' }).catch(() => []),
       ]);
+
+      const studentFeesMap = new Map<string, string[]>();
+      if (Array.isArray(allStudentFees)) {
+        allStudentFees.forEach((fee: any) => {
+          const studentId = String(fee.student_id || fee.studentId);
+          const categoryName = fee.feeCategory?.name || fee.category || 'School Fee';
+          if (studentId) {
+            const list = studentFeesMap.get(studentId) || [];
+            if (!list.includes(categoryName.toLowerCase())) {
+              list.push(categoryName.toLowerCase());
+            }
+            studentFeesMap.set(studentId, list);
+          }
+        });
+      }
+
       const activeStudents = studentsData.filter((s: any) => {
         const isActive = s.status === 'active' || s.status === 'Active';
         const matchAy = !s.batch || String(s.batch.academic_year_id) === String(selectedAcademicYearId);
@@ -235,6 +295,7 @@ export function FeeManagement() {
           address: s.village || '',
           roll: s.enrollment_number || 'N/A',
           batchId: s.batch_id,
+          assignedCategories: studentFeesMap.get(String(s.id)) || [],
         };
       });
       setStudents(mapped);
@@ -536,7 +597,7 @@ export function FeeManagement() {
     }
   };
 
-  // Filter students based on search, tabs and class filters
+  // Filter students based on search, tabs, class, and fee category filters
   const filtered = students.filter((s) => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.cls.toLowerCase().includes(search.toLowerCase());
     const matchClass = classFilter === 'All' || s.cls.startsWith(classFilter);
@@ -545,8 +606,9 @@ export function FeeManagement() {
       (tab === 1 && s.status === 'Paid') ||
       (tab === 2 && s.status === 'Partial') ||
       (tab === 3 && s.status === 'Unpaid');
+    const matchFeeCategory = feeCategoryFilter === 'All' || s.assignedCategories?.includes(feeCategoryFilter.toLowerCase());
 
-    return matchSearch && matchClass && matchTab;
+    return matchSearch && matchClass && matchTab && matchFeeCategory;
   });
 
   const totalCollected = students.reduce((sum, s) => sum + s.paid, 0);
@@ -585,6 +647,53 @@ export function FeeManagement() {
       }
       return 'Paid';
     })();
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+
+    const firstDayOfMonth = new Date(year, month, 1);
+    const startDayOfWeek = firstDayOfMonth.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const getDayAttendanceInfo = (dateStr: string) => {
+      const dayRecords = attendanceRecords.filter(
+        r => String(r.studentId) === String(std.studentId) && r.date === dateStr
+      );
+      if (dayRecords.length === 0) return null;
+
+      const presentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'present' || r.status?.toLowerCase() === 'late').length;
+      const absentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'absent').length;
+
+      if (presentCount > 0 && absentCount > 0) {
+        return {
+          status: 'partial' as const,
+          className: 'bg-[var(--purple-bg)] text-[var(--purple-tx)] border-[var(--purple-tx)]/25',
+          label: 'Partial',
+          details: `${presentCount} P / ${absentCount} A`
+        };
+      } else if (presentCount > 0) {
+        return {
+          status: 'present' as const,
+          className: 'bg-[var(--green-bg)] text-[var(--green-tx)] border-[var(--green-tx)]/25',
+          label: 'Present',
+          details: `${presentCount} Present`
+        };
+      } else if (absentCount > 0) {
+        return {
+          status: 'absent' as const,
+          className: 'bg-[var(--red-bg)] text-[var(--red-tx)] border-[var(--red-tx)]/25',
+          label: 'Absent',
+          details: `${absentCount} Absent`
+        };
+      }
+      return null;
+    };
+
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ];
+    const formattedMonthYear = `${monthNames[month]} ${year}`;
 
     return (
       <div className="space-y-3">
@@ -643,142 +752,279 @@ export function FeeManagement() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-          {/* Personal & Academic Details */}
-          <Card className="space-y-4">
-            <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
-              <User size={13} className="text-[var(--tx3)]" /> Personal & Academic Profile
-            </div>
+        {!showCalendar ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+            {/* Personal & Academic Details */}
+            <Card className="space-y-4">
+              <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
+                <User size={13} className="text-[var(--tx3)]" /> Personal & Academic Profile
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="bg-[var(--surf2)] rounded-xl p-3">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><Calendar size={11} /> Date of Birth</div>
-                <div className="text-[12px] font-semibold text-[var(--tx)]">{std.dob || 'N/A'}</div>
-              </div>
-              <div className="bg-[var(--surf2)] rounded-xl p-3">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><Calendar size={11} /> Date of Join</div>
-                <div className="text-[12px] font-semibold text-[var(--tx)]">{std.admissionDate || 'N/A'}</div>
-              </div>
-              <div className="bg-[var(--surf2)] rounded-xl p-3">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><User size={11} /> Parents Details</div>
-                <div className="text-[12px] font-semibold text-[var(--tx)]">{std.parent}</div>
-              </div>
-              <div className="bg-[var(--surf2)] rounded-xl p-3">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><Phone size={11} /> Mobile Number</div>
-                <div className="text-[12px] font-semibold text-[var(--tx)]">{std.phone || 'N/A'}</div>
-              </div>
-              <div className="bg-[var(--surf2)] rounded-xl p-3 sm:col-span-2">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><Users size={11} /> Overall Attendance</div>
-                <div className="flex items-center gap-2.5 mt-0.5">
-                  <span className="text-[13px] font-bold text-[var(--teal-tx)]">{selectedStudentAttendance !== null ? `${selectedStudentAttendance}%` : 'Loading...'}</span>
-                  {selectedStudentAttendance !== null && (
-                    <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
-                      <div className="h-full bg-[var(--teal)] rounded-full" style={{ width: `${selectedStudentAttendance}%` }} />
-                    </div>
-                  )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="bg-[var(--surf2)] rounded-xl p-3">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><Calendar size={11} /> Date of Birth</div>
+                  <div className="text-[12px] font-semibold text-[var(--tx)]">{std.dob || 'N/A'}</div>
                 </div>
-              </div>
-              <div className="bg-[var(--surf2)] rounded-xl p-3 sm:col-span-2">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><MapPin size={11} /> Home Address</div>
-                <div className="text-[12px] font-semibold text-[var(--tx)] leading-normal">{std.address || 'N/A'}</div>
-              </div>
-            </div>
-          </Card>
-
-          {/* Fee & Concession Summary */}
-          <Card className="space-y-4 lg:h-[400px] lg:flex lg:flex-col">
-            <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5 flex-shrink-0">
-              <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
-            </div>
-
-            {/* Overall totals */}
-            <div className="grid grid-cols-3 gap-2.5 flex-shrink-0">
-              <div className="bg-[var(--surf2)] rounded-xl p-3 text-center">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5">Total Fee</div>
-                <div className="text-[13.5px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
-              </div>
-              <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--teal)]">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5">Paid Amount</div>
-                <div className="text-[13.5px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
-              </div>
-              <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--red)]">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5">Amount Due</div>
-                <div className="text-[13.5px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
-              </div>
-            </div>
-
-            {/* Fee Items Breakdown */}
-            <div className="space-y-2 flex-1 min-h-0 flex flex-col">
-              <div className="text-[11.5px] font-bold text-[var(--tx)] flex-shrink-0">Detailed Fee Breakdown</div>
-              {loadingStudentFees ? (
-                <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
-              ) : studentFeesList.length === 0 ? (
-                <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">No fee records assigned.</div>
-              ) : (
-                <div className="space-y-2 overflow-y-auto pr-1 max-h-[220px] lg:max-h-none lg:flex-1">
-                  {studentFeesList.map((fee) => {
-                    const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
-                    const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
-                    return (
-                      <div key={fee.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-[12px] font-bold text-[var(--tx)]">{feeName}</div>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[var(--tx3)] mt-1.5">
-                            <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
-                            {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
-                            <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
-                          </div>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="flex items-center gap-2 justify-end mb-1">
-                            {Number(fee.paid_amount) > 0 && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedEditFee(fee);
-                                    setEditPaidAmount(String(fee.paid_amount));
-                                    setShowEditPaidModal(true);
-                                  }}
-                                  className="p-1.5 hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
-                                  title="Edit Paid Amount"
-                                >
-                                  <Edit size={12} />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handlePrint({
-                                    studentName: std.name,
-                                    studentClass: std.cls,
-                                    allocatedPayments: [{
-                                      name: feeName,
-                                      amount: Number(fee.paid_amount)
-                                    }],
-                                    totalPaid: Number(fee.paid_amount)
-                                  })}
-                                  className="p-1.5 hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
-                                  title="Print Receipt"
-                                >
-                                  <Printer size={12} />
-                                </button>
-                              </>
-                            )}
-                            {bal > 0 ? (
-                              <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
-                            ) : (
-                              <Badge variant="teal">Paid</Badge>
-                            )}
-                          </div>
-                          <div className="text-[9.5px] text-[var(--tx3)]">Due Date: {fee.due_date}</div>
-                        </div>
+                <div className="bg-[var(--surf2)] rounded-xl p-3">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><Calendar size={11} /> Date of Join</div>
+                  <div className="text-[12px] font-semibold text-[var(--tx)]">{std.admissionDate || 'N/A'}</div>
+                </div>
+                <div className="bg-[var(--surf2)] rounded-xl p-3">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><User size={11} /> Parents Details</div>
+                  <div className="text-[12px] font-semibold text-[var(--tx)]">{std.parent}</div>
+                </div>
+                <div className="bg-[var(--surf2)] rounded-xl p-3">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><Phone size={11} /> Mobile Number</div>
+                  <div className="text-[12px] font-semibold text-[var(--tx)]">{std.phone || 'N/A'}</div>
+                </div>
+                <div
+                  onClick={() => setShowCalendar(true)}
+                  className="bg-[var(--surf2)] rounded-xl p-3 sm:col-span-2 cursor-pointer hover:bg-[var(--surf3)] border border-transparent hover:border-[var(--blue-tx)]/20 transition-all group"
+                >
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1"><Users size={11} /> Overall Attendance</span>
+                    <span className="text-[9px] text-[var(--blue-tx)] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to view calendar →</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 mt-0.5">
+                    <span className={`text-[13px] font-bold ${
+                      selectedStudentAttendance !== null && selectedStudentAttendance >= 75 ? 'text-[var(--teal-tx)]' : selectedStudentAttendance !== null && selectedStudentAttendance >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
+                    }`}>{selectedStudentAttendance !== null ? `${selectedStudentAttendance}%` : 'Loading...'}</span>
+                    {selectedStudentAttendance !== null && (
+                      <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${
+                          selectedStudentAttendance >= 75 ? 'bg-[var(--teal)]' : selectedStudentAttendance >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
+                        }`} style={{ width: `${selectedStudentAttendance}%` }} />
                       </div>
-                    );
-                  })}
+                    )}
+                  </div>
                 </div>
-              )}
+                <div className="bg-[var(--surf2)] rounded-xl p-3 sm:col-span-2">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><MapPin size={11} /> Home Address</div>
+                  <div className="text-[12px] font-semibold text-[var(--tx)] leading-normal">{std.address || 'N/A'}</div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Fee & Concession Summary */}
+            <Card className="space-y-4 lg:h-[400px] lg:flex lg:flex-col">
+              <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5 flex-shrink-0">
+                <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
+              </div>
+
+              {/* Overall totals */}
+              <div className="grid grid-cols-3 gap-2.5 flex-shrink-0">
+                <div className="bg-[var(--surf2)] rounded-xl p-3 text-center">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5">Total Fee</div>
+                  <div className="text-[13.5px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
+                </div>
+                <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--teal)]">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5">Paid Amount</div>
+                  <div className="text-[13.5px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
+                </div>
+                <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--red)]">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5">Amount Due</div>
+                  <div className="text-[13.5px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
+                </div>
+              </div>
+
+              {/* Fee Items Breakdown */}
+              <div className="space-y-2 flex-1 min-h-0 flex flex-col">
+                <div className="text-[11.5px] font-bold text-[var(--tx)] flex-shrink-0">Detailed Fee Breakdown</div>
+                {loadingStudentFees ? (
+                  <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
+                ) : studentFeesList.length === 0 ? (
+                  <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">No fee records assigned.</div>
+                ) : (
+                  <div className="space-y-2 overflow-y-auto pr-1 max-h-[220px] lg:max-h-none lg:flex-1">
+                    {studentFeesList.map((fee) => {
+                      const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
+                      const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+                      return (
+                        <div key={fee.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-[12px] font-bold text-[var(--tx)]">{feeName}</div>
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[var(--tx3)] mt-1.5">
+                              <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
+                              {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
+                              <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="flex items-center gap-2 justify-end mb-1">
+                              {Number(fee.paid_amount) > 0 && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedEditFee(fee);
+                                      setEditPaidAmount(String(fee.paid_amount));
+                                      setShowEditPaidModal(true);
+                                    }}
+                                    className="p-1.5 hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
+                                    title="Edit Paid Amount"
+                                  >
+                                    <Edit size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePrint({
+                                      studentName: std.name,
+                                      studentClass: std.cls,
+                                      allocatedPayments: [{
+                                        name: feeName,
+                                        amount: Number(fee.paid_amount)
+                                      }],
+                                      totalPaid: Number(fee.paid_amount)
+                                    })}
+                                    className="p-1.5 hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
+                                    title="Print Receipt"
+                                  >
+                                    <Printer size={12} />
+                                  </button>
+                                </>
+                              )}
+                              {bal > 0 ? (
+                                <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
+                              ) : (
+                                <Badge variant="teal">Paid</Badge>
+                              )}
+                            </div>
+                            <div className="text-[9.5px] text-[var(--tx3)]">Due Date: {fee.due_date}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        ) : (
+          // Calendar View
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4.5 space-y-4">
+            {/* Calendar Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3.5 border-b border-[var(--b)]">
+              <button
+                onClick={() => setShowCalendar(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] transition-all cursor-pointer"
+              >
+                <ArrowLeft size={12} /> Back to Profile
+              </button>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+                  className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer"
+                  title="Previous Month"
+                >
+                  <ChevronLeft size={13} />
+                </button>
+
+                <select
+                  value={month}
+                  onChange={(e) => setCurrentMonth(new Date(year, parseInt(e.target.value), 1))}
+                  className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none hover:bg-[var(--surf3)] transition-all"
+                  title="Select Month"
+                >
+                  {monthNames.map((name, idx) => (
+                    <option key={name} value={idx}>{name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={year}
+                  onChange={(e) => setCurrentMonth(new Date(parseInt(e.target.value), month, 1))}
+                  className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none hover:bg-[var(--surf3)] transition-all"
+                  title="Select Year"
+                >
+                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+                  className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer"
+                  title="Next Month"
+                >
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center gap-3 text-[10px] font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md bg-[var(--green-bg)] border border-[var(--green-tx)]/20 inline-block"></span>
+                  <span className="text-[var(--tx2)]">Present</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md bg-[var(--purple-bg)] border border-[var(--purple-tx)]/20 inline-block"></span>
+                  <span className="text-[var(--tx2)]">Partial</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md bg-[var(--red-bg)] border border-[var(--red-tx)]/20 inline-block"></span>
+                  <span className="text-[var(--tx2)]">Absent</span>
+                </div>
+              </div>
             </div>
-          </Card>
-        </div>
+
+            {/* Loader when fetching records */}
+            {loadingAttendance ? (
+              <div className="flex flex-col justify-center items-center py-12 text-[var(--tx3)] gap-2">
+                <Loader2 className="animate-spin text-[var(--blue-tx)]" size={20} />
+                <span className="text-xs">Loading attendance details...</span>
+              </div>
+            ) : (
+              /* Calendar Grid */
+              <div className="grid grid-cols-7 gap-1.5">
+                {/* Weekday headers */}
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                  <div key={d} className="text-center text-[10px] font-bold text-[var(--tx3)] uppercase py-1">
+                    {d}
+                  </div>
+                ))}
+                
+                {/* Empty slots for starting offset */}
+                {Array.from({ length: startDayOfWeek }).map((_, idx) => (
+                  <div key={`empty-${idx}`} className="aspect-square bg-transparent rounded-lg"></div>
+                ))}
+                
+                {/* Active month days */}
+                {Array.from({ length: daysInMonth }).map((_, idx) => {
+                  const dayNum = idx + 1;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const dayRecords = attendanceRecords.filter(
+                    r => String(r.studentId) === String(std.studentId) && r.date === dateStr
+                  );
+                  const att = getDayAttendanceInfo(dateStr);
+                  
+                  const tooltipText = att 
+                    ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
+                    : `${dayNum} ${monthNames[month]}: No attendance marked`;
+                  
+                  return (
+                    <div
+                      key={`day-${dayNum}`}
+                      title={tooltipText}
+                      className={`aspect-square p-2 rounded-xl flex flex-col justify-between border transition-all ${
+                        att 
+                          ? att.className 
+                          : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">{dayNum}</span>
+                      {att && (
+                        <span className="text-[9px] font-bold opacity-90 text-right truncate">
+                          {att.status === 'present' ? 'P' : att.status === 'absent' ? 'A' : '1/2'}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -873,6 +1119,17 @@ export function FeeManagement() {
                 <option value="All">All classes</option>
                 {['6', '7', '8', '9', '10'].map((c) => (
                   <option key={c} value={c}>{`Class ${c}`}</option>
+                ))}
+              </select>
+
+              <select
+                value={feeCategoryFilter}
+                onChange={(e) => setFeeCategoryFilter(e.target.value)}
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx)] w-full sm:w-44 cursor-pointer outline-none"
+              >
+                <option value="All">All Fee Categories</option>
+                {categories.map((c) => (
+                  <option key={c.id || c.name} value={c.name}>{c.name}</option>
                 ))}
               </select>
             </div>
