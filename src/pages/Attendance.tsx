@@ -3,7 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  CheckCircle, XCircle, BarChart2, AlertTriangle, Search, ArrowLeft, Calendar, BookOpen, Clock, Users, ArrowRight, User
+  CheckCircle, XCircle, BarChart2, AlertTriangle, Search, ArrowLeft, Calendar, BookOpen, Clock, Users, ArrowRight, User, ChevronLeft, ChevronRight, Loader2
 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
@@ -79,6 +79,12 @@ export function Attendance() {
   const [studentAttendance, setStudentAttendance] = useState<AttendanceRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [classGlanceData, setClassGlanceData] = useState<{ cls: string; pct: number; color: string }[]>([]);
+
+  // Calendar states
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [loadingPeriods, setLoadingPeriods] = useState(false);
 
   // Load batches on mount
   useEffect(() => {
@@ -254,6 +260,7 @@ export function Attendance() {
   // Load student detailed view
   const handleStudentClick = async (student: StudentPercentage) => {
     setSelectedStudent(student);
+    setCurrentMonth(new Date());
     setLoading(true);
     setError(null);
     try {
@@ -272,11 +279,47 @@ export function Attendance() {
     }
   };
 
+  // Fetch kts_student_attendance_records when selectedStudent changes
+  useEffect(() => {
+    if (selectedStudent && view === 'student-details') {
+      setLoadingAttendance(true);
+      api.getResources('settings', { key: 'kts_student_attendance_records' })
+        .then((res: any) => {
+          if (Array.isArray(res) && res.length > 0 && res[0].value) {
+            try {
+              const parsed = JSON.parse(res[0].value);
+              setAttendanceRecords(parsed);
+              localStorage.setItem('kts_student_attendance_records', JSON.stringify(parsed));
+            } catch (e) {
+              console.error('Error parsing kts_student_attendance_records:', e);
+              const local = localStorage.getItem('kts_student_attendance_records');
+              if (local) setAttendanceRecords(JSON.parse(local));
+            }
+          } else {
+            const local = localStorage.getItem('kts_student_attendance_records');
+            if (local) {
+              setAttendanceRecords(JSON.parse(local));
+            }
+          }
+        })
+        .catch((err: any) => {
+          console.error('Error loading attendance settings:', err);
+          const local = localStorage.getItem('kts_student_attendance_records');
+          if (local) setAttendanceRecords(JSON.parse(local));
+        })
+        .finally(() => {
+          setLoadingAttendance(false);
+        });
+    } else {
+      setAttendanceRecords([]);
+    }
+  }, [selectedStudent, view]);
+
   // Reload student attendance when date changes
   useEffect(() => {
     if (selectedStudent && view === 'student-details') {
       async function reloadStudentAttendance() {
-        setLoading(true);
+        setLoadingPeriods(true);
         setError(null);
         try {
           const response = await api.getStudentAttendanceForDate(selectedStudent!.id, selectedDate);
@@ -287,7 +330,7 @@ export function Attendance() {
           console.error('Error reloading student attendance:', err);
           setError('Failed to update student attendance for selected date.');
         } finally {
-          setLoading(false);
+          setLoadingPeriods(false);
         }
       }
       reloadStudentAttendance();
@@ -324,6 +367,52 @@ export function Attendance() {
       .substring(0, 2)
       .toUpperCase();
   };
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1);
+  const startDayOfWeek = firstDayOfMonth.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const getDayAttendanceInfo = (dateStr: string) => {
+    if (!selectedStudent) return null;
+    const dayRecords = attendanceRecords.filter(
+      r => String(r.studentId) === String(selectedStudent.id) && r.date === dateStr
+    );
+    if (dayRecords.length === 0) return null;
+
+    const presentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'present' || r.status?.toLowerCase() === 'late').length;
+    const absentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'absent').length;
+
+    if (presentCount > 0 && absentCount > 0) {
+      return {
+        status: 'partial' as const,
+        className: 'bg-[var(--purple-bg)] text-[var(--purple-tx)] border-[var(--purple-tx)]/25',
+        label: 'Partial',
+        details: `${presentCount} P / ${absentCount} A`
+      };
+    } else if (presentCount > 0) {
+      return {
+        status: 'present' as const,
+        className: 'bg-[var(--green-bg)] text-[var(--green-tx)] border-[var(--green-tx)]/25',
+        label: 'Present',
+        details: `${presentCount} Present`
+      };
+    } else if (absentCount > 0) {
+      return {
+        status: 'absent' as const,
+        className: 'bg-[var(--red-bg)] text-[var(--red-tx)] border-[var(--red-tx)]/25',
+        label: 'Absent',
+        details: `${absentCount} Absent`
+      };
+    }
+    return null;
+  };
+
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)] pb-10">
@@ -588,6 +677,135 @@ export function Attendance() {
             </div>
           </div>
 
+          {/* Monthly Attendance Calendar */}
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4.5 mb-4 space-y-4">
+            {/* Calendar Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-[var(--b)]">
+              <div className="flex items-center gap-1">
+                <span className="text-[12px] font-bold text-[var(--tx)]">Monthly Attendance Grid</span>
+              </div>
+              
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+                  className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer"
+                  title="Previous Month"
+                >
+                  <ChevronLeft size={13} />
+                </button>
+
+                <select
+                  value={month}
+                  onChange={(e) => setCurrentMonth(new Date(year, parseInt(e.target.value), 1))}
+                  className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none hover:bg-[var(--surf3)] transition-all"
+                  title="Select Month"
+                >
+                  {monthNames.map((name, idx) => (
+                    <option key={name} value={idx}>{name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={year}
+                  onChange={(e) => setCurrentMonth(new Date(parseInt(e.target.value), month, 1))}
+                  className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none hover:bg-[var(--surf3)] transition-all"
+                  title="Select Year"
+                >
+                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+                  className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer"
+                  title="Next Month"
+                >
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center gap-3 text-[10px] font-medium">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md bg-[var(--green-bg)] border border-[var(--green-tx)]/20 inline-block"></span>
+                  <span className="text-[var(--tx2)]">Present</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md bg-[var(--purple-bg)] border border-[var(--purple-tx)]/20 inline-block"></span>
+                  <span className="text-[var(--tx2)]">Partial</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-md bg-[var(--red-bg)] border border-[var(--red-tx)]/20 inline-block"></span>
+                  <span className="text-[var(--tx2)]">Absent</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Calendar Loader or Grid */}
+            {loadingAttendance ? (
+              <div className="flex flex-col justify-center items-center py-12 text-[var(--tx3)] gap-2">
+                <Loader2 className="animate-spin text-[var(--blue-tx)]" size={20} />
+                <span className="text-xs">Loading attendance details...</span>
+              </div>
+            ) : (
+              /* Calendar Grid */
+              <div className="grid grid-cols-7 gap-1.5">
+                {/* Weekday headers */}
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                  <div key={d} className="text-center text-[10px] font-bold text-[var(--tx3)] uppercase py-1">
+                    {d}
+                  </div>
+                ))}
+                
+                {/* Empty slots for starting offset */}
+                {Array.from({ length: startDayOfWeek }).map((_, idx) => (
+                  <div key={`empty-${idx}`} className="aspect-square bg-transparent rounded-lg"></div>
+                ))}
+                
+                {/* Active month days */}
+                {Array.from({ length: daysInMonth }).map((_, idx) => {
+                  const dayNum = idx + 1;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const dayRecords = attendanceRecords.filter(
+                    r => String(r.studentId) === String(selectedStudent.id) && r.date === dateStr
+                  );
+                  const att = getDayAttendanceInfo(dateStr);
+                  
+                  const tooltipText = att 
+                    ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
+                    : `${dayNum} ${monthNames[month]}: No attendance marked`;
+                  
+                  const isSelectedDate = dateStr === selectedDate;
+                  
+                  return (
+                    <div
+                      key={`day-${dayNum}`}
+                      title={tooltipText}
+                      onClick={() => setSelectedDate(dateStr)}
+                      className={`aspect-square p-2 rounded-xl flex flex-col justify-between border cursor-pointer transition-all ${
+                        isSelectedDate 
+                          ? 'ring-2 ring-[var(--blue)] scale-[1.02] shadow-sm z-10' 
+                          : ''
+                      } ${
+                        att 
+                          ? att.className 
+                          : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">{dayNum}</span>
+                      {att && (
+                        <span className="text-[9px] font-bold opacity-90 text-right truncate">
+                          {att.status === 'present' ? 'P' : att.status === 'absent' ? 'A' : '1/2'}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           {/* Date Selector Filter */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl mb-4">
             <div className="flex items-center gap-2 text-[11px] text-[var(--tx)]">
@@ -609,7 +827,12 @@ export function Attendance() {
               <Clock size={12} className="text-[var(--tx3)]" /> Period-wise breakdown on {new Date(selectedDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
             </h3>
 
-            {studentAttendance.length === 0 ? (
+            {loadingPeriods ? (
+              <div className="flex flex-col justify-center items-center py-12 text-[var(--tx3)] gap-2">
+                <Loader2 className="animate-spin text-[var(--blue-tx)]" size={20} />
+                <span className="text-xs">Updating breakdown details...</span>
+              </div>
+            ) : studentAttendance.length === 0 ? (
               <div className="text-center py-10 bg-[var(--surf2)] border border-dashed border-[var(--b)] rounded-xl">
                 <BookOpen size={18} className="mx-auto mb-2 text-[var(--tx3)]" />
                 <p className="text-[11px] text-[var(--tx3)]">No attendance marked on this date.</p>
