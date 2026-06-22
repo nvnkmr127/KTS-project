@@ -86,7 +86,16 @@ class GenericApiController extends Controller
         // Custom auth check for activity-logs
         if ($resource === 'activity-logs') {
             $user = auth('sanctum')->user();
-            if (!$user || !($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin'))) {
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized access'], 403);
+            }
+            if ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin')) {
+                // Admin can access all logs
+            } elseif ($user->hasRole('faculty') || $user->hasRole('teacher')) {
+                // Teacher/faculty can access only their own logs
+                $query->where('causer_type', get_class($user))
+                      ->where('causer_id', $user->id);
+            } else {
                 return response()->json(['error' => 'Unauthorized access'], 403);
             }
         }
@@ -122,9 +131,16 @@ class GenericApiController extends Controller
 
         // Apply simple field-value filters from query parameters
         $columns = Schema::getColumnListing((new $modelClass)->getTable());
-        foreach ($request->except(['page', 'limit', 'search', 'with', 'role']) as $key => $value) {
+        foreach ($request->except(['page', 'limit', 'search', 'with', 'role', 'date']) as $key => $value) {
             if (in_array($key, $columns) && $value !== 'All' && $value !== '') {
                 $query->where($key, $value);
+            }
+        }
+
+        // Apply date filter if present
+        if ($request->has('date') && $request->date !== '' && $request->date !== 'All') {
+            if (in_array('created_at', $columns)) {
+                $query->whereDate('created_at', $request->date);
             }
         }
 

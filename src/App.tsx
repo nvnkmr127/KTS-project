@@ -32,6 +32,8 @@ import { AllotAttendance } from './pages/AllotAttendance';
 import { Promotion } from './pages/Promotion';
 import { MySalary } from './pages/MySalary';
 import { Settings } from './pages/Settings';
+import { SearchPage } from './pages/SearchPage';
+import { TeacherActivityLogs } from './pages/TeacherActivityLogs';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -64,6 +66,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   'my-salary': '/my-salary',
   settings: '/settings',
   'activity-logs': '/activity-logs',
+  search: '/search',
 };
 
 const PATH_TO_PAGE: Record<string, PageId> = Object.entries(PAGE_TO_PATH).reduce(
@@ -96,6 +99,8 @@ function AppShell() {
   const [page, setPage] = useState<PageId>(() => getInitialPage(isTeacher));
   const [dark, setDark] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [preSearchPage, setPreSearchPage] = useState<PageId>(() => getInitialPage(isTeacher));
 
   useEffect(() => {
     if (user) {
@@ -150,10 +155,18 @@ function AppShell() {
       >
         <Sidebar current={page} onNavigate={navigate} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[var(--bg)]">
-          <Topbar current={page} dark={dark} onToggleDark={toggleDark} onMenuClick={() => setSidebarOpen(true)} />
+          <Topbar
+            current={page}
+            dark={dark}
+            onToggleDark={toggleDark}
+            onMenuClick={() => setSidebarOpen(true)}
+            onNavigate={navigate}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
 
           {/* Admin pages */}
-          {page === 'dashboard' && <Dashboard />}
+          {page === 'dashboard' && <Dashboard onNavigate={navigate} />}
           {page === 'fee' && <FeeManagement />}
           {page === 'fee-categories' && <FeeCategories />}
           {page === 'attendance' && <Attendance />}
@@ -176,7 +189,16 @@ function AppShell() {
           {page === 'timetable' && <Timetable />}
           {page === 'promotion' && <Promotion />}
           {page === 'settings' && <Settings initialTab={0} />}
-          {page === 'activity-logs' && <Settings initialTab={2} />}
+          {page === 'activity-logs' && (
+            isTeacher ? <TeacherActivityLogs /> : <Settings initialTab={2} />
+          )}
+          {page === 'search' && (
+            <SearchPage
+              searchQuery={searchQuery}
+              onNavigate={navigate}
+              onClearSearch={() => setSearchQuery('')}
+            />
+          )}
 
           {/* Teacher pages */}
           {page === 'teacher-dashboard' && <TeacherDashboard />}

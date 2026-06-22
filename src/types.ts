@@ -29,7 +29,8 @@ export type PageId =
   | 'timetable'
   | 'my-salary'
   | 'settings'
-  | 'activity-logs';
+  | 'activity-logs'
+  | 'search';
 
 export type ColorVariant =
   | 'blue'

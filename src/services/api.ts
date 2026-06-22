@@ -324,4 +324,80 @@ export const api = {
     }
     return original;
   },
+
+  async saveSetting(key: string, value: string) {
+    try {
+      const settings = await request('/resources/settings');
+      const existing = Array.isArray(settings) ? settings.find((s: any) => s.key === key) : null;
+      if (existing) {
+        return await request(`/resources/settings/${existing.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ key, value }),
+        });
+      } else {
+        return await request('/resources/settings', {
+          method: 'POST',
+          body: JSON.stringify({
+            key,
+            value,
+            group: 'general',
+            type: 'json',
+            is_public: false,
+            is_encrypted: false,
+          }),
+        });
+      }
+    } catch (err) {
+      console.error(`Error saving setting ${key} to DB:`, err);
+    }
+  },
+
+  async deleteSetting(key: string) {
+    try {
+      const settings = await request('/resources/settings');
+      const existing = Array.isArray(settings) ? settings.find((s: any) => s.key === key) : null;
+      if (existing) {
+        return await request(`/resources/settings/${existing.id}`, {
+          method: 'DELETE',
+        });
+      }
+    } catch (err) {
+      console.error(`Error deleting setting ${key} from DB:`, err);
+    }
+  },
 };
+
+// Preserve original localStorage methods bound to the localStorage instance
+// @ts-ignore
+export const originalSetItem = localStorage.setItem.bind(localStorage);
+// @ts-ignore
+export const originalRemoveItem = localStorage.removeItem.bind(localStorage);
+
+// Monkey-patch localStorage.setItem to automatically sync with database settings
+// @ts-ignore
+localStorage.setItem = function (key: string, value: string) {
+  originalSetItem(key, value);
+  
+  const keysToExclude = ['token', 'user', 'selected_academic_year_id', 'timetable_period_timings', 'kts_student_attendance_records'];
+  
+  const token = localStorage.getItem('token');
+  if (token && !keysToExclude.includes(key)) {
+    api.saveSetting(key, value).catch((err) => {
+      console.error(`Failed to automatically sync key "${key}" to database:`, err);
+    });
+  }
+};
+
+// Monkey-patch localStorage.removeItem to automatically delete from database settings
+// @ts-ignore
+localStorage.removeItem = function (key: string) {
+  originalRemoveItem(key);
+  
+  const token = localStorage.getItem('token');
+  if (token && key !== 'token' && key !== 'user') {
+    api.deleteSetting(key).catch((err) => {
+      console.error(`Failed to automatically delete key "${key}" from database settings:`, err);
+    });
+  }
+};
+

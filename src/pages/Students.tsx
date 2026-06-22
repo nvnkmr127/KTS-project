@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Search, Plus, Upload, UserCheck, GraduationCap,
   Phone, Edit2, Trash2, Eye, X, Loader2, AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText,
-  ArrowRightLeft,
+  ArrowRightLeft, Users,
 } from 'lucide-react';
 // @ts-ignore
 import * as XLSX from 'xlsx';
@@ -70,6 +70,8 @@ export function Students() {
 
   const [batchesList, setBatchesList] = useState<any[]>([]);
   const [attendancePercentage, setAttendancePercentage] = useState<number | null>(null);
+  const [studentFeesList, setStudentFeesList] = useState<any[]>([]);
+  const [loadingStudentFees, setLoadingStudentFees] = useState(false);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -113,6 +115,25 @@ export function Students() {
       setAttendancePercentage(null);
     }
   }, [selected, modal, batchesList]);
+
+  useEffect(() => {
+    if (selected && modal === 'view') {
+      setLoadingStudentFees(true);
+      api.getResources('student-fees', { student_id: selected.id })
+        .then(res => {
+          setStudentFeesList(res || []);
+        })
+        .catch(err => {
+          console.error('Error fetching student fees:', err);
+          setStudentFeesList([]);
+        })
+        .finally(() => {
+          setLoadingStudentFees(false);
+        });
+    } else {
+      setStudentFeesList([]);
+    }
+  }, [selected, modal]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -319,7 +340,12 @@ export function Students() {
                     <div className="flex items-center gap-2.5">
                       <Avatar initials={s.name.slice(0, 2).toUpperCase()} bg={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.bg || 'var(--blue-bg)'} color={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.color || 'var(--blue-tx)'} />
                       <div>
-                        <div className="font-semibold text-[var(--tx)]">{s.name}</div>
+                        <div
+                          className="font-semibold text-[var(--blue-tx)] hover:opacity-80 cursor-pointer transition-colors"
+                          onClick={() => { setSelected(s); setModal('view'); }}
+                        >
+                          {s.name}
+                        </div>
                         <div className="text-[10.5px] text-[var(--tx3)]">{s.gender} · DOB {formatDate(s.dob)}</div>
                       </div>
                     </div>
@@ -495,71 +521,157 @@ export function Students() {
       )}
 
       {/* View Modal */}
-      {modal === 'view' && selected && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[480px] shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
-              <div className="text-[14px] font-bold text-[var(--tx)]">Student Profile</div>
-              <button onClick={() => setModal(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"><X size={16} /></button>
-            </div>
-            <div className="p-5">
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[18px] font-bold text-[var(--blue-tx)]">
-                  {selected.name.slice(0, 2).toUpperCase()}
-                </div>
+      {modal === 'view' && selected && (() => {
+        const totalFee = studentFeesList.reduce((sum, f) => sum + Number(f.amount), 0);
+        const totalPaid = studentFeesList.reduce((sum, f) => sum + Number(f.paid_amount), 0);
+        const totalDue = studentFeesList.reduce((sum, f) => sum + Math.max(0, Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)), 0);
+
+        return (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[780px] shadow-2xl flex flex-col max-h-[90vh]">
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-[var(--b)] flex-shrink-0">
                 <div>
-                  <div className="text-[15px] font-bold text-[var(--tx)]">{selected.name}</div>
-                  <div className="text-[12px] text-[var(--tx3)]">Roll No: {selected.roll}</div>
-                  <div className="mt-1"><Badge variant={selected.status === 'Active' ? 'green' : selected.status === 'Left' ? 'red' : 'amber'}>{selected.status}</Badge></div>
+                  <div className="text-[14px] font-bold text-[var(--tx)]">Student Profile Detail</div>
+                  <div className="text-[11px] text-[var(--tx3)]">Personal information and fee summary</div>
                 </div>
+                <button onClick={() => setModal(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"><X size={16} /></button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { label: 'Class & Section', value: `Class ${selected.class} — Section ${selected.section}` },
-                  { label: 'Gender', value: selected.gender },
-                  { label: 'Date of Birth', value: formatDate(selected.dob) },
-                  { label: 'Admission Date', value: formatDate(selected.admissionDate) },
-                  { label: 'Parent / Guardian', value: selected.parent },
-                  { label: 'Mobile', value: selected.phone },
-                ].map((item) => (
-                  <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
-                    <div className="text-[10.5px] text-[var(--tx3)] mb-0.5">{item.label}</div>
-                    <div className="text-[12.5px] font-semibold text-[var(--tx)]">{item.value}</div>
+
+              {/* Scrollable Content */}
+              <div className="p-5 overflow-y-auto space-y-4 flex-1">
+                {/* Profile Header Card */}
+                <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-4 flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[18px] font-bold text-[var(--blue-tx)] flex-shrink-0">
+                    {selected.name.slice(0, 2).toUpperCase()}
                   </div>
-                ))}
-              </div>
-              <div className="mt-3 bg-[var(--surf2)] rounded-xl p-3">
-                <div className="text-[10.5px] text-[var(--tx3)] mb-0.5">Address</div>
-                <div className="text-[12.5px] font-semibold text-[var(--tx)]">{selected.address}</div>
-              </div>
-              <div className="mt-3 flex gap-3">
-                <div className="flex-1 bg-[var(--surf2)] rounded-xl p-3 text-center">
-                  <div className="text-[10.5px] text-[var(--tx3)] mb-1">Fee Status</div>
-                  {selected.feeStatus === 'Paid' && <Badge variant="teal">Paid</Badge>}
-                  {selected.feeStatus === 'Partial' && <Badge variant="amber">Partial</Badge>}
-                  {selected.feeStatus === 'Unpaid' && <Badge variant="red">Unpaid</Badge>}
+                  <div>
+                    <div className="text-[15px] font-bold text-[var(--tx)]">{selected.name}</div>
+                    <div className="text-[12px] text-[var(--tx3)]">Roll No: {selected.roll}</div>
+                    <div className="flex gap-2 mt-1.5">
+                      <Badge variant="blue">Class {selected.class} — {selected.section}</Badge>
+                      <Badge variant={selected.status === 'Active' ? 'green' : selected.status === 'Left' ? 'red' : 'amber'}>{selected.status}</Badge>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 bg-[var(--surf2)] rounded-xl p-3 text-center flex flex-col items-center justify-center">
-                  <div className="text-[10.5px] text-[var(--tx3)] mb-1">Overall Attendance</div>
-                  {attendancePercentage !== null ? (
-                    <span className={`text-[13px] font-bold ${
-                      attendancePercentage >= 75 ? 'text-[var(--teal-tx)]' : attendancePercentage >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
-                    }`}>
-                      {attendancePercentage}%
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-[var(--tx3)]">Loading...</span>
-                  )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Left Column: Personal Info */}
+                  <div className="space-y-3">
+                    <div className="text-[12px] font-bold text-[var(--tx)] pb-1.5 border-b border-[var(--b)] flex items-center gap-1.5">
+                      <GraduationCap size={13} className="text-[var(--tx3)]" /> Personal & Academic Details
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {[
+                        { label: 'Gender', value: selected.gender },
+                        { label: 'Date of Birth', value: formatDate(selected.dob) },
+                        { label: 'Admission Date', value: formatDate(selected.admissionDate) },
+                        { label: 'Parent / Guardian', value: selected.parent },
+                        { label: 'Mobile', value: selected.phone, icon: <Phone size={10} className="inline mr-1 text-[var(--tx3)]" /> },
+                      ].map((item) => (
+                        <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-2.5">
+                          <div className="text-[9.5px] text-[var(--tx3)] mb-0.5">{item.label}</div>
+                          <div className="text-[11.5px] font-semibold text-[var(--tx)]">
+                            {item.icon}{item.value}
+                          </div>
+                        </div>
+                      ))}
+                      {/* Overall Attendance */}
+                      <div className="bg-[var(--surf2)] rounded-xl p-2.5 sm:col-span-2">
+                        <div className="text-[9.5px] text-[var(--tx3)] mb-1 flex items-center gap-1"><Users size={11} /> Overall Attendance</div>
+                        <div className="flex items-center gap-2.5 mt-0.5">
+                          <span className={`text-[12px] font-bold ${
+                            attendancePercentage !== null && attendancePercentage >= 75 ? 'text-[var(--teal-tx)]' : attendancePercentage !== null && attendancePercentage >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
+                          }`}>{attendancePercentage !== null ? `${attendancePercentage}%` : 'Loading...'}</span>
+                          {attendancePercentage !== null && (
+                            <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${
+                                attendancePercentage >= 75 ? 'bg-[var(--teal)]' : attendancePercentage >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
+                              }`} style={{ width: `${attendancePercentage}%` }} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-[var(--surf2)] rounded-xl p-2.5">
+                      <div className="text-[9.5px] text-[var(--tx3)] mb-0.5">Address</div>
+                      <div className="text-[11.5px] font-semibold text-[var(--tx)]">{selected.address || 'N/A'}</div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Fee Details */}
+                  <div className="space-y-3 flex flex-col">
+                    <div className="text-[12px] font-bold text-[var(--tx)] pb-1.5 border-b border-[var(--b)] flex items-center gap-1.5">
+                      <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
+                    </div>
+
+                    {/* Overall totals */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center">
+                        <div className="text-[9px] text-[var(--tx3)] mb-0.5">Total Fee</div>
+                        <div className="text-[12px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--teal)]">
+                        <div className="text-[9px] text-[var(--tx3)] mb-0.5">Paid</div>
+                        <div className="text-[12px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
+                      </div>
+                      <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--red)]">
+                        <div className="text-[9px] text-[var(--tx3)] mb-0.5">Due</div>
+                        <div className="text-[12px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
+                      </div>
+                    </div>
+
+                    {/* Fee Items Breakdown */}
+                    <div className="space-y-1.5 flex-1 min-h-0 flex flex-col">
+                      <div className="text-[11px] font-bold text-[var(--tx)] mt-1.5">Detailed Fee Breakdown</div>
+                      {loadingStudentFees ? (
+                        <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
+                      ) : studentFeesList.length === 0 ? (
+                        <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">No fee records assigned.</div>
+                      ) : (
+                        <div className="space-y-1.5 overflow-y-auto pr-1 max-h-[160px] md:max-h-[220px]">
+                          {studentFeesList.map((fee) => {
+                            const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
+                            const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+                            return (
+                              <div key={fee.id} className="p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="text-[11px] font-bold text-[var(--tx)] truncate">{feeName}</div>
+                                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-[var(--tx3)] mt-0.5">
+                                    <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
+                                    {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
+                                    <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
+                                  </div>
+                                </div>
+                                <div className="text-right flex-shrink-0">
+                                  <div className="flex items-center gap-1.5 justify-end mb-0.5">
+                                    {bal > 0 ? (
+                                      <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
+                                    ) : (
+                                      <Badge variant="teal">Paid</Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-[8px] text-[var(--tx3)]">Due Date: {fee.due_date}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex gap-2 p-5 pt-0">
-              <button onClick={() => { setModal('edit'); }} className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold hover:opacity-90 cursor-pointer">Edit Profile</button>
-              <button onClick={() => setModal(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer">Close</button>
+
+              {/* Footer */}
+              <div className="flex gap-2 p-5 border-t border-[var(--b)] flex-shrink-0 bg-[var(--surf)]">
+                <button onClick={() => { setModal('edit'); }} className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold hover:opacity-90 cursor-pointer">Edit Profile</button>
+                <button onClick={() => setModal(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer">Close</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (

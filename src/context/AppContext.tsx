@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { api, originalSetItem } from '../services/api';
 import { useAuth } from './AuthContext';
 
 
@@ -256,26 +256,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Error loading notifications in AppContext:', err);
       }
 
-      // Fetch period timings from settings
+      // Fetch all database settings to restore to localStorage on app boot
       try {
-        const settingsRes = await api.getResources('settings', { key: 'timetable_period_timings' });
-        if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
-          const parsed = JSON.parse(settingsRes[0].value);
-          setPeriodTimings(parsed);
-          localStorage.setItem('timetable_period_timings', JSON.stringify(parsed));
+        const allSettings = await api.getResources('settings');
+        if (Array.isArray(allSettings)) {
+          const keysToExclude = ['token', 'user'];
+          allSettings.forEach((setting: any) => {
+            if (setting.key && !keysToExclude.includes(setting.key) && setting.value !== undefined) {
+              // Write directly using originalSetItem to bypass monkey-patch background writes
+              originalSetItem(setting.key, setting.value);
+              
+              // Explicitly load period timings state if present
+              if (setting.key === 'timetable_period_timings') {
+                try {
+                  setPeriodTimings(JSON.parse(setting.value));
+                } catch (e) {
+                  console.error('Failed to parse timetable_period_timings:', e);
+                }
+              }
+            }
+          });
         }
       } catch (err) {
-        console.error('Error loading period timings in AppContext:', err);
-      }
-
-      // Fetch student attendance records from settings
-      try {
-        const settingsRes = await api.getResources('settings', { key: 'kts_student_attendance_records' });
-        if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
-          localStorage.setItem('kts_student_attendance_records', settingsRes[0].value);
-        }
-      } catch (err) {
-        console.error('Error loading kts_student_attendance_records in AppContext:', err);
+        console.error('Error loading DB settings to localStorage in AppContext:', err);
       }
 
       // Fetch timetable from database

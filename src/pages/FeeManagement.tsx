@@ -89,7 +89,7 @@ export function FeeManagement() {
       setShowEditPaidModal(false);
       setSelectedEditFee(null);
       setEditPaidAmount('');
-      
+
       // Reload details
       if (activeDetailStudent) {
         loadStudentFees(activeDetailStudent.studentId);
@@ -143,7 +143,7 @@ export function FeeManagement() {
       setShowConcessionModal(false);
       setConcessionAmount('');
       setConcessionReason('');
-      
+
       if (activeDetailStudent) {
         loadStudentFees(activeDetailStudent.studentId);
       }
@@ -286,10 +286,10 @@ export function FeeManagement() {
       if (fees.length > 0) {
         const outstanding = fees
           .filter((f: any) => (Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)) > 0);
-        
+
         const outstandingFeeIds = outstanding.map((f: any) => String(f.id));
         setSelectedFeeIds(outstandingFeeIds);
-        
+
         const sum = outstanding.reduce((total: number, f: any) => {
           const rem = Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount);
           return total + Math.max(0, rem);
@@ -444,10 +444,10 @@ export function FeeManagement() {
     try {
       let remainingPayment = Number(payAmount);
       const allocated: { name: string; amount: number }[] = [];
-      
+
       for (const feeId of selectedFeeIds) {
         if (remainingPayment <= 0) break;
-        
+
         const fee = studentFeesList.find((f) => String(f.id) === feeId);
         if (fee) {
           const rem = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
@@ -455,30 +455,30 @@ export function FeeManagement() {
           if (due > 0) {
             const paymentForThisFee = Math.min(remainingPayment, due);
             const currentPaid = Number(fee.paid_amount) || 0;
-            
+
             await api.updateResource('student-fees', feeId, {
               paid_amount: currentPaid + paymentForThisFee,
               payment_method: paymentMethod,
               remarks: paymentRemarks,
             });
-            
+
             allocated.push({
               name: fee.feeCategory?.name || fee.category || 'School Fee',
               amount: paymentForThisFee
             });
-            
+
             remainingPayment -= paymentForThisFee;
           }
         }
       }
-      
+
       setPaymentSuccessData({
         studentName: collectStudent.name,
         studentClass: collectStudent.cls,
         allocatedPayments: allocated,
         totalPaid: Number(payAmount) - remainingPayment,
       });
-      
+
       setCollectStudent(null);
       loadFeesData();
       if (activeDetailStudent) {
@@ -585,7 +585,7 @@ export function FeeManagement() {
       }
       return 'Paid';
     })();
-    
+
     return (
       <div className="space-y-3">
         {/* Header */}
@@ -649,7 +649,7 @@ export function FeeManagement() {
             <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
               <User size={13} className="text-[var(--tx3)]" /> Personal & Academic Profile
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="bg-[var(--surf2)] rounded-xl p-3">
                 <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center gap-1"><Calendar size={11} /> Date of Birth</div>
@@ -790,150 +790,150 @@ export function FeeManagement() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-        <KPICard
-          label="Total Collected"
-          value={`₹${(totalCollected / 100000).toFixed(2)}L`}
-          sub="Term 2 · 2026"
-          icon={<CheckCircle size={15} />}
-          iconBg="var(--teal-bg)"
-          iconColor="var(--teal-tx)"
-        />
-        <KPICard
-          label="Pending"
-          value={`₹${(totalPending / 100000).toFixed(2)}L`}
-          sub={`${students.filter(s => s.bal > 0).length} students`}
-          icon={<Clock size={15} />}
-          iconBg="var(--red-bg)"
-          iconColor="var(--red-tx)"
-        />
-        <KPICard
-          label="Paid Students"
-          value={paidCount}
-          sub={`Out of ${students.length}`}
-          icon={<Users size={15} />}
-          iconBg="var(--amber-bg)"
-          iconColor="var(--amber-tx)"
-        />
-        <KPICard
-          label="Receipts Total"
-          value={students.length}
-          sub="Active students"
-          icon={<FileText size={15} />}
-          iconBg="var(--blue-bg)"
-          iconColor="var(--blue-tx)"
-        />
-      </div>
-
-      <Card className="mb-2.5">
-        <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center mb-3">
-          <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--tx)]">
-            Fee Collection Directory {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
-          </div>
-          <div className="flex gap-2">
-            <button className="flex items-center gap-1 px-2.5 py-1 text-[11px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer">
-              <Download size={11} /> Export
-            </button>
-            <button
-              onClick={() => { 
-                setAssignType('student'); 
-                setAssignedItems([]); 
-                setCurrentAmount('8500'); 
-                setModalStudentId(students[0]?.studentId || '');
-                setShowAssignModal(true); 
-              }}
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <Plus size={11} /> Assign Fee
-            </button>
-          </div>
-        </div>
-
-        <TabBar
-          tabs={['All Students', 'Paid', 'Partial', 'Unpaid']}
-          active={tab}
-          onChange={setTab}
-        />
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2 mb-3 mt-3">
-          <div className="flex items-center gap-1.5 flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx3)]">
-            <Search size={12} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search student by name or class..."
-              className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none"
+            <KPICard
+              label="Total Collected"
+              value={`₹${(totalCollected / 100000).toFixed(2)}L`}
+              sub="Term 2 · 2026"
+              icon={<CheckCircle size={15} />}
+              iconBg="var(--teal-bg)"
+              iconColor="var(--teal-tx)"
+            />
+            <KPICard
+              label="Pending"
+              value={`₹${(totalPending / 100000).toFixed(2)}L`}
+              sub={`${students.filter(s => s.bal > 0).length} students`}
+              icon={<Clock size={15} />}
+              iconBg="var(--red-bg)"
+              iconColor="var(--red-tx)"
+            />
+            <KPICard
+              label="Paid Students"
+              value={paidCount}
+              sub={`Out of ${students.length}`}
+              icon={<Users size={15} />}
+              iconBg="var(--amber-bg)"
+              iconColor="var(--amber-tx)"
+            />
+            <KPICard
+              label="Receipts Total"
+              value={students.length}
+              sub="Active students"
+              icon={<FileText size={15} />}
+              iconBg="var(--blue-bg)"
+              iconColor="var(--blue-tx)"
             />
           </div>
-          <select
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-            className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx)] w-full sm:w-32 cursor-pointer outline-none"
-          >
-            <option value="All">All classes</option>
-            {['6', '7', '8', '9', '10'].map((c) => (
-              <option key={c} value={c}>{`Class ${c}`}</option>
-            ))}
-          </select>
-        </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12px] min-w-[700px]">
-            <thead>
-              <tr>
-                {['#', 'Student Name', 'Class', 'Term Fee', 'Paid', 'Balance', 'Status', 'Action'].map((h) => (
-                  <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap">
-                    {h}
-                  </th>
+          <Card className="mb-2.5">
+            <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center mb-3">
+              <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--tx)]">
+                Fee Collection Directory {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
+              </div>
+              <div className="flex gap-2">
+                <button className="flex items-center gap-1 px-2.5 py-1 text-[11px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer">
+                  <Download size={11} /> Export
+                </button>
+                <button
+                  onClick={() => {
+                    setAssignType('student');
+                    setAssignedItems([]);
+                    setCurrentAmount('8500');
+                    setModalStudentId(students[0]?.studentId || '');
+                    setShowAssignModal(true);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
+                >
+                  <Plus size={11} /> Assign Fee
+                </button>
+              </div>
+            </div>
+
+            <TabBar
+              tabs={['All Students', 'Paid', 'Partial', 'Unpaid']}
+              active={tab}
+              onChange={setTab}
+            />
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-3 mt-3">
+              <div className="flex items-center gap-1.5 flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx3)]">
+                <Search size={12} />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search student by name or class..."
+                  className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none"
+                />
+              </div>
+              <select
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx)] w-full sm:w-32 cursor-pointer outline-none"
+              >
+                <option value="All">All classes</option>
+                {['6', '7', '8', '9', '10'].map((c) => (
+                  <option key={c} value={c}>{`Class ${c}`}</option>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s, index) => (
-                <tr key={s.studentId} className="hover:bg-[var(--surf2)] transition-colors group">
-                  <td className="px-2 py-2 text-[var(--tx3)]">{index + 1}</td>
-                  <td className="px-2 py-2 cursor-pointer text-[var(--blue-tx)] font-medium" onClick={() => handleViewStudentDetails(s)}>
-                    <div className="flex items-center gap-2">
-                      <Avatar initials={s.init} bg="var(--blue-bg)" color="var(--blue-tx)" />
-                      <span>{s.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-2 py-2 text-[var(--tx2)]">Class {s.cls}</td>
-                  <td className="px-2 py-2 text-[var(--tx)]">₹{s.fee.toLocaleString()}</td>
-                  <td className="px-2 py-2 text-[var(--teal-tx)] font-medium">₹{s.paid.toLocaleString()}</td>
-                  <td className="px-2 py-2 text-[var(--tx)]">
-                    {s.bal > 0 ? (
-                      <span className="text-[var(--red-tx)] font-medium">₹{s.bal.toLocaleString()}</span>
-                    ) : (
-                      <span className="text-[var(--tx3)]">₹0</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2">{statusBadge(s.status)}</td>
-                  <td className="px-2 py-2">
-                    {s.status === 'Paid' ? (
-                      <span className="text-[11px] text-[var(--tx3)]">No Dues</span>
-                    ) : (
-                      <button
-                        onClick={() => setCollectStudent(s)}
-                        className="text-[11px] text-[var(--blue-tx)] hover:underline cursor-pointer font-medium"
-                      >
-                        Collect Payment
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="text-center py-6 text-[12px] text-[var(--tx3)]">
-                    No student fee records found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </select>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12px] min-w-[700px]">
+                <thead>
+                  <tr>
+                    {['#', 'Student Name', 'Class', 'Term Fee', 'Paid', 'Balance', 'Status', 'Action'].map((h) => (
+                      <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((s, index) => (
+                    <tr key={s.studentId} className="hover:bg-[var(--surf2)] transition-colors group">
+                      <td className="px-2 py-2 text-[var(--tx3)]">{index + 1}</td>
+                      <td className="px-2 py-2 cursor-pointer text-[var(--blue-tx)] font-medium" onClick={() => handleViewStudentDetails(s)}>
+                        <div className="flex items-center gap-2">
+                          <Avatar initials={s.init} bg="var(--blue-bg)" color="var(--blue-tx)" />
+                          <span>{s.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 text-[var(--tx2)]">Class {s.cls}</td>
+                      <td className="px-2 py-2 text-[var(--tx)]">₹{s.fee.toLocaleString()}</td>
+                      <td className="px-2 py-2 text-[var(--teal-tx)] font-medium">₹{s.paid.toLocaleString()}</td>
+                      <td className="px-2 py-2 text-[var(--tx)]">
+                        {s.bal > 0 ? (
+                          <span className="text-[var(--red-tx)] font-medium">₹{s.bal.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-[var(--tx3)]">₹0</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2">{statusBadge(s.status)}</td>
+                      <td className="px-2 py-2">
+                        {s.status === 'Paid' ? (
+                          <span className="text-[11px] text-[var(--tx3)]">No Dues</span>
+                        ) : (
+                          <button
+                            onClick={() => setCollectStudent(s)}
+                            className="text-[11px] text-[var(--blue-tx)] hover:underline cursor-pointer font-medium"
+                          >
+                            Collect Payment
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="text-center py-6 text-[12px] text-[var(--tx3)]">
+                        No student fee records found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
 
         </>
       )}
@@ -952,24 +952,24 @@ export function FeeManagement() {
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Assign Target *</label>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="flex items-center justify-center gap-2 p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg cursor-pointer text-[12px]">
-                    <input 
-                      type="radio" 
-                      name="assignType" 
-                      value="student" 
-                      checked={assignType === 'student'} 
+                    <input
+                      type="radio"
+                      name="assignType"
+                      value="student"
+                      checked={assignType === 'student'}
                       onChange={() => setAssignType('student')}
-                      className="accent-[var(--blue)]" 
+                      className="accent-[var(--blue)]"
                     />
                     <span>Single Student</span>
                   </label>
                   <label className="flex items-center justify-center gap-2 p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg cursor-pointer text-[12px]">
-                    <input 
-                      type="radio" 
-                      name="assignType" 
-                      value="class" 
-                      checked={assignType === 'class'} 
+                    <input
+                      type="radio"
+                      name="assignType"
+                      value="class"
+                      checked={assignType === 'class'}
                       onChange={() => setAssignType('class')}
-                      className="accent-[var(--blue)]" 
+                      className="accent-[var(--blue)]"
                     />
                     <span>Whole Class</span>
                   </label>
@@ -984,8 +984,8 @@ export function FeeManagement() {
                     <option value="all">All</option>
                   </select>
                 ) : (
-                  <select 
-                    name="studentId" 
+                  <select
+                    name="studentId"
                     value={modalStudentId}
                     onChange={(e) => setModalStudentId(e.target.value)}
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
@@ -1012,8 +1012,8 @@ export function FeeManagement() {
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Fee Category *</label>
                 {categories.length > 0 ? (
-                  <select 
-                    value={currentCategory} 
+                  <select
+                    value={currentCategory}
                     onChange={(e) => setCurrentCategory(e.target.value)}
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                   >
@@ -1022,11 +1022,11 @@ export function FeeManagement() {
                     ))}
                   </select>
                 ) : (
-                  <input 
-                    value={currentCategory} 
+                  <input
+                    value={currentCategory}
                     onChange={(e) => setCurrentCategory(e.target.value)}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" 
-                    placeholder="Tuition Fee" 
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    placeholder="Tuition Fee"
                   />
                 )}
               </div>
@@ -1035,16 +1035,16 @@ export function FeeManagement() {
                 <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                   <div className="flex-1">
                     <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Amount (₹) *</label>
-                    <input 
-                      type="number" 
-                      value={currentAmount} 
-                      onChange={(e) => setCurrentAmount(e.target.value)} 
-                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" 
+                    <input
+                      type="number"
+                      value={currentAmount}
+                      onChange={(e) => setCurrentAmount(e.target.value)}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
                     />
                   </div>
-                  <button 
-                    type="button" 
-                    onClick={handleAddFeeItem} 
+                  <button
+                    type="button"
+                    onClick={handleAddFeeItem}
                     className="p-2.5 bg-[var(--blue)] text-white rounded-lg hover:opacity-90 flex items-center justify-center h-[38px] w-[38px] cursor-pointer"
                     title="Add Item"
                   >
@@ -1234,17 +1234,17 @@ export function FeeManagement() {
               </div>
               <button type="button" onClick={() => setShowConcessionModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"><X size={16} /></button>
             </div>
-            
+
             <div className="p-5 space-y-4">
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1">Fee Component *</label>
-                <select 
-                  value={selectedConcessionFeeId} 
+                <select
+                  value={selectedConcessionFeeId}
                   onChange={(e) => {
                     setSelectedConcessionFeeId(e.target.value);
                     setConcessionAmount('');
                   }}
-                  required 
+                  required
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >
                   <option value="">Select component</option>
@@ -1269,7 +1269,7 @@ export function FeeManagement() {
                     <label className="block text-[11.5px] font-bold text-[var(--tx)] mb-1.5">Concession Amount *</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tx3)] text-[13px] font-medium">₹</span>
-                      <input 
+                      <input
                         type="number"
                         value={concessionAmount}
                         onChange={(e) => {
@@ -1314,11 +1314,11 @@ export function FeeManagement() {
 
               <div>
                 <label className="block text-[11.5px] font-bold text-[var(--tx)] mb-1.5">Reason for Concession</label>
-                <textarea 
+                <textarea
                   value={concessionReason}
                   onChange={(e) => setConcessionReason(e.target.value)}
-                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] resize-none" 
-                  rows={3} 
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] resize-none"
+                  rows={3}
                   placeholder="e.g., Merit scholarship, Financial hardship, Staff discount, Early payment discount"
                 />
                 <span className="text-[10px] text-[var(--tx3)] mt-1 block">Provide a brief explanation for this concession</span>
@@ -1333,15 +1333,15 @@ export function FeeManagement() {
             </div>
 
             <div className="flex gap-2 p-5 pt-0 justify-end border-t border-[var(--b)] mt-4 pt-4 bg-[var(--surf2)]/20">
-              <button 
-                type="button" 
-                onClick={() => setShowConcessionModal(false)} 
+              <button
+                type="button"
+                onClick={() => setShowConcessionModal(false)}
                 className="px-4 py-2 border border-[var(--b)] bg-[var(--surf)] rounded-xl text-[12px] font-bold text-[var(--tx2)] hover:bg-[var(--surf2)] hover:text-[var(--tx)] cursor-pointer flex items-center gap-1.5 shadow-sm transition-all"
               >
                 <X size={13} /> Cancel
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={applyingConcession || !selectedConcessionFeeId || !concessionAmount}
                 className="px-4 py-2 bg-[var(--coral-bg)] text-[var(--coral-tx)] border border-[var(--coral-tx)]/25 rounded-xl text-[12px] font-extrabold cursor-pointer disabled:opacity-50 flex items-center gap-1.5 hover:bg-[var(--coral)] hover:text-white transition-all shadow-sm"
               >
@@ -1362,12 +1362,12 @@ export function FeeManagement() {
                   {selectedEditFee.feeCategory?.name || selectedEditFee.category || 'School Fee'}
                 </div>
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => {
                   setShowEditPaidModal(false);
                   setSelectedEditFee(null);
-                }} 
+                }}
                 className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"
               >
                 <X size={16} />
@@ -1403,12 +1403,12 @@ export function FeeManagement() {
               </div>
             </div>
             <div className="flex gap-2 p-5 pt-0">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => {
                   setShowEditPaidModal(false);
                   setSelectedEditFee(null);
-                }} 
+                }}
                 className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer"
               >
                 Cancel
@@ -1433,7 +1433,7 @@ export function FeeManagement() {
             </div>
             <h3 className="text-base font-bold text-[var(--tx)] mb-1">Payment Recorded!</h3>
             <p className="text-xs text-[var(--tx3)] mb-4">The payment has been successfully recorded in the system.</p>
-            
+
             <div className="bg-[var(--surf2)] rounded-xl p-4 mb-6 text-left space-y-2.5 text-[12px]">
               <div className="flex justify-between"><span className="text-[var(--tx3)]">Student:</span><span className="font-semibold text-[var(--tx)]">{paymentSuccessData.studentName}</span></div>
               <div className="flex justify-between"><span className="text-[var(--tx3)]">Amount Paid:</span><span className="font-bold text-[var(--teal-tx)]">₹{paymentSuccessData.totalPaid.toLocaleString()}</span></div>
@@ -1446,15 +1446,15 @@ export function FeeManagement() {
             </div>
 
             <div className="flex gap-3">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setPaymentSuccessData(null)}
                 className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
               >
                 Close
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => handlePrint(paymentSuccessData)}
                 className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
               >
@@ -1477,15 +1477,15 @@ export function FeeManagement() {
               Would you like to collect a payment now?
             </p>
             <div className="flex gap-3">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setAssignedStudentForPayment(null)}
                 className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
               >
                 No, Close
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => {
                   const s = students.find(std => String(std.studentId) === String(assignedStudentForPayment.studentId));
                   if (s) {

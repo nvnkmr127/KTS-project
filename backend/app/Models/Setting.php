@@ -104,7 +104,12 @@ class Setting extends Model
             ->logOnly(['key', 'value', 'group', 'type'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn (string $eventName) => "Setting {$eventName}");
+            ->setDescriptionForEvent(function (string $eventName) {
+                if ($eventName === 'updated' && $this->key === 'kts_student_attendance_records') {
+                    return 'Student attendance records updated';
+                }
+                return "Setting {$eventName}";
+            });
     }
 
     /**

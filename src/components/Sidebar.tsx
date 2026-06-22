@@ -115,6 +115,12 @@ const TEACHER_SECTIONS: NavSection[] = [
       { icon: <Wallet size={14} />, label: 'My Salary', page: 'my-salary' },
     ],
   },
+  {
+    label: 'Analytics',
+    items: [
+      { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs' },
+    ],
+  },
 ];
 
 interface SidebarProps {

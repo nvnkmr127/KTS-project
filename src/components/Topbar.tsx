@@ -34,6 +34,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   'my-salary': 'My Salary & Payslips',
   settings: 'System Settings',
   'activity-logs': 'Activity Logs',
+  search: ''
 };
 
 interface TopbarProps {
@@ -41,9 +42,12 @@ interface TopbarProps {
   dark: boolean;
   onToggleDark: () => void;
   onMenuClick: () => void;
+  onNavigate?: (page: PageId) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
 }
 
-export function Topbar({ current, dark, onToggleDark, onMenuClick }: TopbarProps) {
+export function Topbar({ current, dark, onToggleDark, onMenuClick, onNavigate, searchQuery, onSearchChange }: TopbarProps) {
   const { user } = useAuth();
   const { notifications, markNotificationsRead, academicYears, selectedAcademicYearId, setSelectedAcademicYearId } = useApp();
   const [showNotifs, setShowNotifs] = useState(false);
@@ -105,9 +109,24 @@ export function Topbar({ current, dark, onToggleDark, onMenuClick }: TopbarProps
         <div className="flex-1" />
       )}
 
-      <div className="hidden sm:flex items-center gap-1.5 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx3)] w-44 cursor-text">
-        <Search size={12} />
-        <span>Search...</span>
+      <div className="hidden sm:flex items-center gap-1.5 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1 text-[12px] text-[var(--tx)] w-48 focus-within:border-[var(--blue)] focus-within:ring-1 focus-within:ring-[var(--blue)]/20 transition-all">
+        <Search size={12} className="text-[var(--tx3)]" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Global search..."
+          className="bg-transparent border-none text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none flex-1 py-0.5"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange('')}
+            className="p-0.5 hover:bg-[var(--surf3)] rounded-full text-[var(--tx3)] hover:text-[var(--tx)] cursor-pointer"
+            title="Clear search"
+          >
+            <X size={10} />
+          </button>
+        )}
       </div>
 
       <div ref={notifRef} className="relative">
@@ -140,10 +159,9 @@ export function Topbar({ current, dark, onToggleDark, onMenuClick }: TopbarProps
                     key={n.id}
                     className={`flex items-start gap-2.5 px-3.5 py-2.5 border-b border-[var(--b)] last:border-0 ${!n.read ? 'bg-[var(--blue-bg)]/40' : ''}`}
                   >
-                    <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
-                      n.type === 'leave_request' ? 'bg-[var(--amber)]' :
-                      n.type === 'leave_approved' ? 'bg-[var(--teal)]' : 'bg-[var(--red)]'
-                    }`} />
+                    <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${n.type === 'leave_request' ? 'bg-[var(--amber)]' :
+                        n.type === 'leave_approved' ? 'bg-[var(--teal)]' : 'bg-[var(--red)]'
+                      }`} />
                     <div className="flex-1 min-w-0">
                       <div className="text-[11.5px] text-[var(--tx)] leading-snug">{n.message}</div>
                       <div className="text-[10.5px] text-[var(--tx3)] mt-0.5">{n.time}</div>

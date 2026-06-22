@@ -9,11 +9,19 @@ interface KPICardProps {
   iconBg: string;
   iconColor: string;
   trend?: { direction: 'up' | 'down'; label: string };
+  onClick?: () => void;
 }
 
-export function KPICard({ label, value, sub, icon, iconBg, iconColor, trend }: KPICardProps) {
+export function KPICard({ label, value, sub, icon, iconBg, iconColor, trend, onClick }: KPICardProps) {
   return (
-    <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-3 relative overflow-hidden">
+    <div
+      onClick={onClick}
+      className={`bg-[var(--surf)] border border-[var(--b)] rounded-xl p-3 relative overflow-hidden transition-all duration-200 ${
+        onClick
+          ? 'cursor-pointer hover:border-[var(--blue)] hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'
+          : ''
+      }`}
+    >
       <div
         className="absolute right-2.5 top-2.5 w-8 h-8 rounded-lg flex items-center justify-center"
         style={{ background: iconBg, color: iconColor }}
