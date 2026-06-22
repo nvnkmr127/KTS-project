@@ -66,6 +66,7 @@ export function Students() {
   const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [admittedStudentForFee, setAdmittedStudentForFee] = useState<{ id: string; name: string } | null>(null);
 
   const [batchesList, setBatchesList] = useState<any[]>([]);
   const [attendancePercentage, setAttendancePercentage] = useState<number | null>(null);
@@ -172,14 +173,22 @@ export function Students() {
     };
 
     try {
-      if (modal === 'add') {
-        await api.createResource('students', data);
+      const isAdding = modal === 'add';
+      let created = null;
+      if (isAdding) {
+        created = await api.createResource('students', data);
       } else if (modal === 'edit' && selected) {
         await api.updateResource('students', selected.id, data);
       }
       setModal(null);
       setSaveError('');
       await loadStudents();
+      if (isAdding && created && created.id) {
+        setAdmittedStudentForFee({
+          id: String(created.id),
+          name: created.name || `${firstName} ${lastName}`,
+        });
+      }
     } catch (err: any) {
       console.error('Error saving student:', err);
       setSaveError(err.message || 'Failed to save student. Please try again.');
@@ -595,6 +604,42 @@ export function Students() {
             loadStudents();
           }}
         />
+      )}
+
+      {admittedStudentForFee && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 size={24} />
+            </div>
+            <h3 className="text-base font-bold text-[var(--tx)] mb-2">Student Admitted Successfully!</h3>
+            <p className="text-xs text-[var(--tx3)] mb-6">
+              <strong>{admittedStudentForFee.name}</strong> has been successfully admitted to the school.
+              Would you like to assign fees to this student now?
+            </p>
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={() => setAdmittedStudentForFee(null)}
+                className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Skip for Now
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  sessionStorage.setItem('admitted_student', JSON.stringify(admittedStudentForFee));
+                  setAdmittedStudentForFee(null);
+                  window.history.pushState({}, '', '/fee-management');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                Assign Fees
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

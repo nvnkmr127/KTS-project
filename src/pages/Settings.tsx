@@ -6,7 +6,7 @@ import { useApp } from '../context/AppContext';
 import { 
   Calendar, Plus, Trash2, Edit2, CheckCircle2, Shield, 
   AlertCircle, RefreshCw, X, Loader2, Save,
-  Activity, User, Search, Clock
+  Activity, User, Search, Clock, GitCompare, ArrowRight
 } from 'lucide-react';
 import { TabBar } from '../components/ui';
 
@@ -59,6 +59,12 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   const [logSearch, setLogSearch] = useState('');
   const [userFilter, setUserFilter] = useState('All');
   const [users, setUsers] = useState<any[]>([]);
+
+  // Transition / Compare states
+  const [isTransitionMode, setIsTransitionMode] = useState(false);
+  const [oldStaffFilter, setOldStaffFilter] = useState('All');
+  const [newStaffFilter, setNewStaffFilter] = useState('All');
+  const [staffList, setStaffList] = useState<any[]>([]);
 
   // Load academic years
   const loadAys = async () => {
@@ -146,6 +152,26 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     }
   };
 
+  // Load staff list to identify who has resigned/left vs active
+  const loadStaffList = async () => {
+    try {
+      const saved = localStorage.getItem('kts_staff_members');
+      if (saved) {
+        setStaffList(JSON.parse(saved));
+      } else {
+        const data = await api.getResources('settings');
+        if (Array.isArray(data)) {
+          const staffSetting = data.find((s: any) => s.key === 'kts_staff_members');
+          if (staffSetting && staffSetting.value) {
+            setStaffList(JSON.parse(staffSetting.value));
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error loading staff list in Settings:', err);
+    }
+  };
+
   useEffect(() => {
     if (tab === 0) {
       loadAys();
@@ -154,6 +180,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     } else if (tab === 2) {
       loadActivityLogs();
       loadUsers();
+      loadStaffList();
     }
   }, [tab]);
 
@@ -304,8 +331,36 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     }, 1200);
   };
 
+  const getUserStatusLabel = (userName: string) => {
+    const staff = staffList.find((s: any) => s.name.toLowerCase() === userName.toLowerCase());
+    if (staff) {
+      return ` (${staff.status})`;
+    }
+    return '';
+  };
+
   const filteredLogs = logs.filter((log) => {
     const matchUser = userFilter === 'All' || String(log.causer_name) === userFilter;
+    const matchSearch = !logSearch.trim() || 
+      String(log.description).toLowerCase().includes(logSearch.toLowerCase()) ||
+      String(log.log_name || '').toLowerCase().includes(logSearch.toLowerCase()) ||
+      String(log.event || '').toLowerCase().includes(logSearch.toLowerCase()) ||
+      String(log.causer_name).toLowerCase().includes(logSearch.toLowerCase());
+    return matchUser && matchSearch;
+  });
+
+  const oldStaffLogs = logs.filter((log) => {
+    const matchUser = oldStaffFilter === 'All' || String(log.causer_name) === oldStaffFilter;
+    const matchSearch = !logSearch.trim() || 
+      String(log.description).toLowerCase().includes(logSearch.toLowerCase()) ||
+      String(log.log_name || '').toLowerCase().includes(logSearch.toLowerCase()) ||
+      String(log.event || '').toLowerCase().includes(logSearch.toLowerCase()) ||
+      String(log.causer_name).toLowerCase().includes(logSearch.toLowerCase());
+    return matchUser && matchSearch;
+  });
+
+  const newStaffLogs = logs.filter((log) => {
+    const matchUser = newStaffFilter === 'All' || String(log.causer_name) === newStaffFilter;
     const matchSearch = !logSearch.trim() || 
       String(log.description).toLowerCase().includes(logSearch.toLowerCase()) ||
       String(log.log_name || '').toLowerCase().includes(logSearch.toLowerCase()) ||
@@ -530,9 +585,24 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                 <p className="text-[11px] text-[var(--tx3)] mt-0.5">Track modifications, system loggings, and user actions.</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto items-stretch sm:items-center">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto items-stretch sm:items-center">
+                {/* Transition / Compare mode button */}
+                <button
+                  type="button"
+                  onClick={() => setIsTransitionMode(!isTransitionMode)}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-semibold border transition-all cursor-pointer ${
+                    isTransitionMode 
+                      ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border-[var(--blue)]' 
+                      : 'bg-[var(--surf2)] text-[var(--tx2)] border-[var(--b)] hover:bg-[var(--surf3)]'
+                  }`}
+                  title="Compare activities of two members (e.g. departed staff and replacement)"
+                >
+                  <GitCompare size={13} />
+                  <span>Compare Mode</span>
+                </button>
+
                 {/* Search */}
-                <div className="relative flex-1 sm:w-60">
+                <div className="relative flex-1 sm:w-48">
                   <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--tx3)]" />
                   <input
                     type="text"
@@ -543,21 +613,58 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                   />
                 </div>
 
-                {/* User filter */}
-                <div className="flex items-center gap-1.5">
-                  <User size={12} className="text-[var(--tx3)]" />
-                  <select
-                    value={userFilter}
-                    onChange={(e) => setUserFilter(e.target.value)}
-                    className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-[11.5px] text-[var(--tx)] cursor-pointer outline-none min-w-[140px]"
-                  >
-                    <option value="All">All Users</option>
-                    {users.map((u: any) => (
-                      <option key={u.id} value={u.name}>{u.name}</option>
-                    ))}
-                    <option value="System">System</option>
-                  </select>
-                </div>
+                {!isTransitionMode ? (
+                  /* User filter */
+                  <div className="flex items-center gap-1.5">
+                    <User size={12} className="text-[var(--tx3)]" />
+                    <select
+                      value={userFilter}
+                      onChange={(e) => setUserFilter(e.target.value)}
+                      className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-[11.5px] text-[var(--tx)] cursor-pointer outline-none min-w-[140px]"
+                    >
+                      <option value="All">All Users</option>
+                      {users.map((u: any) => (
+                        <option key={u.id} value={u.name}>{u.name}{getUserStatusLabel(u.name)}</option>
+                      ))}
+                      <option value="System">System</option>
+                    </select>
+                  </div>
+                ) : (
+                  <>
+                    {/* Departed Staff dropdown */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-[var(--tx3)] whitespace-nowrap">Old:</span>
+                      <select
+                        value={oldStaffFilter}
+                        onChange={(e) => setOldStaffFilter(e.target.value)}
+                        className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-1.5 py-1.5 text-[11px] text-[var(--tx)] cursor-pointer outline-none min-w-[130px]"
+                      >
+                        <option value="All">Select Departed</option>
+                        {users.map((u: any) => (
+                          <option key={u.id} value={u.name}>
+                            {u.name}{getUserStatusLabel(u.name)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* Replacement Staff dropdown */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-[var(--tx3)] whitespace-nowrap">New:</span>
+                      <select
+                        value={newStaffFilter}
+                        onChange={(e) => setNewStaffFilter(e.target.value)}
+                        className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-1.5 py-1.5 text-[11px] text-[var(--tx)] cursor-pointer outline-none min-w-[130px]"
+                      >
+                        <option value="All">Select Replacement</option>
+                        {users.map((u: any) => (
+                          <option key={u.id} value={u.name}>
+                            {u.name}{getUserStatusLabel(u.name)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
                 
                 {/* Refresh */}
                 <button
@@ -575,11 +682,244 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
               <div className="flex justify-center py-12">
                 <Loader2 size={20} className="animate-spin text-[var(--blue)]" />
               </div>
-            ) : filteredLogs.length === 0 ? (
-              <div className="text-center py-12 text-[12px] text-[var(--tx3)] italic">
-                No activity log records found matching the criteria.
-              </div>
+            ) : isTransitionMode ? (
+              oldStaffFilter === 'All' || newStaffFilter === 'All' ? (
+                <div className="text-center py-16 px-4 bg-[var(--surf2)] border border-[var(--b)] rounded-2xl max-w-xl mx-auto my-6 space-y-4">
+                  <div className="w-12 h-12 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-full flex items-center justify-center mx-auto">
+                    <GitCompare size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-[13.5px] font-bold text-[var(--tx)]">Staff Handover & Transition Log Comparer</h4>
+                    <p className="text-[11.5px] text-[var(--tx3)] mt-1.5 max-w-sm mx-auto leading-relaxed">
+                      Select both the previous (departed) staff member and the new (assigned) staff member from the filters above to compare what each did exactly.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {/* Transition Stats Banner */}
+                  {(() => {
+                    const getStats = (userLogs: any[]) => {
+                      const total = userLogs.length;
+                      const created = userLogs.filter(l => ['created', 'store', 'create'].includes(l.event || '')).length;
+                      const updated = userLogs.filter(l => ['updated', 'update'].includes(l.event || '')).length;
+                      const deleted = userLogs.filter(l => ['deleted', 'destroy', 'delete'].includes(l.event || '')).length;
+                      
+                      let lastActive = 'Never';
+                      if (userLogs.length > 0) {
+                        try {
+                          const dateObj = new Date(userLogs[0].created_at);
+                          lastActive = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                        } catch {
+                          lastActive = userLogs[0].created_at || 'Never';
+                        }
+                      }
+                      return { total, created, updated, deleted, lastActive };
+                    };
+
+                    const statsA = getStats(oldStaffLogs);
+                    const statsB = getStats(newStaffLogs);
+
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-2">
+                        {/* Old Staff Card */}
+                        <div className="bg-[var(--purple-bg)]/20 border border-[var(--purple-tx)]/15 rounded-xl p-4 flex flex-col justify-between">
+                          <div>
+                            <span className="text-[9px] text-[var(--purple-tx)] font-extrabold uppercase tracking-wider">Previous Staff Member</span>
+                            <h4 className="text-[13.5px] font-bold text-[var(--tx)] mt-1.5">{oldStaffFilter}</h4>
+                            <div className="text-[10px] text-[var(--tx3)] mt-0.5">Role/Status: {getUserStatusLabel(oldStaffFilter).trim() || 'Staff'}</div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-[var(--b)]/30 grid grid-cols-2 gap-2 text-[10.5px]">
+                            <div>
+                              <div className="text-[var(--tx3)]">Total Actions</div>
+                              <div className="text-[13.5px] font-extrabold text-[var(--purple-tx)]">{statsA.total}</div>
+                            </div>
+                            <div>
+                              <div className="text-[var(--tx3)]">Last Active</div>
+                              <div className="text-[11.5px] font-bold text-[var(--tx)] truncate" title={statsA.lastActive}>{statsA.lastActive}</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mid Indicator Card */}
+                        <div className="bg-[var(--surf3)] border border-[var(--b)] rounded-xl p-4 flex flex-col justify-center items-center text-center">
+                          <div className="w-10 h-10 bg-[var(--blue-bg)] rounded-full flex items-center justify-center text-[var(--blue-tx)] mb-2">
+                            <ArrowRight size={16} className="animate-pulse" />
+                          </div>
+                          <span className="text-[11.5px] font-bold text-[var(--tx)]">Handover Audit</span>
+                          <p className="text-[10px] text-[var(--tx3)] mt-1 max-w-[150px] leading-relaxed mx-auto">
+                            Verifying data logs and actions during role transition.
+                          </p>
+                        </div>
+
+                        {/* New Staff Card */}
+                        <div className="bg-[var(--teal-bg)]/20 border border-[var(--teal-tx)]/15 rounded-xl p-4 flex flex-col justify-between">
+                          <div>
+                            <span className="text-[9px] text-[var(--teal-tx)] font-extrabold uppercase tracking-wider">Replacement Staff Member</span>
+                            <h4 className="text-[13.5px] font-bold text-[var(--tx)] mt-1.5">{newStaffFilter}</h4>
+                            <div className="text-[10px] text-[var(--tx3)] mt-0.5">Role/Status: {getUserStatusLabel(newStaffFilter).trim() || 'Staff'}</div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-[var(--b)]/30 grid grid-cols-2 gap-2 text-[10.5px]">
+                            <div>
+                              <div className="text-[var(--tx3)]">Total Actions</div>
+                              <div className="text-[13.5px] font-extrabold text-[var(--teal-tx)]">{statsB.total}</div>
+                            </div>
+                            <div>
+                              <div className="text-[var(--tx3)]">Last Active</div>
+                              <div className="text-[11.5px] font-bold text-[var(--tx)] truncate" title={statsB.lastActive}>{statsB.lastActive}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Side-by-side Timeline Columns */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Departed Staff Log List */}
+                    <div className="border border-[var(--b)] rounded-xl p-4 bg-[var(--surf)] flex flex-col min-h-[300px]">
+                      <div className="flex items-center justify-between pb-3 border-b border-[var(--b)] mb-3">
+                        <span className="text-[12px] font-bold text-[var(--purple-tx)] flex items-center gap-1.5">
+                          <User size={13} className="text-[var(--purple-tx)]" /> {oldStaffFilter} Logs
+                        </span>
+                        <span className="px-2 py-0.5 bg-[var(--purple-bg)] text-[var(--purple-tx)] text-[10px] font-bold rounded-full">
+                          {oldStaffLogs.length} events
+                        </span>
+                      </div>
+
+                      {oldStaffLogs.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center py-12 text-[11.5px] text-[var(--tx3)] italic">
+                          No activity logs found for {oldStaffFilter}.
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                          {oldStaffLogs.map(log => {
+                            const isCreated = ['created', 'store', 'create'].includes(log.event || '');
+                            const isUpdated = ['updated', 'update'].includes(log.event || '');
+                            const isDeleted = ['deleted', 'destroy', 'delete'].includes(log.event || '');
+                            
+                            let badgeColor = 'bg-[var(--surf3)] text-[var(--tx2)] border border-[var(--b)]';
+                            if (isCreated) badgeColor = 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/15';
+                            else if (isUpdated) badgeColor = 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/15';
+                            else if (isDeleted) badgeColor = 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/15';
+
+                            let formattedDate = 'N/A';
+                            if (log.created_at) {
+                              try {
+                                const dateObj = new Date(log.created_at);
+                                formattedDate = dateObj.toLocaleString('en-IN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                });
+                              } catch {
+                                formattedDate = log.created_at;
+                              }
+                            }
+
+                            return (
+                              <div key={log.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] hover:border-[var(--purple-tx)]/25 rounded-xl transition-all border-l-[3px] border-l-[var(--purple-tx)] space-y-1.5 text-[11.5px]">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold capitalize ${badgeColor}`}>
+                                    {log.event || 'activity'}
+                                  </span>
+                                  <span className="text-[9.5px] font-mono text-[var(--tx3)] bg-[var(--surf3)] px-1 py-0.5 rounded">
+                                    {log.log_name || 'default'}
+                                  </span>
+                                </div>
+                                <div className="text-[11.5px] text-[var(--tx)] leading-normal font-medium">{log.description}</div>
+                                {log.subject_type && (
+                                  <div className="text-[9.5px] text-[var(--tx3)] font-mono">
+                                    Target: {log.subject_type} {log.subject_id && `#${log.subject_id}`}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 text-[9.5px] text-[var(--tx3)] pt-1 border-t border-[var(--b)]/30">
+                                  <Clock size={10} />
+                                  <span>{formattedDate}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Replacement Staff Log List */}
+                    <div className="border border-[var(--b)] rounded-xl p-4 bg-[var(--surf)] flex flex-col min-h-[300px]">
+                      <div className="flex items-center justify-between pb-3 border-b border-[var(--b)] mb-3">
+                        <span className="text-[12px] font-bold text-[var(--teal-tx)] flex items-center gap-1.5">
+                          <User size={13} className="text-[var(--teal-tx)]" /> {newStaffFilter} Logs
+                        </span>
+                        <span className="px-2 py-0.5 bg-[var(--teal-bg)] text-[var(--teal-tx)] text-[10px] font-bold rounded-full">
+                          {newStaffLogs.length} events
+                        </span>
+                      </div>
+
+                      {newStaffLogs.length === 0 ? (
+                        <div className="flex-1 flex items-center justify-center py-12 text-[11.5px] text-[var(--tx3)] italic">
+                          No activity logs found for {newStaffFilter}.
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
+                          {newStaffLogs.map(log => {
+                            const isCreated = ['created', 'store', 'create'].includes(log.event || '');
+                            const isUpdated = ['updated', 'update'].includes(log.event || '');
+                            const isDeleted = ['deleted', 'destroy', 'delete'].includes(log.event || '');
+                            
+                            let badgeColor = 'bg-[var(--surf3)] text-[var(--tx2)] border border-[var(--b)]';
+                            if (isCreated) badgeColor = 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/15';
+                            else if (isUpdated) badgeColor = 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/15';
+                            else if (isDeleted) badgeColor = 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/15';
+
+                            let formattedDate = 'N/A';
+                            if (log.created_at) {
+                              try {
+                                const dateObj = new Date(log.created_at);
+                                formattedDate = dateObj.toLocaleString('en-IN', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                });
+                              } catch {
+                                formattedDate = log.created_at;
+                              }
+                            }
+
+                            return (
+                              <div key={log.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] hover:border-[var(--teal-tx)]/25 rounded-xl transition-all border-l-[3px] border-l-[var(--teal-tx)] space-y-1.5 text-[11.5px]">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold capitalize ${badgeColor}`}>
+                                    {log.event || 'activity'}
+                                  </span>
+                                  <span className="text-[9.5px] font-mono text-[var(--tx3)] bg-[var(--surf3)] px-1 py-0.5 rounded">
+                                    {log.log_name || 'default'}
+                                  </span>
+                                </div>
+                                <div className="text-[11.5px] text-[var(--tx)] leading-normal font-medium">{log.description}</div>
+                                {log.subject_type && (
+                                  <div className="text-[9.5px] text-[var(--tx3)] font-mono">
+                                    Target: {log.subject_type} {log.subject_id && `#${log.subject_id}`}
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1 text-[9.5px] text-[var(--tx3)] pt-1 border-t border-[var(--b)]/30">
+                                  <Clock size={10} />
+                                  <span>{formattedDate}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
             ) : (
+              /* Normal Single Table View */
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-[12px] min-w-[750px]">
                   <thead>

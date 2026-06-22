@@ -232,7 +232,7 @@ class GenericApiController extends Controller
                 $item->class = $parsed['class'];
                 $item->section = $parsed['section'];
                 
-                $item->fee_status = ucfirst($item->status);
+                $item->fee_status = ucfirst($item->status ?? '');
                 $item->fee_balance = $item->getRemainingAmount();
                 return $item;
             });
@@ -360,7 +360,7 @@ class GenericApiController extends Controller
             $item->class = $parsed['class'];
             $item->section = $parsed['section'];
             
-            $item->fee_status = ucfirst($item->status);
+            $item->fee_status = ucfirst($item->status ?? '');
             $item->fee_balance = $item->getRemainingAmount();
         } elseif ($resource === 'students') {
             $totalPaid = $item->studentFees()->sum('paid_amount');

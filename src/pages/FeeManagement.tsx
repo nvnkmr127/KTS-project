@@ -44,6 +44,7 @@ export function FeeManagement() {
   // Modals state
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assignType, setAssignType] = useState<'student' | 'class'>('student');
+  const [assignedStudentForPayment, setAssignedStudentForPayment] = useState<{ studentId: string; name: string } | null>(null);
   const [collectStudent, setCollectStudent] = useState<StudentFeeDisplay | null>(null);
   const [studentFeesList, setStudentFeesList] = useState<any[]>([]);
   const [payAmount, setPayAmount] = useState<string>('');
@@ -258,6 +259,24 @@ export function FeeManagement() {
   useEffect(() => {
     loadFeesData();
   }, [selectedAcademicYearId]);
+
+  useEffect(() => {
+    const admittedStudentStr = sessionStorage.getItem('admitted_student');
+    if (admittedStudentStr && students.length > 0) {
+      try {
+        const admittedStudent = JSON.parse(admittedStudentStr);
+        if (admittedStudent && admittedStudent.id) {
+          // Open the assign modal, select the student
+          setAssignType('student');
+          setModalStudentId(String(admittedStudent.id));
+          setShowAssignModal(true);
+          sessionStorage.removeItem('admitted_student');
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, [students]);
 
   const loadStudentFees = async (studentId: string) => {
     setLoadingStudentFees(true);
@@ -500,9 +519,16 @@ export function FeeManagement() {
           })
         )
       );
+      const targetStudent = students.find(s => String(s.studentId) === String(studentIdVal));
       setShowAssignModal(false);
       setAssignedItems([]);
-      loadFeesData();
+      await loadFeesData();
+      if (assignType === 'student' && targetStudent) {
+        setAssignedStudentForPayment({
+          studentId: studentIdVal,
+          name: targetStudent.name
+        });
+      }
     } catch (err) {
       console.error('Error assigning fee:', err);
     } finally {
@@ -1433,6 +1459,43 @@ export function FeeManagement() {
                 className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Download size={13} /> Print Receipt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {assignedStudentForPayment && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={24} />
+            </div>
+            <h3 className="text-base font-bold text-[var(--tx)] mb-1">Fees Assigned Successfully!</h3>
+            <p className="text-xs text-[var(--tx3)] mb-6">
+              Fees have been assigned to <strong>{assignedStudentForPayment.name}</strong>.
+              Would you like to collect a payment now?
+            </p>
+            <div className="flex gap-3">
+              <button 
+                type="button" 
+                onClick={() => setAssignedStudentForPayment(null)}
+                className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                No, Close
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  const s = students.find(std => String(std.studentId) === String(assignedStudentForPayment.studentId));
+                  if (s) {
+                    setCollectStudent(s);
+                  }
+                  setAssignedStudentForPayment(null);
+                }}
+                className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                Collect Payment
               </button>
             </div>
           </div>

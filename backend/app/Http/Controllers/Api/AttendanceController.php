@@ -854,7 +854,7 @@ class AttendanceController extends Controller
             $batch = \App\Models\Batch::with('students')->findOrFail($batchId);
             $user = $request->user();
 
-            \Illuminate\Support\Facades\Log::info('getBatchStudentPercentages check:', [
+            Log::info('getBatchStudentPercentages check:', [
                 'user_id' => $user ? $user->id : 'null',
                 'user_name' => $user ? $user->name : 'null',
                 'user_roles' => $user && method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : 'none',
@@ -877,7 +877,7 @@ class AttendanceController extends Controller
                 ->groupBy('student_id');
 
             $studentPercentages = $batch->students->filter(function ($student) {
-                return strtolower($student->status) === 'active';
+                return strtolower($student->status ?? 'active') === 'active';
             })->values()->map(function ($student) use ($attendances) {
                 $studentAttendances = $attendances->get($student->id);
                 $total = $studentAttendances ? $studentAttendances->count() : 0;
