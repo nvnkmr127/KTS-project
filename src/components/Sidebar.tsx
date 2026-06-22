@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
   Bus, BarChart2, Settings, School, MessageCircle,
-  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock
+  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -75,6 +75,7 @@ const ADMIN_SECTIONS: NavSection[] = [
     label: 'Analytics',
     items: [
       { icon: <BarChart2 size={14} />, label: 'Reports', page: 'reports' },
+      { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs' },
     ],
   },
 ];
@@ -203,10 +204,22 @@ export function Sidebar({ current, onNavigate, isOpen, onClose }: SidebarProps) 
 
         {/* Footer */}
         <div className="p-2.5 border-t border-[var(--b)] space-y-0.5">
-          <button className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--tx2)] hover:bg-[var(--surf2)] rounded-lg transition-colors cursor-pointer">
-            <Settings size={14} />
-            <span>Settings</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                onNavigate('settings');
+                onClose();
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-[12px] rounded-lg transition-colors cursor-pointer text-left ${
+                current === 'settings'
+                  ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] font-semibold'
+                  : 'text-[var(--tx2)] hover:bg-[var(--surf2)] hover:text-[var(--tx)]'
+              }`}
+            >
+              <Settings size={14} />
+              <span>Settings</span>
+            </button>
+          )}
           <button
             onClick={logout}
             className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-[var(--red-tx)] hover:bg-[var(--red-bg)] rounded-lg transition-colors cursor-pointer"

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Clock, Save, Loader2 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { useApp, TIMETABLE_DAYS, TIMETABLE_PERIODS, PERIOD_TIMES, DEFAULT_TIMINGS } from '../context/AppContext';
+import { useApp, TIMETABLE_DAYS } from '../context/AppContext';
 import type { TimetablePeriod, PeriodTiming } from '../context/AppContext';
 import { api } from '../services/api';
 

@@ -7,7 +7,7 @@ import { KPICard } from '../components/KPICard';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Award, TrendingUp, Users, Percent, BookOpen } from 'lucide-react';
+import { Award, TrendingUp, Users, Percent } from 'lucide-react';
 
 const CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies'];
@@ -92,9 +92,9 @@ export function Performance() {
   if (timetable) {
     Object.entries(timetable).forEach(([cls, daysObj]: [string, any]) => {
       if (daysObj) {
-        Object.entries(daysObj).forEach(([day, slots]: [string, any]) => {
+        Object.values(daysObj).forEach((slots: any) => {
           if (slots) {
-            Object.entries(slots).forEach(([slotIdx, period]: [string, any]) => {
+            Object.values(slots).forEach((period: any) => {
               if (period && (
                 String(period.teacherId) === String(user?.id) || 
                 period.teacher?.toLowerCase() === user?.name?.toLowerCase()

@@ -46,7 +46,6 @@ export function FeeManagement() {
   const [assignType, setAssignType] = useState<'student' | 'class'>('student');
   const [collectStudent, setCollectStudent] = useState<StudentFeeDisplay | null>(null);
   const [studentFeesList, setStudentFeesList] = useState<any[]>([]);
-  const [selectedFeeId, setSelectedFeeId] = useState<string>('');
   const [payAmount, setPayAmount] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<string>('Cash');
   const [paymentRemarks, setPaymentRemarks] = useState<string>('');

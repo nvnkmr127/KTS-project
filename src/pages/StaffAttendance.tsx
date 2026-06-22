@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, RefreshCw, ToggleLeft, ToggleRight, Fingerprint, Plus } from 'lucide-react';
+import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, Plus } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/ui';
@@ -85,7 +85,7 @@ export function StaffAttendance() {
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
-  const [loading, setLoading] = useState(false);
+
 
   // Load staff members from localStorage (sync with Staff Management)
   useEffect(() => {

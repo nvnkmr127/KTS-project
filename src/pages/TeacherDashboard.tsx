@@ -3,7 +3,7 @@ import {
   CalendarCheck, BookOpen, ClipboardList, Bell, Clock, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useApp, TIMETABLE_DAYS, PERIOD_TIMES } from '../context/AppContext';
+import { useApp, TIMETABLE_DAYS } from '../context/AppContext';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
 

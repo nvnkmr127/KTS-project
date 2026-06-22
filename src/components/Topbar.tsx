@@ -32,6 +32,8 @@ const PAGE_TITLES: Record<PageId, string> = {
   timetable: 'Timetable Designer',
   promotion: 'Student Promotion',
   'my-salary': 'My Salary & Payslips',
+  settings: 'System Settings',
+  'activity-logs': 'Activity Logs',
 };
 
 interface TopbarProps {

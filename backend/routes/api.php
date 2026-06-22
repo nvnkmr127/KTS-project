@@ -177,7 +177,7 @@ Route::get('/test', function () {
 
 // Debug endpoint - SECURED: Only available in local environment with authentication
 Route::middleware(['auth:sanctum', 'throttle:10,1'])->group(function () {
-    Route::any('/debug-realtime', function (\Illuminate\Http\Request $request) {
+    Route::any('/debug-realtime', function (Request $request) {
         // Only allow in local environment
         if (! app()->environment('local')) {
             abort(404);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Send, Clock, MessageCircle, Eye, CheckCircle2, AlertCircle, Loader2, ChevronDown, ChevronUp, Calendar, User, ArrowLeft } from 'lucide-react';
+import { BookOpen, Send, Clock, Eye, CheckCircle2, AlertCircle, Loader2, Calendar, User, ArrowLeft } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -334,7 +334,7 @@ function AdminDiaryView() {
         <div className="space-y-2">
           {submissionList.map((entry, i) => {
             const hasSubmissions = entry.submittedCount > 0;
-            const hasPending = entry.pendingCount > 0;
+
 
             return (
               <div

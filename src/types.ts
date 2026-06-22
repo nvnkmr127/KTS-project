@@ -27,7 +27,9 @@ export type PageId =
   | 'allot-attendance'
   | 'promotion'
   | 'timetable'
-  | 'my-salary';
+  | 'my-salary'
+  | 'settings'
+  | 'activity-logs';
 
 export type ColorVariant =
   | 'blue'

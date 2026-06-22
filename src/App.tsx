@@ -31,6 +31,7 @@ import { StaffAccess } from './pages/StaffAccess';
 import { AllotAttendance } from './pages/AllotAttendance';
 import { Promotion } from './pages/Promotion';
 import { MySalary } from './pages/MySalary';
+import { Settings } from './pages/Settings';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -61,6 +62,8 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   promotion: '/promotion',
   timetable: '/timetable',
   'my-salary': '/my-salary',
+  settings: '/settings',
+  'activity-logs': '/activity-logs',
 };
 
 const PATH_TO_PAGE: Record<string, PageId> = Object.entries(PAGE_TO_PATH).reduce(
@@ -172,6 +175,8 @@ function AppShell() {
           {page === 'meetings' && <Meetings />}
           {page === 'timetable' && <Timetable />}
           {page === 'promotion' && <Promotion />}
+          {page === 'settings' && <Settings initialTab={0} />}
+          {page === 'activity-logs' && <Settings initialTab={2} />}
 
           {/* Teacher pages */}
           {page === 'teacher-dashboard' && <TeacherDashboard />}

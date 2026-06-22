@@ -35,6 +35,7 @@ class GenericApiController extends Controller
             'homework' => \App\Models\Homework::class,
             'settings' => \App\Models\Setting::class,
             'biometric-logs' => \App\Models\Attendance\BiometricLog::class,
+            'activity-logs' => \Spatie\Activitylog\Models\Activity::class,
         ];
 
         return $map[strtolower($resource)] ?? null;
@@ -81,6 +82,14 @@ class GenericApiController extends Controller
         }
 
         $query = $modelClass::query();
+
+        // Custom auth check for activity-logs
+        if ($resource === 'activity-logs') {
+            $user = auth('sanctum')->user();
+            if (!$user || !($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin'))) {
+                return response()->json(['error' => 'Unauthorized access'], 403);
+            }
+        }
 
         // Custom filter for faculty role
         if ($resource === 'faculty') {
@@ -135,6 +144,15 @@ class GenericApiController extends Controller
             } elseif ($resource === 'expenses') {
                 $query->where('description', 'like', "%$search%")
                       ->orWhere('vendor', 'like', "%$search%");
+            } elseif ($resource === 'activity-logs') {
+                $query->where(function ($q) use ($search) {
+                    $q->where('description', 'like', "%$search%")
+                      ->orWhere('log_name', 'like', "%$search%")
+                      ->orWhere('event', 'like', "%$search%")
+                      ->orWhereHas('causer', function ($uq) use ($search) {
+                          $uq->where('name', 'like', "%$search%");
+                      });
+                });
             }
         }
 
@@ -157,6 +175,8 @@ class GenericApiController extends Controller
             $query->with(['student', 'feeCategory']);
         } elseif ($resource === 'timetable') {
             $query->with(['batch', 'subject', 'user', 'timeSlot', 'classroom']);
+        } elseif ($resource === 'activity-logs') {
+            $query->with(['causer', 'subject']);
         }
 
         $limit = $request->get('limit', 1000);
@@ -261,6 +281,21 @@ class GenericApiController extends Controller
                 $item->class = $parsed['class'];
                 $item->section = $parsed['section'];
                 return $item;
+            });
+        } elseif ($resource === 'activity-logs') {
+            $data = $data->map(function ($item) {
+                return [
+                    'id' => (string)$item->id,
+                    'log_name' => $item->log_name,
+                    'description' => $item->description,
+                    'event' => $item->event,
+                    'subject_type' => $item->subject_type ? class_basename($item->subject_type) : null,
+                    'subject_id' => $item->subject_id ? (string)$item->subject_id : null,
+                    'causer_name' => $item->causer ? $item->causer->name : ($item->causer_id ? 'User #' . $item->causer_id : 'System'),
+                    'causer_email' => $item->causer ? $item->causer->email : null,
+                    'properties' => $item->properties,
+                    'created_at' => $item->created_at ? $item->created_at->toIso8601String() : null,
+                ];
             });
         }
 

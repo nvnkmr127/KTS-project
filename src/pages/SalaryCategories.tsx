@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, CheckCircle, Tag, Users, Wallet, CreditCard, ArrowLeft, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Tag, Users, Wallet, Loader2 } from 'lucide-react';
 import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { api } from '../services/api';
 import { STAFF } from './StaffManagement';
@@ -13,14 +12,11 @@ interface SalaryComponent {
   calculationType?: 'flat' | 'percentage';
 }
 
-interface StaffSalary {
-  staffId: string;
-  values: Record<string, number>; // componentId -> amount
-}
+
 
 export function SalaryCategories() {
   const [faculty, setFaculty] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const loading = false;
   const [components, setComponents] = useState<SalaryComponent[]>([]);
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
 
