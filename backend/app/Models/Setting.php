@@ -79,13 +79,13 @@ class Setting extends Model
         // Automatically set type based on value if not explicitly set
         static::creating(function ($setting) {
             if (empty($setting->type)) {
-                $setting->type = $setting->detectType($setting->getRawValue());
+                $setting->type = static::detectType($setting->getRawValue());
             }
         });
 
         static::updating(function ($setting) {
             if ($setting->isDirty('value') && $setting->type === 'auto') {
-                $setting->type = $setting->detectType($setting->getRawValue());
+                $setting->type = static::detectType($setting->getRawValue());
             }
         });
 
@@ -285,7 +285,7 @@ class Setting extends Model
     /**
      * Detect type based on value.
      */
-    protected function detectType($value)
+    protected static function detectType($value)
     {
         if (is_bool($value)) {
             return 'boolean';
