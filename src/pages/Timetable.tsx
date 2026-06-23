@@ -217,9 +217,9 @@ export function Timetable() {
           <table className="w-full border-collapse text-[11.5px]" style={{ minWidth: 700 }}>
             <thead>
               <tr>
-                <th className="w-[90px] text-left text-[10.5px] font-semibold text-[var(--tx3)] px-3 py-2 border-b border-[var(--b)]">Period</th>
+                <th className="w-[90px] text-left text-[11.5px] font-semibold text-[var(--tx2)] px-3 py-2 border-b border-[var(--b)]">Period</th>
                 {TIMETABLE_DAYS.map((day) => (
-                  <th key={day} className="text-left text-[10.5px] font-semibold text-[var(--tx3)] px-2 py-2 border-b border-[var(--b)] border-l border-[var(--b)]">
+                  <th key={day} className="text-left text-[11.5px] font-semibold text-[var(--tx2)] px-2 py-2 border-b border-[var(--b)] border-l border-[var(--b)]">
                     {day}
                   </th>
                 ))}
@@ -231,13 +231,13 @@ export function Timetable() {
                   return (
                     <tr key={p} className="bg-[var(--surf3)]/10">
                       <td className="px-3 py-2.5 border-b border-[var(--b)] align-middle">
-                        <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]">
-                          <Clock size={9} />
+                        <div className="flex items-center gap-1 text-[11.5px] text-[var(--tx2)]">
+                          <Clock size={10} />
                           <span className="font-semibold">{timing.start} - {timing.end}</span>
                         </div>
-                        <div className="text-[9.5px] text-[var(--tx3)] font-semibold mt-0.5">{timing.label || 'Break'}</div>
+                        <div className="text-[11px] text-[var(--tx2)] font-semibold mt-0.5">{timing.label || 'Break'}</div>
                       </td>
-                      <td colSpan={TIMETABLE_DAYS.length} className="px-3 py-2.5 border-b border-[var(--b)] border-l border-[var(--b)] align-middle text-center font-bold text-[10.5px] text-[var(--tx3)] tracking-wider">
+                      <td colSpan={TIMETABLE_DAYS.length} className="px-3 py-2.5 border-b border-[var(--b)] border-l border-[var(--b)] align-middle text-center font-bold text-[11px] text-[var(--tx2)] tracking-wider">
                         {timing.label?.toUpperCase() || 'BREAK'}
                       </td>
                     </tr>
@@ -249,11 +249,11 @@ export function Timetable() {
                 return (
                   <tr key={p} className="group">
                     <td className="px-3 py-1.5 border-b border-[var(--b)] align-top">
-                      <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]">
-                        <Clock size={9} />
+                      <div className="flex items-center gap-1 text-[11.5px] text-[var(--tx2)]">
+                        <Clock size={10} />
                         <span className="font-medium">{timing.start} - {timing.end}</span>
                       </div>
-                      <div className="text-[9.5px] text-[var(--tx3)] mt-0.5">Period {displayPeriodIndex}</div>
+                      <div className="text-[11px] text-[var(--tx2)] mt-0.5">Period {displayPeriodIndex}</div>
                     </td>
                     {TIMETABLE_DAYS.map((day) => {
                       const cell = classTimetable[day]?.[p];
@@ -269,20 +269,20 @@ export function Timetable() {
                             {cell ? (
                               <>
                                 <div
-                                  className="text-[10.5px] font-semibold leading-tight"
+                                  className="text-[11.5px] font-semibold leading-tight"
                                   style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx)' }}
                                 >
                                   {cell.subject}
                                 </div>
-                                <div className="text-[9.5px] mt-0.5 opacity-80" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx3)' }}>
+                                <div className="text-[11px] mt-0.5" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx2)' }}>
                                   {cell.teacher.split(' ').slice(-1)[0]}
                                 </div>
-                                <div className="text-[9px] opacity-60" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx3)' }}>
+                                <div className="text-[10.5px] mt-0.5" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx3)' }}>
                                   {cell.room}
                                 </div>
                               </>
                             ) : (
-                              <div className="text-[9.5px] text-[var(--tx3)] opacity-0 group-hover/cell:opacity-100 transition-opacity pt-1 text-center">
+                              <div className="text-[11px] text-[var(--tx2)] opacity-0 group-hover/cell:opacity-100 transition-opacity pt-1 text-center">
                                 + Add
                               </div>
                             )}

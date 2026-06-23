@@ -3,8 +3,10 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  CheckCircle, XCircle, BarChart2, AlertTriangle, Search, ArrowLeft, Calendar, BookOpen, Clock, Users, ArrowRight, User, ChevronLeft, ChevronRight, Loader2
+  CheckCircle, XCircle, BarChart2, AlertTriangle, Search, ArrowLeft, Calendar, BookOpen, Clock, Users, ArrowRight, User, ChevronLeft, ChevronRight, Loader2, Trash2
 } from 'lucide-react';
+// @ts-ignore
+import * as XLSX from 'xlsx';
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -88,6 +90,197 @@ export function Attendance() {
 
   const [students, setStudents] = useState<any[]>([]);
   const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
+
+  // Additional states for bulk actions, sorting, and Excel import
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<'name' | 'enrollment_number' | 'percentage' | ''>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showExcelImport, setShowExcelImport] = useState(false);
+  const [excelImportLoading, setExcelImportLoading] = useState(false);
+
+  const saveSettingToDb = async (key: string, value: string) => {
+    try {
+      const settings = await api.getResources('settings');
+      const existing = settings.find((s: any) => s.key === key);
+      if (existing) {
+        await api.updateResource('settings', existing.id, { key, value });
+      } else {
+        await api.createResource('settings', { key, value, group: 'general', type: 'json', is_public: false, is_encrypted: false });
+      }
+    } catch (err) {
+      console.error(`Error saving setting ${key} to DB:`, err);
+    }
+  };
+
+  const handleSort = (field: 'name' | 'enrollment_number' | 'percentage') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const handleBulkAttendanceUpdate = async (status: 'present' | 'absent') => {
+    if (selectedStudentIds.length === 0 || !selectedBatch) return;
+    setLoading(true);
+    try {
+      const local = localStorage.getItem('kts_student_attendance_records');
+      let records = local ? JSON.parse(local) as any[] : [];
+
+      selectedStudentIds.forEach((studentId) => {
+        // Mark both morning and lunch period
+        ['first_period', 'lunch_period'].forEach((session) => {
+          const idx = records.findIndex(r => 
+            String(r.studentId) === String(studentId) && r.date === selectedDate && r.session === session
+          );
+          if (idx !== -1) {
+            records[idx].status = status;
+          } else {
+            records.push({
+              studentId,
+              className: selectedBatch.name,
+              date: selectedDate,
+              session,
+              status,
+              markedBy: 'Admin'
+            });
+          }
+        });
+      });
+
+      localStorage.setItem('kts_student_attendance_records', JSON.stringify(records));
+      setAttendanceRecords(records);
+      await saveSettingToDb('kts_student_attendance_records', JSON.stringify(records));
+      setSelectedStudentIds([]);
+      
+      // Reload batch percentages
+      const response = await api.getBatchStudentPercentages(selectedBatch.id);
+      if (response.success && response.data) {
+        setStudentsList(response.data.students || []);
+      }
+      alert(`Bulk marked ${status} successfully!`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDeleteAttendance = async () => {
+    if (selectedStudentIds.length === 0 || !selectedBatch) return;
+    if (window.confirm(`Are you sure you want to delete all attendance records on ${selectedDate} for the ${selectedStudentIds.length} selected students?`)) {
+      setLoading(true);
+      try {
+        const local = localStorage.getItem('kts_student_attendance_records');
+        if (local) {
+          const records = JSON.parse(local) as any[];
+          const filteredRecords = records.filter(r => 
+            !(selectedStudentIds.includes(String(r.studentId)) && r.date === selectedDate)
+          );
+          localStorage.setItem('kts_student_attendance_records', JSON.stringify(filteredRecords));
+          setAttendanceRecords(filteredRecords);
+          await saveSettingToDb('kts_student_attendance_records', JSON.stringify(filteredRecords));
+        }
+        setSelectedStudentIds([]);
+        // Reload batch percentages
+        const response = await api.getBatchStudentPercentages(selectedBatch.id);
+        if (response.success && response.data) {
+          setStudentsList(response.data.students || []);
+        }
+        alert('Deleted records successfully!');
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const exportClassAttendanceToExcel = () => {
+    if (!selectedBatch) return;
+    const dataToExport = filteredStudents.map(s => ({
+      'Student Name': s.name,
+      'Enrollment Number': s.enrollment_number,
+      'Total Classes': s.total_classes,
+      'Present Classes': s.present_classes,
+      'Overall Attendance %': s.percentage
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `Attendance Class ${selectedBatch.name}`);
+    XLSX.writeFile(wb, `KTS_Attendance_Class_${selectedBatch.name}.xlsx`);
+  };
+
+  const handleImportExcelAttendance = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !selectedBatch) return;
+    const file = e.target.files[0];
+    setExcelImportLoading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+          const local = localStorage.getItem('kts_student_attendance_records');
+          let records = local ? JSON.parse(local) as any[] : [];
+
+          let count = 0;
+          data.forEach(row => {
+            const enrollment = String(row['Enrollment Number'] || row['EnrollmentNumber'] || '').trim();
+            const status = String(row['Status'] || 'present').trim().toLowerCase() as any;
+
+            if (enrollment && ['present', 'absent', 'late', 'excused'].includes(status)) {
+              const stud = students.find((s: any) => String(s.enrollment_number).trim() === enrollment);
+              if (stud) {
+                ['first_period', 'lunch_period'].forEach((session) => {
+                  const idx = records.findIndex(r => 
+                    String(r.studentId) === String(stud.id) && r.date === selectedDate && r.session === session
+                  );
+                  if (idx !== -1) {
+                    records[idx].status = status;
+                  } else {
+                    records.push({
+                      studentId: String(stud.id),
+                      className: selectedBatch.name,
+                      date: selectedDate,
+                      session,
+                      status,
+                      markedBy: 'Excel Import'
+                    });
+                  }
+                });
+                count++;
+              }
+            }
+          });
+
+          localStorage.setItem('kts_student_attendance_records', JSON.stringify(records));
+          setAttendanceRecords(records);
+          await saveSettingToDb('kts_student_attendance_records', JSON.stringify(records));
+          
+          const response = await api.getBatchStudentPercentages(selectedBatch.id);
+          if (response.success && response.data) {
+            setStudentsList(response.data.students || []);
+          }
+          alert(`Successfully imported attendance for ${count} students!`);
+        } catch (err) {
+          console.error(err);
+          alert('Failed to parse spreadsheet file rows');
+        }
+      };
+      reader.readAsBinaryString(file);
+    } catch (err) {
+      alert('Error reading spreadsheet file');
+    } finally {
+      setExcelImportLoading(false);
+    }
+  };
 
   // Load batches on mount
   useEffect(() => {
@@ -352,6 +545,19 @@ export function Attendance() {
     s.enrollment_number.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const sortedFilteredStudents = [...filteredStudents].sort((a, b) => {
+    if (!sortField) return 0;
+    let valA = a[sortField];
+    let valB = b[sortField];
+
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   // Status Badge Mapper
   const getStatusBadge = (status: AttendanceRecord['status']) => {
     switch (status) {
@@ -594,35 +800,35 @@ export function Attendance() {
       {/* VIEW: CLASS DETAIL STUDENT PERCENTAGES */}
       {!loading && view === 'class-details' && selectedBatch && (
         <Card>
-          <div className="flex items-center gap-2.5 mb-4 border-b border-[var(--b)] pb-3">
-            <button
-              onClick={() => setView('cards')}
-              className="p-1.5 hover:bg-[var(--surf2)] rounded-lg text-[var(--tx2)] hover:text-[var(--tx)] cursor-pointer"
-            >
-              <ArrowLeft size={13} />
-            </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-[13.5px] font-bold text-[var(--tx)]">Class {selectedBatch.name} — Student Attendance</h2>
-                <Badge variant="teal">Overall Percentages</Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-[var(--b)] pb-3">
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setView('cards')}
+                className="p-1.5 hover:bg-[var(--surf2)] rounded-lg text-[var(--tx2)] hover:text-[var(--tx)] cursor-pointer"
+              >
+                <ArrowLeft size={13} />
+              </button>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-[13.5px] font-bold text-[var(--tx)]">Class {selectedBatch.name} — Student Attendance</h2>
+                  <Badge variant="teal">Overall Percentages</Badge>
+                </div>
+                <p className="text-[10px] text-[var(--tx3)]">Click on a student to see their period-wise attendance for a selected date</p>
               </div>
-              <p className="text-[10px] text-[var(--tx3)]">Click on a student to see their period-wise attendance for a selected date</p>
+            </div>
+          </div>
+
+          {/* Read-only Alert Notice */}
+          <div className="mb-4 p-3.5 bg-[var(--amber-bg)]/20 border border-[var(--amber-tx)]/15 rounded-xl flex items-start gap-2.5 text-[11.5px] text-[var(--tx2)]">
+            <AlertTriangle className="text-[var(--amber-tx)] shrink-0 mt-0.5" size={14} />
+            <div>
+              <span className="font-bold text-[var(--tx)]">Attendance is Read-only:</span> Submissions and status edits of student attendance records must be performed by teachers in the <span className="font-semibold text-[var(--blue-tx)]">Attendance Allot</span> tab.
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
             <div className="text-[10.5px] text-[var(--tx3)]">
-              Showing <span className="font-semibold text-[var(--tx)]">{filteredStudents.length}</span> students in this class
-            </div>
-            <div className="relative w-full sm:w-48">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--tx3)]" size={12} />
-              <input
-                type="text"
-                placeholder="Search students..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-[var(--surf)] border border-[var(--b2)] rounded-lg text-[11px] text-[var(--tx)] focus:outline-none focus:border-[var(--blue)]"
-              />
+              Showing <span className="font-semibold text-[var(--tx)]">{sortedFilteredStudents.length}</span> students in this class
             </div>
           </div>
 
@@ -630,15 +836,21 @@ export function Attendance() {
             <table className="w-full border-collapse text-[11.5px] min-w-[500px]">
               <thead>
                 <tr className="border-b border-[var(--b)] bg-[var(--surf2)]">
-                  <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-3 py-2 border-b border-[var(--b)]">Student</th>
-                  <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-3 py-2 border-b border-[var(--b)]">Enrollment</th>
+                  <th onClick={() => handleSort('name')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-3 py-2 border-b border-[var(--b)] cursor-pointer hover:text-[var(--tx)]">
+                    Student {sortField === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                  </th>
+                  <th onClick={() => handleSort('enrollment_number')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-3 py-2 border-b border-[var(--b)] cursor-pointer hover:text-[var(--tx)]">
+                    Enrollment {sortField === 'enrollment_number' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                  </th>
                   <th className="text-[10.5px] font-medium text-[var(--tx3)] text-center px-3 py-2 border-b border-[var(--b)] w-24">Total Lectures</th>
                   <th className="text-[10.5px] font-medium text-[var(--tx3)] text-center px-3 py-2 border-b border-[var(--b)] w-24">Attended</th>
-                  <th className="text-[10.5px] font-medium text-[var(--tx3)] text-center px-3 py-2 border-b border-[var(--b)] w-36">Overall %</th>
+                  <th onClick={() => handleSort('percentage')} className="text-[10.5px] font-medium text-[var(--tx3)] text-center px-3 py-2 border-b border-[var(--b)] w-36 cursor-pointer hover:text-[var(--tx)]">
+                    Overall % {sortField === 'percentage' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.length === 0 ? (
+                {sortedFilteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-[var(--tx3)]">
                       {selectedBatch?.isMock 
@@ -647,33 +859,35 @@ export function Attendance() {
                     </td>
                   </tr>
                 ) : (
-                  filteredStudents.map((student) => (
-                    <tr
-                      key={student.id}
-                      onClick={() => handleStudentClick(student)}
-                      className="hover:bg-[var(--surf2)] border-b border-[var(--b)] transition-colors cursor-pointer group"
-                    >
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <Avatar initials={getInitials(student.name)} bg="var(--blue-bg)" color="var(--blue-tx)" />
-                          <span className="font-semibold text-[var(--tx)] group-hover:text-[var(--blue)] transition-colors">{student.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-[var(--tx2)] font-mono">{student.enrollment_number}</td>
-                      <td className="px-3 py-2 text-center text-[var(--tx)]">{student.total_classes}</td>
-                      <td className="px-3 py-2 text-center text-[var(--tx)]">{student.present_classes}</td>
-                      <td className="px-3 py-2 text-center">
-                        <div className="flex items-center justify-center gap-2.5">
-                          <span className={`font-bold text-[12px] ${student.percentage >= 75 ? 'text-[var(--teal)]' : student.percentage >= 60 ? 'text-[var(--amber)]' : 'text-[var(--red)]'}`}>
-                            {student.percentage}%
-                          </span>
-                          <div className="w-16 hidden sm:block">
-                            <ProgressBar value={student.percentage} color={student.percentage >= 75 ? 'var(--teal)' : student.percentage >= 60 ? 'var(--amber)' : 'var(--red)'} />
+                  sortedFilteredStudents.map((student) => {
+                    return (
+                      <tr
+                        key={student.id}
+                        className="hover:bg-[var(--surf2)] border-b border-[var(--b)] transition-colors cursor-pointer group"
+                        onClick={() => handleStudentClick(student)}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <Avatar initials={getInitials(student.name)} bg="var(--blue-bg)" color="var(--blue-tx)" />
+                            <span className="font-semibold text-[var(--tx)] group-hover:text-[var(--blue)] transition-colors">{student.name}</span>
                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        <td className="px-3 py-2 text-[var(--tx2)] font-mono">{student.enrollment_number}</td>
+                        <td className="px-3 py-2 text-center text-[var(--tx)]">{student.total_classes}</td>
+                        <td className="px-3 py-2 text-center text-[var(--tx)]">{student.present_classes}</td>
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center gap-2.5">
+                            <span className={`font-bold text-[12px] ${student.percentage >= 75 ? 'text-[var(--teal)]' : student.percentage >= 60 ? 'text-[var(--amber)]' : 'text-[var(--red)]'}`}>
+                              {student.percentage}%
+                            </span>
+                            <div className="w-16 hidden sm:block">
+                              <ProgressBar value={student.percentage} color={student.percentage >= 75 ? 'var(--teal)' : student.percentage >= 60 ? 'var(--amber)' : 'var(--red)'} />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -891,7 +1105,7 @@ export function Attendance() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 self-end sm:self-center">
+                    <div className="flex items-center gap-3 self-end sm:self-center">
                       {getStatusBadge(record.status)}
                     </div>
                   </div>

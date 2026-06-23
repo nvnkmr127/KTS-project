@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Edit2, Trash2, Eye, Upload, X, FileText, Phone, Mail, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, Download, Calendar, Printer, Wallet, History, UserCheck, ArrowLeft } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, Eye, Upload, X, FileText, Phone, Mail, Loader2, CheckCircle2, AlertCircle, FileSpreadsheet, Download, Calendar, Printer, Wallet, History, UserCheck, ArrowLeft, Users } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
+import { TableSkeleton } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 // @ts-ignore
 import * as XLSX from 'xlsx';
@@ -84,6 +87,72 @@ export function StaffManagement() {
   const [catFilter, setCatFilter] = useState('All');
   const [modal, setModal] = useState<ModalState>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<'name' | 'department' | 'joinDate' | 'attendance' | 'status' | ''>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+  const [bulkStatusConfirmOpen, setBulkStatusConfirmOpen] = useState<'Active' | 'On Leave' | 'Resigned' | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSort = (field: 'name' | 'department' | 'joinDate' | 'attendance' | 'status') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const handleBulkStatusChange = (newStatus: 'Active' | 'On Leave' | 'Resigned') => {
+    if (selectedIds.length === 0) return;
+    if (newStatus === 'Resigned') {
+      setBulkDeleteConfirmOpen(true);
+    } else {
+      setBulkStatusConfirmOpen(newStatus);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setBulkDeleteConfirmOpen(true);
+  };
+
+  const executeBulkDelete = () => {
+    setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: 'Resigned' } : s));
+    setSelectedIds([]);
+    setBulkDeleteConfirmOpen(false);
+  };
+
+  const executeBulkStatusChange = () => {
+    if (!bulkStatusConfirmOpen) return;
+    setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: bulkStatusConfirmOpen } : s));
+    setSelectedIds([]);
+    setBulkStatusConfirmOpen(null);
+  };
+
+  const exportToExcel = () => {
+    const dataToExport = filtered.map(s => ({
+      'Staff Name': s.name,
+      'Designation': s.designation,
+      'Department': s.department,
+      'Category': s.category,
+      'Subject': s.subject || 'N/A',
+      'Phone': s.phone,
+      'Email': s.email,
+      'Join Date': s.joinDate,
+      'Salary': s.salary,
+      'Qualifications': s.qualifications,
+      'Status': s.status
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Staff Directory');
+    XLSX.writeFile(wb, 'KTS_Staff_Directory.xlsx');
+  };
 
   const [selectedCategory, setSelectedCategory] = useState('Teaching');
   const [customCategory, setCustomCategory] = useState('');
@@ -362,7 +431,35 @@ export function StaffManagement() {
       s.category.toLowerCase().includes(search.toLowerCase());
     const matchDept = deptFilter === 'All' || s.department === deptFilter;
     const matchCat = catFilter === 'All' || s.category === catFilter;
-    return matchSearch && matchDept && matchCat;
+    const matchStatus = statusFilter === 'All' || s.status === statusFilter;
+    return matchSearch && matchDept && matchCat && matchStatus;
+  });
+
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (!sortField) return 0;
+    let valA: any = a[sortField];
+    let valB: any = b[sortField];
+
+    if (sortField === 'name') {
+      valA = a.name.toLowerCase();
+      valB = b.name.toLowerCase();
+    } else if (sortField === 'department') {
+      valA = a.department.toLowerCase();
+      valB = b.department.toLowerCase();
+    } else if (sortField === 'joinDate') {
+      valA = new Date(a.joinDate).getTime();
+      valB = new Date(b.joinDate).getTime();
+    } else if (sortField === 'attendance') {
+      valA = a.attendance;
+      valB = b.attendance;
+    } else if (sortField === 'status') {
+      valA = a.status.toLowerCase();
+      valB = b.status.toLowerCase();
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const active = staffList.filter((s) => s.status === 'Active').length;
@@ -457,9 +554,13 @@ export function StaffManagement() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to move this staff member to the recycle bin?')) {
-      setStaffList(prev => prev.map(s => s.id === id ? { ...s, status: 'Resigned' as const } : s));
-    }
+    setDeleteConfirmId(id);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteConfirmId) return;
+    setStaffList(prev => prev.map(s => s.id === deleteConfirmId ? { ...s, status: 'Resigned' as const } : s));
+    setDeleteConfirmId(null);
   };
 
   const allCategories = Array.from(new Set(staffList.map(s => s.category || 'Teaching')));
@@ -1121,6 +1222,9 @@ export function StaffManagement() {
                 <button onClick={() => setImportOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]">
                   <Upload size={12} /> Import
                 </button>
+                <button onClick={exportToExcel} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]">
+                  <Download size={12} /> Export
+                </button>
                 <button onClick={() => setModal({ type: 'add' })} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
                   <Plus size={12} /> Add Staff
                 </button>
@@ -1140,61 +1244,140 @@ export function StaffManagement() {
                 <option value="All">All Categories</option>
                 {allCategories.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                <option value="All">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="On Leave">On Leave</option>
+              </select>
             </div>
+
+            {selectedIds.length > 0 && (
+              <div className="flex items-center justify-between bg-[var(--blue-bg)] border border-[var(--blue-tx)]/25 rounded-lg p-3 mb-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                <span className="text-[12px] text-[var(--blue-tx)] font-semibold">{selectedIds.length} staff selected</span>
+                <div className="flex gap-2">
+                  <button onClick={() => handleBulkStatusChange('Active')} className="px-2.5 py-1 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/20 rounded-md font-semibold hover:opacity-90 cursor-pointer">Mark Active</button>
+                  <button onClick={() => handleBulkStatusChange('On Leave')} className="px-2.5 py-1 text-[11px] bg-[var(--amber-bg)] text-[var(--amber-tx)] border border-[var(--amber-tx)]/20 rounded-md font-semibold hover:opacity-90 cursor-pointer">Mark On Leave</button>
+                  <button onClick={handleBulkDelete} className="px-2.5 py-1 text-[11px] bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 rounded-md font-semibold hover:opacity-90 cursor-pointer">Move to Recycle Bin</button>
+                </div>
+              </div>
+            )}
 
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[12px] min-w-[700px]">
                 <thead>
                   <tr className="border-b border-[var(--b)]">
-                    {['Staff Member', 'Department', 'Contact', 'Join Date', 'Attendance', 'Status', 'Actions'].map((h) => (
-                      <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{h}</th>
-                    ))}
+                    <th className="px-2 py-2 text-left w-8">
+                      <input
+                        type="checkbox"
+                        checked={sortedFiltered.length > 0 && selectedIds.length === sortedFiltered.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(sortedFiltered.map(s => s.id));
+                          } else {
+                            setSelectedIds([]);
+                          }
+                        }}
+                        className="cursor-pointer rounded border-[var(--b)]"
+                      />
+                    </th>
+                    <th onClick={() => handleSort('name')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Staff Member {sortField === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th onClick={() => handleSort('department')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Department {sortField === 'department' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th className="hidden md:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Contact</th>
+                    <th onClick={() => handleSort('joinDate')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Join Date {sortField === 'joinDate' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th onClick={() => handleSort('attendance')} className="hidden lg:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Attendance {sortField === 'attendance' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th onClick={() => handleSort('status')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Status {sortField === 'status' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((s) => {
-                    const dc = DEPT_COLORS[s.department] ?? DEPT_COLORS.default;
-                    return (
-                      <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
-                        <td className="px-2 py-2.5 cursor-pointer" onClick={() => setModal({ type: 'view', staff: s })}>
-                          <div className="flex items-center gap-2.5">
-                            <Avatar initials={s.name.split(' ').map((n) => n[0]).join('').slice(0, 2)} bg={dc.bg} color={dc.color} />
-                            <div>
-                              <div className="font-semibold text-[var(--tx)] hover:text-[var(--blue)]">{s.name}</div>
-                              <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1.5">
-                                <span>{s.designation}</span>
-                                <span className="text-[9px] px-1.5 py-0.5 bg-[var(--surf3)] border border-[var(--b)] rounded-full text-[var(--tx2)] font-medium">{s.category || 'Teaching'}</span>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={8} className="px-2 py-4">
+                        <TableSkeleton rows={6} cols={8} />
+                      </td>
+                    </tr>
+                  ) : sortedFiltered.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-2 py-4">
+                        <EmptyState
+                          title="No staff members found"
+                          description={search.trim() ? "We couldn't find any staff matching your search criteria. Try refining your filters." : "Add your first staff member to populate the directory."}
+                          icon={<Users size={28} />}
+                          actionLabel={search.trim() ? undefined : "Add Staff"}
+                          onAction={search.trim() ? undefined : () => { setModal({ type: 'add' }); }}
+                        />
+                      </td>
+                    </tr>
+                  ) : (
+                    sortedFiltered.map((s) => {
+                      const dc = DEPT_COLORS[s.department] ?? DEPT_COLORS.default;
+                      const isSelected = selectedIds.includes(s.id);
+                      return (
+                        <tr key={s.id} className={`border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0 ${isSelected ? 'bg-[var(--blue-bg)]/10' : ''}`}>
+                          <td className="px-2 py-2.5">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedIds(prev => [...prev, s.id]);
+                                } else {
+                                  setSelectedIds(prev => prev.filter(id => id !== s.id));
+                                }
+                              }}
+                              className="cursor-pointer rounded border-[var(--b)]"
+                            />
+                          </td>
+                          <td className="px-2 py-2.5 cursor-pointer" onClick={() => setModal({ type: 'view', staff: s })}>
+                            <div className="flex items-center gap-2.5">
+                              <Avatar initials={s.name.split(' ').map((n) => n[0]).join('').slice(0, 2)} bg={dc.bg} color={dc.color} />
+                              <div>
+                                <div className="font-semibold text-[var(--tx)] hover:text-[var(--blue)]">{s.name}</div>
+                                <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1.5">
+                                  <span>{s.designation}</span>
+                                  <span className="text-[9px] px-1.5 py-0.5 bg-[var(--surf3)] border border-[var(--b)] rounded-full text-[var(--tx2)] font-medium">{s.category || 'Teaching'}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <div className="font-medium text-[var(--tx)]">{s.department}</div>
-                          {s.subject && <div className="text-[10.5px] text-[var(--tx3)]">{s.subject}</div>}
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <div className="flex items-center gap-1 text-[var(--tx2)]"><Phone size={10} />{s.phone}</div>
-                          <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]"><Mail size={9} />{s.email}</div>
-                        </td>
-                        <td className="px-2 py-2.5 text-[var(--tx2)]">{s.joinDate}</td>
-                        <td className="px-2 py-2.5">
-                          <span className={`font-semibold ${s.attendance >= 90 ? 'text-[var(--teal-tx)]' : 'text-[var(--amber-tx)]'}`}>{s.attendance}%</span>
-                        </td>
-                        <td className="px-2 py-2.5">
-                          {s.status === 'Active' && <Badge variant="teal">Active</Badge>}
-                          {s.status === 'On Leave' && <Badge variant="amber">On Leave</Badge>}
-                          {s.status === 'Resigned' && <Badge variant="red">Resigned</Badge>}
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <div className="flex items-center gap-1.5">
-                            <button onClick={() => setModal({ type: 'view', staff: s })} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer"><Eye size={13} /></button>
-                            <button onClick={() => setModal({ type: 'edit', staff: s })} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] cursor-pointer"><Edit2 size={13} /></button>
-                            <button onClick={() => handleDelete(s.id)} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] cursor-pointer"><Trash2 size={13} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <div className="font-medium text-[var(--tx)]">{s.department}</div>
+                            {s.subject && <div className="text-[10.5px] text-[var(--tx3)]">{s.subject}</div>}
+                          </td>
+                          <td className="hidden md:table-cell px-2 py-2.5">
+                            <div className="flex items-center gap-1 text-[var(--tx2)]"><Phone size={10} />{s.phone}</div>
+                            <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]"><Mail size={9} />{s.email}</div>
+                          </td>
+                          <td className="hidden sm:table-cell px-2 py-2.5 text-[var(--tx2)]">{s.joinDate}</td>
+                          <td className="hidden lg:table-cell px-2 py-2.5">
+                            <span className={`font-semibold ${s.attendance >= 90 ? 'text-[var(--teal-tx)]' : 'text-[var(--amber-tx)]'}`}>{s.attendance}%</span>
+                          </td>
+                          <td className="px-2 py-2.5">
+                            {s.status === 'Active' && <Badge variant="teal">Active</Badge>}
+                            {s.status === 'On Leave' && <Badge variant="amber">On Leave</Badge>}
+                            {s.status === 'Resigned' && <Badge variant="red">Resigned</Badge>}
+                          </td>
+                          <td className="px-2 py-2.5">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => setModal({ type: 'view', staff: s })} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer"><Eye size={13} /></button>
+                              <button onClick={() => setModal({ type: 'edit', staff: s })} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] cursor-pointer"><Edit2 size={13} /></button>
+                              <button onClick={() => handleDelete(s.id)} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] cursor-pointer"><Trash2 size={13} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1204,7 +1387,7 @@ export function StaffManagement() {
 
       {/* Add/Edit Modal */}
       {modal && modal.type !== 'view' && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
           <form onSubmit={handleSave} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[540px] max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[var(--b)] sticky top-0 bg-[var(--surf)] z-10">
               <div>
@@ -1857,6 +2040,42 @@ export function StaffManagement() {
           }}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        title="Move Staff Member to Recycle Bin"
+        message="Are you sure you want to move this staff member to the recycle bin? You can restore them later."
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+        isDestructive={true}
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={bulkDeleteConfirmOpen}
+        title="Move Selected Staff Members to Recycle Bin"
+        message={`Are you sure you want to move the ${selectedIds.length} selected staff members to the recycle bin? You can restore them later.`}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={executeBulkDelete}
+        onCancel={() => setBulkDeleteConfirmOpen(false)}
+        isDestructive={true}
+      />
+
+      {/* Bulk Status Update Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!bulkStatusConfirmOpen}
+        title="Update Selected Staff Status"
+        message={`Are you sure you want to change the status of the ${selectedIds.length} selected staff members to ${bulkStatusConfirmOpen}?`}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={executeBulkStatusChange}
+        onCancel={() => setBulkStatusConfirmOpen(null)}
+        isDestructive={false}
+      />
     </div>
   );
 }

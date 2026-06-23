@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, WifiOff } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { Login } from './pages/Login';
@@ -102,6 +102,18 @@ function AppShell() {
   const [pendingPage, setPendingPage] = useState<PageId | null>(null);
 
   const [page, setPage] = useState<PageId>(() => getInitialPage(isTeacher));
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   const [dark, setDark] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -259,6 +271,15 @@ function AppShell() {
                 Discard &amp; Leave
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {!isOnline && (
+        <div className="fixed bottom-4 right-4 z-[99] bg-[var(--red-bg)] border border-[var(--red-tx)]/25 text-[var(--red-tx)] px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2.5 animate-bounce">
+          <WifiOff size={15} />
+          <div className="text-left">
+            <div className="text-[11.5px] font-bold">Offline Mode</div>
+            <div className="text-[9.5px] opacity-80">Real-time sync paused. Reconnecting...</div>
           </div>
         </div>
       )}

@@ -233,6 +233,15 @@ const getSchoolSvgString = () => {
 // ── Component ─────────────────────────────────────────────────────────────────
 export function BusTracking() {
   const [selectedBus, setSelectedBus] = useState<number | null>(null);
+  // Touch-hint overlay: shown on mobile until first map interaction
+  const [showTouchHint, setShowTouchHint] = useState(true);
+  const [touchHintFading, setTouchHintFading] = useState(false);
+
+  const dismissTouchHint = useCallback(() => {
+    if (!showTouchHint) return;
+    setTouchHintFading(true);
+    setTimeout(() => setShowTouchHint(false), 400);
+  }, [showTouchHint]);
 
   // Load Google Maps SDK
   const { isLoaded } = useJsApiLoader({
@@ -786,7 +795,7 @@ export function BusTracking() {
         </div>
 
         {/* Real Google Map */}
-        <div className="relative bg-[var(--surf2)] rounded-xl overflow-hidden border border-[var(--b)]" style={{ height: '480px' }}>
+        <div className="relative bg-[var(--surf2)] rounded-xl overflow-hidden border border-[var(--b)]" style={{ height: 'clamp(300px, 50vw, 480px)' }}>
           {!isLoaded ? (
             <div className="flex items-center justify-center h-full text-[12.5px] text-[var(--tx3)] font-medium">
               <span className="animate-pulse">Loading Google Maps...</span>
@@ -804,8 +813,13 @@ export function BusTracking() {
                   streetViewControl: true,
                   zoomControl: true,
                   fullscreenControl: false,
+                  // Fix pinch-zoom vs page-scroll conflict on touch devices:
+                  // 'greedy' captures all touch gestures exclusively for the map.
+                  gestureHandling: 'greedy',
                 }}
                 mapTypeId={mapStyle === 'streets' ? 'roadmap' : 'hybrid'}
+                onDragStart={dismissTouchHint}
+                onZoomChanged={dismissTouchHint}
               >
                 {/* School Marker */}
                 <MarkerF
@@ -957,6 +971,25 @@ export function BusTracking() {
                   Satellite
                 </button>
               </div>
+
+              {/* Mobile touch hint — fades away after first map interaction */}
+              {showTouchHint && (
+                <div
+                  className="absolute inset-0 pointer-events-none flex items-end justify-center pb-6 sm:hidden"
+                  style={{ opacity: touchHintFading ? 0 : 1, transition: 'opacity 0.4s ease' }}
+                >
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium text-white"
+                    style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/>
+                      <path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v2"/>
+                      <path d="M10 10.5a2 2 0 0 0-2-2 2 2 0 0 0-2 2V18a6 6 0 0 0 6 6h2a6 6 0 0 0 6-6V11a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/>
+                    </svg>
+                    Use one finger to pan · Pinch to zoom
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

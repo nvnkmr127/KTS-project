@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, MapPin, Calendar, Phone, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, MapPin, Calendar, Phone, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload } from 'lucide-react';
+// @ts-ignore
+import * as XLSX from 'xlsx';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -42,6 +44,56 @@ export function FeeManagement() {
   const [classFilter, setClassFilter] = useState('All');
   const [feeCategoryFilter, setFeeCategoryFilter] = useState('All');
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<'name' | 'cls' | 'fee' | 'paid' | 'bal' | 'status' | ''>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+
+  const handleSort = (field: 'name' | 'cls' | 'fee' | 'paid' | 'bal' | 'status') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const handleBulkDeleteFees = async () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete ALL allocated fees for the ${selectedIds.length} selected students? This will wipe out their fee records.`)) {
+      setLoading(true);
+      try {
+        await Promise.all(selectedIds.map(async (studentId) => {
+          // Find all fees for this student
+          const studentFees = await api.getResources('student-fees', { student_id: studentId });
+          await Promise.all(studentFees.map((f: { id: string; }) => api.deleteResource('student-fees', f.id)));
+        }));
+        setSelectedIds([]);
+        await loadFeesData();
+        alert('Bulk deleted allocations successfully!');
+      } catch (err) {
+        console.error('Failed to bulk delete fees:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const exportToExcel = () => {
+    const dataToExport = filtered.map(s => ({
+      'Student Name': s.name,
+      'Class': s.cls,
+      'Total Fee': s.fee,
+      'Paid': s.paid,
+      'Balance': s.bal,
+      'Status': s.status
+    }));
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Fees');
+    XLSX.writeFile(wb, 'KTS_Fees_Report.xlsx');
+  };
 
   // Modals state
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -629,7 +681,10 @@ export function FeeManagement() {
 
   // Filter students based on search, tabs, class, and fee category filters
   const filtered = students.filter((s) => {
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || s.cls.toLowerCase().includes(search.toLowerCase());
+    const matchSearch =
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.cls.toLowerCase().includes(search.toLowerCase()) ||
+      s.assignedCategories?.some(cat => cat.toLowerCase().includes(search.toLowerCase()));
     const matchClass = classFilter === 'All' || s.cls.startsWith(classFilter);
     const matchTab =
       tab === 0 ||
@@ -639,6 +694,36 @@ export function FeeManagement() {
     const matchFeeCategory = feeCategoryFilter === 'All' || s.assignedCategories?.includes(feeCategoryFilter.toLowerCase());
 
     return matchSearch && matchClass && matchTab && matchFeeCategory;
+  });
+
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (!sortField) return 0;
+    let valA = a[sortField];
+    let valB = b[sortField];
+
+    if (sortField === 'name') {
+      valA = a.name.toLowerCase();
+      valB = b.name.toLowerCase();
+    } else if (sortField === 'cls') {
+      valA = a.cls.toLowerCase();
+      valB = b.cls.toLowerCase();
+    } else if (sortField === 'fee') {
+      valA = a.fee;
+      valB = b.fee;
+    } else if (sortField === 'paid') {
+      valA = a.paid;
+      valB = b.paid;
+    } else if (sortField === 'bal') {
+      valA = a.bal;
+      valB = b.bal;
+    } else if (sortField === 'status') {
+      valA = a.status.toLowerCase();
+      valB = b.status.toLowerCase();
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   });
 
   const totalCollected = students.reduce((sum, s) => sum + s.paid, 0);
@@ -816,14 +901,12 @@ export function FeeManagement() {
                     <span className="text-[9px] text-[var(--blue-tx)] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to view calendar →</span>
                   </div>
                   <div className="flex items-center gap-2.5 mt-0.5">
-                    <span className={`text-[13px] font-bold ${
-                      selectedStudentAttendance !== null && selectedStudentAttendance >= 75 ? 'text-[var(--teal-tx)]' : selectedStudentAttendance !== null && selectedStudentAttendance >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
-                    }`}>{selectedStudentAttendance !== null ? `${selectedStudentAttendance}%` : 'Loading...'}</span>
+                    <span className={`text-[13px] font-bold ${selectedStudentAttendance !== null && selectedStudentAttendance >= 75 ? 'text-[var(--teal-tx)]' : selectedStudentAttendance !== null && selectedStudentAttendance >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
+                      }`}>{selectedStudentAttendance !== null ? `${selectedStudentAttendance}%` : 'Loading...'}</span>
                     {selectedStudentAttendance !== null && (
                       <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${
-                          selectedStudentAttendance >= 75 ? 'bg-[var(--teal)]' : selectedStudentAttendance >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
-                        }`} style={{ width: `${selectedStudentAttendance}%` }} />
+                        <div className={`h-full rounded-full ${selectedStudentAttendance >= 75 ? 'bg-[var(--teal)]' : selectedStudentAttendance >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
+                          }`} style={{ width: `${selectedStudentAttendance}%` }} />
                       </div>
                     )}
                   </div>
@@ -890,7 +973,7 @@ export function FeeManagement() {
                                       setEditPaidAmount(String(fee.paid_amount));
                                       setShowEditPaidModal(true);
                                     }}
-                                    className="p-1.5 hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
+                                    className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
                                     title="Edit Paid Amount"
                                   >
                                     <Edit size={12} />
@@ -906,10 +989,33 @@ export function FeeManagement() {
                                       }],
                                       totalPaid: Number(fee.paid_amount)
                                     })}
-                                    className="p-1.5 hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
+                                    className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
                                     title="Print Receipt"
                                   >
                                     <Printer size={12} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (window.confirm(`Are you sure you want to delete/reverse the payment of ₹${Number(fee.paid_amount).toLocaleString()} for ${feeName}?`)) {
+                                        try {
+                                          await api.updateResource('student-fees', fee.id, {
+                                            paid_amount: 0,
+                                            payment_method: null,
+                                            remarks: null,
+                                          });
+                                          loadFeesData();
+                                          loadStudentFees(std.studentId);
+                                          alert('Payment deleted successfully!');
+                                        } catch (err) {
+                                          console.error('Failed to delete payment:', err);
+                                        }
+                                      }
+                                    }}
+                                    className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--red-tx)] rounded-lg transition-colors cursor-pointer"
+                                    title="Delete/Reverse Payment"
+                                  >
+                                    <Trash2 size={12} />
                                   </button>
                                 </>
                               )}
@@ -940,7 +1046,7 @@ export function FeeManagement() {
               >
                 <ArrowLeft size={12} /> Back to Profile
               </button>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
@@ -1013,12 +1119,12 @@ export function FeeManagement() {
                     {d}
                   </div>
                 ))}
-                
+
                 {/* Empty slots for starting offset */}
                 {Array.from({ length: startDayOfWeek }).map((_, idx) => (
                   <div key={`empty-${idx}`} className="aspect-square bg-transparent rounded-lg"></div>
                 ))}
-                
+
                 {/* Active month days */}
                 {Array.from({ length: daysInMonth }).map((_, idx) => {
                   const dayNum = idx + 1;
@@ -1027,20 +1133,19 @@ export function FeeManagement() {
                     r => String(r.studentId) === String(std.studentId) && r.date === dateStr
                   );
                   const att = getDayAttendanceInfo(dateStr);
-                  
-                  const tooltipText = att 
+
+                  const tooltipText = att
                     ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
                     : `${dayNum} ${monthNames[month]}: No attendance marked`;
-                  
+
                   return (
                     <div
                       key={`day-${dayNum}`}
                       title={tooltipText}
-                      className={`aspect-square p-2 rounded-xl flex flex-col justify-between border transition-all ${
-                        att 
-                          ? att.className 
-                          : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
-                      }`}
+                      className={`aspect-square p-2 rounded-xl flex flex-col justify-between border transition-all ${att
+                        ? att.className
+                        : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
+                        }`}
                     >
                       <span className="text-[11px] font-bold">{dayNum}</span>
                       {att && (
@@ -1106,7 +1211,10 @@ export function FeeManagement() {
                 Fee Collection Directory {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
               </div>
               <div className="flex gap-2">
-                <button className="flex items-center gap-1 px-2.5 py-1 text-[11px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer">
+                <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)]">
+                  <Upload size={12} /> Import
+                </button>
+                <button onClick={exportToExcel} className="flex items-center gap-1 px-2.5 py-1 text-[11px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer">
                   <Download size={11} /> Export
                 </button>
                 <button
@@ -1137,7 +1245,7 @@ export function FeeManagement() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search student by name or class..."
+                  placeholder="Search student name, class, or fee category..."
                   className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none"
                 />
               </div>
@@ -1164,55 +1272,108 @@ export function FeeManagement() {
               </select>
             </div>
 
+            {selectedIds.length > 0 && (
+              <div className="flex items-center justify-between bg-[var(--blue-bg)] border border-[var(--blue-tx)]/25 rounded-lg p-3 mb-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                <span className="text-[12px] text-[var(--blue-tx)] font-semibold">{selectedIds.length} students selected</span>
+                <div className="flex gap-2">
+                  <button onClick={handleBulkDeleteFees} className="px-2.5 py-1 text-[11px] bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 rounded-md font-semibold hover:opacity-90 cursor-pointer">Bulk Delete Fees</button>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[12px] min-w-[700px]">
                 <thead>
                   <tr>
-                    {['#', 'Student Name', 'Class', 'Term Fee', 'Paid', 'Balance', 'Status', 'Action'].map((h) => (
-                      <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap">
-                        {h}
-                      </th>
-                    ))}
+                    <th className="px-2 py-1.5 border-b border-[var(--b)] text-left w-8">
+                      <input
+                        type="checkbox"
+                        checked={sortedFiltered.length > 0 && selectedIds.length === sortedFiltered.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(sortedFiltered.map(s => s.studentId));
+                          } else {
+                            setSelectedIds([]);
+                          }
+                        }}
+                        className="cursor-pointer rounded border-[var(--b)]"
+                      />
+                    </th>
+                    <th onClick={() => handleSort('name')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Student Name {sortField === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th onClick={() => handleSort('cls')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Class {sortField === 'cls' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th onClick={() => handleSort('fee')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Term Fee {sortField === 'fee' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th onClick={() => handleSort('paid')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Paid {sortField === 'paid' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th onClick={() => handleSort('bal')} className="hidden md:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Balance {sortField === 'bal' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th onClick={() => handleSort('status')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Status {sortField === 'status' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
+                    <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-1.5 border-b border-[var(--b)] whitespace-nowrap">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((s, index) => (
-                    <tr key={s.studentId} className="hover:bg-[var(--surf2)] transition-colors group">
-                      <td className="px-2 py-2 text-[var(--tx3)]">{index + 1}</td>
-                      <td className="px-2 py-2 cursor-pointer text-[var(--blue-tx)] font-medium" onClick={() => handleViewStudentDetails(s)}>
-                        <div className="flex items-center gap-2">
-                          <Avatar initials={s.init} bg="var(--blue-bg)" color="var(--blue-tx)" />
-                          <span>{s.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 text-[var(--tx2)]">Class {s.cls}</td>
-                      <td className="px-2 py-2 text-[var(--tx)]">₹{s.fee.toLocaleString()}</td>
-                      <td className="px-2 py-2 text-[var(--teal-tx)] font-medium">₹{s.paid.toLocaleString()}</td>
-                      <td className="px-2 py-2 text-[var(--tx)]">
-                        {s.bal > 0 ? (
-                          <span className="text-[var(--red-tx)] font-medium">₹{s.bal.toLocaleString()}</span>
-                        ) : (
-                          <span className="text-[var(--tx3)]">₹0</span>
-                        )}
-                      </td>
-                      <td className="px-2 py-2">{statusBadge(s.status)}</td>
-                      <td className="px-2 py-2">
-                        {s.status === 'Paid' ? (
-                          <span className="text-[11px] text-[var(--tx3)]">No Dues</span>
-                        ) : (
-                          <button
-                            onClick={() => setCollectStudent(s)}
-                            className="text-[11px] text-[var(--blue-tx)] hover:underline cursor-pointer font-medium"
-                          >
-                            Collect Payment
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {filtered.length === 0 && (
+                  {sortedFiltered.map((s, index) => {
+                    const isSelected = selectedIds.includes(s.studentId);
+                    return (
+                      <tr key={s.studentId} className={`hover:bg-[var(--surf2)] transition-colors group ${isSelected ? 'bg-[var(--blue-bg)]/10' : ''}`}>
+                        <td className="px-2 py-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds(prev => [...prev, s.studentId]);
+                              } else {
+                                setSelectedIds(prev => prev.filter(id => id !== s.studentId));
+                              }
+                            }}
+                            className="cursor-pointer rounded border-[var(--b)]"
+                          />
+                        </td>
+                        <td className="px-2 py-2 cursor-pointer text-[var(--blue-tx)] font-medium" onClick={() => handleViewStudentDetails(s)}>
+                          <div className="flex items-center gap-2">
+                            <Avatar initials={s.init} bg="var(--blue-bg)" color="var(--blue-tx)" />
+                            <span>{s.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-[var(--tx2)]">Class {s.cls}</td>
+                        <td className="hidden sm:table-cell px-2 py-2 text-[var(--tx)]">₹{s.fee.toLocaleString()}</td>
+                        <td className="hidden sm:table-cell px-2 py-2 text-[var(--teal-tx)] font-medium">₹{s.paid.toLocaleString()}</td>
+                        <td className="hidden md:table-cell px-2 py-2 text-[var(--tx)]">
+                          {s.bal > 0 ? (
+                            <span className="text-[var(--red-tx)] font-medium">₹{s.bal.toLocaleString()}</span>
+                          ) : (
+                            <span className="text-[var(--tx3)]">₹0</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2">{statusBadge(s.status)}</td>
+                        <td className="px-2 py-2">
+                          {s.status === 'Paid' ? (
+                            <span className="text-[11px] text-[var(--tx3)]">No Dues</span>
+                          ) : (
+                            <button
+                              onClick={() => setCollectStudent(s)}
+                              className="text-[11px] text-[var(--blue-tx)] hover:underline cursor-pointer font-medium"
+                            >
+                              Collect Payment
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {sortedFiltered.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="text-center py-6 text-[12px] text-[var(--tx3)]">
+                      <td colSpan={9} className="text-center py-6 text-[12px] text-[var(--tx3)]">
                         No student fee records found.
                       </td>
                     </tr>
@@ -1227,8 +1388,8 @@ export function FeeManagement() {
 
       {/* Assign Fee Modal */}
       {showAssignModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleAssignFeeSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <form onSubmit={handleAssignFeeSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
               <div className="text-[14px] font-bold text-[var(--tx)]">Assign New Fee</div>
               <button type="button" onClick={() => setShowAssignModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"><X size={16} /></button>
@@ -1640,8 +1801,8 @@ export function FeeManagement() {
       )}
 
       {showEditPaidModal && selectedEditFee && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleEditPaidSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <form onSubmit={handleEditPaidSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
               <div>
                 <div className="text-[14px] font-bold text-[var(--tx)]">Edit Paid Amount</div>
@@ -1713,8 +1874,8 @@ export function FeeManagement() {
       )}
 
       {paymentSuccessData && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl p-6 text-center">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-4">
               <CheckCircle size={24} />
             </div>
@@ -1753,8 +1914,8 @@ export function FeeManagement() {
       )}
 
       {assignedStudentForPayment && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl p-6 text-center">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-4">
               <CheckCircle size={24} />
             </div>
@@ -1790,8 +1951,8 @@ export function FeeManagement() {
       )}
 
       {showPaymentConfirm && collectStudent && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl p-6 text-center">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 overflow-y-auto">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950/30 text-[var(--blue-tx)] flex items-center justify-center mx-auto mb-4">
               <Clock size={24} />
             </div>
@@ -1812,7 +1973,7 @@ export function FeeManagement() {
                 disabled={processingPayment}
                 onClick={async () => {
                   setShowPaymentConfirm(false);
-                  const fakeEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
+                  const fakeEvent = { preventDefault: () => { } } as React.FormEvent<HTMLFormElement>;
                   await handleRecordPayment(fakeEvent);
                 }}
                 className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
@@ -1826,8 +1987,8 @@ export function FeeManagement() {
       )}
 
       {showAssignConfirm && pendingAssignData && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl p-6 text-center">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 overflow-y-auto">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl p-6 text-center">
             <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4">
               <AlertTriangle size={24} />
             </div>
@@ -1858,6 +2019,113 @@ export function FeeManagement() {
               >
                 Assign Anyway
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[480px] max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-[var(--b)] mb-4">
+              <h3 className="text-base font-bold text-[var(--tx)]">Import Fee Assignments</h3>
+              <button onClick={() => setShowImportModal(false)} className="p-1 rounded-lg hover:bg-[var(--surf2)] text-[var(--tx3)] cursor-pointer"><X size={16} /></button>
+            </div>
+
+            <p className="text-xs text-[var(--tx3)] mb-4 leading-normal">
+              Upload a spreadsheet (.xlsx, .xls, .csv) with the following headers: <br />
+              <strong className="text-[var(--tx2)]">Admission Number</strong>, <strong className="text-[var(--tx2)]">Fee Category</strong>, <strong className="text-[var(--tx2)]">Amount</strong>, <strong className="text-[var(--tx2)]">Due Date</strong>.
+            </p>
+
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-[var(--b2)] rounded-xl p-6 text-center bg-[var(--surf2)]/20">
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  id="fee-excel-upload"
+                  className="hidden"
+                  onChange={async (e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      const file = e.target.files[0];
+                      setImportLoading(true);
+                      try {
+                        const reader = new FileReader();
+                        reader.onload = async (evt) => {
+                          try {
+                            const bstr = evt.target?.result;
+                            const wb = XLSX.read(bstr, { type: 'binary' });
+                            const wsname = wb.SheetNames[0];
+                            const ws = wb.Sheets[wsname];
+                            const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+                            const studentsList = await api.getResources('students');
+
+                            let count = 0;
+                            for (const row of data) {
+                              const roll = String(row['Admission Number'] || row['Roll No'] || row['AdmissionNo'] || '').trim();
+                              const category = String(row['Fee Category'] || row['Category'] || '').trim();
+                              const amount = parseFloat(row['Amount']);
+                              const dueDate = String(row['Due Date'] || row['DueDate'] || new Date().toISOString().slice(0, 10)).trim();
+
+                              if (roll && category && !isNaN(amount)) {
+                                const foundStudent = studentsList.find((s: any) => String(s.enrollment_number).trim() === roll);
+                                if (foundStudent) {
+                                  await api.createResource('student-fees', {
+                                    student_id: Number(foundStudent.id),
+                                    category,
+                                    amount,
+                                    due_date: dueDate
+                                  });
+                                  count++;
+                                }
+                              }
+                            }
+
+                            alert(`Successfully assigned fees for ${count} students!`);
+                            setShowImportModal(false);
+                            loadFeesData();
+                          } catch (err) {
+                            console.error(err);
+                            alert('Failed to parse Excel file rows');
+                          }
+                        };
+                        reader.readAsBinaryString(file);
+                      } catch (err) {
+                        alert('Error reading Excel file');
+                      } finally {
+                        setImportLoading(false);
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => document.getElementById('fee-excel-upload')?.click()}
+                  className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer inline-flex items-center gap-1.5"
+                  disabled={importLoading}
+                >
+                  {importLoading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                  Choose Excel File
+                </button>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-[var(--b)]">
+                <button
+                  onClick={() => {
+                    const headers = [['Admission Number', 'Fee Category', 'Amount', 'Due Date']];
+                    const rows = [
+                      ['101/2026', 'Tuition Fee - Term 2', '8500', '2026-10-31'],
+                      ['102/2026', 'Transport Fee', '3000', '2026-10-31']
+                    ];
+                    const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+                    XLSX.writeFile(wb, 'KTS_Fee_Assignment_Template.xlsx');
+                  }}
+                  className="text-[11px] text-[var(--blue-tx)] hover:underline font-semibold cursor-pointer bg-transparent border-0"
+                >
+                  Download Template
+                </button>
+              </div>
             </div>
           </div>
         </div>

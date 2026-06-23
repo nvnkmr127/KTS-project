@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
 import { StaffMember, STAFF } from './StaffManagement';
+import * as XLSX from 'xlsx';
+
 
 export interface Invigilation {
   id: string;
@@ -276,11 +278,10 @@ function ExamScheduleDesigner({
               <button
                 key={cls}
                 onClick={() => setSelectedClass(cls)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
-                  selectedClass === cls
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${selectedClass === cls
                     ? 'bg-[var(--blue)] text-white'
                     : 'bg-[var(--surf2)] border border-[var(--b)] text-[var(--tx2)] hover:border-[var(--blue)]'
-                }`}
+                  }`}
               >
                 {cls}
               </button>
@@ -351,11 +352,10 @@ function ExamScheduleDesigner({
                     setNewDuration('2 hrs');
                     setNewMarks(50);
                   }}
-                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10.5px] transition-all relative ${
-                    hasExams
+                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10.5px] transition-all relative ${hasExams
                       ? 'bg-[var(--blue)] text-white font-bold'
                       : 'text-[var(--tx)]'
-                  } ${isWritable ? 'cursor-pointer hover:bg-[var(--surf2)]' : 'cursor-default'}`}
+                    } ${isWritable ? 'cursor-pointer hover:bg-[var(--surf2)]' : 'cursor-default'}`}
                 >
                   {day}
                   {hasExams && (
@@ -504,6 +504,118 @@ export function Examinations() {
     return saved ? JSON.parse(saved) : EXAMS;
   });
 
+  const [examSearch, setExamSearch] = useState('');
+  const [examStatusFilter, setExamStatusFilter] = useState('All');
+  const [examSortField, setExamSortField] = useState<'name' | 'date' | ''>('');
+  const [examSortOrder, setExamSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
+
+  const handleExamSort = (field: 'name' | 'date') => {
+    if (examSortField === field) {
+      setExamSortOrder(examSortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setExamSortField(field);
+      setExamSortOrder('asc');
+    }
+  };
+
+  const exportExamsToExcel = () => {
+    const dataToExport = filteredExams.map(e => ({
+      'Exam Name': e.name,
+      'Class': e.class,
+      'Subject': e.subject,
+      'Date': e.date,
+      'Max Marks': e.maxMarks,
+      'Status': e.status
+    }));
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Exams');
+    XLSX.writeFile(wb, 'KTS_Exam_Schedules.xlsx');
+  };
+
+  const handleImportExamsExcel = async (evt: React.ChangeEvent<HTMLInputElement>) => {
+    if (!evt.target.files || !evt.target.files[0]) return;
+    const file = evt.target.files[0];
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const bstr = e.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+          const parsedExams: Exam[] = data.map((row, idx) => ({
+            id: 'exam-' + (Date.now() + idx),
+            name: String(row['Exam Name'] || row['Name'] || 'Unit Test').trim(),
+            class: String(row['Class'] || '8A').trim(),
+            subject: String(row['Subject'] || 'All Subjects').trim(),
+            date: String(row['Date'] || new Date().toISOString().slice(0, 10)).trim(),
+            maxMarks: parseInt(row['Max Marks'] || row['Marks']) || 100,
+            status: (row['Status'] || 'Upcoming') as any
+          }));
+
+          setExams(prev => {
+            const next = [...parsedExams, ...prev];
+            localStorage.setItem('examinations_exams', JSON.stringify(next));
+            saveSettingToDb('examinations_exams', next);
+            return next;
+          });
+
+          alert(`Successfully imported ${parsedExams.length} exams!`);
+        } catch (err) {
+          alert('Failed to parse Excel rows');
+        }
+      };
+      reader.readAsBinaryString(file);
+    } catch (err) {
+      alert('Error reading Excel file');
+    }
+  };
+
+  const handleBulkExamStatusChange = (newStatus: 'Upcoming' | 'Completed' | 'Results Published') => {
+    if (selectedExamIds.length === 0) return;
+    setExams(prev => {
+      const next = prev.map(e => selectedExamIds.includes(e.id) ? { ...e, status: newStatus } : e);
+      localStorage.setItem('examinations_exams', JSON.stringify(next));
+      saveSettingToDb('examinations_exams', next);
+      return next;
+    });
+    setSelectedExamIds([]);
+  };
+
+  const handleBulkExamDelete = () => {
+    if (selectedExamIds.length === 0) return;
+    if (window.confirm(`Are you sure you want to delete the ${selectedExamIds.length} selected exams?`)) {
+      setExams(prev => {
+        const next = prev.filter(e => !selectedExamIds.includes(e.id));
+        localStorage.setItem('examinations_exams', JSON.stringify(next));
+        saveSettingToDb('examinations_exams', next);
+        return next;
+      });
+      setSelectedExamIds([]);
+    }
+  };
+
+  const filteredExams = exams.filter(e => {
+    const matchSearch = e.name.toLowerCase().includes(examSearch.toLowerCase());
+    const matchStatus = examStatusFilter === 'All' || e.status === examStatusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const sortedExams = [...filteredExams].sort((a, b) => {
+    if (!examSortField) return 0;
+    let valA = a[examSortField];
+    let valB = b[examSortField];
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+    if (valA < valB) return examSortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return examSortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   const [invigilations, setInvigilations] = useState<Invigilation[]>(() => {
     const saved = localStorage.getItem('kts_exam_invigilations');
     return saved ? JSON.parse(saved) : [];
@@ -613,8 +725,8 @@ export function Examinations() {
 
   // Initialize and validate filter selections
   useEffect(() => {
-    const availableExams = isAdmin 
-      ? exams.filter((e) => e.status !== 'Results Published') 
+    const availableExams = isAdmin
+      ? exams.filter((e) => e.status !== 'Results Published')
       : exams.filter((e) => e.status === 'Completed');
     if (availableExams.length > 0) {
       if (!selectedMarksExamId || !availableExams.some(e => e.id === selectedMarksExamId)) {
@@ -749,7 +861,7 @@ export function Examinations() {
     if (!allotStaffId) return;
     const selectedStaff = staffList.find((s) => s.id === allotStaffId);
     if (!selectedStaff) return;
-    
+
     const selectedExam = exams.find((e) => e.id === allotExamId) || exams[0];
     const targetDate = allotDate || selectedExam?.date || new Date().toISOString().slice(0, 10);
 
@@ -822,8 +934,8 @@ export function Examinations() {
 
   const activeClassList = classList.length > 0 ? classList : CLASSES;
   const filteredClassList = isAdmin ? activeClassList : (user?.classes && user.classes.length > 0 ? user.classes : activeClassList);
-  const marksExams = isAdmin 
-    ? exams.filter((e) => e.status !== 'Results Published') 
+  const marksExams = isAdmin
+    ? exams.filter((e) => e.status !== 'Results Published')
     : exams.filter((e) => e.status === 'Completed');
 
   const getFilteredStudentsForMarks = () => {
@@ -892,69 +1004,140 @@ export function Examinations() {
 
       {activeTab === 'exams' && (
         <div className="space-y-2.5">
-          {isAdmin && (
-            <div className="flex justify-end mb-2">
-              <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
-                <Plus size={12} /> Create Exam
+          <div className="flex flex-col sm:flex-row gap-3 items-center justify-between mb-4 bg-[var(--surf2)]/40 p-3 border border-[var(--b)] rounded-xl">
+            <div className="flex flex-1 flex-col sm:flex-row gap-2 w-full">
+              <input
+                type="text"
+                placeholder="Search exams by name..."
+                value={examSearch}
+                onChange={(e) => setExamSearch(e.target.value)}
+                className="px-3 py-1.5 bg-[var(--surf)] border border-[var(--b2)] rounded-lg text-[12px] text-[var(--tx)] focus:outline-none focus:border-[var(--blue)]"
+              />
+              <select
+                value={examStatusFilter}
+                onChange={(e) => setExamStatusFilter(e.target.value)}
+                className="bg-[var(--surf)] border border-[var(--b2)] rounded-lg px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
+              >
+                <option value="All">All Statuses</option>
+                <option value="Upcoming">Upcoming</option>
+                <option value="Completed">Completed</option>
+                <option value="Results Published">Results Published</option>
+              </select>
+              <select
+                value={examSortField}
+                onChange={(e) => {
+                  const val = e.target.value as any;
+                  setExamSortField(val);
+                  setExamSortOrder('asc');
+                }}
+                className="bg-[var(--surf)] border border-[var(--b2)] rounded-lg px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
+              >
+                <option value="">No Sorting</option>
+                <option value="name">Sort by Name</option>
+                <option value="date">Sort by Date</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2 self-end sm:self-center">
+              <button onClick={exportExamsToExcel} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold">
+                Export
               </button>
+              <label className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold">
+                <input type="file" accept=".xlsx, .xls, .csv" onChange={handleImportExamsExcel} className="hidden" />
+                Import
+              </label>
+              {isAdmin && (
+                <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 font-semibold">
+                  <Plus size={12} /> Create Exam
+                </button>
+              )}
+            </div>
+          </div>
+
+          {selectedExamIds.length > 0 && (
+            <div className="flex items-center justify-between bg-[var(--blue-bg)] border border-[var(--blue-tx)]/25 rounded-lg p-3 mb-4 animate-in fade-in slide-in-from-top-1 duration-200">
+              <span className="text-[12px] text-[var(--blue-tx)] font-semibold">{selectedExamIds.length} exams selected</span>
+              <div className="flex gap-2">
+                <button onClick={() => handleBulkExamStatusChange('Upcoming')} className="px-2.5 py-1 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/20 rounded-md font-semibold hover:opacity-90 cursor-pointer">Mark Upcoming</button>
+                <button onClick={() => handleBulkExamStatusChange('Completed')} className="px-2.5 py-1 text-[11px] bg-[var(--amber-bg)] text-[var(--amber-tx)] border border-[var(--amber-tx)]/20 rounded-md font-semibold hover:opacity-90 cursor-pointer">Mark Completed</button>
+                <button onClick={handleBulkExamDelete} className="px-2.5 py-1 text-[11px] bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 rounded-md font-semibold hover:opacity-90 cursor-pointer">Delete Exams</button>
+              </div>
             </div>
           )}
-          {exams.map((exam) => (
-            <div
-              key={exam.id}
-              onClick={() => handleExamCardClick(exam)}
-              className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:border-[var(--blue)]/50 hover:shadow-md transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-[var(--blue-bg)] flex items-center justify-center flex-shrink-0">
-                <BookOpen size={18} className="text-[var(--blue-tx)]" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[13px] font-bold text-[var(--tx)]">{exam.name}</span>
-                  {exam.status === 'Upcoming' && <Badge variant="blue">Upcoming</Badge>}
-                  {exam.status === 'Completed' && <Badge variant="amber">Completed</Badge>}
-                  {exam.status === 'Results Published' && <Badge variant="teal">Results Published</Badge>}
-                </div>
-                <div className="flex items-center gap-4 text-[11.5px] text-[var(--tx3)]">
-                  <span>Class {exam.class}</span>
-                  <span>Subjects: {exam.subject}</span>
-                  <span>Date: {formatDate(exam.date)}</span>
-                  <span>Max Marks: {exam.maxMarks}</span>
-                </div>
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0 items-center">
-                {exam.status === 'Completed' && (
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium"
-                  >
-                    Enter Marks
-                  </button>
-                )}
-                {exam.status === 'Results Published' && (
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium"
-                  >
-                    View Results
-                  </button>
-                )}
-                {isAdmin && (
-                  <button
-                    disabled={exam.status !== 'Upcoming'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteExam(exam.id);
+
+          {sortedExams.map((exam) => {
+            const isSelected = selectedExamIds.includes(exam.id);
+            return (
+              <div
+                key={exam.id}
+                onClick={() => handleExamCardClick(exam)}
+                className={`bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:border-[var(--blue)]/50 hover:shadow-md transition-all ${isSelected ? 'bg-[var(--blue-bg)]/10' : ''}`}
+              >
+                <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedExamIds(prev => [...prev, exam.id]);
+                      } else {
+                        setSelectedExamIds(prev => prev.filter(id => id !== exam.id));
+                      }
                     }}
-                    className="p-1.5 rounded-lg text-[var(--tx3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent enabled:hover:bg-[var(--red-bg)] enabled:hover:text-[var(--red-tx)] enabled:cursor-pointer"
-                    title={exam.status === 'Upcoming' ? "Delete Exam" : "Cannot delete completed or published exam"}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
+                    className="cursor-pointer rounded border-[var(--b)]"
+                  />
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-[var(--blue-bg)] flex items-center justify-center flex-shrink-0">
+                  <BookOpen size={18} className="text-[var(--blue-tx)]" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[13px] font-bold text-[var(--tx)]">{exam.name}</span>
+                    {exam.status === 'Upcoming' && <Badge variant="blue">Upcoming</Badge>}
+                    {exam.status === 'Completed' && <Badge variant="amber">Completed</Badge>}
+                    {exam.status === 'Results Published' && <Badge variant="teal">Results Published</Badge>}
+                  </div>
+                  <div className="flex items-center gap-4 text-[11.5px] text-[var(--tx3)]">
+                    <span>Class {exam.class}</span>
+                    <span>Subjects: {exam.subject}</span>
+                    <span>Date: {formatDate(exam.date)}</span>
+                    <span>Max Marks: {exam.maxMarks}</span>
+                  </div>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0 items-center">
+                  {exam.status === 'Completed' && (
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium"
+                    >
+                      Enter Marks
+                    </button>
+                  )}
+                  {exam.status === 'Results Published' && (
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium"
+                    >
+                      View Results
+                    </button>
+                  )}
+                  {isAdmin && (
+                    <button
+                      disabled={exam.status !== 'Upcoming'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteExam(exam.id);
+                      }}
+                      className="p-1.5 rounded-lg text-[var(--tx3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent enabled:hover:bg-[var(--red-bg)] enabled:hover:text-[var(--red-tx)] enabled:cursor-pointer"
+                      title={exam.status === 'Upcoming' ? "Delete Exam" : "Cannot delete completed or published exam"}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -1280,10 +1463,10 @@ export function Examinations() {
             const displayList = isAdmin
               ? invigilations
               : invigilations.filter(
-                  (inv) =>
-                    inv.staffName.toLowerCase() === (user?.name || '').toLowerCase() ||
-                    inv.staffEmail.toLowerCase() === (user?.email || '').toLowerCase()
-                );
+                (inv) =>
+                  inv.staffName.toLowerCase() === (user?.name || '').toLowerCase() ||
+                  inv.staffEmail.toLowerCase() === (user?.email || '').toLowerCase()
+              );
 
             if (displayList.length === 0) {
               return (
@@ -1357,7 +1540,7 @@ export function Examinations() {
               </div>
               <button onClick={() => setShowAllotModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx3)]"><X size={16} /></button>
             </div>
-            
+
             <div className="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Scheduled Exam *</label>
@@ -1519,11 +1702,10 @@ export function Examinations() {
                           setSelectedCreateClasses(['All Classes']);
                           setShowClassDropdown(false);
                         }}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-[12px] cursor-pointer transition-colors ${
-                          selectedCreateClasses.includes('All Classes')
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-[12px] cursor-pointer transition-colors ${selectedCreateClasses.includes('All Classes')
                             ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] font-semibold'
                             : 'text-[var(--tx)] hover:bg-[var(--surf2)]'
-                        }`}
+                          }`}
                       >
                         All Classes
                       </button>

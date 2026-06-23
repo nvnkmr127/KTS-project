@@ -55,8 +55,11 @@
   --b: rgba(255, 255, 255, 0.08);
   --b2: rgba(255, 255, 255, 0.14);
   --tx: #e4e2db;
-  --tx2: #9c9a92;
-  --tx3: #636159;
+  /* WCAG AA compliant secondary text for dark surfaces:
+     --tx2 (#b0aea6) ≈ 5.9:1 on --surf (#1e1e1c) ✓
+     --tx3 (#8a877f) ≈ 4.5:1 on --surf (#1e1e1c) ✓ */
+  --tx2: #b0aea6;
+  --tx3: #8a877f;
 
   --blue: #378ADD;
   --blue-bg: #042C53;

@@ -17,6 +17,9 @@ import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
 import { useApp } from '../context/AppContext';
+import { TableSkeleton } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface Student {
   id: string;
@@ -53,6 +56,77 @@ export function Students() {
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
   const [ayFilter, setAyFilter] = useState(() => localStorage.getItem('selected_academic_year_id') || 'All');
 
+  const [sortField, setSortField] = useState<'name' | 'roll' | 'class' | 'status' | 'feeStatus' | ''>('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const handleSort = (field: 'name' | 'roll' | 'class' | 'status' | 'feeStatus') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: 'Active' | 'Transferred' | 'Left') => {
+    if (selectedIds.length === 0) return;
+    setLoading(true);
+    try {
+      const dbStatus = newStatus === 'Active' ? 'active' : newStatus === 'Left' ? 'left' : 'transfer';
+      await Promise.all(selectedIds.map(id => api.updateResource('students', id, { status: dbStatus })));
+      setSelectedIds([]);
+      await loadStudents();
+    } catch (err) {
+      console.error('Bulk edit status failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setBulkDeleteConfirmOpen(true);
+  };
+
+  const executeBulkDelete = async () => {
+    setBulkDeleteConfirmOpen(false);
+    setLoading(true);
+    const previousStatuses = selectedIds.map(id => {
+      const s = students.find(std => std.id === id);
+      return { id, status: s ? s.status : 'Active' };
+    });
+    try {
+      await Promise.all(selectedIds.map(id => api.updateResource('students', id, { status: 'left' })));
+      const deletedCount = selectedIds.length;
+      const idsToRestore = [...selectedIds];
+      setSelectedIds([]);
+      await loadStudents();
+      showToast(
+        `${deletedCount} students deleted.`,
+        true,
+        async () => {
+          try {
+            await Promise.all(previousStatuses.map(item => {
+              const dbStatus = item.status === 'Active' ? 'active' : item.status === 'Left' ? 'left' : 'transfer';
+              return api.updateResource('students', item.id, { status: dbStatus });
+            }));
+            await loadStudents();
+            showToast('Bulk deletion undone successfully!', true);
+          } catch (err) {
+            console.error('Error undoing bulk delete:', err);
+            showToast('Failed to undo bulk deletion.', false);
+          }
+        }
+      );
+    } catch (err) {
+      console.error('Bulk delete failed:', err);
+      showToast('Failed to delete selected students.', false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [phoneVal, setPhoneVal] = useState('');
   const [biometricVal, setBiometricVal] = useState('');
@@ -69,10 +143,25 @@ export function Students() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [admittedStudentForFee, setAdmittedStudentForFee] = useState<{ id: string; name: string } | null>(null);
+
+  const [toast, setToast] = useState<{ message: string; success: boolean; undoAction?: () => Promise<void> } | null>(null);
+  const [toastTimeoutId, setToastTimeoutId] = useState<any>(null);
+
+  const showToast = (message: string, success: boolean, undoAction?: () => Promise<void>) => {
+    if (toastTimeoutId) {
+      clearTimeout(toastTimeoutId);
+    }
+    setToast({ message, success, undoAction });
+    const id = setTimeout(() => {
+      setToast(null);
+    }, 6000);
+    setToastTimeoutId(id);
+  };
 
   const [batchesList, setBatchesList] = useState<any[]>([]);
   const [attendancePercentage, setAttendancePercentage] = useState<number | null>(null);
@@ -330,13 +419,32 @@ export function Students() {
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
     setDeleting(true);
+    const targetStudent = students.find(s => s.id === deleteConfirmId);
+    const previousStatus = targetStudent ? targetStudent.status : 'Active';
     try {
       await api.updateResource('students', deleteConfirmId, { status: 'left' });
+      const studentId = deleteConfirmId;
       setDeleteConfirmId(null);
       await loadStudents();
+      showToast(
+        `Student "${targetStudent?.name}" has been deleted.`,
+        true,
+        async () => {
+          try {
+            const dbStatus = previousStatus === 'Active' ? 'active' : previousStatus === 'Left' ? 'left' : 'transfer';
+            await api.updateResource('students', studentId, { status: dbStatus });
+            await loadStudents();
+            showToast('Student restored successfully!', true);
+          } catch (err) {
+            console.error('Error undoing delete:', err);
+            showToast('Failed to restore student.', false);
+          }
+        }
+      );
     } catch (err: any) {
       console.error('Error marking student as left:', err);
       setDeleteConfirmId(null);
+      showToast('Failed to delete student.', false);
     } finally {
       setDeleting(false);
     }
@@ -353,9 +461,25 @@ export function Students() {
     return matchSearch && matchClass && matchStatus && matchAy;
   });
 
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (!sortField) return 0;
+    let valA = a[sortField] || '';
+    let valB = b[sortField] || '';
+    if (sortField === 'class') {
+      const numA = parseInt(a.class) || 0;
+      const numB = parseInt(b.class) || 0;
+      if (numA !== numB) return sortOrder === 'asc' ? numA - numB : numB - numA;
+      valA = a.section || '';
+      valB = b.section || '';
+    }
+    return sortOrder === 'asc' 
+      ? String(valA).localeCompare(String(valB)) 
+      : String(valB).localeCompare(String(valA));
+  });
+
   const ITEMS_PER_PAGE = 10;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(sortedFiltered.length / ITEMS_PER_PAGE));
+  const paginated = sortedFiltered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const activeCount = students.filter((s) => s.status === 'Active').length;
   const maleCount = students.filter((s) => s.gender === 'Male').length;
@@ -602,7 +726,32 @@ export function Students() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
+    <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)] relative">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[100] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-[12px] font-semibold animate-fade-in ${
+          toast.success
+            ? 'bg-[var(--teal-bg)] border-[var(--teal-tx)]/20 text-[var(--teal-tx)]'
+            : 'bg-[var(--red-bg)] border-[var(--red-tx)]/20 text-[var(--red-tx)]'
+        }`}>
+          {toast.success ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+          <span>{toast.message}</span>
+          {toast.undoAction && (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (toast.undoAction) {
+                  await toast.undoAction();
+                }
+              }}
+              className="ml-3 px-2 py-1 bg-[var(--surf3)] hover:bg-[var(--surf2)] text-[var(--tx)] rounded border border-[var(--b)] text-[10px] uppercase tracking-wider font-bold transition-colors cursor-pointer"
+            >
+              Undo
+            </button>
+          )}
+        </div>
+      )}
+
       {/* If a student is selected → show in-screen detail view */}
       {activeDetailStudent ? (
         <Card>{renderStudentDetail()}</Card>
@@ -663,71 +812,173 @@ export function Students() {
           </select>
         </div>
 
+        {/* Bulk Actions */}
+        {selectedIds.length > 0 && (
+          <div className="flex items-center justify-between bg-[var(--blue-bg)] border border-[var(--blue-tx)]/20 rounded-xl p-3.5 mb-4">
+            <div className="text-[12px] font-semibold text-[var(--blue-tx)]">
+              {selectedIds.length} students selected
+            </div>
+            <div className="flex gap-2">
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleBulkStatusChange(e.target.value as any);
+                    e.target.value = '';
+                  }
+                }}
+                className="bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
+              >
+                <option value="">-- Bulk Edit Status --</option>
+                <option value="Active">Active</option>
+                <option value="Transferred">Transferred</option>
+                <option value="Left">Left</option>
+              </select>
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 rounded-lg cursor-pointer hover:opacity-90 font-semibold"
+              >
+                <Trash2 size={12} /> Bulk Delete
+              </button>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="px-3 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] cursor-pointer"
+              >
+                Clear Selection
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[12px] min-w-[700px]">
             <thead>
               <tr className="border-b border-[var(--b)]">
-                {['Student', 'Roll No', 'Class', 'Parent / Guardian', 'Phone', 'Fee Status', 'Status', 'Actions'].map((h) => (
-                  <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{h}</th>
-                ))}
+                <th className="px-2 py-2 w-8">
+                  <input
+                    type="checkbox"
+                    checked={paginated.length > 0 && paginated.every(s => selectedIds.includes(s.id))}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        const pageIds = paginated.map(s => s.id);
+                        setSelectedIds(prev => Array.from(new Set([...prev, ...pageIds])));
+                      } else {
+                        const pageIds = paginated.map(s => s.id);
+                        setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)));
+                      }
+                    }}
+                    className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
+                  />
+                </th>
+                <th onClick={() => handleSort('name')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                  Student {sortField === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                </th>
+                <th onClick={() => handleSort('roll')} className="hidden md:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                  Roll No {sortField === 'roll' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                </th>
+                <th onClick={() => handleSort('class')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                  Class {sortField === 'class' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                </th>
+                <th className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Parent / Guardian</th>
+                <th className="hidden lg:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Phone</th>
+                <th onClick={() => handleSort('feeStatus')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                  Fee Status {sortField === 'feeStatus' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                </th>
+                <th onClick={() => handleSort('status')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                  Status {sortField === 'status' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                </th>
+                <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paginated.map((s) => (
-                <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
-                  <td className="px-2 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <Avatar initials={s.name.slice(0, 2).toUpperCase()} bg={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.bg || 'var(--blue-bg)'} color={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.color || 'var(--blue-tx)'} />
-                      <div>
-                        <div
-                          className="font-semibold text-[var(--blue-tx)] hover:opacity-80 cursor-pointer transition-colors"
-                          onClick={() => { setActiveDetailStudent(s); }}
-                        >
-                          {s.name}
-                        </div>
-                        <div className="text-[10.5px] text-[var(--tx3)]">{s.gender} · DOB {formatDate(s.dob)}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-2 py-2.5 font-mono text-[11px] text-[var(--tx2)]">{s.roll}</td>
-                  <td className="px-2 py-2.5 text-[var(--tx2)]">Class {s.class} — {s.section}</td>
-                  <td className="px-2 py-2.5">
-                    <div className="font-medium text-[var(--tx)]">{s.parent}</div>
-                    <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1"><Phone size={9} />{s.phone}</div>
-                  </td>
-                  <td className="px-2 py-2.5 text-[var(--tx2)]">{s.phone}</td>
-                  <td className="px-2 py-2.5">
-                    {s.feeStatus === 'Paid' && <Badge variant="teal">Paid</Badge>}
-                    {s.feeStatus === 'Partial' && <Badge variant="amber">Partial</Badge>}
-                    {s.feeStatus === 'Unpaid' && <Badge variant="red">Unpaid</Badge>}
-                  </td>
-                  <td className="px-2 py-2.5">
-                    {s.status === 'Active' && <Badge variant="green">Active</Badge>}
-                    {s.status === 'Transferred' && <Badge variant="amber">Transferred</Badge>}
-                    {s.status === 'Left' && <Badge variant="red">Left</Badge>}
-                  </td>
-                  <td className="px-2 py-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <button onClick={() => { setActiveDetailStudent(s); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] transition-colors cursor-pointer" title="View Details"><Eye size={13} /></button>
-                      <button onClick={() => { setSelected(s); setModal('edit'); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] transition-colors cursor-pointer" title="Edit Student"><Edit2 size={13} /></button>
-                      <button 
-                        onClick={() => handleTransferClick(s.id)} 
-                        disabled={transferringId !== null}
-                        className="p-1 rounded text-[var(--tx3)] hover:text-[var(--purple-tx)] hover:bg-[var(--purple-bg)] transition-colors cursor-pointer disabled:opacity-50"
-                        title="Transfer Student"
-                      >
-                        {transferringId === s.id ? (
-                          <Loader2 size={13} className="animate-spin" />
-                        ) : (
-                          <ArrowRightLeft size={13} />
-                        )}
-                      </button>
-                      <button onClick={() => setDeleteConfirmId(s.id)} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer" title="Mark as Left"><Trash2 size={13} /></button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="px-2 py-4">
+                    <TableSkeleton rows={8} cols={9} />
                   </td>
                 </tr>
-              ))}
+              ) : paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-2 py-4">
+                    <EmptyState
+                      title="No students found"
+                      description={search.trim() ? "We couldn't find any students matching your search criteria. Try refining your filters." : "Add your first student to populate the directory."}
+                      icon={<GraduationCap size={28} />}
+                      actionLabel={search.trim() ? undefined : "Add Student"}
+                      onAction={search.trim() ? undefined : () => { setSelected(null); setModal('add'); }}
+                    />
+                  </td>
+                </tr>
+              ) : (
+                paginated.map((s) => (
+                  <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
+                    <td className="px-2 py-2.5 w-8">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(s.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIds(prev => [...prev, s.id]);
+                          } else {
+                            setSelectedIds(prev => prev.filter(id => id !== s.id));
+                          }
+                        }}
+                        className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar initials={s.name.slice(0, 2).toUpperCase()} bg={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.bg || 'var(--blue-bg)'} color={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.color || 'var(--blue-tx)'} />
+                        <div>
+                          <div
+                            className="font-semibold text-[var(--blue-tx)] hover:opacity-80 cursor-pointer transition-colors"
+                            onClick={() => { setActiveDetailStudent(s); }}
+                          >
+                            {s.name}
+                          </div>
+                          <div className="text-[10.5px] text-[var(--tx3)]">{s.gender} · DOB {formatDate(s.dob)}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="hidden md:table-cell px-2 py-2.5 font-mono text-[11px] text-[var(--tx2)]">{s.roll}</td>
+                    <td className="px-2 py-2.5 text-[var(--tx2)]">Class {s.class} — {s.section}</td>
+                    <td className="hidden sm:table-cell px-2 py-2.5">
+                      <div className="font-medium text-[var(--tx)]">{s.parent}</div>
+                      <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1"><Phone size={9} />{s.phone}</div>
+                    </td>
+                    <td className="hidden lg:table-cell px-2 py-2.5 text-[var(--tx2)]">{s.phone}</td>
+                    <td className="hidden sm:table-cell px-2 py-2.5">
+                      {s.feeStatus === 'Paid' && <Badge variant="teal">Paid</Badge>}
+                      {s.feeStatus === 'Partial' && <Badge variant="amber">Partial</Badge>}
+                      {s.feeStatus === 'Unpaid' && <Badge variant="red">Unpaid</Badge>}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      {s.status === 'Active' && <Badge variant="green">Active</Badge>}
+                      {s.status === 'Transferred' && <Badge variant="amber">Transferred</Badge>}
+                      {s.status === 'Left' && <Badge variant="red">Left</Badge>}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => { setActiveDetailStudent(s); }} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] transition-colors cursor-pointer" title="View Details"><Eye size={13} /></button>
+                        <button onClick={() => { setSelected(s); setModal('edit'); }} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] transition-colors cursor-pointer" title="Edit Student"><Edit2 size={13} /></button>
+                        <button 
+                          onClick={() => handleTransferClick(s.id)} 
+                          disabled={transferringId !== null}
+                          className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--purple-tx)] hover:bg-[var(--purple-bg)] transition-colors cursor-pointer disabled:opacity-50"
+                          title="Transfer Student"
+                        >
+                          {transferringId === s.id ? (
+                            <Loader2 size={13} className="animate-spin" />
+                          ) : (
+                            <ArrowRightLeft size={13} />
+                          )}
+                        </button>
+                        <button onClick={() => setDeleteConfirmId(s.id)} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer" title="Delete Student"><Trash2 size={13} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -1005,39 +1256,31 @@ export function Students() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden">
-            <div className="p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-955/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4">
-                <Trash2 size={24} />
-              </div>
-              <h3 className="text-base font-bold text-[var(--tx)] mb-2">Mark Student as Left</h3>
-              <p className="text-xs text-[var(--tx3)] mb-6">Are you sure you want to mark this student as Left? This will update their status in the directory.</p>
-              <div className="flex gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setDeleteConfirmId(null)}
-                  disabled={deleting}
-                  className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="button" 
-                  onClick={confirmDelete}
-                  disabled={deleting}
-                  className="flex-1 py-2 bg-red-600 text-white rounded-xl text-[12px] font-semibold hover:bg-red-700 cursor-pointer disabled:opacity-70 flex items-center justify-center gap-1.5"
-                >
-                  {deleting && <Loader2 size={12} className="animate-spin" />}
-                  {deleting ? 'Processing...' : 'Confirm'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        title="Delete Student"
+        message="Are you sure you want to delete this student? They will be moved to the Recycle Bin."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+        isDestructive={true}
+        loading={deleting}
+      />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={bulkDeleteConfirmOpen}
+        title="Delete Selected Students"
+        message={`Are you sure you want to delete the ${selectedIds.length} selected students? They will be moved to the Recycle Bin.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        onConfirm={executeBulkDelete}
+        onCancel={() => setBulkDeleteConfirmOpen(false)}
+        isDestructive={true}
+        loading={loading}
+      />
 
       {importOpen && (
         <ImportModal
