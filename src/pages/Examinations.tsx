@@ -751,6 +751,33 @@ export function Examinations() {
     if (!selectedStaff) return;
     
     const selectedExam = exams.find((e) => e.id === allotExamId) || exams[0];
+    const targetDate = allotDate || selectedExam?.date || new Date().toISOString().slice(0, 10);
+
+    // Conflict Check 1: Room conflict (no other exam/invigilation in the same room at the same time)
+    const roomConflict = invigilations.find(
+      (inv) =>
+        inv.room.trim().toLowerCase() === allotRoom.trim().toLowerCase() &&
+        inv.date === targetDate &&
+        inv.timeSlot === allotTimeSlot
+    );
+
+    if (roomConflict) {
+      alert(`Room Conflict: Room ${allotRoom} is already booked for "${roomConflict.examName}" (${roomConflict.subject}) on ${formatDate(targetDate)} at ${allotTimeSlot}.`);
+      return;
+    }
+
+    // Conflict Check 2: Staff conflict (no other duties for this staff member at the same time)
+    const staffConflict = invigilations.find(
+      (inv) =>
+        inv.staffId === allotStaffId &&
+        inv.date === targetDate &&
+        inv.timeSlot === allotTimeSlot
+    );
+
+    if (staffConflict) {
+      alert(`Staff Conflict: ${selectedStaff.name} is already assigned to "${staffConflict.examName}" in ${staffConflict.room} on ${formatDate(targetDate)} at ${allotTimeSlot}.`);
+      return;
+    }
 
     const newInv: Invigilation = {
       id: 'inv-' + Date.now(),
@@ -758,7 +785,7 @@ export function Examinations() {
       examName: selectedExam ? selectedExam.name : 'Custom Exam',
       class: allotClass,
       subject: allotSubject,
-      date: allotDate || selectedExam?.date || new Date().toISOString().slice(0, 10),
+      date: targetDate,
       timeSlot: allotTimeSlot,
       room: allotRoom,
       staffId: selectedStaff.id,

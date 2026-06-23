@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import { Login } from './pages/Login';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
@@ -97,6 +98,8 @@ const getInitialPage = (isTeacher: boolean): PageId => {
 function AppShell() {
   const { user } = useAuth();
   const isTeacher = user?.role === 'teacher';
+  const { hasUnsavedChanges, setHasUnsavedChanges } = useApp();
+  const [pendingPage, setPendingPage] = useState<PageId | null>(null);
 
   const [page, setPage] = useState<PageId>(() => getInitialPage(isTeacher));
   const [dark, setDark] = useState(false);
@@ -121,16 +124,22 @@ function AppShell() {
   }, [user, isTeacher]);
 
   useEffect(() => {
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
       const path = window.location.pathname;
       const pageFromPath = PATH_TO_PAGE[path];
       if (pageFromPath) {
-        setPage(pageFromPath);
+        if (hasUnsavedChanges) {
+          // Revert history state to keep user on current page until they decide
+          window.history.pushState({}, '', PAGE_TO_PATH[page]);
+          setPendingPage(pageFromPath);
+        } else {
+          setPage(pageFromPath);
+        }
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [hasUnsavedChanges, page]);
 
   if (!user) return <Login />;
 
@@ -140,6 +149,10 @@ function AppShell() {
   };
 
   const navigate = (p: PageId) => {
+    if (hasUnsavedChanges) {
+      setPendingPage(p);
+      return;
+    }
     setPage(p);
     const path = PAGE_TO_PATH[p];
     if (path && window.location.pathname !== path) {
@@ -211,6 +224,44 @@ function AppShell() {
           {page === 'my-salary' && <MySalary />}
         </div>
       </div>
+      {pendingPage && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={24} />
+            </div>
+            <h3 className="text-base font-bold text-[var(--tx)] mb-2">Unsaved Changes</h3>
+            <p className="text-xs text-[var(--tx3)] mb-6">
+              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingPage(null)}
+                className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Keep Editing
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setHasUnsavedChanges(false);
+                  const p = pendingPage;
+                  setPendingPage(null);
+                  setPage(p);
+                  const path = PAGE_TO_PATH[p];
+                  if (path && window.location.pathname !== path) {
+                    window.history.pushState({}, '', path);
+                  }
+                }}
+                className="flex-1 py-2.5 bg-amber-600 text-white rounded-xl text-[12px] font-semibold hover:bg-amber-700 cursor-pointer"
+              >
+                Discard &amp; Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

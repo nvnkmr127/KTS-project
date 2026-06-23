@@ -227,6 +227,14 @@
                                                 @if($role->description)
                                                     • {{ $role->description }}
                                                 @endif
+                                                @if($role->permissions->count() > 0)
+                                                    <div class="mt-1" style="font-size: 0.75rem; color: #5a5c69; line-height: 1.3;">
+                                                        <span class="text-primary font-weight-bold">Grants:</span> 
+                                                        {{ implode(', ', $role->permissions->pluck('name')->toArray()) }}
+                                                    </div>
+                                                @else
+                                                    <div class="mt-1 text-warning" style="font-size: 0.75rem;">No permissions assigned</div>
+                                                @endif
                                             </div>
                                         </div>
                                     </div>

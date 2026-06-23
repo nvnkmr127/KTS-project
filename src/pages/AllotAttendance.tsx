@@ -86,6 +86,7 @@ export function AllotAttendance() {
   // Student selection state (studentId -> present/absent)
   const [statusMap, setStatusMap] = useState<Record<string, 'present' | 'absent'>>({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   // Day of week from selected date
   const getDayName = (dateStr: string) => {
@@ -240,6 +241,7 @@ export function AllotAttendance() {
       });
 
       setStatusMap(initialMap);
+      setIsLocked(records.length > 0);
     }
   }, [selectedClass, session, date, attendanceRecords, students]);
 
@@ -285,6 +287,7 @@ export function AllotAttendance() {
       }
 
       setSavedMsg(true);
+      setIsLocked(true);
       setTimeout(() => setSavedMsg(false), 2500);
     } catch (err) {
       console.error('Failed to save student attendance:', err);
@@ -294,6 +297,7 @@ export function AllotAttendance() {
   };
 
   const toggleStudent = (studentId: string) => {
+    if (isLocked) return;
     setStatusMap(prev => ({
       ...prev,
       [studentId]: prev[studentId] === 'present' ? 'absent' : 'present'
@@ -301,6 +305,7 @@ export function AllotAttendance() {
   };
 
   const markAll = (status: 'present' | 'absent') => {
+    if (isLocked) return;
     const updated = { ...statusMap };
     classStudents.forEach(s => {
       updated[s.id] = status;
@@ -416,6 +421,21 @@ export function AllotAttendance() {
 
           {allowedClasses.length > 0 && (isClassTeacherForSelected || teachesAfterLunchForSelected) && (
             <Card>
+              {isLocked && (
+                <div className="mb-4 p-3 bg-[var(--teal-bg)]/25 border border-[var(--teal-tx)]/15 rounded-xl flex items-center justify-between gap-3 text-[11.5px] text-[var(--tx)]">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle size={15} className="text-[var(--teal-tx)]" />
+                    <span>✓ Attendance has been submitted and locked for this session.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsLocked(false)}
+                    className="px-2.5 py-1 text-[11px] font-bold bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg hover:bg-[var(--blue-bg)]/80 transition-all cursor-pointer"
+                  >
+                    Edit / Re-open
+                  </button>
+                </div>
+              )}
               {/* Stats & Bulk Operations */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-[var(--b)] pb-3.5">
                 <div className="flex items-center gap-3.5 flex-wrap">
@@ -507,7 +527,7 @@ export function AllotAttendance() {
                 </div>
                 <button
                   onClick={() => setShowConfirmModal(true)}
-                  disabled={saving || classStudents.length === 0}
+                  disabled={saving || classStudents.length === 0 || isLocked}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-bold cursor-pointer hover:opacity-95 disabled:opacity-40 disabled:pointer-events-none transition-all"
                 >
                   {saving ? (

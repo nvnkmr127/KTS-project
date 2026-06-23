@@ -155,6 +155,8 @@ interface AppContextValue {
   markNotificationsRead: () => void;
   setTimetablePeriod: (className: string, day: string, periodIndex: number, period: TimetablePeriod | null) => void;
   savePeriodTimings: (newTimings: PeriodTiming[]) => Promise<void>;
+  hasUnsavedChanges: boolean;
+  setHasUnsavedChanges: (val: boolean) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -471,6 +473,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
   return (
     <AppContext.Provider value={{
       leaveRequests,
@@ -487,6 +502,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       markNotificationsRead,
       setTimetablePeriod,
       savePeriodTimings,
+      hasUnsavedChanges,
+      setHasUnsavedChanges,
     }}>
       {children}
     </AppContext.Provider>

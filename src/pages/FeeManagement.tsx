@@ -61,6 +61,12 @@ export function FeeManagement() {
   const [existingFees, setExistingFees] = useState<any[]>([]);
   const [loadingExistingFees, setLoadingExistingFees] = useState(false);
 
+  // Confirmation modlas/states
+  const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
+  const [showAssignConfirm, setShowAssignConfirm] = useState(false);
+  const [pendingAssignData, setPendingAssignData] = useState<any>(null);
+  const [duplicateWarningMsg, setDuplicateWarningMsg] = useState('');
+
   // Concession states
   const [showConcessionModal, setShowConcessionModal] = useState(false);
   const [selectedConcessionFeeId, setSelectedConcessionFeeId] = useState('');
@@ -552,6 +558,36 @@ export function FeeManagement() {
     }
   };
 
+  const executeAssignFee = async (items: any[], type: string, studentId: string, className: string, dueDate: string) => {
+    setLoading(true);
+    try {
+      await Promise.all(
+        items.map((item) =>
+          api.createResource('student-fees', {
+            category: item.category,
+            amount: item.amount,
+            due_date: dueDate,
+            ...(type === 'class' ? { class_name: className } : { student_id: Number(studentId) })
+          })
+        )
+      );
+      const targetStudent = students.find(s => String(s.studentId) === String(studentId));
+      setShowAssignModal(false);
+      setAssignedItems([]);
+      await loadFeesData();
+      if (type === 'student' && targetStudent) {
+        setAssignedStudentForPayment({
+          studentId: studentId,
+          name: targetStudent.name
+        });
+      }
+    } catch (err) {
+      console.error('Error assigning fee:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAssignFeeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -568,33 +604,27 @@ export function FeeManagement() {
 
     if (itemsToAssign.length === 0) return;
 
-    setLoading(true);
-    try {
-      await Promise.all(
-        itemsToAssign.map((item) =>
-          api.createResource('student-fees', {
-            category: item.category,
-            amount: item.amount,
-            due_date: dueDateVal,
-            ...(assignType === 'class' ? { class_name: classNameVal } : { student_id: Number(studentIdVal) })
-          })
-        )
+    if (assignType === 'student') {
+      const duplicates = itemsToAssign.filter(item =>
+        existingFees.some(f => (f.feeCategory?.name || f.category || '').toLowerCase() === item.category.toLowerCase())
       );
-      const targetStudent = students.find(s => String(s.studentId) === String(studentIdVal));
-      setShowAssignModal(false);
-      setAssignedItems([]);
-      await loadFeesData();
-      if (assignType === 'student' && targetStudent) {
-        setAssignedStudentForPayment({
+      if (duplicates.length > 0) {
+        setDuplicateWarningMsg(
+          `This student already has the following fee category assigned: ${duplicates.map(d => d.category).join(', ')}. Assigning it again will create duplicate fee records.`
+        );
+        setPendingAssignData({
+          items: itemsToAssign,
+          type: assignType,
           studentId: studentIdVal,
-          name: targetStudent.name
+          className: classNameVal,
+          dueDate: dueDateVal
         });
+        setShowAssignConfirm(true);
+        return;
       }
-    } catch (err) {
-      console.error('Error assigning fee:', err);
-    } finally {
-      setLoading(false);
     }
+
+    await executeAssignFee(itemsToAssign, assignType, studentIdVal, classNameVal, dueDateVal);
   };
 
   // Filter students based on search, tabs, class, and fee category filters
@@ -1392,7 +1422,7 @@ export function FeeManagement() {
       {/* Collect Payment Modal */}
       {collectStudent && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <form onSubmit={handleRecordPayment} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl">
+          <form onSubmit={(e) => { e.preventDefault(); setShowPaymentConfirm(true); }} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
               <div>
                 <div className="text-[14px] font-bold text-[var(--tx)]">Collect Student Fee</div>
@@ -1753,6 +1783,80 @@ export function FeeManagement() {
                 className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 Collect Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPaymentConfirm && collectStudent && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950/30 text-[var(--blue-tx)] flex items-center justify-center mx-auto mb-4">
+              <Clock size={24} />
+            </div>
+            <h3 className="text-base font-bold text-[var(--tx)] mb-1">Confirm Payment</h3>
+            <p className="text-xs text-[var(--tx3)] mb-4">
+              Are you sure you want to record a payment of <strong className="text-[var(--teal-tx)]">₹{Number(payAmount).toLocaleString()}</strong> via <strong>{paymentMethod}</strong> for <strong>{collectStudent.name}</strong>?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPaymentConfirm(false)}
+                className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                disabled={processingPayment}
+                onClick={async () => {
+                  setShowPaymentConfirm(false);
+                  const fakeEvent = { preventDefault: () => {} } as React.FormEvent<HTMLFormElement>;
+                  await handleRecordPayment(fakeEvent);
+                }}
+                className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {processingPayment ? <Loader2 size={12} className="animate-spin" /> : null}
+                Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAssignConfirm && pendingAssignData && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={24} />
+            </div>
+            <h3 className="text-base font-bold text-[var(--tx)] mb-1">Duplicate Fee Warning</h3>
+            <p className="text-xs text-[var(--tx3)] mb-6">
+              {duplicateWarningMsg}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAssignConfirm(false);
+                  setPendingAssignData(null);
+                }}
+                className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowAssignConfirm(false);
+                  const data = pendingAssignData;
+                  setPendingAssignData(null);
+                  await executeAssignFee(data.items, data.type, data.studentId, data.className, data.dueDate);
+                }}
+                className="flex-1 py-2.5 bg-amber-600 text-white rounded-xl text-[12px] font-semibold hover:bg-amber-700 cursor-pointer"
+              >
+                Assign Anyway
               </button>
             </div>
           </div>

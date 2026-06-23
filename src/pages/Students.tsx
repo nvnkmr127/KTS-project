@@ -34,6 +34,7 @@ interface Student {
   feeStatus: 'Paid' | 'Partial' | 'Unpaid';
   academicYearId?: string;
   academicYearName?: string;
+  biometric_employee_code?: string;
 }
 
 const INITIALS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -44,13 +45,17 @@ const INITIALS_COLORS: Record<string, { bg: string; color: string }> = {
 type ModalType = 'add' | 'view' | 'edit' | null;
 
 export function Students() {
-  const { selectedAcademicYearId } = useApp();
+  const { selectedAcademicYearId, setHasUnsavedChanges } = useApp();
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
   const [ayFilter, setAyFilter] = useState(() => localStorage.getItem('selected_academic_year_id') || 'All');
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [phoneVal, setPhoneVal] = useState('');
+  const [biometricVal, setBiometricVal] = useState('');
 
   useEffect(() => {
     if (selectedAcademicYearId) {
@@ -84,6 +89,22 @@ export function Students() {
       setCurrentMonth(new Date());
     }
   }, [modal, activeDetailStudent]);
+
+  useEffect(() => {
+    if (modal === 'add') {
+      setPhoneVal('');
+      setBiometricVal('');
+      setFormErrors({});
+      setHasUnsavedChanges(false);
+    } else if (modal === 'edit' && selected) {
+      setPhoneVal(selected.phone || '');
+      setBiometricVal(selected.biometric_employee_code || '');
+      setFormErrors({});
+      setHasUnsavedChanges(false);
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [modal, selected, setHasUnsavedChanges]);
 
   useEffect(() => {
     const viewStudent = activeDetailStudent;
@@ -207,6 +228,7 @@ export function Students() {
         feeStatus: s.fee_status || 'Paid',
         academicYearId: s.batch && s.batch.academic_year ? String(s.batch.academic_year.id) : '',
         academicYearName: s.batch && s.batch.academic_year ? s.batch.academic_year.name : 'N/A',
+        biometric_employee_code: s.biometric_employee_code || '',
       }));
       setStudents(mapped);
     } catch (err) {
@@ -228,17 +250,41 @@ export function Students() {
     const firstName = fd.get('firstName') as string;
     const lastName = fd.get('lastName') as string;
     const statusVal = fd.get('studentStatus') as string;
+    const parentVal = fd.get('parent') as string;
+    const phone = fd.get('phone') as string;
+    const bio = fd.get('biometric_employee_code') as string;
+
+    const errors: Record<string, string> = {};
+    if (!firstName.trim()) errors.firstName = 'First Name is required';
+    if (!lastName.trim()) errors.lastName = 'Last Name is required';
+    if (!parentVal.trim()) errors.parent = 'Parent Name is required';
+    if (!phone) {
+      errors.phone = 'Mobile Number is required';
+    } else if (phone.replace(/\D/g, '').length !== 10) {
+      errors.phone = 'Mobile Number must be exactly 10 digits';
+    }
+    if (bio && !/^[A-Za-z0-9-]+$/.test(bio)) {
+      errors.biometric_employee_code = 'Biometric Code must be alphanumeric (hyphens allowed)';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      setSaving(false);
+      return;
+    }
+
     const data = {
       name: `${firstName} ${lastName}`,
       gender: fd.get('gender'),
       dob: fd.get('dob'),
       admission_date: fd.get('admissionDate'),
-      father_name: fd.get('parent'),
-      student_mobile: fd.get('phone'),
+      father_name: parentVal,
+      student_mobile: phone,
       village: fd.get('address'),
       class: fd.get('class'),
       section: fd.get('section'),
       status: statusVal === 'Active' ? 'active' : statusVal === 'Left' ? 'left' : 'transfer',
+      biometric_employee_code: bio || null,
     };
 
     try {
@@ -249,6 +295,7 @@ export function Students() {
       } else if (modal === 'edit' && selected) {
         await api.updateResource('students', selected.id, data);
       }
+      setHasUnsavedChanges(false);
       setModal(null);
       setSaveError('');
       await loadStudents();
@@ -730,29 +777,78 @@ export function Students() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">First Name *</label>
-                  <input name="firstName" required defaultValue={selected?.name.split(' ')[0] ?? ''} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Arjun" />
+                  <input
+                    name="firstName"
+                    required
+                    defaultValue={selected?.name.split(' ')[0] ?? ''}
+                    onChange={(e) => {
+                      setHasUnsavedChanges(true);
+                      if (e.target.value.trim() && formErrors.firstName) {
+                        setFormErrors(prev => {
+                          const copy = { ...prev };
+                          delete copy.firstName;
+                          return copy;
+                        });
+                      }
+                    }}
+                    className={`w-full bg-[var(--surf2)] border ${formErrors.firstName ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                    placeholder="Arjun"
+                  />
+                  {formErrors.firstName && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.firstName}</span>}
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Last Name *</label>
-                  <input name="lastName" required defaultValue={selected?.name.split(' ').slice(1).join(' ') ?? ''} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Reddy" />
+                  <input
+                    name="lastName"
+                    required
+                    defaultValue={selected?.name.split(' ').slice(1).join(' ') ?? ''}
+                    onChange={(e) => {
+                      setHasUnsavedChanges(true);
+                      if (e.target.value.trim() && formErrors.lastName) {
+                        setFormErrors(prev => {
+                          const copy = { ...prev };
+                          delete copy.lastName;
+                          return copy;
+                        });
+                      }
+                    }}
+                    className={`w-full bg-[var(--surf2)] border ${formErrors.lastName ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                    placeholder="Reddy"
+                  />
+                  {formErrors.lastName && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.lastName}</span>}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class *</label>
-                  <select name="class" defaultValue={selected?.class || '8'} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                  <select
+                    name="class"
+                    defaultValue={selected?.class || '8'}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                  >
                     {['6','7','8','9','10'].map((c) => <option key={c} value={c}>Class {c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Section *</label>
-                  <select name="section" defaultValue={selected?.section || 'A'} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                  <select
+                    name="section"
+                    defaultValue={selected?.section || 'A'}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                  >
                     {['A','B','C'].map((s) => <option key={s} value={s}>Section {s}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Gender *</label>
-                  <select name="gender" defaultValue={selected?.gender || 'Male'} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                  <select
+                    name="gender"
+                    defaultValue={selected?.gender || 'Male'}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                  >
                     <option value="Male">Male</option><option value="Female">Female</option>
                   </select>
                 </div>
@@ -760,18 +856,36 @@ export function Students() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Date of Birth *</label>
-                  <input type="date" name="dob" required defaultValue={selected?.dob} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                  <input
+                    type="date"
+                    name="dob"
+                    required
+                    defaultValue={selected?.dob}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Admission Date</label>
-                  <input type="date" name="admissionDate" defaultValue={selected?.admissionDate || new Date().toISOString().slice(0, 10)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                  <input
+                    type="date"
+                    name="admissionDate"
+                    defaultValue={selected?.admissionDate || new Date().toISOString().slice(0, 10)}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                  />
                 </div>
               </div>
               {/* Status field — only shown in edit mode */}
               {modal === 'edit' && (
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Student Status</label>
-                  <select name="studentStatus" defaultValue={selected?.status || 'Active'} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                  <select
+                    name="studentStatus"
+                    defaultValue={selected?.status || 'Active'}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                  >
                     <option value="Active">Active</option>
                     <option value="Transferred">Transferred</option>
                     <option value="Left">Left (Dropout)</option>
@@ -784,17 +898,93 @@ export function Students() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Parent Name *</label>
-                    <input name="parent" required defaultValue={selected?.parent} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="Father/Mother name" />
+                    <input
+                      name="parent"
+                      required
+                      defaultValue={selected?.parent}
+                      onChange={(e) => {
+                        setHasUnsavedChanges(true);
+                        if (e.target.value.trim() && formErrors.parent) {
+                          setFormErrors(prev => {
+                            const copy = { ...prev };
+                            delete copy.parent;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full bg-[var(--surf2)] border ${formErrors.parent ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                      placeholder="Father/Mother name"
+                    />
+                    {formErrors.parent && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.parent}</span>}
                   </div>
                   <div>
                     <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Mobile Number *</label>
-                    <input name="phone" required defaultValue={selected?.phone} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" placeholder="9876543210" />
+                    <input
+                      name="phone"
+                      required
+                      value={phoneVal}
+                      onChange={(e) => {
+                        setHasUnsavedChanges(true);
+                        // Clean input: numbers only, max 10 digits
+                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setPhoneVal(cleaned);
+                        if (cleaned.length === 10 && formErrors.phone) {
+                          setFormErrors(prev => {
+                            const copy = { ...prev };
+                            delete copy.phone;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full bg-[var(--surf2)] border ${formErrors.phone ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                      placeholder="e.g. 9876543210"
+                    />
+                    {formErrors.phone && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.phone}</span>}
                   </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Address</label>
-                <textarea name="address" defaultValue={selected?.address} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] resize-none" rows={2} placeholder="House no, Street, Area, City" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-[var(--b)] pt-4">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Address</label>
+                  <textarea
+                    name="address"
+                    defaultValue={selected?.address}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] resize-none"
+                    rows={2}
+                    placeholder="House no, Street, Area, City"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">
+                    Biometric Code
+                    <span
+                      className="cursor-help w-3.5 h-3.5 rounded-full bg-[var(--surf3)] text-[10px] text-[var(--tx3)] flex items-center justify-center font-bold"
+                      title="Format: Alphanumeric characters and hyphens allowed (e.g. BIO-123 or STU-1001). Leave empty if not yet assigned."
+                    >
+                      ?
+                    </span>
+                  </label>
+                  <input
+                    name="biometric_employee_code"
+                    value={biometricVal}
+                    onChange={(e) => {
+                      setHasUnsavedChanges(true);
+                      const val = e.target.value.replace(/[^A-Za-z0-9-]/g, '');
+                      setBiometricVal(val);
+                      if (formErrors.biometric_employee_code) {
+                        setFormErrors(prev => {
+                          const copy = { ...prev };
+                          delete copy.biometric_employee_code;
+                          return copy;
+                        });
+                      }
+                    }}
+                    className={`w-full bg-[var(--surf2)] border ${formErrors.biometric_employee_code ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                    placeholder="e.g. STU-1001"
+                  />
+                  {formErrors.biometric_employee_code && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.biometric_employee_code}</span>}
+                </div>
               </div>
               {/* Inline error feedback */}
               {saveError && (
@@ -805,7 +995,7 @@ export function Students() {
               )}
             </div>
             <div className="flex gap-2 p-5 pt-0">
-              <button type="button" onClick={() => { setModal(null); setSaveError(''); }} disabled={saving} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer disabled:opacity-50">Cancel</button>
+              <button type="button" onClick={() => { setModal(null); setSaveError(''); setHasUnsavedChanges(false); }} disabled={saving} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer disabled:opacity-50">Cancel</button>
               <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold hover:opacity-90 cursor-pointer disabled:opacity-70 flex items-center justify-center gap-1.5">
                 {saving && <Loader2 size={13} className="animate-spin" />}
                 {saving ? 'Saving...' : modal === 'add' ? 'Add Student' : 'Save Changes'}

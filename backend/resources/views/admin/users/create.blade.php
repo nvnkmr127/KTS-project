@@ -191,10 +191,18 @@
                                            {{ in_array($role->name, old('roles', [])) ? 'checked' : '' }}>
                                     <label class="form-check-label w-100" for="role_{{ $role->id }}">
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <div>
+                                            <div class="w-75">
                                                 <strong>{{ ucfirst(str_replace('-', ' ', $role->name)) }}</strong>
                                                 @if($role->description)
                                                     <div class="small text-muted">{{ $role->description }}</div>
+                                                @endif
+                                                @if($role->permissions->count() > 0)
+                                                    <div class="mt-1" style="font-size: 0.75rem; color: #5a5c69; line-height: 1.3;">
+                                                        <span class="text-primary font-weight-bold">Grants:</span> 
+                                                        {{ implode(', ', $role->permissions->pluck('name')->toArray()) }}
+                                                    </div>
+                                                @else
+                                                    <div class="mt-1 text-warning" style="font-size: 0.75rem;">No permissions assigned</div>
                                                 @endif
                                             </div>
                                             <span class="badge badge-{{ getRoleBadgeColor($role->name) }}">
