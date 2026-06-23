@@ -30,6 +30,7 @@ export type PageId =
   | 'my-salary'
   | 'settings'
   | 'activity-logs'
+  | 'recycle-bin'
   | 'search';
 
 export type ColorVariant =

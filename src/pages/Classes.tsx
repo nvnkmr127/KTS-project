@@ -18,6 +18,7 @@ interface SectionData {
   classTeacher: string;
   classTeacherId?: string;
   students: number;
+  realStudents?: number;
   subjects: string[];
   capacity?: number;
 }
@@ -98,6 +99,7 @@ export function Classes() {
           classTeacher: b.class_teacher_name || 'Select teacher',
           classTeacherId: b.class_teacher_id ? String(b.class_teacher_id) : undefined,
           students: studentsInBatch > 0 ? studentsInBatch : (classId === '8' ? 42 : 38),
+          realStudents: studentsInBatch,
           subjects: subjectsList,
           capacity: capacityVal,
         });
@@ -220,12 +222,14 @@ export function Classes() {
   const handleDeleteSection = async () => {
     if (!deleteConfirmSection) return;
     setDeleting(true);
+    setErrorMsg(null);
     try {
       await api.deleteResource('batches', deleteConfirmSection.id);
       setDeleteConfirmSection(null);
       loadClasses();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting section:', err);
+      setErrorMsg(err.message || 'Failed to delete section. Please try again.');
     } finally {
       setDeleting(false);
     }
@@ -368,7 +372,7 @@ export function Classes() {
                               <Edit2 size={13} />
                             </button>
                             <button
-                              onClick={() => setDeleteConfirmSection(sec)}
+                              onClick={() => { setErrorMsg(null); setDeleteConfirmSection(sec); }}
                               className="p-1.5 rounded-lg text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] cursor-pointer transition-colors"
                               title="Delete Section"
                             >
@@ -543,10 +547,30 @@ export function Classes() {
               </div>
               <h3 className="text-base font-bold text-[var(--tx)] mb-2">Delete Section</h3>
               <p className="text-xs text-[var(--tx3)] mb-6">Are you sure you want to delete this section? This action cannot be undone.</p>
+              
+              {deleteConfirmSection.realStudents !== undefined && deleteConfirmSection.realStudents > 0 && (
+                <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 text-amber-800 dark:text-amber-300 rounded-xl text-[12px] text-left flex flex-col gap-1">
+                  <div className="font-semibold flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Enrolled Students Alert
+                  </div>
+                  <p className="text-[11.5px] leading-relaxed">
+                    There are <strong>{deleteConfirmSection.realStudents}</strong> students currently enrolled in this section. Deleting it will leave these students without a class section assignment.
+                  </p>
+                </div>
+              )}
+
+              {errorMsg && (
+                <div className="mb-4 p-3 bg-[var(--red-bg)] border border-[var(--red-tx)]/10 text-[var(--red-tx)] rounded-xl text-[11.5px] text-left flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--red)] flex-shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <button 
                   type="button" 
-                  onClick={() => setDeleteConfirmSection(null)}
+                  onClick={() => { setDeleteConfirmSection(null); setErrorMsg(null); }}
                   disabled={deleting}
                   className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer disabled:opacity-50"
                 >

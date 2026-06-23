@@ -85,6 +85,7 @@ export function AllotAttendance() {
   
   // Student selection state (studentId -> present/absent)
   const [statusMap, setStatusMap] = useState<Record<string, 'present' | 'absent'>>({});
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Day of week from selected date
   const getDayName = (dateStr: string) => {
@@ -505,7 +506,7 @@ export function AllotAttendance() {
                   )}
                 </div>
                 <button
-                  onClick={handleSubmit}
+                  onClick={() => setShowConfirmModal(true)}
                   disabled={saving || classStudents.length === 0}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-bold cursor-pointer hover:opacity-95 disabled:opacity-40 disabled:pointer-events-none transition-all"
                 >
@@ -519,6 +520,73 @@ export function AllotAttendance() {
               </div>
             </Card>
           )}
+        </div>
+      )}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-[var(--purple)] to-[#7c3aed] p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users size={16} />
+                <span className="text-[13.5px] font-bold">Confirm Attendance Submission</span>
+              </div>
+              <button 
+                onClick={() => setShowConfirmModal(false)}
+                className="p-1 hover:bg-white/10 rounded-lg text-white/80 hover:text-white transition-colors cursor-pointer"
+              >
+                <XCircle size={16} />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-[var(--tx2)]">
+                You are about to submit attendance for <strong className="text-[var(--tx)]">Class {selectedClass}</strong> ({session === 'first_period' ? 'Morning' : 'Afternoon'}) on <strong className="text-[var(--tx)]">{date}</strong>.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[var(--teal-bg)]/30 border border-[var(--teal-tx)]/15 rounded-xl p-3 text-center">
+                  <div className="text-[9.5px] text-[var(--teal-tx)] font-semibold uppercase tracking-wider mb-1">Present</div>
+                  <div className="text-[20px] font-bold text-[var(--teal-tx)]">{presentCount}</div>
+                  <div className="text-[9px] text-[var(--tx3)] mt-0.5">Students</div>
+                </div>
+                <div className="bg-[var(--red-bg)]/30 border border-[var(--red-tx)]/15 rounded-xl p-3 text-center">
+                  <div className="text-[9.5px] text-[var(--red-tx)] font-semibold uppercase tracking-wider mb-1">Absent</div>
+                  <div className="text-[20px] font-bold text-[var(--red-tx)]">{absentCount}</div>
+                  <div className="text-[9px] text-[var(--tx3)] mt-0.5">Students</div>
+                </div>
+              </div>
+
+              <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 flex items-start gap-2">
+                <AlertCircle size={13} className="text-[var(--blue-tx)] mt-0.5 flex-shrink-0" />
+                <p className="text-[10px] text-[var(--tx2)] leading-relaxed">
+                  Once submitted, stats will sync to dashboards immediately. Absent notifications will be dispatched if enabled.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 p-5 pt-0">
+              <button 
+                type="button" 
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  handleSubmit();
+                }}
+                className="flex-1 py-2.5 bg-gradient-to-r from-[var(--purple)] to-[#7c3aed] text-white rounded-xl text-[12px] font-bold hover:opacity-90 cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5"
+              >
+                <Save size={12} /> Confirm &amp; Submit
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

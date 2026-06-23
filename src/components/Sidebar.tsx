@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
   Bus, BarChart2, Settings, School, MessageCircle,
-  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity
+  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity, Trash2
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -76,6 +76,12 @@ const ADMIN_SECTIONS: NavSection[] = [
     items: [
       { icon: <BarChart2 size={14} />, label: 'Reports', page: 'reports' },
       { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs' },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { icon: <Trash2 size={14} />, label: 'Recycle Bin', page: 'recycle-bin' },
     ],
   },
 ];

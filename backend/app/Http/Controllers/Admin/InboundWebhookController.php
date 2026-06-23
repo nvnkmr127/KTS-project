@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\InboundWebhook;
+use App\Models\InboundWebhookLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -204,5 +205,79 @@ class InboundWebhookController extends Controller
         ]);
 
         return back()->with('success', $msg);
+    }
+
+    /**
+     * Replay a specific inbound webhook log call.
+     */
+    public function replay(Request $request, $logId)
+    {
+        $log = InboundWebhookLog::findOrFail($logId);
+        $webhook = $log->inboundWebhook;
+
+        if (!$webhook) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Parent webhook not found.'], 404);
+            }
+            return back()->with('error', 'Parent webhook not found.');
+        }
+
+        try {
+            // Build the simulated request
+            $simulatedRequest = Request::create(
+                route('api.v1.webhooks.dynamic', ['slug' => $webhook->slug]),
+                $log->method ?? 'POST',
+                $log->payload ?? []
+            );
+
+            // Set headers/token to pass authorization checks
+            if ($webhook->secret_token) {
+                $simulatedRequest->headers->set('X-Webhook-Token', $webhook->secret_token);
+            }
+
+            // Set the simulated client IP
+            $simulatedRequest->server->set('REMOTE_ADDR', $log->ip_address ?? '127.0.0.1');
+
+            // Swap out the request instance in the container temporarily so helper functions (e.g. request()) use it
+            $originalRequest = app('request');
+            app()->instance('request', $simulatedRequest);
+
+            try {
+                $leadService = app(\App\Services\LeadDistributionService::class);
+                $apiController = app(\App\Http\Controllers\Api\InboundWebhookController::class);
+                $response = $apiController->handle($simulatedRequest, $webhook->slug, $leadService);
+            } finally {
+                // Restore original request
+                app()->instance('request', $originalRequest);
+            }
+
+            $status = $response->status();
+            $content = json_decode($response->getContent(), true);
+
+            $success = ($status >= 200 && $status < 300);
+            $message = 'Inbound webhook replayed successfully! Status: ' . $status;
+            if (isset($content['message'])) {
+                $message .= ' - ' . $content['message'];
+            }
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => $success,
+                    'message' => $message,
+                    'status_code' => $status,
+                ]);
+            }
+
+            return back()->with($success ? 'success' : 'error', $message);
+
+        } catch (\Exception $e) {
+            $message = 'Inbound webhook replay failed: ' . $e->getMessage();
+
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
+            }
+
+            return back()->with('error', $message);
+        }
     }
 }

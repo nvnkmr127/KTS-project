@@ -179,8 +179,8 @@
                 <!-- Quick Actions -->
                 <div class="mb-3">
                     <h6 class="text-gray-800 mb-2">Quick Actions</h6>
-                    <button type="button" class="btn btn-outline-success btn-sm btn-block mb-2" onclick="testBackup()">
-                        <i class="fas fa-vial mr-1"></i>Test Backup System
+                    <button type="button" class="btn btn-outline-success btn-sm btn-block mb-2" disabled style="cursor: not-allowed; opacity: 0.65;" title="Database backups depend entirely on server-level automation">
+                        <i class="fas fa-vial mr-1"></i>Test Backup System (Disabled)
                     </button>
                     <button type="button" class="btn btn-outline-info btn-sm btn-block" onclick="cleanupBackups()">
                         <i class="fas fa-broom mr-1"></i>Cleanup Old Backups
@@ -379,16 +379,13 @@
                     <div class="form-group">
                         <label>Select Backup Type:</label>
                         <div class="backup-options">
-                            <div class="backup-option" onclick="selectBackupType('db')">
+                            <div class="backup-option disabled text-muted" style="cursor: not-allowed; opacity: 0.65;" title="Database backups depend entirely on server-level automation">
                                 <div class="backup-icon">
-                                    <i class="fas fa-database"></i>
+                                    <i class="fas fa-database text-muted"></i>
                                 </div>
                                 <div class="backup-info">
-                                    <h6>Database Backup</h6>
-                                    <p class="text-muted">Backup all database tables and data</p>
-                                </div>
-                                <div class="backup-radio">
-                                    <input type="radio" name="type" value="db" id="type_db">
+                                    <h6>Database Backup <span class="badge badge-secondary ml-1" style="font-size: 9px;">Automated</span></h6>
+                                    <p class="text-muted">Trigger disabled (handled via server cron jobs)</p>
                                 </div>
                             </div>
                             

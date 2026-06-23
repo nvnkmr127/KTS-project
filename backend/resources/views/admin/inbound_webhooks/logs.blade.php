@@ -123,6 +123,9 @@
                                             @endif
                                         </td>
                                         <td class="text-right pr-4">
+                                            <button type="button" class="btn btn-sm btn-outline-info mr-1" onclick="replayInboundEvent(this, {{ $log->id }})">
+                                                <i class="fas fa-redo-alt mr-1"></i> Replay
+                                            </button>
                                             <button class="btn btn-sm btn-white border shadow-sm" data-toggle="modal"
                                                 data-target="#logModal{{ $log->id }}">
                                                 <i class="fas fa-eye mr-1"></i> Inspect
@@ -192,6 +195,9 @@
                             <span class="mx-2 text-gray-300">|</span>
                             <span class="text-muted small">{{ $log->created_at->toDayDateTimeString() }}</span>
                         </div>
+                        <button type="button" class="btn btn-info px-3 mr-2 font-weight-bold" onclick="replayInboundEvent(this, {{ $log->id }})">
+                            <i class="fas fa-redo-alt mr-1"></i> Replay Webhook
+                        </button>
                         <button type="button" class="btn btn-secondary px-4 font-weight-bold" data-dismiss="modal">Close</button>
                     </div>
                 </div>
@@ -207,6 +213,39 @@
                 const originalHtml = btn.innerHTML;
                 btn.innerHTML = '<i class="fas fa-check mr-1 text-success"></i> Copied!';
                 setTimeout(() => btn.innerHTML = originalHtml, 2000);
+            });
+        }
+
+        function replayInboundEvent(button, logId) {
+            if (!confirm('Re-process this exact payload for this inbound webhook?')) return;
+
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Replaying...';
+            button.disabled = true;
+
+            fetch(`/admin/inbound-webhooks/logs/${logId}/replay`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Replay failed: ' + data.message);
+                }
+            })
+            .catch(err => {
+                alert('Network error occurred.');
+                console.error(err);
+            })
+            .finally(() => {
+                button.innerHTML = originalText;
+                button.disabled = false;
             });
         }
     </script>

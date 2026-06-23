@@ -86,6 +86,9 @@ export function Attendance() {
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [loadingPeriods, setLoadingPeriods] = useState(false);
 
+  const [students, setStudents] = useState<any[]>([]);
+  const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
+
   // Load batches on mount
   useEffect(() => {
     async function loadBatches() {
@@ -174,6 +177,8 @@ export function Attendance() {
         });
 
         setBatches(sortedBatches);
+        setStudents(studentsData || []);
+        setTodayAttendance(todayAttendanceData || []);
 
         // Compute class-wise today's glance data with real analytics
         const glanceList = defaultClasses.map((cId) => {
@@ -495,29 +500,50 @@ export function Attendance() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {filteredBatches.map((batch) => (
-                      <div
-                        key={batch.id}
-                        onClick={() => handleClassClick(batch)}
-                        className="group relative overflow-hidden bg-[var(--surf2)] hover:bg-[var(--surf)] border border-[var(--b)] hover:border-[var(--blue-tx)] rounded-xl p-3.5 cursor-pointer transition-all duration-300 transform hover:-translate-y-0.5 shadow-sm hover:shadow-md"
-                      >
-                        <div className="absolute right-0 top-0 w-20 h-20 bg-gradient-to-br from-[var(--blue-bg)] to-transparent opacity-20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
-                        
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg">
-                            <Users size={14} />
-                          </div>
-                          <div>
-                            <div className="text-[12.5px] font-bold text-[var(--tx)] group-hover:text-[var(--blue)] transition-colors">Class {batch.name}</div>
-                            <div className="text-[10px] text-[var(--tx3)] mt-0.5">Teacher: {batch.class_teacher_name || 'Not assigned'}</div>
-                          </div>
-                        </div>
+                    {filteredBatches.map((batch) => {
+                      const batchStudents = students.filter(s => String(s.batch_id) === String(batch.id));
+                      const totalStudents = batchStudents.length;
+                      const presentCount = todayAttendance.filter(
+                        att => String(att.batch_id) === String(batch.id) && ['present', 'late'].includes(att.status)
+                      ).length;
+                      const absentCount = todayAttendance.filter(
+                        att => String(att.batch_id) === String(batch.id) && att.status === 'absent'
+                      ).length;
 
-                        <div className="mt-3 flex items-center justify-end text-[10px] text-[var(--blue-tx)] font-semibold gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          View Attendance <ArrowRight size={10} />
+                      return (
+                        <div
+                          key={batch.id}
+                          onClick={() => handleClassClick(batch)}
+                          className="group relative overflow-hidden bg-[var(--surf2)] hover:bg-[var(--surf)] border border-[var(--b)] hover:border-[var(--blue-tx)] rounded-xl p-3.5 cursor-pointer transition-all duration-300 transform hover:-translate-y-0.5 shadow-sm hover:shadow-md"
+                        >
+                          <div className="absolute right-0 top-0 w-20 h-20 bg-gradient-to-br from-[var(--blue-bg)] to-transparent opacity-20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
+                          
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg">
+                              <Users size={14} />
+                            </div>
+                            <div>
+                              <div className="text-[12.5px] font-bold text-[var(--tx)] group-hover:text-[var(--blue)] transition-colors">Class {batch.name}</div>
+                              <div className="text-[10px] text-[var(--tx3)] mt-0.5">Teacher: {batch.class_teacher_name || 'Not assigned'}</div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between">
+                            {totalStudents > 0 ? (
+                              <div className="flex gap-1.5">
+                                <Badge variant="teal">{presentCount} Present</Badge>
+                                <Badge variant="red">{absentCount} Absent</Badge>
+                              </div>
+                            ) : (
+                              <Badge variant="gray">No students</Badge>
+                            )}
+                            <div className="flex items-center text-[10px] text-[var(--blue-tx)] font-semibold gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              View Attendance <ArrowRight size={10} />
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </Card>

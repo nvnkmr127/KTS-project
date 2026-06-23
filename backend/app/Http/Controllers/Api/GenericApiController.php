@@ -1094,6 +1094,12 @@ class GenericApiController extends Controller
             return response()->json(['error' => 'Item not found'], 404);
         }
 
+        if ($resource === 'batches') {
+            if ($item->students()->count() > 0) {
+                return response()->json(['error' => 'Cannot delete this section because it has enrolled students.'], 400);
+            }
+        }
+
         $item->delete();
 
         return response()->json(['success' => true]);

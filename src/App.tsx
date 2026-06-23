@@ -34,6 +34,7 @@ import { MySalary } from './pages/MySalary';
 import { Settings } from './pages/Settings';
 import { SearchPage } from './pages/SearchPage';
 import { TeacherActivityLogs } from './pages/TeacherActivityLogs';
+import { RecycleBin } from './pages/RecycleBin';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -66,6 +67,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   'my-salary': '/my-salary',
   settings: '/settings',
   'activity-logs': '/activity-logs',
+  'recycle-bin': '/recycle-bin',
   search: '/search',
 };
 
@@ -81,7 +83,7 @@ const getInitialPage = (isTeacher: boolean): PageId => {
   const path = window.location.pathname;
   const pageFromPath = PATH_TO_PAGE[path];
   if (pageFromPath) {
-    if (isTeacher && ['dashboard', 'fee', 'fee-categories', 'students', 'staff', 'salary', 'expenses', 'reports', 'timetable', 'classes', 'faculty', 'bus', 'whatsapp', 'meetings'].includes(pageFromPath)) {
+    if (isTeacher && ['dashboard', 'fee', 'fee-categories', 'students', 'staff', 'salary', 'expenses', 'reports', 'timetable', 'classes', 'faculty', 'bus', 'whatsapp', 'meetings', 'recycle-bin'].includes(pageFromPath)) {
       return 'teacher-dashboard';
     }
     if (!isTeacher && ['teacher-dashboard', 'homework', 'performance'].includes(pageFromPath)) {
@@ -192,6 +194,7 @@ function AppShell() {
           {page === 'activity-logs' && (
             isTeacher ? <TeacherActivityLogs /> : <Settings initialTab={2} />
           )}
+          {page === 'recycle-bin' && <RecycleBin />}
           {page === 'search' && (
             <SearchPage
               searchQuery={searchQuery}

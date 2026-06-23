@@ -482,8 +482,8 @@
                                     
                                     @if($activeTab === 'backup')
                                         <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-success" onclick="createManualBackup('database')">
-                                                <i class="fas fa-database mr-2"></i>Backup Database
+                                            <button type="button" class="btn btn-outline-success" disabled style="cursor: not-allowed; opacity: 0.65;" title="Database backups depend entirely on server-level automation">
+                                                <i class="fas fa-database mr-2"></i>Backup Database (Disabled)
                                             </button>
                                             <button type="button" class="btn btn-outline-info" onclick="createManualBackup('code')">
                                                 <i class="fas fa-code mr-2"></i>Backup Code

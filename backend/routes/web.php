@@ -890,6 +890,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'permission:view bac
         Route::post('inbound-webhooks/{inboundWebhook}/mapping', [App\Http\Controllers\Admin\InboundWebhookController::class, 'updateMapping'])->name('inbound-webhooks.update-mapping');
         Route::post('inbound-webhooks/{inboundWebhook}/toggle', [App\Http\Controllers\Admin\InboundWebhookController::class, 'toggle'])->name('inbound-webhooks.toggle');
         Route::post('inbound-webhooks/bulk-action', [App\Http\Controllers\Admin\InboundWebhookController::class, 'bulkAction'])->name('inbound-webhooks.bulk-action');
+        Route::post('inbound-webhooks/logs/{log}/replay', [App\Http\Controllers\Admin\InboundWebhookController::class, 'replay'])
+            ->name('inbound-webhooks.logs.replay')
+            ->where('log', '[0-9]+');
 
         // Activity Log
         // Activity Log - REMOVE the 'admin.' prefix from ->name()

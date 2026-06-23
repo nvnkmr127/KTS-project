@@ -354,6 +354,7 @@ export function StaffManagement() {
   }, [modal]);
 
   const filtered = staffList.filter((s) => {
+    if (s.status === 'Resigned') return false; // Hidden in recycle bin
     const matchSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.designation.toLowerCase().includes(search.toLowerCase()) ||
@@ -366,7 +367,7 @@ export function StaffManagement() {
 
   const active = staffList.filter((s) => s.status === 'Active').length;
   const onLeave = staffList.filter((s) => s.status === 'On Leave').length;
-  const totalSalary = staffList.reduce((sum, s) => sum + s.salary, 0);
+  const totalSalary = staffList.filter(s => s.status !== 'Resigned').reduce((sum, s) => sum + s.salary, 0);
 
   const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -456,8 +457,8 @@ export function StaffManagement() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to remove this staff member?')) {
-      setStaffList(prev => prev.filter(s => s.id !== id));
+    if (confirm('Are you sure you want to move this staff member to the recycle bin?')) {
+      setStaffList(prev => prev.map(s => s.id === id ? { ...s, status: 'Resigned' as const } : s));
     }
   };
 
