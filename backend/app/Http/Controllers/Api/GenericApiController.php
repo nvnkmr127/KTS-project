@@ -36,6 +36,7 @@ class GenericApiController extends Controller
             'settings' => \App\Models\Setting::class,
             'biometric-logs' => \App\Models\Attendance\BiometricLog::class,
             'activity-logs' => \Spatie\Activitylog\Models\Activity::class,
+            'failed-logins' => \Spatie\Activitylog\Models\Activity::class,
         ];
 
         return $map[strtolower($resource)] ?? null;
@@ -98,6 +99,19 @@ class GenericApiController extends Controller
             } else {
                 return response()->json(['error' => 'Unauthorized access'], 403);
             }
+        }
+
+        // Custom auth check + filter for failed-logins (admin only)
+        if ($resource === 'failed-logins') {
+            $user = auth('sanctum')->user();
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized access'], 403);
+            }
+            if (!$user->hasRole('super-admin') && !$user->hasRole('admin') && !$user->hasRole('college-admin')) {
+                return response()->json(['error' => 'Unauthorized access'], 403);
+            }
+            // Only show failed login attempt entries
+            $query->where('description', 'like', 'Failed login attempt%');
         }
 
         // Custom filter for faculty role
@@ -191,7 +205,7 @@ class GenericApiController extends Controller
             $query->with(['student', 'feeCategory']);
         } elseif ($resource === 'timetable') {
             $query->with(['batch', 'subject', 'user', 'timeSlot', 'classroom']);
-        } elseif ($resource === 'activity-logs') {
+        } elseif ($resource === 'activity-logs' || $resource === 'failed-logins') {
             $query->with(['causer', 'subject']);
         }
 
@@ -311,6 +325,26 @@ class GenericApiController extends Controller
                     'causer_email' => $item->causer ? $item->causer->email : null,
                     'properties' => $item->properties,
                     'created_at' => $item->created_at ? $item->created_at->toIso8601String() : null,
+                ];
+            });
+        } elseif ($resource === 'failed-logins') {
+            $data = $data->map(function ($item) {
+                $props = is_array($item->properties) ? $item->properties : (is_object($item->properties) ? (array)$item->properties : []);
+                // Handle Spatie's Collection/Arrayable properties
+                if ($item->properties && method_exists($item->properties, 'toArray')) {
+                    $props = $item->properties->toArray();
+                }
+                return [
+                    'id'             => (string)$item->id,
+                    'description'    => $item->description,
+                    'attempted_email'=> $props['attempted_email'] ?? null,
+                    'ip_address'     => $props['ip_address'] ?? null,
+                    'user_agent'     => $props['user_agent'] ?? null,
+                    'reason'         => $props['reason'] ?? 'Unknown',
+                    'causer_name'    => $item->causer ? $item->causer->name : null,
+                    'causer_email'   => $item->causer ? $item->causer->email : null,
+                    'causer_id'      => $item->causer_id ? (string)$item->causer_id : null,
+                    'created_at'     => $item->created_at ? $item->created_at->toIso8601String() : null,
                 ];
             });
         }

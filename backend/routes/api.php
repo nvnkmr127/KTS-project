@@ -39,10 +39,44 @@ Route::post('/v1/login', function(Request $request) {
     $user = User::where('email', $request->email)->first();
 
     if (!$user || !Hash::check($request->password, $user->password)) {
+        // Log failed login attempt for admin audit visibility
+        try {
+            activity()
+                ->withProperties([
+                    'attempted_email' => $request->email,
+                    'ip_address'      => $request->ip(),
+                    'user_agent'      => substr($request->userAgent() ?? '', 0, 200),
+                    'reason'          => 'Invalid credentials',
+                ])
+                ->log('Failed login attempt for ' . $request->email);
+
+            // Also update the failed_login_count on the user record if user exists
+            if ($user) {
+                $user->increment('failed_login_count');
+            }
+        } catch (\Throwable $e) {
+            // Never let audit logging break the login flow
+        }
+
         return response()->json(['error' => 'Invalid credentials'], 401);
     }
 
     if (strtolower($user->status) === 'inactive') {
+        // Log failed login for inactive account
+        try {
+            activity()
+                ->causedBy($user)
+                ->withProperties([
+                    'attempted_email' => $request->email,
+                    'ip_address'      => $request->ip(),
+                    'user_agent'      => substr($request->userAgent() ?? '', 0, 200),
+                    'reason'          => 'Account inactive',
+                ])
+                ->log('Failed login attempt for ' . $request->email . ' (account inactive)');
+        } catch (\Throwable $e) {
+            // Never let audit logging break the login flow
+        }
+
         return response()->json(['error' => 'Account is inactive, contact admin.'], 403);
     }
 

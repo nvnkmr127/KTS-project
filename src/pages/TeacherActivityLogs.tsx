@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { api } from '../services/api';
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 export function TeacherActivityLogs() {
-  const { user } = useAuth();
+  useAuth();
   
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

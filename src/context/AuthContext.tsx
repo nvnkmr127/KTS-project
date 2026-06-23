@@ -66,6 +66,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Listen for force-logout flags written by the admin (StaffAccess page)
+  // This detects the flag immediately in any open tab without waiting for the poll
+  useEffect(() => {
+    if (!user) return;
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (!e.key) return;
+      const expectedKey = `kts_force_logout_${user.email?.toLowerCase()}`;
+      if (e.key === expectedKey && e.newValue) {
+        logout();
+        alert('You have been logged out by an administrator.');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [user]);
+
   // Demo users for offline / no-backend usage
   const DEMO_USERS: Record<string, { email: string; password: string; user: User }> = {
     'admin@krishnaveni.edu': {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Key, X, Lock, Trash2 } from 'lucide-react';
+import { Search, Key, X, Lock, Trash2, LogOut } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
@@ -73,6 +73,39 @@ export function StaffAccess() {
     return accessRecords[staffId] || { staffId, email: '', isActive: false, hasAccess: false };
   };
 
+  // Force logout a staff member by marking them inactive on the backend
+  // and writing a force-logout flag to localStorage (picked up by AuthContext poll)
+  const forceLogout = async (staffId: string) => {
+    const record = accessRecords[staffId];
+    if (!record || !record.email) return;
+
+    try {
+      const existingUsers = await api.getResources('faculty');
+      const matchedUser = existingUsers.find(
+        (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
+      );
+
+      if (matchedUser) {
+        // Mark inactive so the 15-s AuthContext poll logs them out automatically
+        await api.updateResource('faculty', matchedUser.id, { status: 'inactive' });
+      }
+
+      // Write a per-email flag so any tab the staff has open will detect forced logout
+      const flagKey = `kts_force_logout_${record.email.toLowerCase()}`;
+      localStorage.setItem(flagKey, String(Date.now()));
+
+      // Also update local access record to reflect inactive state
+      setAccessRecords((prev) => ({
+        ...prev,
+        [staffId]: { ...prev[staffId], isActive: false },
+      }));
+
+      alert(`Force logout triggered for ${record.email}. They will be logged out within 15 seconds.`);
+    } catch (err: any) {
+      alert('Failed to force logout: ' + (err.message || err));
+    }
+  };
+
   // Toggle active / inactive state
   const toggleAccessActive = async (staffId: string) => {
     const record = accessRecords[staffId];
@@ -91,6 +124,12 @@ export function StaffAccess() {
         await api.updateResource('faculty', matchedUser.id, {
           status: newActiveState ? 'active' : 'inactive',
         });
+      }
+
+      // If setting to inactive, also force logout the staff member
+      if (!newActiveState && record.email) {
+        const flagKey = `kts_force_logout_${record.email.toLowerCase()}`;
+        localStorage.setItem(flagKey, String(Date.now()));
       }
 
       setAccessRecords((prev) => ({
@@ -156,8 +195,14 @@ export function StaffAccess() {
     const record = accessRecords[staffId];
     if (!record) return;
 
-    if (window.confirm('Are you sure you want to remove login access for this staff member?')) {
+    if (window.confirm('Are you sure you want to remove login access for this staff member? This will also force logout any active session.')) {
       try {
+        // Force logout before deleting so any active session is killed
+        if (record.email) {
+          const flagKey = `kts_force_logout_${record.email.toLowerCase()}`;
+          localStorage.setItem(flagKey, String(Date.now()));
+        }
+
         const existingUsers = await api.getResources('faculty');
         const matchedUser = existingUsers.find(
           (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
@@ -352,6 +397,16 @@ export function StaffAccess() {
                                 }`}
                               >
                                 {access.isActive ? 'Inactive' : 'Active'}
+                              </button>
+
+                              {/* Force Logout button */}
+                              <button
+                                type="button"
+                                onClick={() => forceLogout(s.id)}
+                                title="Force logout this staff member"
+                                className="px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/20 flex items-center gap-1"
+                              >
+                                <LogOut size={11} /> Force Logout
                               </button>
 
                               <button

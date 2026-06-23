@@ -6,9 +6,11 @@ import { useApp } from '../context/AppContext';
 import { 
   Calendar, Plus, Trash2, Edit2, CheckCircle2, Shield, 
   AlertCircle, RefreshCw, X, Loader2, Save,
-  Activity, User, Search, Clock, GitCompare, ArrowRight
+  Activity, User, Search, Clock, GitCompare, ArrowRight,
+  ShieldAlert, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { TabBar } from '../components/ui';
+
 
 interface AcademicYear {
   id: string;
@@ -65,6 +67,14 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   const [oldStaffFilter, setOldStaffFilter] = useState('All');
   const [newStaffFilter, setNewStaffFilter] = useState('All');
   const [staffList, setStaffList] = useState<any[]>([]);
+
+  // Failed login audit states
+  const [failedLogins, setFailedLogins] = useState<any[]>([]);
+  const [loadingFailedLogins, setLoadingFailedLogins] = useState(false);
+  const [failedLoginSearch, setFailedLoginSearch] = useState('');
+  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
+  const [showFailedLoginSection, setShowFailedLoginSection] = useState(true);
+
 
   // Load academic years
   const loadAys = async () => {
@@ -172,6 +182,21 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     }
   };
 
+  // Load Failed Login Attempts
+  const loadFailedLogins = async () => {
+    setLoadingFailedLogins(true);
+    try {
+      const data = await api.getResources('failed-logins', { limit: '500' });
+      if (Array.isArray(data)) {
+        setFailedLogins(data);
+      }
+    } catch (err) {
+      console.error('Error loading failed login attempts:', err);
+    } finally {
+      setLoadingFailedLogins(false);
+    }
+  };
+
   useEffect(() => {
     if (tab === 0) {
       loadAys();
@@ -181,8 +206,10 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
       loadActivityLogs();
       loadUsers();
       loadStaffList();
+      loadFailedLogins();
     }
   }, [tab]);
+
 
   useEffect(() => {
     setTab(initialTab);
@@ -576,6 +603,211 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
 
         {/* Tab 2: Activity Logs */}
         {tab === 2 && (
+          <div className="space-y-4">
+
+          {/* Failed Login Attempts Audit Card */}
+          <Card>
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={() => setShowFailedLoginSection(!showFailedLoginSection)}
+                className="flex items-center gap-2 group cursor-pointer"
+              >
+                <div className="w-7 h-7 rounded-lg bg-[var(--red-bg)] text-[var(--red-tx)] flex items-center justify-center flex-shrink-0">
+                  <ShieldAlert size={14} />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-[13px] font-bold text-[var(--tx)] group-hover:text-[var(--red-tx)] transition-colors flex items-center gap-1.5">
+                    Failed Login Attempts Audit
+                    {showFailedLoginSection ? <ChevronDown size={13} className="text-[var(--tx3)]" /> : <ChevronRight size={13} className="text-[var(--tx3)]" />}
+                  </h3>
+                  <p className="text-[11px] text-[var(--tx3)] mt-0.5">Track and audit failed sign-in attempts per user account.</p>
+                </div>
+              </button>
+
+              <div className="flex items-center gap-2">
+                {failedLogins.length > 0 && (
+                  <span className="px-2.5 py-0.5 bg-[var(--red-bg)] text-[var(--red-tx)] text-[10px] font-bold rounded-full">
+                    {failedLogins.length} failed attempt{failedLogins.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                <button
+                  onClick={loadFailedLogins}
+                  disabled={loadingFailedLogins}
+                  className="p-1.5 border border-[var(--b)] rounded-lg bg-[var(--surf2)] hover:bg-[var(--surf3)] text-[var(--tx2)] cursor-pointer disabled:opacity-50"
+                  title="Refresh failed login audit"
+                >
+                  <RefreshCw size={12} className={loadingFailedLogins ? 'animate-spin' : ''} />
+                </button>
+              </div>
+            </div>
+
+            {showFailedLoginSection && (
+              <div>
+                {/* Search bar */}
+                <div className="mb-3">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--tx3)]" />
+                    <input
+                      type="text"
+                      value={failedLoginSearch}
+                      onChange={(e) => setFailedLoginSearch(e.target.value)}
+                      placeholder="Search by email or IP address..."
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg pl-8 pr-3 py-1.5 text-[11.5px] text-[var(--tx)] outline-none focus:border-[var(--red)]"
+                    />
+                  </div>
+                </div>
+
+                {loadingFailedLogins ? (
+                  <div className="flex justify-center py-10">
+                    <Loader2 size={20} className="animate-spin text-[var(--red)]" />
+                  </div>
+                ) : failedLogins.length === 0 ? (
+                  <div className="py-10 text-center space-y-2">
+                    <div className="w-10 h-10 rounded-full bg-[var(--teal-bg)] flex items-center justify-center mx-auto text-[var(--teal-tx)]">
+                      <ShieldAlert size={18} />
+                    </div>
+                    <p className="text-[12px] text-[var(--tx3)] italic">No failed login attempts recorded yet.</p>
+                    <p className="text-[11px] text-[var(--tx3)]">Failed attempts will appear here after invalid login tries.</p>
+                  </div>
+                ) : (() => {
+                  // Group by attempted email
+                  const grouped: Record<string, any[]> = {};
+                  failedLogins.forEach((log) => {
+                    const email = log.attempted_email || log.causer_email || 'Unknown';
+                    if (!grouped[email]) grouped[email] = [];
+                    grouped[email].push(log);
+                  });
+
+                  const searchQ = failedLoginSearch.toLowerCase().trim();
+                  const emailKeys = Object.keys(grouped).filter(email => {
+                    if (!searchQ) return true;
+                    if (email.toLowerCase().includes(searchQ)) return true;
+                    return grouped[email].some(l =>
+                      (l.ip_address || '').includes(searchQ) ||
+                      (l.reason || '').toLowerCase().includes(searchQ)
+                    );
+                  }).sort((a, b) => grouped[b].length - grouped[a].length);
+
+                  if (emailKeys.length === 0) {
+                    return (
+                      <div className="py-8 text-center text-[12px] text-[var(--tx3)] italic">
+                        No failed login records match your search.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      {emailKeys.map(email => {
+                        const attempts = grouped[email];
+                        const count = attempts.length;
+                        const isExpanded = expandedEmail === email;
+                        const riskColor = count >= 10
+                          ? 'border-l-[var(--red)] bg-[var(--red-bg)]/30'
+                          : count >= 5
+                            ? 'border-l-[var(--amber)] bg-[var(--amber-bg)]/20'
+                            : 'border-l-[var(--blue)] bg-[var(--surf2)]/50';
+                        const countColor = count >= 10
+                          ? 'bg-[var(--red-bg)] text-[var(--red-tx)]'
+                          : count >= 5
+                            ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)]'
+                            : 'bg-[var(--blue-bg)] text-[var(--blue-tx)]';
+                        const lastAttempt = attempts[0];
+                        let lastAttemptTime = '';
+                        if (lastAttempt?.created_at) {
+                          try {
+                            lastAttemptTime = new Date(lastAttempt.created_at).toLocaleString('en-IN', {
+                              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
+                            });
+                          } catch { lastAttemptTime = lastAttempt.created_at; }
+                        }
+
+                        return (
+                          <div
+                            key={email}
+                            className={`border border-[var(--b)] border-l-[3px] rounded-xl overflow-hidden transition-all ${riskColor}`}
+                          >
+                            {/* Summary row — clickable to expand */}
+                            <button
+                              onClick={() => setExpandedEmail(isExpanded ? null : email)}
+                              className="w-full text-left flex items-center justify-between gap-3 p-3 hover:bg-[var(--surf2)]/60 transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-full bg-[var(--surf3)] flex items-center justify-center flex-shrink-0">
+                                  <User size={13} className="text-[var(--tx3)]" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[12.5px] font-bold text-[var(--tx)] truncate">{email}</div>
+                                  {lastAttemptTime && (
+                                    <div className="text-[10px] text-[var(--tx3)] flex items-center gap-1 mt-0.5">
+                                      <Clock size={9} /> Last attempt: {lastAttemptTime}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${countColor}`}>
+                                  {count} attempt{count !== 1 ? 's' : ''}
+                                </span>
+                                {count >= 10 && (
+                                  <span className="px-1.5 py-0.5 bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/20 rounded text-[9px] font-bold uppercase tracking-wide">
+                                    High Risk
+                                  </span>
+                                )}
+                                {count >= 5 && count < 10 && (
+                                  <span className="px-1.5 py-0.5 bg-[var(--amber-bg)] text-[var(--amber-tx)] border border-[var(--amber-tx)]/20 rounded text-[9px] font-bold uppercase tracking-wide">
+                                    Suspicious
+                                  </span>
+                                )}
+                                {isExpanded ? <ChevronDown size={13} className="text-[var(--tx3)]" /> : <ChevronRight size={13} className="text-[var(--tx3)]" />}
+                              </div>
+                            </button>
+
+                            {/* Expanded attempt list */}
+                            {isExpanded && (
+                              <div className="border-t border-[var(--b)] bg-[var(--surf)] divide-y divide-[var(--b)]">
+                                {attempts.map((log, idx) => {
+                                  let fmtTime = '';
+                                  if (log.created_at) {
+                                    try {
+                                      fmtTime = new Date(log.created_at).toLocaleString('en-IN', {
+                                        day: 'numeric', month: 'short', year: 'numeric',
+                                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+                                      });
+                                    } catch { fmtTime = log.created_at; }
+                                  }
+                                  return (
+                                    <div key={log.id || idx} className="px-4 py-2.5 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-[11.5px]">
+                                      <div className="flex items-center gap-1 text-[var(--tx3)] min-w-[160px]">
+                                        <Clock size={10} />
+                                        <span className="font-mono">{fmtTime || '—'}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-[var(--tx2)]">
+                                        <span className="text-[10px] text-[var(--tx3)] font-semibold">IP:</span>
+                                        <span className="font-mono text-[10.5px]">{log.ip_address || '—'}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] text-[var(--tx3)] font-semibold">Reason:</span>
+                                        <span className={`text-[10.5px] font-semibold ${log.reason === 'Account inactive' ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'}`}>
+                                          {log.reason || 'Invalid credentials'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </Card>
+
+          {/* Existing Activity Logs Card */}
           <Card>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
               <div>
@@ -584,6 +816,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                 </h3>
                 <p className="text-[11px] text-[var(--tx3)] mt-0.5">Track modifications, system loggings, and user actions.</p>
               </div>
+
 
               <div className="flex flex-wrap gap-2 w-full sm:w-auto items-stretch sm:items-center">
                 {/* Transition / Compare mode button */}
@@ -998,6 +1231,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
               </div>
             )}
           </Card>
+          </div>
         )}
 
         {/* Tab 3: System Maintenance */}

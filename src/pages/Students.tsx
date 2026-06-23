@@ -58,6 +58,7 @@ export function Students() {
     }
   }, [selectedAcademicYearId]);
   const [modal, setModal] = useState<ModalType>(null);
+  const [activeDetailStudent, setActiveDetailStudent] = useState<Student | null>(null);
   const [selected, setSelected] = useState<Student | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,14 +79,15 @@ export function Students() {
   const [loadingAttendance, setLoadingAttendance] = useState(false);
 
   useEffect(() => {
-    if (modal !== 'view') {
+    if (modal !== 'view' && !activeDetailStudent) {
       setShowCalendar(false);
       setCurrentMonth(new Date());
     }
-  }, [modal]);
+  }, [modal, activeDetailStudent]);
 
   useEffect(() => {
-    if (selected && modal === 'view') {
+    const viewStudent = activeDetailStudent;
+    if (viewStudent) {
       setLoadingAttendance(true);
       api.getResources('settings', { key: 'kts_student_attendance_records' })
         .then(res => {
@@ -117,7 +119,7 @@ export function Students() {
     } else {
       setAttendanceRecords([]);
     }
-  }, [selected, modal]);
+  }, [activeDetailStudent]);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -136,14 +138,14 @@ export function Students() {
   }, []);
 
   useEffect(() => {
-    if (selected && modal === 'view') {
-      const batchName = `${selected.class}${selected.section}`;
+    if (activeDetailStudent) {
+      const batchName = `${activeDetailStudent.class}${activeDetailStudent.section}`;
       const foundBatch = batchesList.find(b => b.name.toLowerCase() === batchName.toLowerCase());
       if (foundBatch) {
         api.getBatchStudentPercentages(foundBatch.id)
           .then(res => {
             if (res.success && res.data && Array.isArray(res.data.students)) {
-              const match = res.data.students.find((std: any) => String(std.id) === String(selected.id));
+              const match = res.data.students.find((std: any) => String(std.id) === String(activeDetailStudent.id));
               if (match) {
                 setAttendancePercentage(match.percentage);
               } else {
@@ -160,12 +162,12 @@ export function Students() {
     } else {
       setAttendancePercentage(null);
     }
-  }, [selected, modal, batchesList]);
+  }, [activeDetailStudent, batchesList]);
 
   useEffect(() => {
-    if (selected && modal === 'view') {
+    if (activeDetailStudent) {
       setLoadingStudentFees(true);
-      api.getResources('student-fees', { student_id: selected.id })
+      api.getResources('student-fees', { student_id: activeDetailStudent.id })
         .then(res => {
           setStudentFeesList(res || []);
         })
@@ -179,7 +181,7 @@ export function Students() {
     } else {
       setStudentFeesList([]);
     }
-  }, [selected, modal]);
+  }, [activeDetailStudent]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -312,8 +314,253 @@ export function Students() {
   const maleCount = students.filter((s) => s.gender === 'Male').length;
   const femaleCount = students.filter((s) => s.gender === 'Female').length;
 
+  // ─── In-screen student detail view (FeeManagement style) ─────────────────
+  const renderStudentDetail = () => {
+    if (!activeDetailStudent) return null;
+    const s = activeDetailStudent;
+
+    const totalFee = studentFeesList.reduce((sum, f) => sum + Number(f.amount), 0);
+    const totalPaid = studentFeesList.reduce((sum, f) => sum + Number(f.paid_amount), 0);
+    const totalDue = studentFeesList.reduce((sum, f) => sum + Math.max(0, Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)), 0);
+
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDayOfMonth = new Date(year, month, 1);
+    const startDayOfWeek = firstDayOfMonth.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const formattedMonthYear = `${monthNames[month]} ${year}`;
+
+    const getDayAttendanceInfo = (dateStr: string) => {
+      const dayRecords = attendanceRecords.filter(
+        r => String(r.studentId) === String(s.id) && r.date === dateStr
+      );
+      if (dayRecords.length === 0) return null;
+      const presentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'present' || r.status?.toLowerCase() === 'late').length;
+      const absentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'absent').length;
+      if (presentCount > 0 && absentCount > 0) return { status: 'partial' as const, className: 'bg-[var(--purple-bg)] text-[var(--purple-tx)] border-[var(--purple-tx)]/25', label: 'Partial', details: `${presentCount} P / ${absentCount} A` };
+      if (presentCount > 0) return { status: 'present' as const, className: 'bg-[var(--green-bg)] text-[var(--green-tx)] border-[var(--green-tx)]/25', label: 'Present', details: `${presentCount} Present` };
+      if (absentCount > 0) return { status: 'absent' as const, className: 'bg-[var(--red-bg)] text-[var(--red-tx)] border-[var(--red-tx)]/25', label: 'Absent', details: `${absentCount} Absent` };
+      return null;
+    };
+
+    return (
+      <div className="space-y-3">
+        {/* Back header */}
+        <div className="flex items-center justify-between border-b border-[var(--b)] pb-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => { setActiveDetailStudent(null); setShowCalendar(false); setCurrentMonth(new Date()); }}
+              className="p-1.5 hover:bg-[var(--surf2)] rounded-lg text-[var(--tx2)] hover:text-[var(--tx)] cursor-pointer"
+              title="Back to Student Directory"
+            >
+              <ArrowLeft size={14} />
+            </button>
+            <div>
+              <h2 className="text-[13.5px] font-bold text-[var(--tx)]">Student Profile Detail</h2>
+              <p className="text-[10px] text-[var(--tx3)]">Personal information, attendance and fee summary</p>
+            </div>
+          </div>
+          <button
+            onClick={() => { setSelected(s); setModal('edit'); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 cursor-pointer font-medium"
+          >
+            <Edit2 size={12} /> Edit Profile
+          </button>
+        </div>
+
+        {/* Profile card */}
+        <Card className="p-4 flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[20px] font-bold text-[var(--blue-tx)] flex-shrink-0">
+            {s.name.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="flex-1 text-center sm:text-left">
+            <div className="text-[16px] font-bold text-[var(--tx)]">{s.name}</div>
+            <div className="text-[11.5px] text-[var(--tx3)] mt-0.5">Roll No: <span className="font-mono">{s.roll}</span></div>
+            <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+              <Badge variant="blue">Class {s.class} — {s.section}</Badge>
+              <Badge variant={s.status === 'Active' ? 'green' : s.status === 'Left' ? 'red' : 'amber'}>{s.status}</Badge>
+            </div>
+          </div>
+        </Card>
+
+        {!showCalendar ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+            {/* Personal Info */}
+            <Card className="space-y-4">
+              <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
+                <GraduationCap size={13} className="text-[var(--tx3)]" /> Personal &amp; Academic Details
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { label: 'Gender', value: s.gender },
+                  { label: 'Date of Birth', value: formatDate(s.dob) },
+                  { label: 'Admission Date', value: formatDate(s.admissionDate) },
+                  { label: 'Parent / Guardian', value: s.parent },
+                  { label: 'Mobile', value: s.phone },
+                ].map(item => (
+                  <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
+                    <div className="text-[10px] text-[var(--tx3)] mb-0.5">{item.label}</div>
+                    <div className="text-[12px] font-semibold text-[var(--tx)]">{item.value || 'N/A'}</div>
+                  </div>
+                ))}
+                <div
+                  onClick={() => setShowCalendar(true)}
+                  className="bg-[var(--surf2)] rounded-xl p-3 sm:col-span-2 cursor-pointer hover:bg-[var(--surf3)] border border-transparent hover:border-[var(--blue-tx)]/20 transition-all group"
+                >
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1"><Users size={11} /> Overall Attendance</span>
+                    <span className="text-[9px] text-[var(--blue-tx)] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to view calendar →</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 mt-0.5">
+                    <span className={`text-[13px] font-bold ${
+                      attendancePercentage !== null && attendancePercentage >= 75 ? 'text-[var(--teal-tx)]' : attendancePercentage !== null && attendancePercentage >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
+                    }`}>{attendancePercentage !== null ? `${attendancePercentage}%` : 'Loading...'}</span>
+                    {attendancePercentage !== null && (
+                      <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${
+                          attendancePercentage >= 75 ? 'bg-[var(--teal)]' : attendancePercentage >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
+                        }`} style={{ width: `${attendancePercentage}%` }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="bg-[var(--surf2)] rounded-xl p-3">
+                <div className="text-[10px] text-[var(--tx3)] mb-0.5">Address</div>
+                <div className="text-[12px] font-semibold text-[var(--tx)]">{s.address || 'N/A'}</div>
+              </div>
+            </Card>
+
+            {/* Fee Summary */}
+            <Card className="space-y-4">
+              <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
+                <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary &amp; Ledger
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center">
+                  <div className="text-[9px] text-[var(--tx3)] mb-0.5">Total Fee</div>
+                  <div className="text-[13px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
+                </div>
+                <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--teal)]">
+                  <div className="text-[9px] text-[var(--tx3)] mb-0.5">Paid</div>
+                  <div className="text-[13px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
+                </div>
+                <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--red)]">
+                  <div className="text-[9px] text-[var(--tx3)] mb-0.5">Due</div>
+                  <div className="text-[13px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="text-[11px] font-bold text-[var(--tx)]">Detailed Fee Breakdown</div>
+              {loadingStudentFees ? (
+                <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex items-center justify-center gap-2">
+                  <Loader2 size={13} className="animate-spin" /> Loading breakdown...
+                </div>
+              ) : studentFeesList.length === 0 ? (
+                <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic">No fee records assigned.</div>
+              ) : (
+                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                  {studentFeesList.map(fee => {
+                    const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
+                    const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+                    return (
+                      <div key={fee.id} className="p-2.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-bold text-[var(--tx)] truncate">{feeName}</div>
+                          <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-[var(--tx3)] mt-0.5">
+                            <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
+                            {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
+                            <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          {bal > 0 ? <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge> : <Badge variant="teal">Paid</Badge>}
+                          <div className="text-[8px] text-[var(--tx3)] mt-0.5">Due: {fee.due_date}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+        ) : (
+          // Calendar View
+          <Card className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3.5 border-b border-[var(--b)]">
+              <button
+                onClick={() => setShowCalendar(false)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] transition-all cursor-pointer"
+              >
+                <ArrowLeft size={12} /> Back to Profile
+              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setCurrentMonth(new Date(year, month - 1, 1))} className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer" title="Previous Month">
+                  <ChevronLeft size={13} />
+                </button>
+                <select value={month} onChange={e => setCurrentMonth(new Date(year, parseInt(e.target.value), 1))} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none">
+                  {monthNames.map((name, idx) => <option key={name} value={idx}>{name}</option>)}
+                </select>
+                <select value={year} onChange={e => setCurrentMonth(new Date(parseInt(e.target.value), month, 1))} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none">
+                  {[2024,2025,2026,2027,2028,2029,2030].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <button onClick={() => setCurrentMonth(new Date(year, month + 1, 1))} className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer" title="Next Month">
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] font-medium">
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-md bg-[var(--green-bg)] border border-[var(--green-tx)]/20 inline-block"></span><span className="text-[var(--tx2)]">Present</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-md bg-[var(--purple-bg)] border border-[var(--purple-tx)]/20 inline-block"></span><span className="text-[var(--tx2)]">Partial</span></div>
+                <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-md bg-[var(--red-bg)] border border-[var(--red-tx)]/20 inline-block"></span><span className="text-[var(--tx2)]">Absent</span></div>
+              </div>
+            </div>
+            <div className="text-[12px] font-bold text-[var(--tx)] text-center">{formattedMonthYear}</div>
+            {loadingAttendance ? (
+              <div className="flex flex-col justify-center items-center py-12 text-[var(--tx3)] gap-2">
+                <Loader2 className="animate-spin text-[var(--blue-tx)]" size={20} />
+                <span className="text-xs">Loading attendance details...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-1.5">
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                  <div key={d} className="text-center text-[10px] font-bold text-[var(--tx3)] uppercase py-1">{d}</div>
+                ))}
+                {Array.from({ length: startDayOfWeek }).map((_, idx) => (
+                  <div key={`empty-${idx}`} className="aspect-square bg-transparent rounded-lg"></div>
+                ))}
+                {Array.from({ length: daysInMonth }).map((_, idx) => {
+                  const dayNum = idx + 1;
+                  const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+                  const dayRecords = attendanceRecords.filter(r => String(r.studentId) === String(s.id) && r.date === dateStr);
+                  const att = getDayAttendanceInfo(dateStr);
+                  const tooltipText = att
+                    ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
+                    : `${dayNum} ${monthNames[month]}: No attendance marked`;
+                  return (
+                    <div key={`day-${dayNum}`} title={tooltipText} className={`aspect-square p-2 rounded-xl flex flex-col justify-between border transition-all ${
+                      att ? att.className : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
+                    }`}>
+                      <span className="text-[11px] font-bold">{dayNum}</span>
+                      {att && <span className="text-[9px] font-bold opacity-90 text-right truncate">{att.status === 'present' ? 'P' : att.status === 'absent' ? 'A' : '1/2'}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
+      {/* If a student is selected → show in-screen detail view */}
+      {activeDetailStudent ? (
+        <Card>{renderStudentDetail()}</Card>
+      ) : (
+        <>
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
         <KPICard label="Total Students" value={students.length} sub="This academic year" icon={<GraduationCap size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
@@ -388,7 +635,7 @@ export function Students() {
                       <div>
                         <div
                           className="font-semibold text-[var(--blue-tx)] hover:opacity-80 cursor-pointer transition-colors"
-                          onClick={() => { setSelected(s); setModal('view'); }}
+                          onClick={() => { setActiveDetailStudent(s); }}
                         >
                           {s.name}
                         </div>
@@ -415,7 +662,7 @@ export function Students() {
                   </td>
                   <td className="px-2 py-2.5">
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => { setSelected(s); setModal('view'); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] transition-colors cursor-pointer" title="View Details"><Eye size={13} /></button>
+                      <button onClick={() => { setActiveDetailStudent(s); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] transition-colors cursor-pointer" title="View Details"><Eye size={13} /></button>
                       <button onClick={() => { setSelected(s); setModal('edit'); }} className="p-1 rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] transition-colors cursor-pointer" title="Edit Student"><Edit2 size={13} /></button>
                       <button 
                         onClick={() => handleTransferClick(s.id)} 
@@ -465,6 +712,8 @@ export function Students() {
           </div>
         </div>
       </Card>
+        </>
+      )}
 
       {/* Add/Edit Modal */}
       {(modal === 'add' || modal === 'edit') && (
@@ -565,339 +814,6 @@ export function Students() {
           </form>
         </div>
       )}
-
-      {/* View Modal */}
-      {modal === 'view' && selected && (() => {
-        const totalFee = studentFeesList.reduce((sum, f) => sum + Number(f.amount), 0);
-        const totalPaid = studentFeesList.reduce((sum, f) => sum + Number(f.paid_amount), 0);
-        const totalDue = studentFeesList.reduce((sum, f) => sum + Math.max(0, Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)), 0);
-
-        const year = currentMonth.getFullYear();
-        const month = currentMonth.getMonth();
-
-        const firstDayOfMonth = new Date(year, month, 1);
-        const startDayOfWeek = firstDayOfMonth.getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        const getDayAttendanceInfo = (dateStr: string) => {
-          const dayRecords = attendanceRecords.filter(
-            r => String(r.studentId) === String(selected.id) && r.date === dateStr
-          );
-          if (dayRecords.length === 0) return null;
-
-          const presentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'present' || r.status?.toLowerCase() === 'late').length;
-          const absentCount = dayRecords.filter(r => r.status?.toLowerCase() === 'absent').length;
-
-          if (presentCount > 0 && absentCount > 0) {
-            return {
-              status: 'partial' as const,
-              className: 'bg-[var(--purple-bg)] text-[var(--purple-tx)] border-[var(--purple-tx)]/25',
-              label: 'Partial',
-              details: `${presentCount} P / ${absentCount} A`
-            };
-          } else if (presentCount > 0) {
-            return {
-              status: 'present' as const,
-              className: 'bg-[var(--green-bg)] text-[var(--green-tx)] border-[var(--green-tx)]/25',
-              label: 'Present',
-              details: `${presentCount} Present`
-            };
-          } else if (absentCount > 0) {
-            return {
-              status: 'absent' as const,
-              className: 'bg-[var(--red-bg)] text-[var(--red-tx)] border-[var(--red-tx)]/25',
-              label: 'Absent',
-              details: `${absentCount} Absent`
-            };
-          }
-          return null;
-        };
-
-        const monthNames = [
-          "January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"
-        ];
-        const formattedMonthYear = `${monthNames[month]} ${year}`;
-
-        return (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[780px] shadow-2xl flex flex-col max-h-[90vh]">
-              {/* Header */}
-              <div className="flex items-center justify-between p-5 border-b border-[var(--b)] flex-shrink-0">
-                <div>
-                  <div className="text-[14px] font-bold text-[var(--tx)]">Student Profile Detail</div>
-                  <div className="text-[11px] text-[var(--tx3)]">Personal information and fee summary</div>
-                </div>
-                <button onClick={() => setModal(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"><X size={16} /></button>
-              </div>
-
-              {/* Scrollable Content */}
-              <div className="p-5 overflow-y-auto space-y-4 flex-1">
-                {/* Profile Header Card */}
-                <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-4 flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[18px] font-bold text-[var(--blue-tx)] flex-shrink-0">
-                    {selected.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="text-[15px] font-bold text-[var(--tx)]">{selected.name}</div>
-                    <div className="text-[12px] text-[var(--tx3)]">Roll No: {selected.roll}</div>
-                    <div className="flex gap-2 mt-1.5">
-                      <Badge variant="blue">Class {selected.class} — {selected.section}</Badge>
-                      <Badge variant={selected.status === 'Active' ? 'green' : selected.status === 'Left' ? 'red' : 'amber'}>{selected.status}</Badge>
-                    </div>
-                  </div>
-                </div>
-
-                {!showCalendar ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Left Column: Personal Info */}
-                    <div className="space-y-3">
-                      <div className="text-[12px] font-bold text-[var(--tx)] pb-1.5 border-b border-[var(--b)] flex items-center gap-1.5">
-                        <GraduationCap size={13} className="text-[var(--tx3)]" /> Personal & Academic Details
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {[
-                          { label: 'Gender', value: selected.gender },
-                          { label: 'Date of Birth', value: formatDate(selected.dob) },
-                          { label: 'Admission Date', value: formatDate(selected.admissionDate) },
-                          { label: 'Parent / Guardian', value: selected.parent },
-                          { label: 'Mobile', value: selected.phone, icon: <Phone size={10} className="inline mr-1 text-[var(--tx3)]" /> },
-                        ].map((item) => (
-                          <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-2.5">
-                            <div className="text-[9.5px] text-[var(--tx3)] mb-0.5">{item.label}</div>
-                            <div className="text-[11.5px] font-semibold text-[var(--tx)]">
-                              {item.icon}{item.value}
-                            </div>
-                          </div>
-                        ))}
-                        {/* Overall Attendance */}
-                        <div
-                          onClick={() => setShowCalendar(true)}
-                          className="bg-[var(--surf2)] rounded-xl p-2.5 sm:col-span-2 cursor-pointer hover:bg-[var(--surf3)] border border-transparent hover:border-[var(--blue-tx)]/20 transition-all group"
-                        >
-                          <div className="text-[9.5px] text-[var(--tx3)] mb-1 flex items-center justify-between">
-                            <span className="flex items-center gap-1"><Users size={11} /> Overall Attendance</span>
-                            <span className="text-[8.5px] text-[var(--blue-tx)] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to view calendar →</span>
-                          </div>
-                          <div className="flex items-center gap-2.5 mt-0.5">
-                            <span className={`text-[12px] font-bold ${
-                              attendancePercentage !== null && attendancePercentage >= 75 ? 'text-[var(--teal-tx)]' : attendancePercentage !== null && attendancePercentage >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
-                            }`}>{attendancePercentage !== null ? `${attendancePercentage}%` : 'Loading...'}</span>
-                            {attendancePercentage !== null && (
-                              <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
-                                <div className={`h-full rounded-full ${
-                                  attendancePercentage >= 75 ? 'bg-[var(--teal)]' : attendancePercentage >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
-                                }`} style={{ width: `${attendancePercentage}%` }} />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="bg-[var(--surf2)] rounded-xl p-2.5">
-                        <div className="text-[9.5px] text-[var(--tx3)] mb-0.5">Address</div>
-                        <div className="text-[11.5px] font-semibold text-[var(--tx)]">{selected.address || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    {/* Right Column: Fee Details */}
-                    <div className="space-y-3 flex flex-col">
-                      <div className="text-[12px] font-bold text-[var(--tx)] pb-1.5 border-b border-[var(--b)] flex items-center gap-1.5">
-                        <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
-                      </div>
-
-                      {/* Overall totals */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center">
-                          <div className="text-[9px] text-[var(--tx3)] mb-0.5">Total Fee</div>
-                          <div className="text-[12px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
-                        </div>
-                        <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--teal)]">
-                          <div className="text-[9px] text-[var(--tx3)] mb-0.5">Paid</div>
-                          <div className="text-[12px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
-                        </div>
-                        <div className="bg-[var(--surf2)] rounded-xl p-2.5 text-center border-l-2 border-[var(--red)]">
-                          <div className="text-[9px] text-[var(--tx3)] mb-0.5">Due</div>
-                          <div className="text-[12px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
-                        </div>
-                      </div>
-
-                      {/* Fee Items Breakdown */}
-                      <div className="space-y-1.5 flex-1 min-h-0 flex flex-col">
-                        <div className="text-[11px] font-bold text-[var(--tx)] mt-1.5">Detailed Fee Breakdown</div>
-                        {loadingStudentFees ? (
-                          <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
-                        ) : studentFeesList.length === 0 ? (
-                          <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">No fee records assigned.</div>
-                        ) : (
-                          <div className="space-y-1.5 overflow-y-auto pr-1 max-h-[160px] md:max-h-[220px]">
-                            {studentFeesList.map((fee) => {
-                              const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
-                              const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
-                              return (
-                                <div key={fee.id} className="p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <div className="text-[11px] font-bold text-[var(--tx)] truncate">{feeName}</div>
-                                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-[var(--tx3)] mt-0.5">
-                                      <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
-                                      {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
-                                      <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
-                                    </div>
-                                  </div>
-                                  <div className="text-right flex-shrink-0">
-                                    <div className="flex items-center gap-1.5 justify-end mb-0.5">
-                                      {bal > 0 ? (
-                                        <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
-                                      ) : (
-                                        <Badge variant="teal">Paid</Badge>
-                                      )}
-                                    </div>
-                                    <div className="text-[8px] text-[var(--tx3)]">Due Date: {fee.due_date}</div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  // Calendar View
-                  <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4.5 space-y-4">
-                    {/* Calendar Header */}
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3.5 border-b border-[var(--b)]">
-                      <button
-                        onClick={() => setShowCalendar(false)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] transition-all cursor-pointer"
-                      >
-                        <ArrowLeft size={12} /> Back to Profile
-                      </button>
-                      
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
-                          className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer"
-                          title="Previous Month"
-                        >
-                          <ChevronLeft size={13} />
-                        </button>
-
-                        <select
-                          value={month}
-                          onChange={(e) => setCurrentMonth(new Date(year, parseInt(e.target.value), 1))}
-                          className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none hover:bg-[var(--surf3)] transition-all"
-                          title="Select Month"
-                        >
-                          {monthNames.map((name, idx) => (
-                            <option key={name} value={idx}>{name}</option>
-                          ))}
-                        </select>
-
-                        <select
-                          value={year}
-                          onChange={(e) => setCurrentMonth(new Date(parseInt(e.target.value), month, 1))}
-                          className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none hover:bg-[var(--surf3)] transition-all"
-                          title="Select Year"
-                        >
-                          {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-
-                        <button
-                          onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
-                          className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer"
-                          title="Next Month"
-                        >
-                          <ChevronRight size={13} />
-                        </button>
-                      </div>
-
-                      {/* Legend */}
-                      <div className="flex items-center gap-3 text-[10px] font-medium">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-md bg-[var(--green-bg)] border border-[var(--green-tx)]/20 inline-block"></span>
-                          <span className="text-[var(--tx2)]">Present</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-md bg-[var(--purple-bg)] border border-[var(--purple-tx)]/20 inline-block"></span>
-                          <span className="text-[var(--tx2)]">Partial</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-md bg-[var(--red-bg)] border border-[var(--red-tx)]/20 inline-block"></span>
-                          <span className="text-[var(--tx2)]">Absent</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Loader when fetching records */}
-                    {loadingAttendance ? (
-                      <div className="flex flex-col justify-center items-center py-12 text-[var(--tx3)] gap-2">
-                        <Loader2 className="animate-spin text-[var(--blue-tx)]" size={20} />
-                        <span className="text-xs">Loading attendance details...</span>
-                      </div>
-                    ) : (
-                      /* Calendar Grid */
-                      <div className="grid grid-cols-7 gap-1.5">
-                        {/* Weekday headers */}
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                          <div key={d} className="text-center text-[10px] font-bold text-[var(--tx3)] uppercase py-1">
-                            {d}
-                          </div>
-                        ))}
-                        
-                        {/* Empty slots for starting offset */}
-                        {Array.from({ length: startDayOfWeek }).map((_, idx) => (
-                          <div key={`empty-${idx}`} className="aspect-square bg-transparent rounded-lg"></div>
-                        ))}
-                        
-                        {/* Active month days */}
-                        {Array.from({ length: daysInMonth }).map((_, idx) => {
-                          const dayNum = idx + 1;
-                          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-                          const dayRecords = attendanceRecords.filter(
-                            r => String(r.studentId) === String(selected.id) && r.date === dateStr
-                          );
-                          const att = getDayAttendanceInfo(dateStr);
-                          
-                          const tooltipText = att 
-                            ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
-                            : `${dayNum} ${monthNames[month]}: No attendance marked`;
-                          
-                          return (
-                            <div
-                              key={`day-${dayNum}`}
-                              title={tooltipText}
-                              className={`aspect-square p-2 rounded-xl flex flex-col justify-between border transition-all ${
-                                att 
-                                  ? att.className 
-                                  : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
-                              }`}
-                            >
-                              <span className="text-[11px] font-bold">{dayNum}</span>
-                              {att && (
-                                <span className="text-[9px] font-bold opacity-90 text-right truncate">
-                                  {att.status === 'present' ? 'P' : att.status === 'absent' ? 'A' : '1/2'}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="flex gap-2 p-5 border-t border-[var(--b)] flex-shrink-0 bg-[var(--surf)]">
-                <button onClick={() => { setModal('edit'); }} className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold hover:opacity-90 cursor-pointer">Edit Profile</button>
-                <button onClick={() => setModal(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer">Close</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
