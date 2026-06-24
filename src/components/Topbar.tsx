@@ -34,7 +34,9 @@ const PAGE_TITLES: Record<PageId, string> = {
   'my-salary': 'My Salary & Payslips',
   settings: 'System Settings',
   'activity-logs': 'Activity Logs',
-  search: ''
+  search: '',
+  alumni: '',
+  'recycle-bin': ''
 };
 
 interface TopbarProps {
@@ -160,7 +162,7 @@ export function Topbar({ current, dark, onToggleDark, onMenuClick, onNavigate, s
                     className={`flex items-start gap-2.5 px-3.5 py-2.5 border-b border-[var(--b)] last:border-0 ${!n.read ? 'bg-[var(--blue-bg)]/40' : ''}`}
                   >
                     <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${n.type === 'leave_request' ? 'bg-[var(--amber)]' :
-                        n.type === 'leave_approved' ? 'bg-[var(--teal)]' : 'bg-[var(--red)]'
+                      n.type === 'leave_approved' ? 'bg-[var(--teal)]' : 'bg-[var(--red)]'
                       }`} />
                     <div className="flex-1 min-w-0">
                       <div className="text-[11.5px] text-[var(--tx)] leading-snug">{n.message}</div>

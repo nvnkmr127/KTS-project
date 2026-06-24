@@ -18,6 +18,7 @@ interface DeletedStudent {
   parent: string;
   phone: string;
   deletedAt?: string;
+  isAlumni?: boolean;
 }
 
 interface DeletedStaff {
@@ -32,7 +33,7 @@ interface DeletedStaff {
 }
 
 type Tab = 'students' | 'staff';
-type ConfirmAction = { type: 'restore' | 'delete'; entity: 'student' | 'staff'; id: string; name: string } | null;
+type ConfirmAction = { type: 'restore' | 'delete'; entity: 'student' | 'staff'; id: string; name: string; isAlumni?: boolean } | null;
 
 export function RecycleBin() {
   const [activeTab, setActiveTab] = useState<Tab>('students');
@@ -75,8 +76,33 @@ export function RecycleBin() {
           gender: s.gender || 'N/A',
           parent: s.father_name || 'N/A',
           phone: s.student_mobile || '—',
+          isAlumni: false,
         }));
-      setDeletedStudents(left);
+        
+      let backendAlumni: any[] = [];
+      try { backendAlumni = await api.getResources('alumni') || []; } catch {}
+      const localAlumniStr = localStorage.getItem('kts_alumni_records');
+      const localAlumni = localAlumniStr ? JSON.parse(localAlumniStr) : [];
+      
+      const allAlumniMap = new Map();
+      [...backendAlumni, ...localAlumni].forEach(a => {
+        if (!allAlumniMap.has(String(a.id))) allAlumniMap.set(String(a.id), a);
+      });
+      const deletedAlumniList = Array.from(allAlumniMap.values())
+        .filter((a: any) => (a.status || '').toLowerCase() === 'deleted')
+        .map((a: any) => ({
+          id: String(a.id),
+          name: a.name,
+          roll: a.roll || a.enrollment_number || 'N/A',
+          class: a.class || '—',
+          section: a.section || '—',
+          gender: a.gender || 'N/A',
+          parent: '—',
+          phone: a.phone || '—',
+          isAlumni: true,
+        }));
+
+      setDeletedStudents([...left, ...deletedAlumniList]);
     } catch (err) {
       console.error('Error loading deleted students:', err);
     } finally {
@@ -105,12 +131,24 @@ export function RecycleBin() {
   }, []);
 
   // ── Restore student ────────────────────────────────────────────────────
-  const restoreStudent = async (id: string) => {
+  const restoreStudent = async (id: string, isAlumni?: boolean) => {
     setProcessing(true);
     try {
-      await api.updateResource('students', id, { status: 'active' });
+      if (isAlumni) {
+        if (!id.startsWith('local-')) {
+          try { await api.updateResource('alumni', id, { status: 'Unverified' }); } catch {}
+        }
+        const saved = localStorage.getItem('kts_alumni_records');
+        if (saved) {
+           const all = JSON.parse(saved);
+           const updated = all.map((a: any) => String(a.id) === id ? { ...a, status: 'Unverified' } : a);
+           localStorage.setItem('kts_alumni_records', JSON.stringify(updated));
+        }
+      } else {
+        await api.updateResource('students', id, { status: 'active' });
+      }
       await loadDeletedStudents();
-      showToast('Student restored successfully!', true);
+      showToast(isAlumni ? 'Alumni restored successfully!' : 'Student restored successfully!', true);
     } catch (err) {
       console.error('Error restoring student:', err);
       showToast('Failed to restore student. Please try again.', false);
@@ -121,12 +159,24 @@ export function RecycleBin() {
   };
 
   // ── Permanently delete student ─────────────────────────────────────────
-  const permanentDeleteStudent = async (id: string) => {
+  const permanentDeleteStudent = async (id: string, isAlumni?: boolean) => {
     setProcessing(true);
     try {
-      await api.deleteResource('students', id);
+      if (isAlumni) {
+        if (!id.startsWith('local-')) {
+          try { await api.deleteResource('alumni', id); } catch {}
+        }
+        const saved = localStorage.getItem('kts_alumni_records');
+        if (saved) {
+           const all = JSON.parse(saved);
+           const updated = all.filter((a: any) => String(a.id) !== id);
+           localStorage.setItem('kts_alumni_records', JSON.stringify(updated));
+        }
+      } else {
+        await api.deleteResource('students', id);
+      }
       await loadDeletedStudents();
-      showToast('Student permanently deleted.', true);
+      showToast(isAlumni ? 'Alumni permanently deleted.' : 'Student permanently deleted.', true);
     } catch (err) {
       console.error('Error permanently deleting student:', err);
       showToast('Failed to delete student. Please try again.', false);
@@ -179,8 +229,8 @@ export function RecycleBin() {
   // ── Confirm action dispatcher ──────────────────────────────────────────
   const handleConfirm = () => {
     if (!confirm) return;
-    if (confirm.type === 'restore' && confirm.entity === 'student') restoreStudent(confirm.id);
-    else if (confirm.type === 'delete' && confirm.entity === 'student') permanentDeleteStudent(confirm.id);
+    if (confirm.type === 'restore' && confirm.entity === 'student') restoreStudent(confirm.id, confirm.isAlumni);
+    else if (confirm.type === 'delete' && confirm.entity === 'student') permanentDeleteStudent(confirm.id, confirm.isAlumni);
     else if (confirm.type === 'restore' && confirm.entity === 'staff') restoreStaff(confirm.id);
     else if (confirm.type === 'delete' && confirm.entity === 'staff') permanentDeleteStaff(confirm.id);
   };
@@ -398,7 +448,10 @@ export function RecycleBin() {
                               {s.name.slice(0, 2).toUpperCase()}
                             </div>
                             <div>
-                              <div className="font-semibold text-[var(--tx)]">{s.name}</div>
+                              <div className="font-semibold text-[var(--tx)] flex items-center gap-1.5">
+                                {s.name}
+                                {s.isAlumni && <span className="px-1.5 py-0.5 text-[9px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded border border-[var(--blue-tx)]/20 uppercase tracking-wider font-bold">Alumni</span>}
+                              </div>
                               <div className="text-[10px] text-[var(--tx3)]">{s.gender}</div>
                             </div>
                           </div>
@@ -411,19 +464,19 @@ export function RecycleBin() {
                         </td>
                         <td className="px-2 py-2.5 text-[var(--tx2)]">{s.phone}</td>
                         <td className="px-2 py-2.5">
-                          <Badge variant="red">Left</Badge>
+                          <Badge variant="red">{s.isAlumni ? 'Deleted' : 'Left'}</Badge>
                         </td>
                         <td className="px-2 py-2.5">
                           <div className="flex items-center gap-1.5">
                             <button
-                              onClick={() => setConfirm({ type: 'restore', entity: 'student', id: s.id, name: s.name })}
+                              onClick={() => setConfirm({ type: 'restore', entity: 'student', id: s.id, name: s.name, isAlumni: s.isAlumni })}
                               className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg hover:opacity-80 cursor-pointer transition-opacity"
-                              title="Restore student"
+                              title={s.isAlumni ? "Restore alumni" : "Restore student"}
                             >
                               <RotateCcw size={11} /> Restore
                             </button>
                             <button
-                              onClick={() => setConfirm({ type: 'delete', entity: 'student', id: s.id, name: s.name })}
+                              onClick={() => setConfirm({ type: 'delete', entity: 'student', id: s.id, name: s.name, isAlumni: s.isAlumni })}
                               className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold bg-[var(--red-bg)] text-[var(--red-tx)] rounded-lg hover:opacity-80 cursor-pointer transition-opacity"
                               title="Delete permanently"
                             >

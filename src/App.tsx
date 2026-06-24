@@ -36,6 +36,7 @@ import { Settings } from './pages/Settings';
 import { SearchPage } from './pages/SearchPage';
 import { TeacherActivityLogs } from './pages/TeacherActivityLogs';
 import { RecycleBin } from './pages/RecycleBin';
+import { Alumni } from './pages/Alumni';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -69,6 +70,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   settings: '/settings',
   'activity-logs': '/activity-logs',
   'recycle-bin': '/recycle-bin',
+  alumni: '/alumni',
   search: '/search',
 };
 
@@ -220,6 +222,7 @@ function AppShell() {
             isTeacher ? <TeacherActivityLogs /> : <Settings initialTab={2} />
           )}
           {page === 'recycle-bin' && <RecycleBin />}
+          {page === 'alumni' && <Alumni />}
           {page === 'search' && (
             <SearchPage
               searchQuery={searchQuery}

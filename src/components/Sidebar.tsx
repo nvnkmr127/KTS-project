@@ -36,6 +36,7 @@ const ADMIN_SECTIONS: NavSection[] = [
       { icon: <Grid3X3 size={14} />, label: 'Timetable', page: 'timetable' },
       { icon: <School size={14} />, label: 'Classes', page: 'classes' },
       { icon: <GraduationCap size={14} />, label: 'Promotion', page: 'promotion' },
+      { icon: <Users size={14} />, label: 'Alumni', page: 'alumni' },
     ],
   },
   {
@@ -152,15 +153,14 @@ export function Sidebar({ current, onNavigate, isOpen, onClose }: SidebarProps) 
       )}
 
       <nav
-        className={`fixed md:static inset-y-0 left-0 w-[196px] flex-shrink-0 bg-[var(--surf)] border-r border-[var(--b)] flex flex-col h-full z-40 transition-transform duration-200 ease-in-out md:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed md:static inset-y-0 left-0 w-[196px] flex-shrink-0 bg-[var(--surf)] border-r border-[var(--b)] flex flex-col h-full z-40 transition-transform duration-200 ease-in-out md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         {/* Logo */}
         <div className="px-3.5 py-3 border-b border-[var(--b)] flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[var(--blue)] flex items-center justify-center text-white flex-shrink-0">
-              <School size={14} />
+            <div className="w-10 h-10 rounded-lg bg-white border border-[var(--b)] flex items-center justify-center p-0.5 flex-shrink-0 shadow-sm">
+              <img src="/KTHS_Logo.png" alt="KTHS Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="text-[12px] font-bold text-[var(--tx)] leading-none">Krishnaveni</div>
@@ -199,11 +199,10 @@ export function Sidebar({ current, onNavigate, isOpen, onClose }: SidebarProps) 
                       onNavigate(item.page);
                       onClose();
                     }}
-                    className={`w-full flex items-center gap-2 px-3 py-[5.5px] text-[12px] transition-all duration-100 border-l-2 cursor-pointer text-left ${
-                      isActive
+                    className={`w-full flex items-center gap-2 px-3 py-[5.5px] text-[12px] transition-all duration-100 border-l-2 cursor-pointer text-left ${isActive
                         ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border-[var(--blue)] font-semibold'
                         : 'text-[var(--tx2)] border-transparent hover:bg-[var(--surf2)] hover:text-[var(--tx)]'
-                    }`}
+                      }`}
                   >
                     <span className="flex-shrink-0 opacity-80">{item.icon}</span>
                     <span className="flex-1">{item.label}</span>
@@ -222,11 +221,10 @@ export function Sidebar({ current, onNavigate, isOpen, onClose }: SidebarProps) 
                 onNavigate('settings');
                 onClose();
               }}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-[12px] rounded-lg transition-colors cursor-pointer text-left ${
-                current === 'settings'
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-[12px] rounded-lg transition-colors cursor-pointer text-left ${current === 'settings'
                   ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] font-semibold'
                   : 'text-[var(--tx2)] hover:bg-[var(--surf2)] hover:text-[var(--tx)]'
-              }`}
+                }`}
             >
               <Settings size={14} />
               <span>Settings</span>

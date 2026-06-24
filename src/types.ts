@@ -31,6 +31,7 @@ export type PageId =
   | 'settings'
   | 'activity-logs'
   | 'recycle-bin'
+  | 'alumni'
   | 'search';
 
 export type ColorVariant =

@@ -37,6 +37,7 @@ class GenericApiController extends Controller
             'biometric-logs' => \App\Models\Attendance\BiometricLog::class,
             'activity-logs' => \Spatie\Activitylog\Models\Activity::class,
             'failed-logins' => \Spatie\Activitylog\Models\Activity::class,
+            'alumni' => \App\Models\Alumni::class,
         ];
 
         return $map[strtolower($resource)] ?? null;

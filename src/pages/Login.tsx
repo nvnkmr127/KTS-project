@@ -49,12 +49,12 @@ export function Login() {
         <div className="relative z-10 flex flex-col h-full p-10">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-auto">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-              <School size={20} className="text-white" />
+            <div className="w-12 h-12 rounded-xl bg-white/90 flex items-center justify-center p-1 shadow-sm">
+              <img src="/KTHS_Logo.png" alt="KTHS Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="text-white font-bold text-lg leading-none">Krishnaveni</div>
-              <div className="text-white/60 text-xs mt-0.5">Talent School, Nizamabad</div>
+              <div className="text-white/60 text-xs mt-0.5">Talent School, Chevella</div>
             </div>
           </div>
 
@@ -98,8 +98,8 @@ export function Login() {
         <div className="w-full max-w-[400px]">
           {/* Mobile logo */}
           <div className="flex items-center gap-2.5 mb-8 lg:hidden">
-            <div className="w-8 h-8 rounded-lg bg-[var(--blue)] flex items-center justify-center">
-              <School size={15} className="text-white" />
+            <div className="w-10 h-10 rounded-lg bg-white border border-[var(--b)] flex items-center justify-center p-1 shadow-sm">
+              <img src="/KTHS_Logo.png" alt="KTHS Logo" className="w-full h-full object-contain" />
             </div>
             <div className="text-[14px] font-bold text-[var(--tx)]">Krishnaveni Talent School</div>
           </div>
@@ -115,11 +115,10 @@ export function Login() {
               <button
                 key={tab}
                 onClick={() => { setPortal(tab); setEmail(''); setPassword(''); setError(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[12.5px] font-medium transition-all cursor-pointer ${
-                  portal === tab
-                    ? 'bg-[var(--surf)] shadow-sm text-[var(--tx)]'
-                    : 'text-[var(--tx3)] hover:text-[var(--tx2)]'
-                }`}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[12.5px] font-medium transition-all cursor-pointer ${portal === tab
+                  ? 'bg-[var(--surf)] shadow-sm text-[var(--tx)]'
+                  : 'text-[var(--tx3)] hover:text-[var(--tx2)]'
+                  }`}
               >
                 {tab === 'admin' ? <ShieldCheck size={14} /> : <GraduationCap size={14} />}
                 {tab === 'admin' ? 'Admin / Management' : 'Staff / Teacher'}
@@ -128,11 +127,10 @@ export function Login() {
           </div>
 
           {/* Portal context */}
-          <div className={`flex items-start gap-3 p-3.5 rounded-xl border mb-6 ${
-            portal === 'admin'
-              ? 'bg-[var(--blue-bg)] border-[var(--blue-bg)]'
-              : 'bg-[var(--teal-bg)] border-[var(--teal-bg)]'
-          }`}>
+          <div className={`flex items-start gap-3 p-3.5 rounded-xl border mb-6 ${portal === 'admin'
+            ? 'bg-[var(--blue-bg)] border-[var(--blue-bg)]'
+            : 'bg-[var(--teal-bg)] border-[var(--teal-bg)]'
+            }`}>
             {portal === 'admin' ? (
               <ShieldCheck size={15} className="text-[var(--blue-tx)] mt-0.5 flex-shrink-0" />
             ) : (
