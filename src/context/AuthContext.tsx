@@ -66,17 +66,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Listen for force-logout flags written by the admin (StaffAccess page)
-  // This detects the flag immediately in any open tab without waiting for the poll
+  // Listen for storage changes to sync authentication state and force logouts across tabs
   useEffect(() => {
-    if (!user) return;
-
     const handleStorageChange = (e: StorageEvent) => {
-      if (!e.key) return;
-      const expectedKey = `kts_force_logout_${user.email?.toLowerCase()}`;
-      if (e.key === expectedKey && e.newValue) {
-        logout();
-        alert('You have been logged out by an administrator.');
+      // If storage was cleared entirely
+      if (!e.key) {
+        if (!localStorage.getItem('token')) {
+          setUser(null);
+        }
+        return;
+      }
+
+      // Handle force logout flag
+      if (user) {
+        const expectedKey = `kts_force_logout_${user.email?.toLowerCase()}`;
+        if (e.key === expectedKey && e.newValue) {
+          logout();
+          alert('You have been logged out by an administrator.');
+          return;
+        }
+      }
+
+      // Sync user state changes (e.g. login/role switch in another tab)
+      if (e.key === 'user') {
+        if (e.newValue) {
+          try {
+            const parsedUser = JSON.parse(e.newValue);
+            if (JSON.stringify(user) !== JSON.stringify(parsedUser)) {
+              setUser(parsedUser);
+            }
+          } catch (err) {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+      }
+
+      // Sync token change (e.g. logout in another tab)
+      if (e.key === 'token') {
+        if (!e.newValue) {
+          setUser(null);
+        } else {
+          const savedUser = localStorage.getItem('user');
+          if (savedUser) {
+            try {
+              const parsedUser = JSON.parse(savedUser);
+              if (JSON.stringify(user) !== JSON.stringify(parsedUser)) {
+                setUser(parsedUser);
+              }
+            } catch (err) {}
+          }
+        }
       }
     };
 

@@ -37,6 +37,7 @@ import { SearchPage } from './pages/SearchPage';
 import { TeacherActivityLogs } from './pages/TeacherActivityLogs';
 import { RecycleBin } from './pages/RecycleBin';
 import { Alumni } from './pages/Alumni';
+import Substitute from './pages/Substitute';
 import type { PageId } from './types';
 
 const PAGE_TO_PATH: Record<PageId, string> = {
@@ -72,6 +73,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   'recycle-bin': '/recycle-bin',
   alumni: '/alumni',
   search: '/search',
+  substitute: '/substitute',
 };
 
 const PATH_TO_PAGE: Record<string, PageId> = Object.entries(PAGE_TO_PATH).reduce(
@@ -212,6 +214,7 @@ function AppShell() {
           {page === 'expenses' && <Expenses />}
           {page === 'whatsapp' && <WhatsApp />}
           {page === 'leave' && <Leave />}
+          {page === 'substitute' && <Substitute />}
           {page === 'staff-access' && <StaffAccess />}
           {page === 'exams' && <Examinations />}
           {page === 'meetings' && <Meetings />}

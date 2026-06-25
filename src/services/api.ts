@@ -42,8 +42,13 @@ export function clearApiCache(resource?: string) {
 async function request(path: string, options: RequestInit = {}) {
   const method = options.method || 'GET';
   
-  // Cache GET requests
-  if (method === 'GET') {
+  // Cache GET requests (excluding real-time/dynamic resources like settings and attendance)
+  const bypassCache = path.includes('/settings') || 
+                       path.includes('/attendance') || 
+                       path.includes('/substitutes') ||
+                       path.includes('/substitute-assignments');
+
+  if (method === 'GET' && !bypassCache) {
     const cached = cache.get(path);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       return cached.data;
@@ -70,7 +75,7 @@ async function request(path: string, options: RequestInit = {}) {
 
   const result = await response.json();
 
-  if (method === 'GET') {
+  if (method === 'GET' && !bypassCache) {
     cache.set(path, { data: result, timestamp: Date.now() });
   }
 
@@ -151,6 +156,15 @@ export const api = {
   },
 
   async getBatchStudentPercentages(batchId: string) {
+    // Proactively pull the latest database setting to keep in sync with teacher updates
+    try {
+      const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
+      if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
+        localStorage.setItem('kts_student_attendance_records', settingsRes[0].value);
+      }
+    } catch (err) {
+      console.error('Failed to sync kts_student_attendance_records setting:', err);
+    }
     const original = await request(`/attendance/batch/${batchId}/student-percentages`);
     try {
       const batchName = await this.getBatchName(batchId);
@@ -263,6 +277,15 @@ export const api = {
   },
 
   async getTodayAttendance(type: string = 'all') {
+    // Proactively pull the latest database setting to keep in sync with teacher updates
+    try {
+      const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
+      if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
+        localStorage.setItem('kts_student_attendance_records', settingsRes[0].value);
+      }
+    } catch (err) {
+      console.error('Failed to sync kts_student_attendance_records setting today:', err);
+    }
     const original = await request(`/attendance/today?type=${type}`);
     try {
       const getLocalDateString = () => {
@@ -364,6 +387,37 @@ export const api = {
     } catch (err) {
       console.error(`Error deleting setting ${key} from DB:`, err);
     }
+  },
+
+  async getSubstituteStaff() {
+    return request('/substitutes/staff');
+  },
+
+  async getSubstituteSchedule(absentUserId: string, date: string) {
+    return request(`/substitutes/schedule?absent_user_id=${absentUserId}&date=${date}`);
+  },
+
+  async getAvailableSubstitutes(timeSlotId: number | string, date: string, excludeUserId: string) {
+    return request(`/substitutes/available?time_slot_id=${timeSlotId}&date=${date}&exclude_user_id=${excludeUserId}`);
+  },
+
+  async assignSubstitute(data: { timetable_id: number | string; absent_user_id: string; substitute_user_id: string; date: string; notes?: string }) {
+    return request('/substitutes/assign', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async seedMockData() {
+    return request('/dev/seed-mock-data', {
+      method: 'POST',
+    });
+  },
+
+  async clearMockData() {
+    return request('/dev/clear-mock-data', {
+      method: 'POST',
+    });
   },
 };
 

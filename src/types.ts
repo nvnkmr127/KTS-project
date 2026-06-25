@@ -32,7 +32,8 @@ export type PageId =
   | 'activity-logs'
   | 'recycle-bin'
   | 'alumni'
-  | 'search';
+  | 'search'
+  | 'substitute';
 
 export type ColorVariant =
   | 'blue'

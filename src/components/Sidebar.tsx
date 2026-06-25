@@ -56,6 +56,7 @@ const ADMIN_SECTIONS: NavSection[] = [
       { icon: <CalendarCheck size={14} />, label: 'Staff Attendance', page: 'staff-attendance' },
       { icon: <Clock size={14} />, label: 'Faculty', page: 'faculty' },
       { icon: <Calendar size={14} />, label: 'Leave', page: 'leave' },
+      { icon: <Users size={14} />, label: 'Substitute', page: 'substitute' },
       { icon: <Lock size={14} />, label: 'Staff Access', page: 'staff-access' },
     ],
   },

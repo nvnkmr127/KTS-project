@@ -50,8 +50,8 @@ class MillitrackProxyController extends Controller
     private function millitrackClient(): \Illuminate\Http\Client\PendingRequest
     {
         return Http::withBasicAuth(
-                config('services.millitrack.username'),
-                config('services.millitrack.password')
+                (string) config('services.millitrack.username', ''),
+                (string) config('services.millitrack.password', '')
             )
             ->timeout(10)          // 10 s connect+read timeout
             ->acceptJson();
@@ -129,8 +129,8 @@ class MillitrackProxyController extends Controller
             foreach (self::BUS_DEVICE_MAP as $busNumber => $deviceId) {
                 $pool->as($busNumber)
                     ->withBasicAuth(
-                        config('services.millitrack.username'),
-                        config('services.millitrack.password')
+                        (string) config('services.millitrack.username', ''),
+                        (string) config('services.millitrack.password', '')
                     )
                     ->timeout(10)
                     ->acceptJson()

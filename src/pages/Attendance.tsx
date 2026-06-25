@@ -11,7 +11,7 @@ import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar, ProgressBar } from '../components/ui';
-import { api } from '../services/api';
+import { api, clearApiCache } from '../services/api';
 
 const monthlyData = [
   { month: 'Jan', pct: 90 },
@@ -72,11 +72,11 @@ export function Attendance() {
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Drill-down states
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [studentsList, setStudentsList] = useState<StudentPercentage[]>([]);
-  
+
   const [selectedStudent, setSelectedStudent] = useState<StudentPercentage | null>(null);
   const [studentAttendance, setStudentAttendance] = useState<AttendanceRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -131,7 +131,7 @@ export function Attendance() {
       selectedStudentIds.forEach((studentId) => {
         // Mark both morning and lunch period
         ['first_period', 'lunch_period'].forEach((session) => {
-          const idx = records.findIndex(r => 
+          const idx = records.findIndex(r =>
             String(r.studentId) === String(studentId) && r.date === selectedDate && r.session === session
           );
           if (idx !== -1) {
@@ -153,7 +153,7 @@ export function Attendance() {
       setAttendanceRecords(records);
       await saveSettingToDb('kts_student_attendance_records', JSON.stringify(records));
       setSelectedStudentIds([]);
-      
+
       // Reload batch percentages
       const response = await api.getBatchStudentPercentages(selectedBatch.id);
       if (response.success && response.data) {
@@ -175,7 +175,7 @@ export function Attendance() {
         const local = localStorage.getItem('kts_student_attendance_records');
         if (local) {
           const records = JSON.parse(local) as any[];
-          const filteredRecords = records.filter(r => 
+          const filteredRecords = records.filter(r =>
             !(selectedStudentIds.includes(String(r.studentId)) && r.date === selectedDate)
           );
           localStorage.setItem('kts_student_attendance_records', JSON.stringify(filteredRecords));
@@ -239,7 +239,7 @@ export function Attendance() {
               const stud = students.find((s: any) => String(s.enrollment_number).trim() === enrollment);
               if (stud) {
                 ['first_period', 'lunch_period'].forEach((session) => {
-                  const idx = records.findIndex(r => 
+                  const idx = records.findIndex(r =>
                     String(r.studentId) === String(stud.id) && r.date === selectedDate && r.session === session
                   );
                   if (idx !== -1) {
@@ -263,7 +263,7 @@ export function Attendance() {
           localStorage.setItem('kts_student_attendance_records', JSON.stringify(records));
           setAttendanceRecords(records);
           await saveSettingToDb('kts_student_attendance_records', JSON.stringify(records));
-          
+
           const response = await api.getBatchStudentPercentages(selectedBatch.id);
           if (response.success && response.data) {
             setStudentsList(response.data.students || []);
@@ -302,14 +302,14 @@ export function Attendance() {
             return { success: false, data: { attendances: [] } };
           })
         ]);
-        
+
         const todayAttendanceData = todayAttendanceRes?.success && todayAttendanceRes?.data?.attendances
           ? todayAttendanceRes.data.attendances
           : [];
 
         const parseBatchName = (name: string) => {
           const str = name.toUpperCase().trim();
-          
+
           const classMatch = str.match(/^(\d+)/) || str.match(/CLASS\s*(\d+)/i);
           const classId = classMatch ? classMatch[1] : '8';
 
@@ -323,7 +323,7 @@ export function Attendance() {
               sectionLetter = sectionMatch[1];
             }
           }
-          
+
           return { classId, sectionLetter };
         };
 
@@ -350,7 +350,7 @@ export function Attendance() {
         defaultClasses.forEach((cId) => {
           const hasSectionA = uniqueBatchesMap[`${cId}A`] !== undefined;
           const hasSectionB = uniqueBatchesMap[`${cId}B`] !== undefined;
-          
+
           if (!hasSectionA && !hasSectionB) {
             uniqueBatchesMap[`${cId}A`] = { id: `mock-${cId}A`, name: `${cId}A`, isMock: true };
             uniqueBatchesMap[`${cId}B`] = { id: `mock-${cId}B`, name: `${cId}B`, isMock: true };
@@ -362,18 +362,29 @@ export function Attendance() {
           const matchB = b.name.match(/^(\d+)/);
           const classA = matchA ? parseInt(matchA[1]) : 0;
           const classB = matchB ? parseInt(matchB[1]) : 0;
-          
+
           if (classA !== classB) {
             return classA - classB;
           }
           return a.name.localeCompare(b.name);
         });
 
-        setBatches(sortedBatches);
-        setStudents(studentsData || []);
-        setTodayAttendance(todayAttendanceData || []);
+        // Filter students list to include active students only
+        const activeStudents = (studentsData || []).filter(
+          (s: any) => (s.status || '').toLowerCase() === 'active'
+        );
 
-        // Compute class-wise today's glance data with real analytics
+        // Filter today's attendance to only include records for active students
+        const activeStudentIds = new Set(activeStudents.map((s: { id: any; }) => String(s.id)));
+        const activeTodayAttendance = (todayAttendanceData || []).filter(
+          (att: any) => activeStudentIds.has(String(att.student_id))
+        );
+
+        setBatches(sortedBatches);
+        setStudents(activeStudents);
+        setTodayAttendance(activeTodayAttendance);
+
+        // Compute class-wise today's glance data with real analytics using active students only
         const glanceList = defaultClasses.map((cId) => {
           let totalStudents = 0;
           let presentStudents = 0;
@@ -384,17 +395,18 @@ export function Attendance() {
           );
 
           classSections.forEach((sec) => {
-            const batchStudents = (studentsData || []).filter(
+            const batchStudents = activeStudents.filter(
               (s: any) => String(s.batch_id) === String(sec.id)
             );
             if (batchStudents.length > 0) {
               hasRealData = true;
               totalStudents += batchStudents.length;
 
-              const presentInBatch = (todayAttendanceData || []).filter(
-                (att: any) =>
-                  String(att.batch_id) === String(sec.id) &&
-                  ['present', 'late'].includes(att.status)
+              // Avoid double counting and check if student is marked present in any period today
+              const presentInBatch = batchStudents.filter((student: { id: any; }) =>
+                activeTodayAttendance.some(
+                  (att: any) => String(att.student_id) === String(student.id) && ['present', 'late'].includes(att.status)
+                )
               ).length;
               presentStudents += presentInBatch;
             }
@@ -449,7 +461,8 @@ export function Attendance() {
       }
     } catch (err: any) {
       console.error('Error fetching batch percentages:', err);
-      setError('Failed to load student attendance percentages.');
+      clearApiCache('batches');
+      setError(err.message || 'Failed to load student attendance percentages.');
     } finally {
       setLoading(false);
     }
@@ -471,7 +484,7 @@ export function Attendance() {
       }
     } catch (err: any) {
       console.error('Error fetching student attendance:', err);
-      setError('Failed to load student detailed attendance.');
+      setError(err.message || 'Failed to load student detailed attendance.');
     } finally {
       setLoading(false);
     }
@@ -709,12 +722,27 @@ export function Attendance() {
                     {filteredBatches.map((batch) => {
                       const batchStudents = students.filter(s => String(s.batch_id) === String(batch.id));
                       const totalStudents = batchStudents.length;
-                      const presentCount = todayAttendance.filter(
-                        att => String(att.batch_id) === String(batch.id) && ['present', 'late'].includes(att.status)
-                      ).length;
-                      const absentCount = todayAttendance.filter(
-                        att => String(att.batch_id) === String(batch.id) && att.status === 'absent'
-                      ).length;
+
+                      // Count unique students marked present or absent today (avoid double-counting across periods)
+                      let presentCount = 0;
+                      let absentCount = 0;
+
+                      batchStudents.forEach(student => {
+                        const studentAtt = todayAttendance.filter(
+                          (att: any) => String(att.student_id) === String(student.id)
+                        );
+                        if (studentAtt.length > 0) {
+                          const hasPresent = studentAtt.some(att => ['present', 'late'].includes(att.status));
+                          if (hasPresent) {
+                            presentCount++;
+                          } else {
+                            const hasAbsent = studentAtt.some(att => att.status === 'absent');
+                            if (hasAbsent) {
+                              absentCount++;
+                            }
+                          }
+                        }
+                      });
 
                       return (
                         <div
@@ -723,14 +751,14 @@ export function Attendance() {
                           className="group relative overflow-hidden bg-[var(--surf2)] hover:bg-[var(--surf)] border border-[var(--b)] hover:border-[var(--blue-tx)] rounded-xl p-3.5 cursor-pointer transition-all duration-300 transform hover:-translate-y-0.5 shadow-sm hover:shadow-md"
                         >
                           <div className="absolute right-0 top-0 w-20 h-20 bg-gradient-to-br from-[var(--blue-bg)] to-transparent opacity-20 rounded-full blur-xl group-hover:scale-150 transition-transform duration-500" />
-                          
+
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg">
                               <Users size={14} />
                             </div>
                             <div>
                               <div className="text-[12.5px] font-bold text-[var(--tx)] group-hover:text-[var(--blue)] transition-colors">Class {batch.name}</div>
-                              <div className="text-[10px] text-[var(--tx3)] mt-0.5">Teacher: {batch.class_teacher_name || 'Not assigned'}</div>
+                              <div className="text-[10px] text-[var(--tx3)] mt-0.5">Teacher: {batch.class_teacher_name || 'Not assigned'} · {totalStudents} Students</div>
                             </div>
                           </div>
 
@@ -853,7 +881,7 @@ export function Attendance() {
                 {sortedFilteredStudents.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-8 text-[var(--tx3)]">
-                      {selectedBatch?.isMock 
+                      {selectedBatch?.isMock
                         ? 'No registered students yet; assign teacher or add students first in the Classes tab.'
                         : 'No student records found.'}
                     </td>
@@ -924,7 +952,7 @@ export function Attendance() {
               <div className="flex items-center gap-1">
                 <span className="text-[12px] font-bold text-[var(--tx)]">Monthly Attendance Grid</span>
               </div>
-              
+
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
@@ -997,12 +1025,12 @@ export function Attendance() {
                     {d}
                   </div>
                 ))}
-                
+
                 {/* Empty slots for starting offset */}
                 {Array.from({ length: startDayOfWeek }).map((_, idx) => (
                   <div key={`empty-${idx}`} className="aspect-square bg-transparent rounded-lg"></div>
                 ))}
-                
+
                 {/* Active month days */}
                 {Array.from({ length: daysInMonth }).map((_, idx) => {
                   const dayNum = idx + 1;
@@ -1011,27 +1039,25 @@ export function Attendance() {
                     r => String(r.studentId) === String(selectedStudent.id) && r.date === dateStr
                   );
                   const att = getDayAttendanceInfo(dateStr);
-                  
-                  const tooltipText = att 
+
+                  const tooltipText = att
                     ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
                     : `${dayNum} ${monthNames[month]}: No attendance marked`;
-                  
+
                   const isSelectedDate = dateStr === selectedDate;
-                  
+
                   return (
                     <div
                       key={`day-${dayNum}`}
                       title={tooltipText}
                       onClick={() => setSelectedDate(dateStr)}
-                      className={`aspect-square p-2 rounded-xl flex flex-col justify-between border cursor-pointer transition-all ${
-                        isSelectedDate 
-                          ? 'ring-2 ring-[var(--blue)] scale-[1.02] shadow-sm z-10' 
+                      className={`aspect-square p-2 rounded-xl flex flex-col justify-between border cursor-pointer transition-all ${isSelectedDate
+                          ? 'ring-2 ring-[var(--blue)] scale-[1.02] shadow-sm z-10'
                           : ''
-                      } ${
-                        att 
-                          ? att.className 
+                        } ${att
+                          ? att.className
                           : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
-                      }`}
+                        }`}
                     >
                       <span className="text-[11px] font-bold">{dayNum}</span>
                       {att && (
@@ -1095,8 +1121,8 @@ export function Attendance() {
                         </div>
                         <div className="flex items-center gap-2.5 text-[10px] text-[var(--tx3)] mt-1">
                           <span className="flex items-center gap-1">
-                            <Clock size={11} /> 
-                            {record.time_slot ? `${record.time_slot.start_time.substring(0,5)} - ${record.time_slot.end_time.substring(0,5)}` : (record.check_in_time ? record.check_in_time.substring(0,5) : 'Time slots not set')}
+                            <Clock size={11} />
+                            {record.time_slot ? `${record.time_slot.start_time.substring(0, 5)} - ${record.time_slot.end_time.substring(0, 5)}` : (record.check_in_time ? record.check_in_time.substring(0, 5) : 'Time slots not set')}
                           </span>
                           <span>•</span>
                           <span className="flex items-center gap-0.5">

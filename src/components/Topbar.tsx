@@ -36,7 +36,8 @@ const PAGE_TITLES: Record<PageId, string> = {
   'activity-logs': 'Activity Logs',
   search: '',
   alumni: '',
-  'recycle-bin': ''
+  'recycle-bin': '',
+  substitute: 'Substitute Assignment'
 };
 
 interface TopbarProps {

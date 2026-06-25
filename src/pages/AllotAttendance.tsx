@@ -77,6 +77,7 @@ export function AllotAttendance() {
   
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [session, setSession] = useState<'first_period' | 'lunch_period'>('first_period');
+  const [substituteAssignments, setSubstituteAssignments] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -148,6 +149,30 @@ export function AllotAttendance() {
     loadData();
   }, []);
 
+  // Load substitute assignments for the selected date
+  useEffect(() => {
+    if (!user || !date) return;
+    const substituteUserId = user.id;
+    async function loadSubstituteAssignments() {
+      try {
+        const res = await api.getResources('substitute-assignments', {
+          substitute_user_id: substituteUserId,
+          assignment_date: date,
+          status: 'assigned'
+        });
+        if (Array.isArray(res)) {
+          setSubstituteAssignments(res);
+        } else {
+          setSubstituteAssignments([]);
+        }
+      } catch (err) {
+        console.error('Error loading substitute assignments:', err);
+        setSubstituteAssignments([]);
+      }
+    }
+    loadSubstituteAssignments();
+  }, [user, date]);
+
   // Determine first period after lunch index
   const getLunchPeriodIndex = () => {
     const lunchIdx = periodTimings.findIndex(t => t.isBreak && t.label?.toLowerCase().includes('lunch'));
@@ -181,7 +206,19 @@ export function AllotAttendance() {
       (lunchSlot.teacher && lunchSlot.teacher.toLowerCase() === user?.name?.toLowerCase())
     );
 
-    return isClassTeacher || teachesAfterLunch;
+    // 3. Is substitute teacher for the first period of this batch today?
+    const isSubstituteFirstPeriod = substituteAssignments.some(sa => 
+      sa.timetable?.batch?.name === batch.name && 
+      (sa.timetable?.time_slot_id - 1) === 0
+    );
+
+    // 4. Is substitute teacher for the first period after lunch of this batch today?
+    const isSubstituteAfterLunch = substituteAssignments.some(sa => 
+      sa.timetable?.batch?.name === batch.name && 
+      (sa.timetable?.time_slot_id - 1) === lunchPeriodIndex
+    );
+
+    return isClassTeacher || teachesAfterLunch || isSubstituteFirstPeriod || isSubstituteAfterLunch;
   }).map(b => b.name);
 
   // Set default class if not set or not in allowed classes
@@ -206,15 +243,34 @@ export function AllotAttendance() {
     (lunchSlot.teacher && lunchSlot.teacher.toLowerCase() === user?.name?.toLowerCase())
   );
 
+  const isSubstituteFirstPeriodForSelected = substituteAssignments.some(sa => 
+    sa.timetable?.batch?.name === selectedClass && 
+    (sa.timetable?.time_slot_id - 1) === 0
+  );
+
+  const isSubstituteAfterLunchForSelected = substituteAssignments.some(sa => 
+    sa.timetable?.batch?.name === selectedClass && 
+    (sa.timetable?.time_slot_id - 1) === lunchPeriodIndex
+  );
+
   useEffect(() => {
     if (selectedClass) {
-      if (isClassTeacherForSelected && !teachesAfterLunchForSelected) {
+      const hasFirstPeriod = isClassTeacherForSelected || isSubstituteFirstPeriodForSelected;
+      const hasAfterLunch = teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected;
+
+      if (hasFirstPeriod && !hasAfterLunch) {
         setSession('first_period');
-      } else if (!isClassTeacherForSelected && teachesAfterLunchForSelected) {
+      } else if (!hasFirstPeriod && hasAfterLunch) {
         setSession('lunch_period');
       }
     }
-  }, [selectedClass, isClassTeacherForSelected, teachesAfterLunchForSelected]);
+  }, [
+    selectedClass, 
+    isClassTeacherForSelected, 
+    teachesAfterLunchForSelected, 
+    isSubstituteFirstPeriodForSelected, 
+    isSubstituteAfterLunchForSelected
+  ]);
 
   // Filter students in selected class (active status only)
   const classStudents = students.filter(s => {
@@ -384,13 +440,14 @@ export function AllotAttendance() {
                   onChange={(e) => setSession(e.target.value as any)}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >
-                  {isClassTeacherForSelected && (
-                    <option value="first_period">Morning (1st Period - Class Teacher)</option>
+                  {(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) && (
+                    <option value="first_period">Morning (1st Period - Class Teacher/Substitute)</option>
                   )}
-                  {teachesAfterLunchForSelected && (
-                    <option value="lunch_period">Afternoon (1st Period After Lunch)</option>
+                  {(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
+                    <option value="lunch_period">Afternoon (1st Period After Lunch - Teacher/Substitute)</option>
                   )}
-                  {!isClassTeacherForSelected && !teachesAfterLunchForSelected && (
+                  {!(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) && 
+                   !(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
                     <option value="">No access for selected class today</option>
                   )}
                 </select>
@@ -411,15 +468,18 @@ export function AllotAttendance() {
               </div>
             </div>
 
-            {allowedClasses.length > 0 && !isClassTeacherForSelected && !teachesAfterLunchForSelected && (
+            {allowedClasses.length > 0 && 
+             !(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) && 
+             !(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
               <div className="mt-3 p-3 bg-[var(--amber-bg)] border border-[var(--amber-tx)]/10 text-[var(--amber-tx)] rounded-xl text-[11.5px] flex items-center gap-2">
                 <AlertCircle size={13} />
-                <span>You do not teach the lunch period slot nor are you the class teacher for Class {selectedClass} on {dayOfWeek}s.</span>
+                <span>You do not teach the lunch period slot nor are you the class teacher (or substitute) for Class {selectedClass} on {dayOfWeek}s.</span>
               </div>
             )}
           </Card>
 
-          {allowedClasses.length > 0 && (isClassTeacherForSelected || teachesAfterLunchForSelected) && (
+          {allowedClasses.length > 0 && 
+           (isClassTeacherForSelected || teachesAfterLunchForSelected || isSubstituteFirstPeriodForSelected || isSubstituteAfterLunchForSelected) && (
             <Card>
               {isLocked && (
                 <div className="mb-4 p-3 bg-[var(--teal-bg)]/25 border border-[var(--teal-tx)]/15 rounded-xl flex items-center justify-between gap-3 text-[11.5px] text-[var(--tx)]">

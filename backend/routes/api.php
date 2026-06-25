@@ -100,8 +100,18 @@ Route::post('/v1/login', function(Request $request) {
         // Also get classes where user is assigned as class teacher
         $classTeacherBatches = \App\Models\Batch::where('class_teacher_id', $user->id)->pluck('name')->toArray();
         
+        // Get classes where user is a substitute today
+        $substituteBatches = \App\Models\SubstituteAssignment::where('substitute_user_id', $user->id)
+            ->whereDate('assignment_date', \Carbon\Carbon::today()->toDateString())
+            ->where('status', 'assigned')
+            ->with('timetable.batch')
+            ->get()
+            ->pluck('timetable.batch.name')
+            ->filter()
+            ->toArray();
+            
         // Merge and deduplicate
-        $classes = array_values(array_unique(array_merge($timetableClasses, $classTeacherBatches)));
+        $classes = array_values(array_unique(array_merge($timetableClasses, $classTeacherBatches, $substituteBatches)));
     }
 
     return response()->json([
@@ -147,8 +157,18 @@ Route::prefix('v1')->group(function () {
             // Also get classes where user is assigned as class teacher
             $classTeacherBatches = \App\Models\Batch::where('class_teacher_id', $user->id)->pluck('name')->toArray();
             
+            // Get classes where user is a substitute today
+            $substituteBatches = \App\Models\SubstituteAssignment::where('substitute_user_id', $user->id)
+                ->whereDate('assignment_date', \Carbon\Carbon::today()->toDateString())
+                ->where('status', 'assigned')
+                ->with('timetable.batch')
+                ->get()
+                ->pluck('timetable.batch.name')
+                ->filter()
+                ->toArray();
+                
             // Merge and deduplicate
-            $classes = array_values(array_unique(array_merge($timetableClasses, $classTeacherBatches)));
+            $classes = array_values(array_unique(array_merge($timetableClasses, $classTeacherBatches, $substituteBatches)));
         }
 
         return response()->json([
@@ -301,6 +321,16 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
         return $request->user();
     });
 
+
+
+    // Substitute assignment endpoints
+    Route::prefix('substitutes')->group(function () {
+        Route::get('/staff', [\App\Http\Controllers\Api\SubstituteController::class, 'getStaff']);
+        Route::get('/schedule', [\App\Http\Controllers\Api\SubstituteController::class, 'getSchedule']);
+        Route::get('/available', [\App\Http\Controllers\Api\SubstituteController::class, 'getAvailableSubstitutes']);
+        Route::post('/assign', [\App\Http\Controllers\Api\SubstituteController::class, 'assignSubstitute']);
+    });
+
     // Student search endpoints - more restrictive rate limiting for search
     Route::middleware('throttle:30,1')->group(function () {
         Route::get('/students/search', [\App\Http\Controllers\Api\StudentController::class, 'search']);
@@ -380,4 +410,50 @@ Route::middleware(['auth', 'web'])->prefix('notifications')->name('api.notificat
     Route::get('/', [NotificationController::class, 'index'])->name('index');
     Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
     Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+});
+
+// Developer Seed & Clear Routes (Public for local dev/testing without active session token restrictions)
+Route::prefix('v1')->group(function () {
+
+    Route::post('/dev/seed-mock-data', function() {
+        try {
+            if (function_exists('opcache_reset')) {
+                opcache_reset();
+            }
+
+            // Run all outstanding migrations to ensure tables (like alumni) exist
+            \Illuminate\Support\Facades\Artisan::call('migrate');
+
+            // Programmatically run schema alter to ensure academic_year_id column exists
+            if (\Illuminate\Support\Facades\Schema::hasTable('fee_structures') && !\Illuminate\Support\Facades\Schema::hasColumn('fee_structures', 'academic_year_id')) {
+                \Illuminate\Support\Facades\Schema::table('fee_structures', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->foreignId('academic_year_id')
+                        ->nullable()
+                        ->constrained('academic_years')
+                        ->onDelete('cascade');
+                });
+            }
+
+            // Programmatically run schema alter to ensure is_half_day column exists in leave_applications
+            if (\Illuminate\Support\Facades\Schema::hasTable('leave_applications') && !\Illuminate\Support\Facades\Schema::hasColumn('leave_applications', 'is_half_day')) {
+                \Illuminate\Support\Facades\Schema::table('leave_applications', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->boolean('is_half_day')->default(false)->after('status');
+                });
+            }
+
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'Database\\Seeders\\MockDataSeeder']);
+            return response()->json(['success' => true, 'message' => 'Mock data seeded successfully!']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    });
+
+    Route::post('/dev/clear-mock-data', function() {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
+            return response()->json(['success' => true, 'message' => 'Database reset successfully for handover!']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    });
 });

@@ -72,17 +72,6 @@ function avatarColor(id: string) {
   return AVATAR_COLORS[idx];
 }
 
-// ── Demo data (used when backend has no alumni endpoint) ─────────────────────
-const DEMO_ALUMNI: Alumni[] = [
-  { id: 'd1', name: 'Arjun Reddy', roll: 'KTS2019001', passOutYear: '2019', class: '10', section: 'A', gender: 'Male', dob: '2003-04-12', phone: '9876543210', email: 'arjun.r@gmail.com', address: 'Ibrahimpatnam, Hyderabad', currentOccupation: 'Engineering Student', achievement: 'B.Tech CSE at JNTU', status: 'Verified', source: 'backend' },
-  { id: 'd2', name: 'Priya Sharma', roll: 'KTS2020002', passOutYear: '2020', class: '10', section: 'B', gender: 'Female', dob: '2004-07-23', phone: '9812345678', email: 'priya.sharma@gmail.com', address: 'Vijayawada, AP', currentOccupation: 'Medical Student', achievement: 'MBBS at Gandhi Medical College', status: 'Verified', source: 'backend' },
-  { id: 'd3', name: 'Kiran Kumar', roll: 'KTS2021003', passOutYear: '2021', class: '10', section: 'A', gender: 'Male', dob: '2005-01-09', phone: '9700123456', email: 'kiran.k@gmail.com', address: 'Nalgonda, Telangana', currentOccupation: 'Arts/Science Student', achievement: 'B.Sc Physics at Osmania University', status: 'Unverified', source: 'backend' },
-  { id: 'd4', name: 'Sneha Patel', roll: 'KTS2022004', passOutYear: '2022', class: '10', section: 'C', gender: 'Female', dob: '2006-11-30', phone: '8890123456', email: 'sneha.p@gmail.com', address: 'Warangal, Telangana', currentOccupation: 'Commerce Student', achievement: 'B.Com at Kakatiya University', status: 'Verified', source: 'backend' },
-  { id: 'd5', name: 'Rahul Nair', roll: 'KTS2018005', passOutYear: '2018', class: '10', section: 'A', gender: 'Male', dob: '2002-08-15', phone: '9955667788', email: 'rahul.nair@gmail.com', address: 'Hyderabad, Telangana', currentOccupation: 'Software Engineer', achievement: 'SDE-1 at TCS', status: 'Verified', source: 'backend' },
-  { id: 'd6', name: 'Lakshmi Devi', roll: 'KTS2023006', passOutYear: '2023', class: '10', section: 'B', gender: 'Female', dob: '2007-03-20', phone: '9443210987', email: 'lakshmi.d@gmail.com', address: 'Karimnagar, Telangana', currentOccupation: 'Engineering Student', achievement: 'B.Tech ECE at NIT Warangal', status: 'Verified', source: 'backend' },
-];
-
-
 const ITEMS_PER_PAGE = 10;
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -162,13 +151,8 @@ export function Alumni() {
 
       // Merge backend records with locally-stored ones (from promotion or manual adds)
       const merged = (mergeAlumni(backendAlumni) as Alumni[]).filter(a => a.status !== 'Deleted');
-
-      // If nothing from either source, show demo data
-      if (merged.length === 0) {
-        setAlumni(DEMO_ALUMNI);
-      } else {
-        setAlumni(merged);
-      }
+      
+      setAlumni(merged);
     } finally {
       setLoading(false);
     }

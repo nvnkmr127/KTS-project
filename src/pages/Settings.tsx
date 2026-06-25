@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { api } from '../services/api';
+import { api, clearApiCache } from '../services/api';
 import { useApp } from '../context/AppContext';
 import { 
   Calendar, Plus, Trash2, Edit2, CheckCircle2, Shield, 
@@ -54,6 +54,14 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   // Cache/Maintenance states
   const [clearingCache, setClearingCache] = useState(false);
   const [cacheSuccess, setCacheSuccess] = useState('');
+
+  // Developer Tools states
+  const [seeding, setSeeding] = useState(false);
+  const [seedSuccess, setSeedSuccess] = useState('');
+  const [seedError, setSeedError] = useState('');
+  const [clearingDb, setClearingDb] = useState(false);
+  const [clearDbSuccess, setClearDbSuccess] = useState('');
+  const [clearDbError, setClearDbError] = useState('');
 
   // Activity log states
   const [logs, setLogs] = useState<any[]>([]);
@@ -356,6 +364,58 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         window.location.reload();
       }, 1500);
     }, 1200);
+  };
+
+  // Seed Mock Data in Database
+  const handleSeedMockData = async () => {
+    setSeeding(true);
+    setSeedSuccess('');
+    setSeedError('');
+    try {
+      const res = await api.seedMockData();
+      if (res.success) {
+        clearApiCache();
+        setSeedSuccess('Mock data seeded successfully! Reloading...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        setSeedError(res.error || 'Failed to seed mock data.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setSeedError(err.message || 'Failed to seed mock data.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  // Clear Database for Client Handover
+  const handleClearDbData = async () => {
+    if (!window.confirm('WARNING: This will delete all mock students, fees, attendance, timetables, and logs. It will restore the database to a clean, empty state with only default admin accounts. Do you want to proceed?')) {
+      return;
+    }
+    setClearingDb(true);
+    setClearDbSuccess('');
+    setClearDbError('');
+    try {
+      const res = await api.clearMockData();
+      if (res.success) {
+        clearApiCache();
+        setClearDbSuccess('Database reset successfully! Clearing cache and logging out...');
+        setTimeout(() => {
+          localStorage.clear();
+          window.location.href = '/';
+        }, 2000);
+      } else {
+        setClearDbError(res.error || 'Failed to clear mock data.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setClearDbError(err.message || 'Failed to clear mock data.');
+    } finally {
+      setClearingDb(false);
+    }
   };
 
   const getUserStatusLabel = (userName: string) => {
@@ -1287,6 +1347,70 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                       <span className="text-[var(--tx3)]">Millitrack Broker:</span>
                       <span className="font-semibold text-[var(--teal-tx)]">Connected</span>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[var(--amber-bg)] text-[var(--amber-tx)] flex items-center justify-center flex-shrink-0">
+                  <ShieldAlert size={14} className="text-amber-500" />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h4 className="text-[13px] font-bold text-[var(--tx)]">Mock Data & Handover Tools</h4>
+                    <p className="text-[11px] text-[var(--tx3)] leading-relaxed">
+                      Developer controls to populate temporary mock data for system testing across all tabs, or completely wipe all data to prepare a clean database for the client handover.
+                    </p>
+                  </div>
+
+                  {seedSuccess && (
+                    <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15 rounded-lg text-[11px] flex items-center gap-1.5">
+                      <CheckCircle2 size={12} />
+                      <span>{seedSuccess}</span>
+                    </div>
+                  )}
+
+                  {seedError && (
+                    <div className="p-2.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/15 rounded-lg text-[11px] flex items-center gap-1.5">
+                      <AlertCircle size={12} />
+                      <span>{seedError}</span>
+                    </div>
+                  )}
+
+                  {clearDbSuccess && (
+                    <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15 rounded-lg text-[11px] flex items-center gap-1.5">
+                      <CheckCircle2 size={12} />
+                      <span>{clearDbSuccess}</span>
+                    </div>
+                  )}
+
+                  {clearDbError && (
+                    <div className="p-2.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/15 rounded-lg text-[11px] flex items-center gap-1.5">
+                      <AlertCircle size={12} />
+                      <span>{clearDbError}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-3 pt-1">
+                    <button
+                      onClick={handleSeedMockData}
+                      disabled={seeding || clearingDb}
+                      className="px-4 py-2 bg-[var(--blue)] text-white hover:opacity-90 disabled:opacity-50 text-[11.5px] font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      {seeding && <Loader2 size={12} className="animate-spin" />}
+                      Seed Mock Data
+                    </button>
+
+                    <button
+                      onClick={handleClearDbData}
+                      disabled={seeding || clearingDb}
+                      className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-[11.5px] font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      {clearingDb && <Loader2 size={12} className="animate-spin" />}
+                      Wipe Mock Data & Prepare Handover
+                    </button>
                   </div>
                 </div>
               </div>

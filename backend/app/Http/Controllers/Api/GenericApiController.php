@@ -38,6 +38,8 @@ class GenericApiController extends Controller
             'activity-logs' => \Spatie\Activitylog\Models\Activity::class,
             'failed-logins' => \Spatie\Activitylog\Models\Activity::class,
             'alumni' => \App\Models\Alumni::class,
+            'substitute-assignments' => \App\Models\SubstituteAssignment::class,
+            'holidays' => \App\Models\Holiday::class,
         ];
 
         return $map[strtolower($resource)] ?? null;
@@ -208,6 +210,8 @@ class GenericApiController extends Controller
             $query->with(['batch', 'subject', 'user', 'timeSlot', 'classroom']);
         } elseif ($resource === 'activity-logs' || $resource === 'failed-logins') {
             $query->with(['causer', 'subject']);
+        } elseif ($resource === 'substitute-assignments') {
+            $query->with(['timetable.batch', 'timetable.timeSlot', 'substituteUser', 'absentUser']);
         }
 
         $limit = $request->get('limit', 1000);
@@ -396,6 +400,8 @@ class GenericApiController extends Controller
         } elseif ($resource === 'batches') {
             $item->load('classTeacher');
             $item->class_teacher_name = $item->classTeacher ? $item->classTeacher->name : 'N/A';
+        } elseif ($resource === 'substitute-assignments') {
+            $item->load(['timetable.batch', 'timetable.timeSlot', 'substituteUser', 'absentUser']);
         } elseif ($resource === 'payslips') {
             $item->load('user');
             $item->name = $item->user ? $item->user->name : 'Staff Member';
@@ -667,7 +673,7 @@ class GenericApiController extends Controller
             foreach ($slots as $slot) {
                 $classroom = \App\Models\Classroom::firstOrCreate(
                     ['name' => $slot['room'] ?? 'Room 12'],
-                    ['code' => strtoupper(substr($slot['room'] ?? 'RM12', 0, 4))]
+                    ['type' => 'lecture', 'capacity' => 40]
                 );
                 
                 $subject = \App\Models\Subject::firstOrCreate(
@@ -679,7 +685,6 @@ class GenericApiController extends Controller
                 $timeSlot = \App\Models\TimeSlot::firstOrCreate(
                     ['id' => $periodIndex + 1],
                     [
-                        'name' => 'Period ' . ($periodIndex + 1),
                         'start_time' => '08:00:00',
                         'end_time' => '09:00:00',
                     ]
