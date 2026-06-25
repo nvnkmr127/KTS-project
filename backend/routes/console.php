@@ -862,6 +862,13 @@ Schedule::command('webhook:send-birthday')
     ->appendOutputTo(storage_path('logs/birthday-webhooks.log'))
     ->description('Trigger birthday webhooks for active students');
 
+Schedule::command('webhook:prune-calls')
+    ->daily()
+    ->at('03:00')
+    ->name('webhook-calls-prune')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/webhook-prune.log'));
+
 /*
 |--------------------------------------------------------------------------
 | Notification Cleanup Schedule

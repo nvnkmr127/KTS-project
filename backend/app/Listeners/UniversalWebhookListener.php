@@ -2,9 +2,9 @@
 
 namespace App\Listeners;
 
+use App\Jobs\DeliverWebhookJob;
 use App\Models\Webhook;
 use App\Services\WebhookPayloadBuilder;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -24,10 +24,6 @@ class UniversalWebhookListener
      * Maximum number of times to process the same event RECURSIVELY
      */
     protected static int $maxRecursionDepth = 1;
-
-    protected int $maxRetries = 3;
-
-    protected int $retryDelay = 10;
 
     /**
      * Handle any event that implements webhook notification
@@ -104,9 +100,6 @@ class UniversalWebhookListener
         } finally {
             // Remove from stack after processing
             static::$processingStack = array_values(array_diff(static::$processingStack, [$eventHash]));
-
-            // Cleanup the processed count after a delay (if running in a long-lived process)
-            $this->scheduleCleanup($eventHash);
         }
     }
 
@@ -167,16 +160,7 @@ class UniversalWebhookListener
         return false;
     }
 
-    /**
-     * Schedule cleanup of processed events tracking
-     */
-    protected function scheduleCleanup(string $eventHash): void
-    {
-        // Clean up after 10 seconds to prevent memory leaks
-        dispatch(function () use ($eventHash) {
-            unset(static::$processedEvents[$eventHash]);
-        })->delay(now()->addSeconds(10));
-    }
+
 
     /**
      * Determine the event name from any event object
@@ -228,9 +212,9 @@ class UniversalWebhookListener
             /** @var Webhook $webhook */
             foreach ($allWebhooks as $webhook) {
                 try {
-                    $this->sendOptimizedWebhook($webhook, $payload);
+                    DeliverWebhookJob::dispatch($webhook, $payload)->onQueue('webhooks');
                 } catch (\Exception $e) {
-                    Log::channel('webhook-events')->error('Failed to send individual webhook', [
+                    Log::channel('webhook-events')->error('Failed to dispatch webhook delivery job', [
                         'webhook_id' => $webhook->id,
                         'webhook_url' => $webhook->url,
                         'error' => $e->getMessage(),
@@ -240,89 +224,6 @@ class UniversalWebhookListener
         } catch (\Exception $e) {
             Log::channel('webhook-events')->error('Failed to send webhooks', [
                 'event_name' => $eventName,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Send individual webhook with optimized payload and proper error handling
-     */
-    protected function sendOptimizedWebhook(Webhook $webhook, array $payload): void
-    {
-        $startTime = microtime(true);
-
-        try {
-            // Generate signature for security
-            $signature = hash_hmac('sha256', json_encode($payload), $webhook->signing_secret);
-
-            $headers = [
-                'X-App-Signature' => $signature,
-                'X-Event-Type' => $payload['event'],
-                'X-Event-ID' => $payload['event_id'],
-                'X-Webhook-Source' => config('app.name', 'UVCHM'),
-                'User-Agent' => config('app.name').' Webhook/2.0',
-                'Content-Type' => 'application/json',
-            ];
-
-            // Add custom headers if configured
-            if ($webhook->headers) {
-                $headers = array_merge($headers, (array) $webhook->headers);
-            }
-
-            $response = Http::timeout($webhook->timeout_seconds)
-                ->withHeaders($headers)
-                ->post($webhook->url, $payload);
-
-            // Log the webhook call with size information
-            $webhook->calls()->create([
-                'success' => $response->successful(),
-                'status_code' => $response->status(),
-                'payload' => $payload,
-                'response_body' => $response->body(),
-                'execution_time_ms' => round((microtime(true) - $startTime) * 1000),
-            ]);
-
-            // Update webhook health status and pulse the 'last_called_at' timestamp
-            if ($response->successful()) {
-                $webhook->markAsSuccessful();
-
-                Log::channel('webhook-events')->debug('Optimized webhook sent successfully', [
-                    'webhook_id' => $webhook->id,
-                    'event' => $payload['event'],
-                    'status_code' => $response->status(),
-                    'payload_size' => strlen(json_encode($payload)).' bytes',
-                    'execution_time' => round((microtime(true) - $startTime) * 1000).'ms',
-                ]);
-            } else {
-                $webhook->markAsFailed();
-
-                Log::channel('webhook-events')->warning('Webhook call failed', [
-                    'webhook_id' => $webhook->id,
-                    'event' => $payload['event'],
-                    'status_code' => $response->status(),
-                    'response' => $response->body(),
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            // Update fail status on model
-            if ($webhook->exists) {
-                $webhook->markAsFailed();
-
-                // Log failed webhook call
-                $webhook->calls()->create([
-                    'success' => false,
-                    'status_code' => 0,
-                    'payload' => $payload,
-                    'response_body' => $e->getMessage(),
-                    'execution_time_ms' => round((microtime(true) - $startTime) * 1000),
-                ]);
-            }
-
-            Log::channel('webhook-events')->error('Webhook call exception', [
-                'webhook_id' => $webhook->id,
-                'event' => $payload['event'],
                 'error' => $e->getMessage(),
             ]);
         }

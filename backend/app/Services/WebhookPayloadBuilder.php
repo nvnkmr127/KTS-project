@@ -24,19 +24,20 @@ class WebhookPayloadBuilder
             $additionalData = property_exists($event, 'additionalData') ? $event->additionalData : [];
 
             if (! $model) {
-                return self::buildFallbackPayload($event);
+                $payload = self::buildFallbackPayload($event);
+            } else {
+                $modelType = strtolower(class_basename($model));
+
+                $payload = [
+                    'event' => $eventName,
+                    'event_id' => 'evt_' . \Illuminate\Support\Str::uuid()->toString(),
+                    'api_version' => '1.0',
+                    'timestamp' => now()->toISOString(),
+                    'app_name' => config('app.name', 'CollegeManagement'),
+                    'environment' => app()->environment(),
+                    'data' => self::buildEventData($modelType, $eventType, $model, $additionalData),
+                ];
             }
-
-            $modelType = strtolower(class_basename($model));
-
-            return [
-                'event' => $eventName,
-                'event_id' => 'evt_'.uniqid(),
-                'timestamp' => now()->toISOString(),
-                'app_name' => config('app.name', 'CollegeManagement'),
-                'environment' => app()->environment(),
-                'data' => self::buildEventData($modelType, $eventType, $model, $additionalData),
-            ];
 
         } catch (\Exception $e) {
             \Log::error('Error building optimized payload', [
@@ -44,8 +45,14 @@ class WebhookPayloadBuilder
                 'event_class' => get_class($event),
             ]);
 
-            return self::buildFallbackPayload($event);
+            $payload = self::buildFallbackPayload($event);
         }
+
+        // Use null coalescing assignment to prevent overwriting
+        $payload['event_id'] ??= 'evt_' . \Illuminate\Support\Str::uuid()->toString();
+        $payload['api_version'] ??= '1.0';
+
+        return $payload;
     }
 
     /**
@@ -302,7 +309,8 @@ class WebhookPayloadBuilder
     {
         return [
             'event' => 'system.error',
-            'event_id' => 'evt_'.uniqid(),
+            'event_id' => 'evt_' . \Illuminate\Support\Str::uuid()->toString(),
+            'api_version' => '1.0',
             'timestamp' => now()->toISOString(),
             'app_name' => config('app.name', 'CollegeManagement'),
             'environment' => app()->environment(),

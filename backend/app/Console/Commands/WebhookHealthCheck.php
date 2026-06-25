@@ -62,7 +62,7 @@ class WebhookHealthCheck extends Command
             $this->info('   ✅ webhooks table exists');
 
             // Check required columns
-            $requiredColumns = ['id', 'url', 'event_name', 'is_active', 'secret_key'];
+            $requiredColumns = ['id', 'url', 'event_name', 'is_active', 'signing_secret'];
             foreach ($requiredColumns as $column) {
                 if (! Schema::hasColumn('webhooks', $column)) {
                     $issues[] = "❌ webhooks table missing column: {$column}";

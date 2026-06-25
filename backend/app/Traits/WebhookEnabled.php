@@ -49,16 +49,6 @@ trait WebhookEnabled
     protected static array $firingWebhooks = [];
 
     /**
-     * Maximum recursion depth allowed
-     */
-    protected static int $maxRecursionDepth = 3;
-
-    /**
-     * Current recursion depth
-     */
-    protected static array $recursionDepth = [];
-
-    /**
      * Boot the webhook enabled trait
      */
     protected static function bootWebhookEnabled(): void
@@ -162,62 +152,7 @@ trait WebhookEnabled
         }
     }
 
-    /**
-     * Check if this would create an infinite loop
-     */
-    protected function isInfiniteLoop(string $eventType): bool
-    {
-        $modelClass = get_class($this);
-        $modelId = $this->getKey() ?? 'new';
-        $eventKey = "{$modelClass}:{$modelId}:{$eventType}";
 
-        // Check if we're already firing this exact event
-        if (isset(static::$firingWebhooks[$eventKey])) {
-            return true;
-        }
-
-        // Check recursion depth
-        $currentDepth = static::$recursionDepth[$modelClass][$eventType] ?? 0;
-        if ($currentDepth >= static::$maxRecursionDepth) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Increment recursion depth tracking
-     */
-    protected function incrementRecursionDepth(string $eventType): void
-    {
-        $modelClass = get_class($this);
-
-        if (! isset(static::$recursionDepth[$modelClass])) {
-            static::$recursionDepth[$modelClass] = [];
-        }
-
-        if (! isset(static::$recursionDepth[$modelClass][$eventType])) {
-            static::$recursionDepth[$modelClass][$eventType] = 0;
-        }
-
-        static::$recursionDepth[$modelClass][$eventType]++;
-    }
-
-    /**
-     * Decrement recursion depth tracking
-     */
-    protected function decrementRecursionDepth(string $eventType): void
-    {
-        $modelClass = get_class($this);
-
-        if (isset(static::$recursionDepth[$modelClass][$eventType])) {
-            static::$recursionDepth[$modelClass][$eventType]--;
-
-            if (static::$recursionDepth[$modelClass][$eventType] <= 0) {
-                unset(static::$recursionDepth[$modelClass][$eventType]);
-            }
-        }
-    }
 
     /**
      * Set the webhook event name for this model instance
@@ -496,7 +431,6 @@ trait WebhookEnabled
     public static function clearWebhookTracking(): void
     {
         static::$firingWebhooks = [];
-        static::$recursionDepth = [];
     }
 
     /**
@@ -506,8 +440,6 @@ trait WebhookEnabled
     {
         return [
             'firing_webhooks' => static::$firingWebhooks,
-            'recursion_depth' => static::$recursionDepth,
-            'max_recursion_depth' => static::$maxRecursionDepth,
         ];
     }
 

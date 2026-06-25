@@ -5,15 +5,14 @@
 namespace App\Models;
 
 use App\Services\WebhookEventDiscoveryService;
-use App\Traits\WebhookEnabled;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Webhook extends Model
 {
-    use HasFactory;
-    use WebhookEnabled;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'event_name',
@@ -130,7 +129,7 @@ class Webhook extends Model
     {
         return $query->where(function ($q) {
             $q->where('auto_disable_after_failures', false)
-                ->orWhere('consecutive_failures', '<', 'max_failures_before_disable');
+                ->orWhereColumn('consecutive_failures', '<', 'max_failures_before_disable');
         });
     }
 
@@ -244,6 +243,8 @@ class Webhook extends Model
             ];
         }
 
+        $events = self::getAvailableEvents();
+
         return $events[$this->event_name] ?? [
             'name' => $this->formatEventName($this->event_name),
             'description' => 'Auto-discovered event',
@@ -317,20 +318,7 @@ class Webhook extends Model
             ->avg('execution_time_ms') ?? 0;
     }
 
-    /**
-     * Check if webhook URL is reachable
-     */
-    public function isReachable(): bool
-    {
-        try {
-            $response = \Illuminate\Support\Facades\Http::timeout(5)
-                ->get($this->url);
 
-            return $response->status() < 500;
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
 
     /**
      * Generate a secure secret key
@@ -387,7 +375,7 @@ class Webhook extends Model
                 $suggestions[$eventKey] = [
                     'event' => $eventData,
                     'score' => $score,
-                    'match_reason' => $this->getMatchReason($keywords, $eventKey, $eventData),
+                    'match_reason' => static::getMatchReason($keywords, $eventKey, $eventData),
                 ];
             }
         }

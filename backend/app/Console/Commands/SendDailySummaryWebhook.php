@@ -6,6 +6,7 @@ use App\Models\Attendance;
 use App\Models\Payment;
 use App\Models\Student;
 use App\Models\Webhook;
+use App\Services\WebhookSecurityService;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
@@ -246,30 +247,28 @@ class SendDailySummaryWebhook extends Command
             ];
         }
 
-        // ===== ENHANCED PAYLOAD WITH METADATA =====
-        $payload = [
-            'date' => $date->format('Y-m-d'),
-            'report_day' => $date->format('l'),
-            'report_generated_at' => $date->format('Y-m-d').' Time: '.$reportTimestamp->format('h:i A'),
-            'payments' => $paymentsData,
-            'attendance' => $attendanceData,
-            'metadata' => [
-                'portal_name' => config('app.name', 'UVCHM Portal'),
-                'report_version' => '1.2', // Updated version
-                'working_day' => ! $date->isSunday(),
-                'generated_by' => 'automated_scheduler',
-                'timezone' => $timezone,
-                'server_time' => $reportTimestamp->format('Y-m-d H:i:s T'),
-                'payment_query_method' => 'creation_date', // Indicate we're using creation date
-                'command_options' => [
-                    'test_mode' => $this->option('test'),
-                    'forced' => $this->option('force'),
-                    'debug' => $this->option('debug'),
+        return [
+            'event'      => 'daily.summary',
+            'event_id'   => 'evt_' . \Illuminate\Support\Str::uuid()->toString(),
+            'api_version'=> '1.0',
+            'timestamp'  => now()->toIso8601String(),
+            'data'       => [
+                'date'                 => $date->format('Y-m-d'),
+                'report_day'           => $date->format('l'),
+                'report_generated_at'  => $date->format('Y-m-d') . ' Time: ' . $reportTimestamp->format('h:i A'),
+                'payments'             => $paymentsData,
+                'attendance'           => $attendanceData,
+                'metadata'             => [
+                    'portal_name'          => config('app.name', 'UVCHM Portal'),
+                    'report_version'       => '1.2',
+                    'working_day'          => !$date->isSunday(),
+                    'generated_by'         => 'automated_scheduler',
+                    'timezone'             => $timezone,
+                    'server_time'          => $reportTimestamp->format('Y-m-d H:i:s T'),
+                    'payment_query_method' => 'creation_date',
                 ],
             ],
         ];
-
-        return $payload;
     }
 
     protected function getActiveDailySummaryWebhooks()
@@ -284,26 +283,29 @@ class SendDailySummaryWebhook extends Command
 
     protected function sendWebhookRequest(Webhook $webhook, array $payload): array
     {
+        $startTime = microtime(true);
         try {
-            // Prepare headers
-            $headers = [
-                'Content-Type' => 'application/json',
-                'User-Agent' => config('app.name', 'Laravel').'/Daily-Summary-Webhook',
-                'X-Webhook-Event' => 'daily.summary',
-                'X-Webhook-Delivery' => uniqid('delivery_'),
-            ];
-
-            // Add signature if secret key exists
-            if ($webhook->secret_key || $webhook->signing_secret) {
-                $secret = $webhook->secret_key ?? $webhook->signing_secret;
-                $signature = hash_hmac('sha256', json_encode($payload), $secret);
-                $headers['X-Webhook-Signature'] = 'sha256='.$signature;
-            }
+            // Build headers using the central security service
+            $headers = WebhookSecurityService::buildSignedHeaders($webhook, $payload);
 
             // Make HTTP request with timeout
             $response = Http::timeout($webhook->timeout_seconds ?: 30)
                 ->withHeaders($headers)
                 ->post($webhook->url, $payload);
+
+            $executionTimeMs = round((microtime(true) - $startTime) * 1000);
+
+            // Determine error category
+            $success = $response->successful();
+            if ($success) {
+                $errorCategory = 'success';
+            } elseif ($response->clientError()) {
+                $errorCategory = 'http_4xx';
+            } elseif ($response->serverError()) {
+                $errorCategory = 'http_5xx';
+            } else {
+                $errorCategory = 'network_error';
+            }
 
             // Log the webhook call if WebhookCall model exists
             if (class_exists(\App\Models\WebhookCall::class)) {
@@ -312,8 +314,13 @@ class SendDailySummaryWebhook extends Command
                     'payload' => $payload,
                     'status_code' => $response->status(),
                     'response_body' => $response->body(),
-                    'success' => $response->successful(),
-                    'execution_time_ms' => 0, // Simplified for now
+                    'success' => $success,
+                    'execution_time_ms' => $executionTimeMs,
+                    'event_id' => $payload['event_id'] ?? null,
+                    'delivery_id' => $headers['X-Webhook-Delivery'] ?? null,
+                    'retry_attempt' => 0,
+                    'error_category' => $errorCategory,
+                    'payload_size_bytes' => strlen(json_encode($payload)),
                     'created_at' => now(),
                 ]);
             }
@@ -358,18 +365,18 @@ class SendDailySummaryWebhook extends Command
     protected function displaySummaryPreview(array $data): void
     {
         $this->info('📋 Summary Preview:');
-        $this->line("   💰 Payments: ₹{$data['payments']['total_amount']} from {$data['payments']['total_payers']} students");
+        $this->line("   💰 Payments: ₹{$data['data']['payments']['total_amount']} from {$data['data']['payments']['total_payers']} students");
 
-        $attendanceNote = isset($data['attendance']['calculation_method'])
-            ? " ({$data['attendance']['calculation_method']})"
+        $attendanceNote = isset($data['data']['attendance']['calculation_method'])
+            ? " ({$data['data']['attendance']['calculation_method']})"
             : '';
-        $this->line("   👥 Attendance: {$data['attendance']['present']}/{$data['attendance']['total_students']} present ({$data['attendance']['attendance_percentage']}%){$attendanceNote}");
+        $this->line("   👥 Attendance: {$data['data']['attendance']['present']}/{$data['data']['attendance']['total_students']} present ({$data['data']['attendance']['attendance_percentage']}%){$attendanceNote}");
 
-        if (isset($data['attendance']['notes'])) {
-            $this->line("   ℹ️  Note: {$data['attendance']['notes']}");
+        if (isset($data['data']['attendance']['notes'])) {
+            $this->line("   ℹ️  Note: {$data['data']['attendance']['notes']}");
         }
 
-        $this->line("   📅 Report Day: {$data['report_day']}");
+        $this->line("   📅 Report Day: {$data['data']['report_day']}");
         $this->newLine();
     }
 

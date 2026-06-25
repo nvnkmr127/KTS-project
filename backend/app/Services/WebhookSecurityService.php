@@ -1,38 +1,69 @@
 <?php
 
-// In app/Services/WebhookSecurityService.php
-
 namespace App\Services;
 
-use Illuminate\Http\Request;
+use App\Models\Webhook;
+use Illuminate\Support\Str;
 
 class WebhookSecurityService
 {
     /**
-     * Verify the HMAC-SHA256 signature of an incoming webhook request.
-     *
-     * @param  Request  $request  The incoming HTTP request.
-     * @param  string  $secret  The signing secret used to generate the signature.
-     * @return bool True if the signature is valid, false otherwise.
+     * Generate standard signature.
      */
-    public function verify(Request $request, string $secret): bool
+    public static function generateSignature(string $secret, string $payload, int $timestamp): string
     {
-        // Get the signature from the request header.
-        $sentSignature = $request->header('X-App-Signature');
+        return hash_hmac('sha256', $timestamp . '.' . $payload, $secret);
+    }
 
-        if (! $sentSignature) {
-            // Abort if no signature is present.
-            return false;
+    /**
+     * Generate legacy signature.
+     */
+    public static function generateLegacySignature(string $secret, string $payload): string
+    {
+        return hash_hmac('sha256', $payload, $secret);
+    }
+
+    /**
+     * Build signed headers for a webhook delivery attempt.
+     */
+    public static function buildSignedHeaders(Webhook $webhook, array $payload): array
+    {
+        $timestamp = time();
+        $jsonPayload = json_encode($payload);
+        $secret = $webhook->signing_secret ?? '';
+
+        $headers = [
+            'X-Webhook-Signature' => 'sha256=' . self::generateSignature($secret, $jsonPayload, $timestamp),
+            'X-App-Signature' => self::generateLegacySignature($secret, $jsonPayload),
+            'X-Webhook-Timestamp' => (string) $timestamp,
+            'X-Webhook-Delivery' => (string) Str::uuid(),
+            'X-Event-Type' => $payload['event'] ?? '',
+            'X-Event-ID' => $payload['event_id'] ?? '',
+            'X-Webhook-Source' => config('app.name', 'Laravel'),
+            'User-Agent' => config('app.name', 'Laravel') . ' Webhook/2.0',
+            'Content-Type' => 'application/json',
+        ];
+
+        // Merge custom headers (custom headers last)
+        if ($webhook->headers) {
+            $headers = array_merge($headers, (array) $webhook->headers);
         }
 
-        // Get the raw JSON body of the request.
-        $payload = $request->getContent();
+        return $headers;
+    }
 
-        // Calculate the expected signature.
-        $expectedSignature = hash_hmac('sha256', $payload, $secret);
+    /**
+     * Verify a signature against the payload and timestamp.
+     */
+    public static function verifySignature(string $secret, string $payload, string $signature, int $timestamp, int $toleranceSeconds = 300): bool
+    {
+        $expected = self::generateSignature($secret, $payload, $timestamp);
 
-        // Compare the sent signature with the expected one in a way that
-        // prevents timing attacks.
-        return hash_equals($expectedSignature, $sentSignature);
+        // Strip 'sha256=' prefix if present
+        if (str_starts_with($signature, 'sha256=')) {
+            $signature = substr($signature, 7);
+        }
+
+        return hash_equals($expected, $signature) && abs(time() - $timestamp) <= $toleranceSeconds;
     }
 }

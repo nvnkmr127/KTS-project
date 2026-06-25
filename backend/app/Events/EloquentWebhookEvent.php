@@ -104,7 +104,6 @@ class EloquentWebhookEvent
             'user_agent' => request()?->userAgent(),
             'url' => request()?->fullUrl(),
             'method' => request()?->method(),
-            'session_id' => session()?->getId(),
             'timestamp' => $this->occurredAt->toIso8601String(),
         ];
 
