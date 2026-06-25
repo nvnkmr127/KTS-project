@@ -191,6 +191,17 @@ Route::prefix('v1')->group(function () {
     Route::post('/resources/{resource}/bulk', [GenericApiController::class, 'bulkStore']);
     Route::put('/resources/{resource}/{id}', [GenericApiController::class, 'update']);
     Route::delete('/resources/{resource}/{id}', [GenericApiController::class, 'destroy']);
+
+    // Webhook management API endpoints
+    Route::get('/webhooks/stats', [\App\Http\Controllers\Admin\WebhookController::class, 'getStatsApi']);
+    Route::get('/webhooks/events', [\App\Http\Controllers\Admin\WebhookController::class, 'getEventsApi']);
+    Route::post('/webhooks/{webhook}/toggle', [\App\Http\Controllers\Admin\WebhookController::class, 'toggle'])->where('webhook', '[0-9]+');
+    Route::post('/webhooks/{webhook}/test', [\App\Http\Controllers\Admin\WebhookController::class, 'test'])->where('webhook', '[0-9]+');
+    Route::post('/webhooks/{webhook}/regenerate-secret', [\App\Http\Controllers\Admin\WebhookController::class, 'regenerateSecret'])->where('webhook', '[0-9]+');
+    Route::get('/webhooks/{webhook}/calls', [\App\Http\Controllers\Admin\WebhookController::class, 'getCallsApi'])->where('webhook', '[0-9]+');
+    Route::post('/webhooks/test-daily-summary', [\App\Http\Controllers\Admin\WebhookController::class, 'testDailySummary']);
+    Route::post('/webhooks/send-daily-summary', [\App\Http\Controllers\Admin\WebhookController::class, 'sendDailySummary']);
+    Route::post('/webhooks/calls/{call}/replay', [\App\Http\Controllers\Admin\WebhookController::class, 'replay'])->where('call', '[0-9]+');
 });
 
 // Health check endpoints

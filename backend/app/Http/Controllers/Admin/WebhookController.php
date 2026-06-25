@@ -1030,4 +1030,89 @@ class WebhookController extends Controller
             'Automation'       => ['icon' => '🤖', 'events' => array_filter($eventTypes, fn($e) => $e['category'] === 'Automation')],
         ];
     }
+
+    /**
+     * Get webhook statistics for API
+     */
+    public function getStatsApi(Request $request)
+    {
+        try {
+            $date = $request->get('date', now()->format('Y-m-d'));
+            $stats = $this->getWebhookStats($date);
+            return response()->json([
+                'success' => true,
+                'stats' => $stats
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get webhook events list for API
+     */
+    public function getEventsApi(Request $request)
+    {
+        try {
+            $eventTypes = [];
+            $categories = [];
+
+            try {
+                if (method_exists(Webhook::class, 'getAvailableEvents')) {
+                    $eventTypes = Webhook::getAvailableEvents();
+                }
+                if (method_exists(Webhook::class, 'getEventCategories')) {
+                    $categories = Webhook::getEventCategories();
+                }
+            } catch (\Exception $e) {
+                $eventTypes = $this->getFallbackEventTypes();
+                $categories = $this->getFallbackCategories($eventTypes);
+            }
+
+            return response()->json([
+                'success' => true,
+                'event_types' => $eventTypes,
+                'categories' => $categories,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get webhook call logs for API
+     */
+    public function getCallsApi(Request $request, Webhook $webhook)
+    {
+        try {
+            $query = $webhook->calls();
+
+            if ($request->filled('status')) {
+                if ($request->status === 'success') {
+                    $query->where('success', true);
+                } elseif ($request->status === 'failed') {
+                    $query->where('success', false);
+                }
+            }
+
+            $limit = $request->get('limit', 50);
+            $logs = $query->latest()->limit($limit)->get();
+
+            return response()->json([
+                'success' => true,
+                'logs' => $logs
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

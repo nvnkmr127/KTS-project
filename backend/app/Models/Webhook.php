@@ -472,6 +472,22 @@ class Webhook extends Model
         return $commonIntegrations;
     }
 
+    /**
+     * Accessor for secret_key to support signing_secret database column compatibility
+     */
+    public function getSecretKeyAttribute(): ?string
+    {
+        return $this->signing_secret;
+    }
+
+    /**
+     * Mutator for secret_key to support signing_secret database column compatibility
+     */
+    public function setSecretKeyAttribute($value)
+    {
+        $this->attributes['signing_secret'] = $value;
+    }
+
     protected static function boot()
     {
         parent::boot();

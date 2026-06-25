@@ -10,6 +10,7 @@ import {
   ShieldAlert, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { TabBar } from '../components/ui';
+import { WebhookManagement } from '../components/WebhookManagement';
 
 
 interface AcademicYear {
@@ -460,7 +461,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     <div className="flex-1 overflow-y-auto p-4 bg-[var(--bg)]">
       
       <TabBar 
-        tabs={['Academic Years', 'School Profile', 'Activity Logs', 'System Maintenance']}
+        tabs={['Academic Years', 'School Profile', 'Activity Logs', 'Webhook Management', 'System Maintenance']}
         active={tab}
         onChange={setTab}
       />
@@ -1294,8 +1295,13 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
           </div>
         )}
 
-        {/* Tab 3: System Maintenance */}
+        {/* Tab 3: Webhook Management */}
         {tab === 3 && (
+          <WebhookManagement />
+        )}
+
+        {/* Tab 4: System Maintenance */}
+        {tab === 4 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <div className="flex items-start gap-3">

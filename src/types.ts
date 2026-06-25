@@ -33,7 +33,8 @@ export type PageId =
   | 'recycle-bin'
   | 'alumni'
   | 'search'
-  | 'substitute';
+  | 'substitute'
+  | 'webhook';
 
 export type ColorVariant =
   | 'blue'

@@ -74,6 +74,7 @@ const PAGE_TO_PATH: Record<PageId, string> = {
   alumni: '/alumni',
   search: '/search',
   substitute: '/substitute',
+  webhook: '/webhooks',
 };
 
 const PATH_TO_PAGE: Record<string, PageId> = Object.entries(PAGE_TO_PATH).reduce(
@@ -221,6 +222,7 @@ function AppShell() {
           {page === 'timetable' && <Timetable />}
           {page === 'promotion' && <Promotion />}
           {page === 'settings' && <Settings initialTab={0} />}
+          {page === 'webhook' && <Settings initialTab={3} />}
           {page === 'activity-logs' && (
             isTeacher ? <TeacherActivityLogs /> : <Settings initialTab={2} />
           )}

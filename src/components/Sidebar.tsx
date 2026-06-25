@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
   Bus, BarChart2, Settings, School, MessageCircle,
-  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity, Trash2
+  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity, Trash2, Globe
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -83,6 +83,7 @@ const ADMIN_SECTIONS: NavSection[] = [
   {
     label: 'System',
     items: [
+      { icon: <Globe size={14} />, label: 'Webhooks', page: 'webhook' },
       { icon: <Trash2 size={14} />, label: 'Recycle Bin', page: 'recycle-bin' },
     ],
   },

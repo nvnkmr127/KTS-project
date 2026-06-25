@@ -37,7 +37,8 @@ const PAGE_TITLES: Record<PageId, string> = {
   search: '',
   alumni: '',
   'recycle-bin': '',
-  substitute: 'Substitute Assignment'
+  substitute: 'Substitute Assignment',
+  webhook: 'Webhook Management'
 };
 
 interface TopbarProps {

@@ -419,6 +419,56 @@ export const api = {
       method: 'POST',
     });
   },
+
+  async getWebhookStats(date?: string) {
+    return request(`/webhooks/stats${date ? `?date=${date}` : ''}`);
+  },
+
+  async getWebhookEvents() {
+    return request('/webhooks/events');
+  },
+
+  async toggleWebhook(id: string | number) {
+    return request(`/webhooks/${id}/toggle`, {
+      method: 'POST',
+    });
+  },
+
+  async testWebhook(id: string | number) {
+    return request(`/webhooks/${id}/test`, {
+      method: 'POST',
+    });
+  },
+
+  async regenerateWebhookSecret(id: string | number) {
+    return request(`/webhooks/${id}/regenerate-secret`, {
+      method: 'POST',
+    });
+  },
+
+  async getWebhookCalls(id: string | number, status?: string) {
+    return request(`/webhooks/${id}/calls${status ? `?status=${status}` : ''}`);
+  },
+
+  async testDailySummary(date?: string) {
+    return request(`/webhooks/test-daily-summary`, {
+      method: 'POST',
+      body: JSON.stringify({ date }),
+    });
+  },
+
+  async sendDailySummary(date?: string) {
+    return request(`/webhooks/send-daily-summary`, {
+      method: 'POST',
+      body: JSON.stringify({ date }),
+    });
+  },
+
+  async replayWebhookCall(callId: string | number) {
+    return request(`/webhooks/calls/${callId}/replay`, {
+      method: 'POST',
+    });
+  },
 };
 
 // Preserve original localStorage methods bound to the localStorage instance
