@@ -77,9 +77,15 @@ async function request(path: string, options: RequestInit = {}) {
 
   if (!response.ok) {
     if (response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Clear auth state without a hard redirect — let React's own render logic
+      // (`if (!user) return <Login />;` in App.tsx) handle showing the login screen.
+      // A hard `window.location.href = '/login'` redirect would cause a full-page
+      // reload and could hit the Laravel backend's /login route on production servers.
+      originalRemoveItem('token');
+      originalRemoveItem('user');
+      // Dispatch a custom event so AuthContext can listen and clear user state
+      // within the same tab (window.storage events only fire cross-tab).
+      window.dispatchEvent(new Event('kts:unauthorized'));
     }
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || errorData.message || 'API request failed');

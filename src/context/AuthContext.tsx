@@ -42,7 +42,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, []);
 
+  // Listen for 401 Unauthorized events dispatched by api.ts
+  // This replaces the old `window.location.href = '/login'` hard redirect,
+  // which could land on the Laravel backend's /login page in production instead of the SPA.
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(null);
+    };
+    window.addEventListener('kts:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('kts:unauthorized', handleUnauthorized);
+  }, []);
+
   // Poll server to check if user status has been changed to inactive while logged in
+
   useEffect(() => {
     if (!user) return;
     // Skip polling for demo users — no backend to verify against
