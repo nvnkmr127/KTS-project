@@ -53,6 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // which could land on the Laravel backend's /login page in production instead of the SPA.
   useEffect(() => {
     const handleUnauthorized = () => {
+      api.logout();
+      localStorage.removeItem('user');
       setUser(null);
     };
     window.addEventListener('kts:unauthorized', handleUnauthorized);
