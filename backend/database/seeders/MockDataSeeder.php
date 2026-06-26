@@ -34,6 +34,9 @@ class MockDataSeeder extends Seeder
 {
     public function run(): void
     {
+        // Disable activity logging during database seeding
+        \Spatie\Activitylog\Facades\Activity::disableLogging();
+
         // Truncate tables to prevent duplicate key errors and clean up old mock data
         \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
         

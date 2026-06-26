@@ -42,11 +42,12 @@ export function clearApiCache(resource?: string) {
 async function request(path: string, options: RequestInit = {}) {
   const method = options.method || 'GET';
   
-  // Cache GET requests (excluding real-time/dynamic resources like settings and attendance)
+  // Cache GET requests (excluding real-time/dynamic resources like settings, attendance, and activity logs)
   const bypassCache = path.includes('/settings') || 
                        path.includes('/attendance') || 
                        path.includes('/substitutes') ||
-                       path.includes('/substitute-assignments');
+                       path.includes('/substitute-assignments') ||
+                       path.includes('/activity-logs');
 
   if (method === 'GET' && !bypassCache) {
     const cached = cache.get(path);
@@ -69,6 +70,11 @@ async function request(path: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || errorData.message || 'API request failed');
   }
@@ -99,9 +105,18 @@ export const api = {
     return res;
   },
 
-  logout() {
-    localStorage.removeItem('token');
-    clearApiCache(); // Clear cache on logout
+  async logout() {
+    try {
+      const token = localStorage.getItem('token');
+      if (token && token !== 'demo-token') {
+        await request('/logout', { method: 'POST' });
+      }
+    } catch (e) {
+      console.error('Logout error:', e);
+    } finally {
+      localStorage.removeItem('token');
+      clearApiCache(); // Clear cache on logout
+    }
   },
 
   async getResources(resource: string, params: Record<string, string> = {}) {
@@ -468,6 +483,29 @@ export const api = {
     return request(`/webhooks/calls/${callId}/replay`, {
       method: 'POST',
     });
+  },
+
+  // ── Activity Logs ────────────────────────────────────────────────────
+
+  async getActivityLogs(params: Record<string, string> = {}) {
+    const query = new URLSearchParams(params).toString();
+    return request(`/activity-logs${query ? `?${query}` : ''}`);
+  },
+
+  async getMyActivityStats() {
+    return request('/activity-logs/my-stats');
+  },
+
+  async getActivityUsers() {
+    return request('/activity-logs/users');
+  },
+
+  async getActivitySummary() {
+    return request('/activity-logs/summary');
+  },
+
+  async clearActivityLogs() {
+    return request('/activity-logs/clear', { method: 'POST' });
   },
 };
 

@@ -39,12 +39,14 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\DashboardSecurityMiddleware::class,
+            \App\Http\Middleware\LogUserAction::class,
         ],
 
         'api' => [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\LogUserAction::class,
         ],
     ];
 
@@ -76,5 +78,6 @@ class Kernel extends HttpKernel
         'log.student.activity' => \App\Http\Middleware\LogStudentActivity::class,
         'check.payment.access' => \App\Http\Middleware\CheckPaymentAccess::class,
         'debug.permissions' => \App\Http\Middleware\DebugPermissions::class,
+        'log.user.action' => \App\Http\Middleware\LogUserAction::class,
     ];
 }

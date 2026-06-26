@@ -9,10 +9,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Payment extends Model
 {
-    use HasAcademicYear, HasFactory, WebhookEnabled;
+    use HasAcademicYear, HasFactory, WebhookEnabled, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions {
+        return LogOptions::defaults()
+            ->logOnly(['amount', 'payment_method', 'payment_date', 'payment_type', 'status', 'student_id'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(function(string $e) {
+                $student = $this->student ? $this->student->name : ('student ID ' . $this->student_id);
+                return "Payment of ₹{$this->amount} for {$student} via {$this->payment_method} was {$e}";
+            });
+    }
 
     // Define the custom column name for academic year
     public $academic_year_column = 'academic_year';

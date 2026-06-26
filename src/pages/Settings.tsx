@@ -5,7 +5,7 @@ import { api, clearApiCache } from '../services/api';
 import { useApp } from '../context/AppContext';
 import { 
   Calendar, Plus, Trash2, Edit2, CheckCircle2, Shield, 
-  AlertCircle, RefreshCw, X, Loader2, Save,
+  AlertCircle, RefreshCw, RotateCcw, X, Loader2, Save,
   Activity, User, Search, Clock, GitCompare, ArrowRight,
   ShieldAlert, ChevronDown, ChevronRight
 } from 'lucide-react';
@@ -65,24 +65,21 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   const [clearDbError, setClearDbError] = useState('');
 
   // Activity log states
-  const [logs, setLogs] = useState<any[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
-  const [logSearch, setLogSearch] = useState('');
-  const [userFilter, setUserFilter] = useState('All');
-  const [users, setUsers] = useState<any[]>([]);
-
-  // Transition / Compare states
-  const [isTransitionMode, setIsTransitionMode] = useState(false);
-  const [oldStaffFilter, setOldStaffFilter] = useState('All');
-  const [newStaffFilter, setNewStaffFilter] = useState('All');
-  const [staffList, setStaffList] = useState<any[]>([]);
-
-  // Failed login audit states
-  const [failedLogins, setFailedLogins] = useState<any[]>([]);
-  const [loadingFailedLogins, setLoadingFailedLogins] = useState(false);
-  const [failedLoginSearch, setFailedLoginSearch] = useState('');
-  const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
-  const [showFailedLoginSection, setShowFailedLoginSection] = useState(true);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [activityUsers, setActivityUsers] = useState<any[]>([]);
+  const [activitySummary, setActivitySummary] = useState<any[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [clearingLogs, setClearingLogs] = useState(false);
+  const [activitySearch, setActivitySearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activityUserFilter, setActivityUserFilter] = useState('');
+  const [activityEventFilter, setActivityEventFilter] = useState('');
+  const [activityDateFrom, setActivityDateFrom] = useState('');
+  const [activityDateTo, setActivityDateTo] = useState('');
+  const [activityExpandedId, setActivityExpandedId] = useState<string | null>(null);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activityOffset, setActivityOffset] = useState(0);
+  const ACTIVITY_PAGE_SIZE = 50;
 
 
   // Load academic years
@@ -145,64 +142,49 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   };
 
   // Load Activity Logs
-  const loadActivityLogs = async () => {
-    setLoadingLogs(true);
+  async function loadActivityLogs(reset = true, nextOffset?: number) {
+    setActivityLoading(true);
+    const offset = nextOffset !== undefined ? nextOffset : (reset ? 0 : activityOffset);
+    if (reset) setActivityOffset(0);
     try {
-      const data = await api.getResources('activity-logs');
-      if (Array.isArray(data)) {
-        setLogs(data);
-      }
-    } catch (err) {
-      console.error('Error loading activity logs:', err);
-    } finally {
-      setLoadingLogs(false);
-    }
-  };
+      const params: Record<string,string> = { limit: String(ACTIVITY_PAGE_SIZE), offset: String(offset) };
+      if (activitySearch) params.search = activitySearch;
+      if (activityUserFilter) params.user_id = activityUserFilter;
+      if (activityEventFilter) params.event = activityEventFilter;
+      if (activityDateFrom) params.date_from = activityDateFrom;
+      if (activityDateTo) params.date_to = activityDateTo;
+      const res = await api.getActivityLogs(params);
+      const data = res.data ?? res ?? [];
+      if (reset) setActivityLogs(data);
+      else setActivityLogs(prev => [...prev, ...data]);
+      setActivityTotal(res.total ?? data.length);
+    } catch (e) { console.error(e); }
+    finally { setActivityLoading(false); }
+  }
 
-  // Load Users for filter dropdown
-  const loadUsers = async () => {
-    try {
-      const data = await api.getResources('users');
-      if (Array.isArray(data)) {
-        setUsers(data);
-      }
-    } catch (err) {
-      console.error('Error loading users:', err);
+  const handleClearActivityLogs = async () => {
+    if (!window.confirm('Are you sure you want to permanently clear all activity logs? This cannot be undone.')) {
+      return;
     }
-  };
-
-  // Load staff list to identify who has resigned/left vs active
-  const loadStaffList = async () => {
+    setClearingLogs(true);
     try {
-      const saved = localStorage.getItem('kts_staff_members');
-      if (saved) {
-        setStaffList(JSON.parse(saved));
+      const res = await api.clearActivityLogs();
+      if (res.success) {
+        setActivityLogs([]);
+        setActivityTotal(0);
+        setActivityUsers([]);
+        setActivitySummary([]);
+        // Reload metadata / summaries
+        api.getActivityUsers().then(setActivityUsers).catch(() => {});
+        api.getActivitySummary().then(r => setActivitySummary(r.data ?? r ?? [])).catch(() => {});
       } else {
-        const data = await api.getResources('settings');
-        if (Array.isArray(data)) {
-          const staffSetting = data.find((s: any) => s.key === 'kts_staff_members');
-          if (staffSetting && staffSetting.value) {
-            setStaffList(JSON.parse(staffSetting.value));
-          }
-        }
+        alert(res.error || 'Failed to clear activity logs.');
       }
-    } catch (err) {
-      console.error('Error loading staff list in Settings:', err);
-    }
-  };
-
-  // Load Failed Login Attempts
-  const loadFailedLogins = async () => {
-    setLoadingFailedLogins(true);
-    try {
-      const data = await api.getResources('failed-logins', { limit: '500' });
-      if (Array.isArray(data)) {
-        setFailedLogins(data);
-      }
-    } catch (err) {
-      console.error('Error loading failed login attempts:', err);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to clear activity logs.');
     } finally {
-      setLoadingFailedLogins(false);
+      setClearingLogs(false);
     }
   };
 
@@ -212,12 +194,23 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     } else if (tab === 1) {
       loadSettings();
     } else if (tab === 2) {
-      loadActivityLogs();
-      loadUsers();
-      loadStaffList();
-      loadFailedLogins();
+      api.getActivityUsers().then(setActivityUsers).catch(() => {});
+      api.getActivitySummary().then(r => setActivitySummary(r.data ?? r ?? [])).catch(() => {});
     }
   }, [tab]);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(activitySearch);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [activitySearch]);
+
+  useEffect(() => {
+    if (tab === 2) {
+      loadActivityLogs(true);
+    }
+  }, [debouncedSearch, activityUserFilter, activityEventFilter, activityDateFrom, activityDateTo, tab]);
 
 
   useEffect(() => {
@@ -419,43 +412,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     }
   };
 
-  const getUserStatusLabel = (userName: string) => {
-    const staff = staffList.find((s: any) => s.name.toLowerCase() === userName.toLowerCase());
-    if (staff) {
-      return ` (${staff.status})`;
-    }
-    return '';
-  };
 
-  const filteredLogs = logs.filter((log) => {
-    const matchUser = userFilter === 'All' || String(log.causer_name) === userFilter;
-    const matchSearch = !logSearch.trim() || 
-      String(log.description).toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.log_name || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.event || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.causer_name).toLowerCase().includes(logSearch.toLowerCase());
-    return matchUser && matchSearch;
-  });
-
-  const oldStaffLogs = logs.filter((log) => {
-    const matchUser = oldStaffFilter === 'All' || String(log.causer_name) === oldStaffFilter;
-    const matchSearch = !logSearch.trim() || 
-      String(log.description).toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.log_name || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.event || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.causer_name).toLowerCase().includes(logSearch.toLowerCase());
-    return matchUser && matchSearch;
-  });
-
-  const newStaffLogs = logs.filter((log) => {
-    const matchUser = newStaffFilter === 'All' || String(log.causer_name) === newStaffFilter;
-    const matchSearch = !logSearch.trim() || 
-      String(log.description).toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.log_name || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.event || '').toLowerCase().includes(logSearch.toLowerCase()) ||
-      String(log.causer_name).toLowerCase().includes(logSearch.toLowerCase());
-    return matchUser && matchSearch;
-  });
 
   return (
     <div className="flex-1 overflow-y-auto p-4 bg-[var(--bg)]">
@@ -665,633 +622,261 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         {/* Tab 2: Activity Logs */}
         {tab === 2 && (
           <div className="space-y-4">
+            {/* SECTION 1 — Summary bar */}
+            {(() => {
+              const getTodayDateStr = () => {
+                const d = new Date();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              };
+              const todayStr = getTodayDateStr();
+              const todaySummary = activitySummary.find(s => s.date === todayStr) || (activitySummary.length > 0 ? activitySummary[activitySummary.length - 1] : null);
+              const totalLogsToday = todaySummary ? todaySummary.total : 0;
+              const loginsToday = todaySummary ? todaySummary.login_count : 0;
+              const deletionsToday = todaySummary ? todaySummary.deleted_count : 0;
+              const activeUsersToday = new Set(
+                activityLogs
+                  .filter(log => log.created_at && log.created_at.startsWith(todayStr))
+                  .map(log => log.causer_id || log.causer_name)
+              ).size;
 
-          {/* Failed Login Attempts Audit Card */}
-          <Card>
-            <div className="flex items-center justify-between mb-3">
-              <button
-                onClick={() => setShowFailedLoginSection(!showFailedLoginSection)}
-                className="flex items-center gap-2 group cursor-pointer"
-              >
-                <div className="w-7 h-7 rounded-lg bg-[var(--red-bg)] text-[var(--red-tx)] flex items-center justify-center flex-shrink-0">
-                  <ShieldAlert size={14} />
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                  <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-2 text-center text-[11px]">
+                    <div className="text-[var(--tx3)] font-medium">Total Logs Today</div>
+                    <div className="text-[16px] font-bold text-[var(--tx)] mt-0.5">{totalLogsToday}</div>
+                  </div>
+                  <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-2 text-center text-[11px]">
+                    <div className="text-[var(--tx3)] font-medium">Active Users Today</div>
+                    <div className="text-[16px] font-bold text-[var(--tx)] mt-0.5">{activeUsersToday}</div>
+                  </div>
+                  <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-2 text-center text-[11px]">
+                    <div className="text-[var(--tx3)] font-medium">Logins Today</div>
+                    <div className="text-[16px] font-bold text-[var(--teal-tx)] mt-0.5">{loginsToday}</div>
+                  </div>
+                  <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-2 text-center text-[11px]">
+                    <div className="text-[var(--tx3)] font-medium">Deletions Today</div>
+                    <div className="text-[16px] font-bold text-[var(--red-tx)] mt-0.5">{deletionsToday}</div>
+                  </div>
                 </div>
-                <div className="text-left">
-                  <h3 className="text-[13px] font-bold text-[var(--tx)] group-hover:text-[var(--red-tx)] transition-colors flex items-center gap-1.5">
-                    Failed Login Attempts Audit
-                    {showFailedLoginSection ? <ChevronDown size={13} className="text-[var(--tx3)]" /> : <ChevronRight size={13} className="text-[var(--tx3)]" />}
-                  </h3>
-                  <p className="text-[11px] text-[var(--tx3)] mt-0.5">Track and audit failed sign-in attempts per user account.</p>
-                </div>
-              </button>
+              );
+            })()}
 
-              <div className="flex items-center gap-2">
-                {failedLogins.length > 0 && (
-                  <span className="px-2.5 py-0.5 bg-[var(--red-bg)] text-[var(--red-tx)] text-[10px] font-bold rounded-full">
-                    {failedLogins.length} failed attempt{failedLogins.length !== 1 ? 's' : ''}
-                  </span>
-                )}
-                <button
-                  onClick={loadFailedLogins}
-                  disabled={loadingFailedLogins}
-                  className="p-1.5 border border-[var(--b)] rounded-lg bg-[var(--surf2)] hover:bg-[var(--surf3)] text-[var(--tx2)] cursor-pointer disabled:opacity-50"
-                  title="Refresh failed login audit"
-                >
-                  <RefreshCw size={12} className={loadingFailedLogins ? 'animate-spin' : ''} />
-                </button>
-              </div>
-            </div>
+            {/* SECTION 2 — Filter bar */}
+            {(() => {
+              const isFilterActive = !!(activitySearch || activityUserFilter || activityEventFilter || activityDateFrom || activityDateTo);
+              const clearFilters = () => {
+                setActivitySearch('');
+                setActivityUserFilter('');
+                setActivityEventFilter('');
+                setActivityDateFrom('');
+                setActivityDateTo('');
+              };
 
-            {showFailedLoginSection && (
-              <div>
-                {/* Search bar */}
-                <div className="mb-3">
-                  <div className="relative">
-                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--tx3)]" />
+              return (
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <div className="relative min-w-[200px] flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tx3)]" />
                     <input
                       type="text"
-                      value={failedLoginSearch}
-                      onChange={(e) => setFailedLoginSearch(e.target.value)}
-                      placeholder="Search by email or IP address..."
-                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg pl-8 pr-3 py-1.5 text-[11.5px] text-[var(--tx)] outline-none focus:border-[var(--red)]"
+                      value={activitySearch}
+                      onChange={(e) => setActivitySearch(e.target.value)}
+                      placeholder="Search actions…"
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-xl pl-9 pr-3 py-1.5 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] placeholder-[var(--tx3)]"
                     />
                   </div>
-                </div>
 
-                {loadingFailedLogins ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 size={20} className="animate-spin text-[var(--red)]" />
+                  <select
+                    value={activityUserFilter}
+                    onChange={(e) => setActivityUserFilter(e.target.value)}
+                    className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none min-w-[140px]"
+                  >
+                    <option value="">All Users</option>
+                    {activityUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={activityEventFilter}
+                    onChange={(e) => setActivityEventFilter(e.target.value)}
+                    className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none min-w-[120px]"
+                  >
+                    <option value="">All Events</option>
+                    <option value="created">created</option>
+                    <option value="updated">updated</option>
+                    <option value="deleted">deleted</option>
+                    <option value="login">login</option>
+                    <option value="logout">logout</option>
+                    <option value="action">action</option>
+                  </select>
+
+                  <div className="flex items-center gap-1 bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-1">
+                    <span className="text-[10px] text-[var(--tx3)] font-semibold uppercase">From</span>
+                    <input
+                      type="date"
+                      value={activityDateFrom}
+                      onChange={(e) => setActivityDateFrom(e.target.value)}
+                      className="bg-transparent border-0 text-[12px] text-[var(--tx)] outline-none p-0 cursor-pointer"
+                    />
                   </div>
-                ) : failedLogins.length === 0 ? (
-                  <div className="py-10 text-center space-y-2">
-                    <div className="w-10 h-10 rounded-full bg-[var(--teal-bg)] flex items-center justify-center mx-auto text-[var(--teal-tx)]">
-                      <ShieldAlert size={18} />
-                    </div>
-                    <p className="text-[12px] text-[var(--tx3)] italic">No failed login attempts recorded yet.</p>
-                    <p className="text-[11px] text-[var(--tx3)]">Failed attempts will appear here after invalid login tries.</p>
+
+                  <div className="flex items-center gap-1 bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-1">
+                    <span className="text-[10px] text-[var(--tx3)] font-semibold uppercase">To</span>
+                    <input
+                      type="date"
+                      value={activityDateTo}
+                      onChange={(e) => setActivityDateTo(e.target.value)}
+                      className="bg-transparent border-0 text-[12px] text-[var(--tx)] outline-none p-0 cursor-pointer"
+                    />
                   </div>
-                ) : (() => {
-                  // Group by attempted email
-                  const grouped: Record<string, any[]> = {};
-                  failedLogins.forEach((log) => {
-                    const email = log.attempted_email || log.causer_email || 'Unknown';
-                    if (!grouped[email]) grouped[email] = [];
-                    grouped[email].push(log);
-                  });
 
-                  const searchQ = failedLoginSearch.toLowerCase().trim();
-                  const emailKeys = Object.keys(grouped).filter(email => {
-                    if (!searchQ) return true;
-                    if (email.toLowerCase().includes(searchQ)) return true;
-                    return grouped[email].some(l =>
-                      (l.ip_address || '').includes(searchQ) ||
-                      (l.reason || '').toLowerCase().includes(searchQ)
-                    );
-                  }).sort((a, b) => grouped[b].length - grouped[a].length);
-
-                  if (emailKeys.length === 0) {
-                    return (
-                      <div className="py-8 text-center text-[12px] text-[var(--tx3)] italic">
-                        No failed login records match your search.
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-2">
-                      {emailKeys.map(email => {
-                        const attempts = grouped[email];
-                        const count = attempts.length;
-                        const isExpanded = expandedEmail === email;
-                        const riskColor = count >= 10
-                          ? 'border-l-[var(--red)] bg-[var(--red-bg)]/30'
-                          : count >= 5
-                            ? 'border-l-[var(--amber)] bg-[var(--amber-bg)]/20'
-                            : 'border-l-[var(--blue)] bg-[var(--surf2)]/50';
-                        const countColor = count >= 10
-                          ? 'bg-[var(--red-bg)] text-[var(--red-tx)]'
-                          : count >= 5
-                            ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)]'
-                            : 'bg-[var(--blue-bg)] text-[var(--blue-tx)]';
-                        const lastAttempt = attempts[0];
-                        let lastAttemptTime = '';
-                        if (lastAttempt?.created_at) {
-                          try {
-                            lastAttemptTime = new Date(lastAttempt.created_at).toLocaleString('en-IN', {
-                              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true,
-                            });
-                          } catch { lastAttemptTime = lastAttempt.created_at; }
-                        }
-
-                        return (
-                          <div
-                            key={email}
-                            className={`border border-[var(--b)] border-l-[3px] rounded-xl overflow-hidden transition-all ${riskColor}`}
-                          >
-                            {/* Summary row — clickable to expand */}
-                            <button
-                              onClick={() => setExpandedEmail(isExpanded ? null : email)}
-                              className="w-full text-left flex items-center justify-between gap-3 p-3 hover:bg-[var(--surf2)]/60 transition-colors cursor-pointer"
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-7 h-7 rounded-full bg-[var(--surf3)] flex items-center justify-center flex-shrink-0">
-                                  <User size={13} className="text-[var(--tx3)]" />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="text-[12.5px] font-bold text-[var(--tx)] truncate">{email}</div>
-                                  {lastAttemptTime && (
-                                    <div className="text-[10px] text-[var(--tx3)] flex items-center gap-1 mt-0.5">
-                                      <Clock size={9} /> Last attempt: {lastAttemptTime}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${countColor}`}>
-                                  {count} attempt{count !== 1 ? 's' : ''}
-                                </span>
-                                {count >= 10 && (
-                                  <span className="px-1.5 py-0.5 bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/20 rounded text-[9px] font-bold uppercase tracking-wide">
-                                    High Risk
-                                  </span>
-                                )}
-                                {count >= 5 && count < 10 && (
-                                  <span className="px-1.5 py-0.5 bg-[var(--amber-bg)] text-[var(--amber-tx)] border border-[var(--amber-tx)]/20 rounded text-[9px] font-bold uppercase tracking-wide">
-                                    Suspicious
-                                  </span>
-                                )}
-                                {isExpanded ? <ChevronDown size={13} className="text-[var(--tx3)]" /> : <ChevronRight size={13} className="text-[var(--tx3)]" />}
-                              </div>
-                            </button>
-
-                            {/* Expanded attempt list */}
-                            {isExpanded && (
-                              <div className="border-t border-[var(--b)] bg-[var(--surf)] divide-y divide-[var(--b)]">
-                                {attempts.map((log, idx) => {
-                                  let fmtTime = '';
-                                  if (log.created_at) {
-                                    try {
-                                      fmtTime = new Date(log.created_at).toLocaleString('en-IN', {
-                                        day: 'numeric', month: 'short', year: 'numeric',
-                                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
-                                      });
-                                    } catch { fmtTime = log.created_at; }
-                                  }
-                                  return (
-                                    <div key={log.id || idx} className="px-4 py-2.5 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-[11.5px]">
-                                      <div className="flex items-center gap-1 text-[var(--tx3)] min-w-[160px]">
-                                        <Clock size={10} />
-                                        <span className="font-mono">{fmtTime || '—'}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 text-[var(--tx2)]">
-                                        <span className="text-[10px] text-[var(--tx3)] font-semibold">IP:</span>
-                                        <span className="font-mono text-[10.5px]">{log.ip_address || '—'}</span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] text-[var(--tx3)] font-semibold">Reason:</span>
-                                        <span className={`text-[10.5px] font-semibold ${log.reason === 'Account inactive' ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'}`}>
-                                          {log.reason || 'Invalid credentials'}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-          </Card>
-
-          {/* Existing Activity Logs Card */}
-          <Card>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-              <div>
-                <h3 className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
-                  <Activity size={14} className="text-[var(--blue-tx)]" /> Activity Logs
-                </h3>
-                <p className="text-[11px] text-[var(--tx3)] mt-0.5">Track modifications, system loggings, and user actions.</p>
-              </div>
-
-
-              <div className="flex flex-wrap gap-2 w-full sm:w-auto items-stretch sm:items-center">
-                {/* Transition / Compare mode button */}
-                <button
-                  type="button"
-                  onClick={() => setIsTransitionMode(!isTransitionMode)}
-                  className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[11.5px] font-semibold border transition-all cursor-pointer ${
-                    isTransitionMode 
-                      ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border-[var(--blue)]' 
-                      : 'bg-[var(--surf2)] text-[var(--tx2)] border-[var(--b)] hover:bg-[var(--surf3)]'
-                  }`}
-                  title="Compare activities of two members (e.g. departed staff and replacement)"
-                >
-                  <GitCompare size={13} />
-                  <span>Compare Mode</span>
-                </button>
-
-                {/* Search */}
-                <div className="relative flex-1 sm:w-48">
-                  <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--tx3)]" />
-                  <input
-                    type="text"
-                    value={logSearch}
-                    onChange={(e) => setLogSearch(e.target.value)}
-                    placeholder="Search logs..."
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg pl-8 pr-3 py-1.5 text-[11.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
-                  />
-                </div>
-
-                {!isTransitionMode ? (
-                  /* User filter */
-                  <div className="flex items-center gap-1.5">
-                    <User size={12} className="text-[var(--tx3)]" />
-                    <select
-                      value={userFilter}
-                      onChange={(e) => setUserFilter(e.target.value)}
-                      className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1.5 text-[11.5px] text-[var(--tx)] cursor-pointer outline-none min-w-[140px]"
+                  {isFilterActive && (
+                    <button
+                      onClick={clearFilters}
+                      className="flex items-center gap-1 px-3 py-1.5 text-[12px] text-[var(--red-tx)] bg-[var(--red-bg)] hover:opacity-90 rounded-xl font-semibold cursor-pointer"
                     >
-                      <option value="All">All Users</option>
-                      {users.map((u: any) => (
-                        <option key={u.id} value={u.name}>{u.name}{getUserStatusLabel(u.name)}</option>
-                      ))}
-                      <option value="System">System</option>
-                    </select>
-                  </div>
-                ) : (
-                  <>
-                    {/* Departed Staff dropdown */}
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold text-[var(--tx3)] whitespace-nowrap">Old:</span>
-                      <select
-                        value={oldStaffFilter}
-                        onChange={(e) => setOldStaffFilter(e.target.value)}
-                        className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-1.5 py-1.5 text-[11px] text-[var(--tx)] cursor-pointer outline-none min-w-[130px]"
-                      >
-                        <option value="All">Select Departed</option>
-                        {users.map((u: any) => (
-                          <option key={u.id} value={u.name}>
-                            {u.name}{getUserStatusLabel(u.name)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {/* Replacement Staff dropdown */}
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold text-[var(--tx3)] whitespace-nowrap">New:</span>
-                      <select
-                        value={newStaffFilter}
-                        onChange={(e) => setNewStaffFilter(e.target.value)}
-                        className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-1.5 py-1.5 text-[11px] text-[var(--tx)] cursor-pointer outline-none min-w-[130px]"
-                      >
-                        <option value="All">Select Replacement</option>
-                        {users.map((u: any) => (
-                          <option key={u.id} value={u.name}>
-                            {u.name}{getUserStatusLabel(u.name)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                )}
-                
-                {/* Refresh */}
-                <button
-                  onClick={loadActivityLogs}
-                  disabled={loadingLogs}
-                  className="flex items-center justify-center p-1.5 text-[var(--tx2)] hover:text-[var(--tx)] border border-[var(--b)] rounded-lg bg-[var(--surf2)] hover:bg-[var(--surf3)] cursor-pointer disabled:opacity-50"
-                  title="Refresh logs"
-                >
-                  <RefreshCw size={13} className={loadingLogs ? 'animate-spin' : ''} />
-                </button>
-              </div>
-            </div>
+                      <X size={13} />
+                      <span>Clear</span>
+                    </button>
+                  )}
 
-            {loadingLogs ? (
-              <div className="flex justify-center py-12">
-                <Loader2 size={20} className="animate-spin text-[var(--blue)]" />
-              </div>
-            ) : isTransitionMode ? (
-              oldStaffFilter === 'All' || newStaffFilter === 'All' ? (
-                <div className="text-center py-16 px-4 bg-[var(--surf2)] border border-[var(--b)] rounded-2xl max-w-xl mx-auto my-6 space-y-4">
-                  <div className="w-12 h-12 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-full flex items-center justify-center mx-auto">
-                    <GitCompare size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-[13.5px] font-bold text-[var(--tx)]">Staff Handover & Transition Log Comparer</h4>
-                    <p className="text-[11.5px] text-[var(--tx3)] mt-1.5 max-w-sm mx-auto leading-relaxed">
-                      Select both the previous (departed) staff member and the new (assigned) staff member from the filters above to compare what each did exactly.
-                    </p>
-                  </div>
+                  <button
+                    onClick={() => loadActivityLogs(true)}
+                    disabled={activityLoading}
+                    className="flex items-center justify-center p-2 text-[var(--tx2)] hover:text-[var(--tx)] border border-[var(--b)] rounded-xl bg-[var(--surf2)] hover:bg-[var(--surf3)] cursor-pointer disabled:opacity-50"
+                    title="Refresh logs"
+                  >
+                    <RotateCcw size={14} className={activityLoading ? 'animate-spin' : ''} />
+                  </button>
+
+                  <button
+                    onClick={handleClearActivityLogs}
+                    disabled={activityLoading || clearingLogs}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[12px] text-rose-500 hover:text-rose-600 border border-rose-500/20 rounded-xl bg-rose-500/5 hover:bg-rose-500/10 cursor-pointer disabled:opacity-50 font-semibold"
+                    title="Clear all activity logs"
+                  >
+                    {clearingLogs ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={13} />
+                    )}
+                    <span>Clear Logs</span>
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* SECTION 3 — Activity timeline list */}
+            <Card>
+              {activityLoading && activityLogs.length === 0 ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 8 }).map((_, idx) => (
+                    <div key={idx} className="flex gap-3 py-3 border-b border-[var(--b)] last:border-0 animate-pulse">
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[var(--surf3)] mt-1.5" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="h-4 w-16 bg-[var(--surf3)] rounded-full" />
+                            <div className="h-4 w-48 bg-[var(--surf3)] rounded" />
+                          </div>
+                          <div className="h-3 w-12 bg-[var(--surf3)] rounded" />
+                        </div>
+                        <div className="flex gap-1.5">
+                          <div className="h-3.5 w-10 bg-[var(--surf3)] rounded-full" />
+                          <div className="h-3.5 w-16 bg-[var(--surf3)] rounded-full" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : activityLogs.length === 0 ? (
+                <div className="text-center py-10 text-[12px] text-[var(--tx3)] italic">
+                  No activity logs found matching the selected filters.
                 </div>
               ) : (
-                <div className="space-y-5">
-                  {/* Transition Stats Banner */}
-                  {(() => {
-                    const getStats = (userLogs: any[]) => {
-                      const total = userLogs.length;
-                      const created = userLogs.filter(l => ['created', 'store', 'create'].includes(l.event || '')).length;
-                      const updated = userLogs.filter(l => ['updated', 'update'].includes(l.event || '')).length;
-                      const deleted = userLogs.filter(l => ['deleted', 'destroy', 'delete'].includes(l.event || '')).length;
+                <div>
+                  {activityLogs.map((log) => (
+                    <div key={log.id} className="flex gap-3 py-3 border-b border-[var(--b)] last:border-0">
+                      {/* Left: event dot */}
+                      <div className="flex-shrink-0 mt-0.5">
+                        <div className={`w-2 h-2 rounded-full mt-1.5 ${eventDotColor(log.event)}`} />
+                      </div>
                       
-                      let lastActive = 'Never';
-                      if (userLogs.length > 0) {
-                        try {
-                          const dateObj = new Date(userLogs[0].created_at);
-                          lastActive = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                        } catch {
-                          lastActive = userLogs[0].created_at || 'Never';
-                        }
-                      }
-                      return { total, created, updated, deleted, lastActive };
-                    };
-
-                    const statsA = getStats(oldStaffLogs);
-                    const statsB = getStats(newStaffLogs);
-
-                    return (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-2">
-                        {/* Old Staff Card */}
-                        <div className="bg-[var(--purple-bg)]/20 border border-[var(--purple-tx)]/15 rounded-xl p-4 flex flex-col justify-between">
+                      {/* Center: content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
                           <div>
-                            <span className="text-[9px] text-[var(--purple-tx)] font-extrabold uppercase tracking-wider">Previous Staff Member</span>
-                            <h4 className="text-[13.5px] font-bold text-[var(--tx)] mt-1.5">{oldStaffFilter}</h4>
-                            <div className="text-[10px] text-[var(--tx3)] mt-0.5">Role/Status: {getUserStatusLabel(oldStaffFilter).trim() || 'Staff'}</div>
+                            {/* User chip */}
+                            <span className="text-[11px] font-semibold text-[var(--blue-tx)] bg-[var(--blue-bg)] px-2 py-0.5 rounded-full mr-2">
+                              {log.causer_name}
+                            </span>
+                            {/* Description */}
+                            <span className="text-[12px] text-[var(--tx)]">{formatDescription(log)}</span>
                           </div>
-                          <div className="mt-4 pt-3 border-t border-[var(--b)]/30 grid grid-cols-2 gap-2 text-[10.5px]">
-                            <div>
-                              <div className="text-[var(--tx3)]">Total Actions</div>
-                              <div className="text-[13.5px] font-extrabold text-[var(--purple-tx)]">{statsA.total}</div>
-                            </div>
-                            <div>
-                              <div className="text-[var(--tx3)]">Last Active</div>
-                              <div className="text-[11.5px] font-bold text-[var(--tx)] truncate" title={statsA.lastActive}>{statsA.lastActive}</div>
-                            </div>
-                          </div>
+                          {/* Time */}
+                          <span className="text-[10px] text-[var(--tx3)] flex-shrink-0">{log.time_ago}</span>
                         </div>
-
-                        {/* Mid Indicator Card */}
-                        <div className="bg-[var(--surf3)] border border-[var(--b)] rounded-xl p-4 flex flex-col justify-center items-center text-center">
-                          <div className="w-10 h-10 bg-[var(--blue-bg)] rounded-full flex items-center justify-center text-[var(--blue-tx)] mb-2">
-                            <ArrowRight size={16} className="animate-pulse" />
-                          </div>
-                          <span className="text-[11.5px] font-bold text-[var(--tx)]">Handover Audit</span>
-                          <p className="text-[10px] text-[var(--tx3)] mt-1 max-w-[150px] leading-relaxed mx-auto">
-                            Verifying data logs and actions during role transition.
-                          </p>
+                        
+                        {/* Second row: tags */}
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {log.event && (
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${eventBadgeStyle(log.event)}`}>
+                              {log.event}
+                            </span>
+                          )}
+                          {log.subject_type && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--surf2)] text-[var(--tx3)]">
+                              {log.subject_type}
+                            </span>
+                          )}
+                          {log.properties?.ip_address && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--surf2)] text-[var(--tx3)]">
+                              {log.properties.ip_address}
+                            </span>
+                          )}
                         </div>
-
-                        {/* New Staff Card */}
-                        <div className="bg-[var(--teal-bg)]/20 border border-[var(--teal-tx)]/15 rounded-xl p-4 flex flex-col justify-between">
-                          <div>
-                            <span className="text-[9px] text-[var(--teal-tx)] font-extrabold uppercase tracking-wider">Replacement Staff Member</span>
-                            <h4 className="text-[13.5px] font-bold text-[var(--tx)] mt-1.5">{newStaffFilter}</h4>
-                            <div className="text-[10px] text-[var(--tx3)] mt-0.5">Role/Status: {getUserStatusLabel(newStaffFilter).trim() || 'Staff'}</div>
-                          </div>
-                          <div className="mt-4 pt-3 border-t border-[var(--b)]/30 grid grid-cols-2 gap-2 text-[10.5px]">
-                            <div>
-                              <div className="text-[var(--tx3)]">Total Actions</div>
-                              <div className="text-[13.5px] font-extrabold text-[var(--teal-tx)]">{statsB.total}</div>
-                            </div>
-                            <div>
-                              <div className="text-[var(--tx3)]">Last Active</div>
-                              <div className="text-[11.5px] font-bold text-[var(--tx)] truncate" title={statsB.lastActive}>{statsB.lastActive}</div>
-                            </div>
-                          </div>
-                        </div>
+                        
+                        {/* Expandable properties */}
+                        {Object.keys(log.properties ?? {}).length > 0 && (
+                          <button
+                            onClick={() => setActivityExpandedId(activityExpandedId === String(log.id) ? null : String(log.id))}
+                            className="text-[10px] text-[var(--blue-tx)] mt-1 hover:underline block"
+                          >
+                            {activityExpandedId === String(log.id) ? 'Hide details ▲' : 'Show details ▼'}
+                          </button>
+                        )}
+                        {activityExpandedId === String(log.id) && renderActivityProperties(log)}
                       </div>
-                    );
-                  })()}
-
-                  {/* Side-by-side Timeline Columns */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Departed Staff Log List */}
-                    <div className="border border-[var(--b)] rounded-xl p-4 bg-[var(--surf)] flex flex-col min-h-[300px]">
-                      <div className="flex items-center justify-between pb-3 border-b border-[var(--b)] mb-3">
-                        <span className="text-[12px] font-bold text-[var(--purple-tx)] flex items-center gap-1.5">
-                          <User size={13} className="text-[var(--purple-tx)]" /> {oldStaffFilter} Logs
-                        </span>
-                        <span className="px-2 py-0.5 bg-[var(--purple-bg)] text-[var(--purple-tx)] text-[10px] font-bold rounded-full">
-                          {oldStaffLogs.length} events
-                        </span>
-                      </div>
-
-                      {oldStaffLogs.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center py-12 text-[11.5px] text-[var(--tx3)] italic">
-                          No activity logs found for {oldStaffFilter}.
-                        </div>
-                      ) : (
-                        <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
-                          {oldStaffLogs.map(log => {
-                            const isCreated = ['created', 'store', 'create'].includes(log.event || '');
-                            const isUpdated = ['updated', 'update'].includes(log.event || '');
-                            const isDeleted = ['deleted', 'destroy', 'delete'].includes(log.event || '');
-                            
-                            let badgeColor = 'bg-[var(--surf3)] text-[var(--tx2)] border border-[var(--b)]';
-                            if (isCreated) badgeColor = 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/15';
-                            else if (isUpdated) badgeColor = 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/15';
-                            else if (isDeleted) badgeColor = 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/15';
-
-                            let formattedDate = 'N/A';
-                            if (log.created_at) {
-                              try {
-                                const dateObj = new Date(log.created_at);
-                                formattedDate = dateObj.toLocaleString('en-IN', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: true
-                                });
-                              } catch {
-                                formattedDate = log.created_at;
-                              }
-                            }
-
-                            return (
-                              <div key={log.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] hover:border-[var(--purple-tx)]/25 rounded-xl transition-all border-l-[3px] border-l-[var(--purple-tx)] space-y-1.5 text-[11.5px]">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold capitalize ${badgeColor}`}>
-                                    {log.event || 'activity'}
-                                  </span>
-                                  <span className="text-[9.5px] font-mono text-[var(--tx3)] bg-[var(--surf3)] px-1 py-0.5 rounded">
-                                    {log.log_name || 'default'}
-                                  </span>
-                                </div>
-                                <div className="text-[11.5px] text-[var(--tx)] leading-normal font-medium">{log.description}</div>
-                                {log.subject_type && (
-                                  <div className="text-[9.5px] text-[var(--tx3)] font-mono">
-                                    Target: {log.subject_type} {log.subject_id && `#${log.subject_id}`}
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-1 text-[9.5px] text-[var(--tx3)] pt-1 border-t border-[var(--b)]/30">
-                                  <Clock size={10} />
-                                  <span>{formattedDate}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
-
-                    {/* Replacement Staff Log List */}
-                    <div className="border border-[var(--b)] rounded-xl p-4 bg-[var(--surf)] flex flex-col min-h-[300px]">
-                      <div className="flex items-center justify-between pb-3 border-b border-[var(--b)] mb-3">
-                        <span className="text-[12px] font-bold text-[var(--teal-tx)] flex items-center gap-1.5">
-                          <User size={13} className="text-[var(--teal-tx)]" /> {newStaffFilter} Logs
-                        </span>
-                        <span className="px-2 py-0.5 bg-[var(--teal-bg)] text-[var(--teal-tx)] text-[10px] font-bold rounded-full">
-                          {newStaffLogs.length} events
-                        </span>
-                      </div>
-
-                      {newStaffLogs.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center py-12 text-[11.5px] text-[var(--tx3)] italic">
-                          No activity logs found for {newStaffFilter}.
-                        </div>
-                      ) : (
-                        <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
-                          {newStaffLogs.map(log => {
-                            const isCreated = ['created', 'store', 'create'].includes(log.event || '');
-                            const isUpdated = ['updated', 'update'].includes(log.event || '');
-                            const isDeleted = ['deleted', 'destroy', 'delete'].includes(log.event || '');
-                            
-                            let badgeColor = 'bg-[var(--surf3)] text-[var(--tx2)] border border-[var(--b)]';
-                            if (isCreated) badgeColor = 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/15';
-                            else if (isUpdated) badgeColor = 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/15';
-                            else if (isDeleted) badgeColor = 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/15';
-
-                            let formattedDate = 'N/A';
-                            if (log.created_at) {
-                              try {
-                                const dateObj = new Date(log.created_at);
-                                formattedDate = dateObj.toLocaleString('en-IN', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: true
-                                });
-                              } catch {
-                                formattedDate = log.created_at;
-                              }
-                            }
-
-                            return (
-                              <div key={log.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] hover:border-[var(--teal-tx)]/25 rounded-xl transition-all border-l-[3px] border-l-[var(--teal-tx)] space-y-1.5 text-[11.5px]">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold capitalize ${badgeColor}`}>
-                                    {log.event || 'activity'}
-                                  </span>
-                                  <span className="text-[9.5px] font-mono text-[var(--tx3)] bg-[var(--surf3)] px-1 py-0.5 rounded">
-                                    {log.log_name || 'default'}
-                                  </span>
-                                </div>
-                                <div className="text-[11.5px] text-[var(--tx)] leading-normal font-medium">{log.description}</div>
-                                {log.subject_type && (
-                                  <div className="text-[9.5px] text-[var(--tx3)] font-mono">
-                                    Target: {log.subject_type} {log.subject_id && `#${log.subject_id}`}
-                                  </div>
-                                )}
-                                <div className="flex items-center gap-1 text-[9.5px] text-[var(--tx3)] pt-1 border-t border-[var(--b)]/30">
-                                  <Clock size={10} />
-                                  <span>{formattedDate}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              )
-            ) : (
-              /* Normal Single Table View */
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[12px] min-w-[750px]">
-                  <thead>
-                    <tr className="border-b border-[var(--b)]">
-                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-3 py-2">User / Actor</th>
-                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-3 py-2">Event</th>
-                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-3 py-2">Category</th>
-                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-3 py-2">Description</th>
-                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-3 py-2">Date & Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredLogs.map((log) => {
-                      const isCreated = ['created', 'store', 'create'].includes(log.event || '');
-                      const isUpdated = ['updated', 'update'].includes(log.event || '');
-                      const isDeleted = ['deleted', 'destroy', 'delete'].includes(log.event || '');
-                      
-                      let badgeColor = 'bg-[var(--surf3)] text-[var(--tx2)] border border-[var(--b)]';
-                      if (isCreated) badgeColor = 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/15';
-                      else if (isUpdated) badgeColor = 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/15';
-                      else if (isDeleted) badgeColor = 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/15';
+              )}
+            </Card>
 
-                      // Format created_at to user friendly local datetime
-                      let formattedDate = 'N/A';
-                      if (log.created_at) {
-                        try {
-                          const dateObj = new Date(log.created_at);
-                          formattedDate = dateObj.toLocaleString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: true
-                          });
-                        } catch {
-                          formattedDate = log.created_at;
-                        }
-                      }
-
-                      return (
-                        <tr key={log.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
-                          <td className="px-3 py-2.5">
-                            <div className="font-semibold text-[var(--tx)]">{log.causer_name}</div>
-                            {log.causer_email && <div className="text-[10px] text-[var(--tx3)]">{log.causer_email}</div>}
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold capitalize ${badgeColor}`}>
-                              {log.event || 'activity'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-[var(--tx2)] whitespace-nowrap">
-                            <span className="font-mono text-[10.5px] bg-[var(--surf3)] border border-[var(--b)] px-1 py-0.5 rounded">
-                              {log.log_name || 'default'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-[var(--tx)] leading-relaxed max-w-[280px]">
-                            <div>{log.description}</div>
-                            {log.subject_type && (
-                              <div className="text-[9.5px] text-[var(--tx3)] mt-0.5 font-mono">
-                                Target: {log.subject_type} {log.subject_id && `#${log.subject_id}`}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5 text-[var(--tx3)] whitespace-nowrap">
-                            <div className="flex items-center gap-1">
-                              <Clock size={11} className="text-[var(--tx3)]" />
-                              <span>{formattedDate}</span>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* SECTION 4 — Load more button */}
+            {activityLogs.length < activityTotal && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={() => {
+                    const nextOffset = activityOffset + ACTIVITY_PAGE_SIZE;
+                    setActivityOffset(nextOffset);
+                    loadActivityLogs(false, nextOffset);
+                  }}
+                  disabled={activityLoading}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-[var(--surf2)] hover:bg-[var(--surf3)] border border-[var(--b)] rounded-xl text-[12px] font-semibold text-[var(--tx)] transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {activityLoading && <Loader2 size={13} className="animate-spin" />}
+                  <span>Load More ({activityTotal - activityLogs.length} remaining)</span>
+                </button>
               </div>
             )}
-          </Card>
           </div>
         )}
 
@@ -1522,4 +1107,431 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
 
     </div>
   );
+}
+
+// EVENT DOT COLORS (helper function)
+function eventDotColor(event: string): string {
+  if (event === 'created') return 'bg-green-500';
+  if (event === 'updated') return 'bg-blue-500';
+  if (event === 'deleted') return 'bg-red-500';
+  if (event === 'login')   return 'bg-teal-500';
+  if (event === 'logout')  return 'bg-gray-400';
+  return 'bg-amber-400';
+}
+
+// EVENT BADGE STYLES
+function eventBadgeStyle(event: string): string {
+  if (event === 'created') return 'bg-[var(--green-bg)] text-[var(--green-tx)]';
+  if (event === 'updated') return 'bg-[var(--blue-bg)] text-[var(--blue-tx)]';
+  if (event === 'deleted') return 'bg-[var(--red-bg)] text-[var(--red-tx)]';
+  if (event === 'login')   return 'bg-[var(--teal-bg)] text-[var(--teal-tx)]';
+  if (event === 'logout')  return 'bg-[var(--surf2)] text-[var(--tx3)]';
+  return 'bg-[var(--amber-bg)] text-[var(--amber-tx)]';
+}
+
+// HELPER TO FORMAT ANY VALUE HUMAN READABLY WITHOUT BRACES
+const formatVal = (v: any): string => {
+  if (v === null || v === undefined) return 'N/A';
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  
+  if (typeof v === 'string') {
+    const trimmed = v.trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(v);
+        return formatVal(parsed);
+      } catch (e) {}
+    }
+    return v;
+  }
+
+  if (Array.isArray(v)) {
+    if (v.length === 0) return 'None';
+    
+    // If it's an array of objects
+    if (typeof v[0] === 'object' && v[0] !== null) {
+      // Special check: is it an attendance list?
+      const isAttendanceList = v.some((item: any) => item && (item.status === 'present' || item.status === 'absent'));
+      if (isAttendanceList) {
+        let maxMarkedAt = '';
+        v.forEach((r: any) => {
+          if (r && r.markedAt) {
+            if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
+              maxMarkedAt = r.markedAt;
+            }
+          }
+        });
+        const targetRecords = maxMarkedAt 
+          ? v.filter((r: any) => r && r.markedAt === maxMarkedAt)
+          : v;
+        const present = targetRecords.filter((item: any) => item && item.status === 'present').length;
+        const absent = targetRecords.filter((item: any) => item && item.status === 'absent').length;
+        return `Present: ${present}, Absent: ${absent}`;
+      }
+
+      return v.map((item: any) => {
+        return `${formatVal(item)}`;
+      }).join(', ');
+    }
+    return v.map(item => formatVal(item)).join(', ');
+  }
+
+  if (typeof v === 'object') {
+    const entries = Object.entries(v);
+    if (entries.length === 0) return '';
+    return entries
+      .map(([k, val]) => {
+        const formattedKey = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return `${formattedKey}: ${formatVal(val)}`;
+      })
+      .join(', ');
+  }
+
+  return String(v);
+};
+
+// HELPER TO DYNAMICALLY CLEAN UP ANY JSON STRING INSIDE DESCRIPTION
+const cleanJsonInString = (str: string): string => {
+  if (!str) return '';
+  const startIdxCurly = str.indexOf('{');
+  const startIdxSquare = str.indexOf('[');
+  let startIdx = -1;
+  let endIdx = -1;
+  let isCurly = false;
+  
+  if (startIdxCurly !== -1 && (startIdxSquare === -1 || startIdxCurly < startIdxSquare)) {
+    startIdx = startIdxCurly;
+    isCurly = true;
+  } else if (startIdxSquare !== -1) {
+    startIdx = startIdxSquare;
+  }
+  
+  if (startIdx !== -1) {
+    const endIdxCurly = str.lastIndexOf('}');
+    const endIdxSquare = str.lastIndexOf(']');
+    if (isCurly && endIdxCurly > startIdx) {
+      endIdx = endIdxCurly;
+    } else if (!isCurly && endIdxSquare > startIdx) {
+      endIdx = endIdxSquare;
+    }
+  }
+  
+  if (startIdx !== -1 && endIdx !== -1) {
+    const prefix = str.substring(0, startIdx).trim();
+    let suffix = str.substring(endIdx + 1).trim();
+    const jsonStr = str.substring(startIdx, endIdx + 1);
+    
+    try {
+      const parsed = JSON.parse(jsonStr);
+      if (suffix === "'" || suffix === '"') suffix = '';
+      let cleanPrefix = prefix;
+      if (cleanPrefix.endsWith("to '") || cleanPrefix.endsWith('to "')) {
+        cleanPrefix = cleanPrefix.substring(0, cleanPrefix.length - 5).trim();
+      } else if (cleanPrefix.endsWith("to")) {
+        cleanPrefix = cleanPrefix.substring(0, cleanPrefix.length - 2).trim();
+      }
+      
+      const formattedJson = formatVal(parsed);
+      return `${cleanPrefix}${formattedJson ? ` to: ${formattedJson}` : ''}${suffix ? ` ${suffix}` : ''}`;
+    } catch (e) {}
+  }
+  
+  return str;
+};
+
+// FORMAT DYNAMIC DESCRIPTIONS DYNAMICALLY (e.g. attendance logs)
+function formatDescription(log: any): string {
+  const desc = log.description || '';
+  if (desc.startsWith("Updated system setting 'kts student attendance records' to") || desc === "Student attendance records updated" || desc.toLowerCase().includes("attendance")) {
+    const properties = log.properties || {};
+    let records: any[] = [];
+    
+    const parseValue = (val: any) => {
+      if (!val) return [];
+      try {
+        if (Array.isArray(val)) return val;
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+      return [];
+    };
+
+    records = parseValue(properties.attributes?.value || properties.value);
+    
+    if (records.length === 0) {
+      for (const val of Object.values(properties)) {
+        const arr = parseValue(val);
+        if (arr.length > 0 && arr[0] && (arr[0].className || arr[0].session || arr[0].markedAt)) {
+          records = arr;
+          break;
+        }
+      }
+    }
+
+    if (records.length === 0) {
+      const startIdxSquare = desc.indexOf('[');
+      const endIdxSquare = desc.lastIndexOf(']');
+      if (startIdxSquare !== -1 && endIdxSquare > startIdxSquare) {
+        const jsonStr = desc.substring(startIdxSquare, endIdxSquare + 1);
+        records = parseValue(jsonStr);
+      }
+    }
+
+    if (records.length > 0) {
+      let maxMarkedAt = '';
+      records.forEach((r: any) => {
+        if (r && r.markedAt) {
+          if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
+            maxMarkedAt = r.markedAt;
+          }
+        }
+      });
+
+      const targetRecords = maxMarkedAt 
+        ? records.filter((r: any) => r && r.markedAt === maxMarkedAt)
+        : records;
+
+      if (targetRecords.length > 0 && targetRecords[0]) {
+        const first = targetRecords[0];
+        const classSection = first.className || '';
+        const session = first.session === 'first_period' ? 'morning' : 'afternoon';
+        if (classSection) {
+          return `marked attendance for ${classSection} in ${session}`;
+        }
+      }
+    }
+  }
+  return cleanJsonInString(desc);
+}
+
+// RENDER ACTIVITY PROPERTIES IN HUMAN READABLE FORMAT
+function renderActivityProperties(log: any) {
+  const properties = log.properties;
+  const event = log.event;
+  const description = log.description;
+
+  if (!properties || Object.keys(properties).length === 0) return null;
+
+  const formatKey = (k: string) => {
+    return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  };
+
+  const isAttendanceLog = 
+    properties.present_count !== undefined ||
+    (description && (
+      description === 'Student attendance records updated' ||
+      description.toLowerCase().includes('attendance')
+    )) ||
+    (properties.attributes && (properties.attributes.key === 'kts_student_attendance_records' || properties.attributes.key === 'kts student attendance records')) ||
+    (properties.old && (properties.old.key === 'kts_student_attendance_records' || properties.old.key === 'kts student attendance records'));
+
+  if (isAttendanceLog) {
+    let present: number | undefined = undefined;
+    let absent: number | undefined = undefined;
+
+    let oldArr: any[] = [];
+    let newArr: any[] = [];
+    
+    const parseValue = (val: any) => {
+      if (!val) return [];
+      try {
+        if (Array.isArray(val)) return val;
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+      return [];
+    };
+
+    newArr = parseValue(properties.attributes?.value || properties.value);
+    oldArr = parseValue(properties.old?.value);
+
+    if (newArr.length === 0 && oldArr.length === 0) {
+      for (const val of Object.values(properties)) {
+        const arr = parseValue(val);
+        if (arr.length > 0 && arr[0] && (arr[0].studentId || arr[0].status || arr[0].markedAt)) {
+          newArr = arr;
+          break;
+        }
+      }
+    }
+
+    if (newArr.length === 0 && oldArr.length === 0) {
+      const startIdxSquare = description ? description.indexOf('[') : -1;
+      const endIdxSquare = description ? description.lastIndexOf(']') : -1;
+      if (startIdxSquare !== -1 && endIdxSquare > startIdxSquare) {
+        const jsonStr = description.substring(startIdxSquare, endIdxSquare + 1);
+        newArr = parseValue(jsonStr);
+      }
+    }
+
+    if (newArr.length > 0) {
+      let maxMarkedAt = '';
+      newArr.forEach((r: any) => {
+        if (r && r.markedAt) {
+          if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
+            maxMarkedAt = r.markedAt;
+          }
+        }
+      });
+      const targetRecords = maxMarkedAt 
+        ? newArr.filter((r: any) => r && r.markedAt === maxMarkedAt)
+        : newArr;
+      present = targetRecords.filter(r => r.status === 'present').length;
+      absent = targetRecords.filter(r => r.status === 'absent').length;
+    } else if (oldArr.length > 0) {
+      let maxMarkedAt = '';
+      oldArr.forEach((r: any) => {
+        if (r && r.markedAt) {
+          if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
+            maxMarkedAt = r.markedAt;
+          }
+        }
+      });
+      const targetRecords = maxMarkedAt 
+        ? oldArr.filter((r: any) => r && r.markedAt === maxMarkedAt)
+        : oldArr;
+      present = targetRecords.filter(r => r.status === 'present').length;
+      absent = targetRecords.filter(r => r.status === 'absent').length;
+    } else {
+      if (properties.present_count !== undefined) present = properties.present_count;
+      if (properties.absent_count !== undefined) absent = properties.absent_count;
+    }
+
+    if (present !== undefined || absent !== undefined) {
+      return (
+        <div className="mt-2 text-[11px] bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 text-[var(--tx2)]">
+          <div className="font-semibold text-[var(--tx)] text-[11.5px] border-b border-[var(--b)] pb-1.5 mb-1.5">
+            Attendance Allotment Summary
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between sm:justify-start gap-2">
+              <span className="font-bold text-[var(--tx)] min-w-[120px]">Present:</span>
+              <span className="text-[var(--teal-tx)] font-semibold">{present ?? 0}</span>
+            </div>
+            <div className="flex justify-between sm:justify-start gap-2">
+              <span className="font-bold text-[var(--tx)] min-w-[120px]">Absent:</span>
+              <span className="text-[var(--red-tx)] font-semibold">{absent ?? 0}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  const isModelLog = 'attributes' in properties || 'old' in properties;
+  const excludeKeys = ['id', 'created_at', 'updated_at', 'password', 'password_confirmation', 'token', '_token', 'created_by', 'updated_by', 'academic_year_id', 'remember_token'];
+
+  if (isModelLog) {
+    const attributes = properties.attributes || {};
+    const old = properties.old || {};
+
+    // For updates, we show what changed
+    if (event === 'updated' && Object.keys(old).length > 0) {
+      const changes = Object.keys(attributes)
+        .filter(key => !excludeKeys.includes(key))
+        .map(key => {
+          const oldVal = old[key];
+          const newVal = attributes[key];
+          if (oldVal !== newVal) {
+            return {
+              key,
+              old: formatVal(oldVal),
+              new: formatVal(newVal)
+            };
+          }
+          return null;
+        })
+        .filter(Boolean) as Array<{ key: string; old: string; new: string }>;
+
+      if (changes.length > 0) {
+        return (
+          <div className="mt-2 text-[11px] bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 space-y-1.5 text-[var(--tx2)]">
+            <div className="font-semibold text-[var(--tx)] text-[11.5px] border-b border-[var(--b)] pb-1.5 mb-1.5">Modified Fields</div>
+            {changes.map(ch => (
+              <div key={ch.key} className="flex flex-wrap gap-1 items-center">
+                <span className="font-bold text-[var(--tx)]">{formatKey(ch.key)}</span>
+                <span>changed from</span>
+                <code className="px-1.5 py-0.5 bg-[var(--surf3)] rounded font-mono text-[10px] text-rose-500 line-through">{ch.old}</code>
+                <span>to</span>
+                <code className="px-1.5 py-0.5 bg-[var(--surf3)] rounded font-mono text-[10px] text-emerald-500 font-semibold">{ch.new}</code>
+              </div>
+            ))}
+          </div>
+        );
+      }
+    }
+
+    // For created or deleted or fallback where we display a list of attributes
+    const displayData = event === 'deleted' ? old : attributes;
+    const items = Object.entries(displayData)
+      .filter(([key]) => !excludeKeys.includes(key) && displayData[key] !== null)
+      .map(([key, val]) => ({
+        key,
+        value: formatVal(val)
+      }));
+
+    if (items.length > 0) {
+      return (
+        <div className="mt-2 text-[11px] bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 text-[var(--tx2)]">
+          <div className="font-semibold text-[var(--tx)] text-[11.5px] border-b border-[var(--b)] pb-1.5 mb-1.5">
+            {event === 'deleted' ? 'Deleted Record Details' : 'Record Details'}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+            {items.map(item => (
+              <div key={item.key} className="flex justify-between sm:justify-start gap-2 border-b border-[var(--b)]/40 pb-1 last:border-0">
+                <span className="font-bold text-[var(--tx)] min-w-[120px]">{formatKey(item.key)}:</span>
+                <span className="text-[var(--tx2)]">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+  }
+
+  // Otherwise it is a request/middleware log (or doesn't fit attributes/old schema)
+  const renderDevice = (ua: string) => {
+    if (!ua) return 'Unknown Device';
+    if (ua.includes('Edg/')) return 'Edge Browser';
+    if (ua.includes('Chrome/')) return 'Chrome Browser';
+    if (ua.includes('Safari/') && ua.includes('Version/')) return 'Safari Browser';
+    if (ua.includes('Firefox/')) return 'Firefox Browser';
+    if (ua.includes('Mobile') || ua.includes('Android') || ua.includes('iPhone')) return 'Mobile Device';
+    return 'Web Browser';
+  };
+
+  const details = [];
+  if (properties.ip_address) details.push({ label: 'IP Address', value: properties.ip_address });
+  if (properties.user_agent) details.push({ label: 'Device', value: renderDevice(properties.user_agent) });
+  if (properties.method && properties.path) details.push({ label: 'API Route', value: `${properties.method} ${properties.path}` });
+  if (properties.status_code) details.push({ label: 'HTTP Status', value: String(properties.status_code) });
+  if (properties.input_keys && Array.isArray(properties.input_keys) && properties.input_keys.length > 0) {
+    details.push({ label: 'Parameters Modified', value: properties.input_keys.map(formatKey).join(', ') });
+  }
+
+  // Add any other top-level keys that aren't excluded
+  const standardKeys = ['ip_address', 'user_agent', 'method', 'path', 'status_code', 'url', 'input_keys'];
+  Object.entries(properties).forEach(([key, val]) => {
+    if (!standardKeys.includes(key) && val !== null && val !== undefined) {
+      details.push({ label: formatKey(key), value: formatVal(val) });
+    }
+  });
+
+  if (details.length > 0) {
+    return (
+      <div className="mt-2 text-[11px] bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 text-[var(--tx2)]">
+        <div className="font-semibold text-[var(--tx)] text-[11.5px] border-b border-[var(--b)] pb-1.5 mb-1.5">Activity Details</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+          {details.map(d => (
+            <div key={d.label} className="flex justify-between sm:justify-start gap-2 border-b border-[var(--b)]/40 pb-1 last:border-0">
+              <span className="font-bold text-[var(--tx)] min-w-[120px]">{d.label}:</span>
+              <span className="text-[var(--tx2)] font-mono">{d.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }

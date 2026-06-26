@@ -7,11 +7,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class FeeStructure extends Model
 {
-    use HasFactory;
-    use WebhookEnabled;
+    use HasFactory, WebhookEnabled, LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions {
+        return LogOptions::defaults()
+            ->logOnly(['total_amount', 'amount', 'payment_terms'])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(function(string $e) {
+                $batchName = $this->batch ? $this->batch->name : ('Batch ID ' . $this->batch_id);
+                return "Fee structure of total ₹{$this->total_amount} for class {$batchName} was {$e}";
+            });
+    }
 
     /**
      * The attributes that are mass assignable.

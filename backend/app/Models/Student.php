@@ -896,10 +896,10 @@ class Student extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
-                'created' => 'Student profile created',
-                'updated' => 'Student profile updated',
-                'deleted' => 'Student profile deleted',
-                default => "Student {$eventName}"
+                'created' => "Student profile created for '{$this->name}'",
+                'updated' => "Student profile updated for '{$this->name}'",
+                'deleted' => "Student profile deleted for '{$this->name}'",
+                default => "Student {$eventName} for '{$this->name}'"
             });
     }
 

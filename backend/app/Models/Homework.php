@@ -32,10 +32,10 @@ class Homework extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
-                'created' => 'Homework assigned',
-                'updated' => 'Homework updated',
-                'deleted' => 'Homework deleted',
-                default => "Homework {$eventName}"
+                'created' => "Homework assigned for '{$this->subject}' to Class '{$this->batch_name}' (Due: {$this->due_date})",
+                'updated' => "Homework updated for '{$this->subject}' in Class '{$this->batch_name}'",
+                'deleted' => "Homework deleted for '{$this->subject}' in Class '{$this->batch_name}'",
+                default => "Homework {$eventName} for '{$this->subject}' in Class '{$this->batch_name}'"
             });
     }
 }

@@ -108,7 +108,13 @@ class Setting extends Model
                 if ($eventName === 'updated' && $this->key === 'kts_student_attendance_records') {
                     return 'Student attendance records updated';
                 }
-                return "Setting {$eventName}";
+                $settingKey = str_replace('_', ' ', $this->key);
+                return match($eventName) {
+                    'created' => "System setting '{$settingKey}' created with value '{$this->value}'",
+                    'updated' => "System setting '{$settingKey}' updated to '{$this->value}'",
+                    'deleted' => "System setting '{$settingKey}' deleted",
+                    default => "System setting '{$settingKey}' {$eventName}",
+                };
             });
     }
 

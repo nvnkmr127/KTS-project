@@ -31,11 +31,15 @@ class LeaveApplication extends Model
             ->logOnly(['leave_type_id', 'start_date', 'end_date', 'reason', 'status'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
-                'created' => 'Leave request submitted',
-                'updated' => 'Leave request updated',
-                'deleted' => 'Leave request cancelled',
-                default => "Leave request {$eventName}"
+            ->setDescriptionForEvent(function (string $eventName) {
+                $user = $this->user ? $this->user->name : 'Staff';
+                $type = $this->leaveType ? $this->leaveType->name : 'Leave';
+                return match ($eventName) {
+                    'created' => "Leave request submitted by {$user} for {$type} from {$this->start_date} to {$this->end_date}",
+                    'updated' => "Leave request updated for {$user} (Status: {$this->status})",
+                    'deleted' => "Leave request cancelled for {$user} from {$this->start_date} to {$this->end_date}",
+                    default => "Leave request {$eventName} for {$user}"
+                };
             });
     }
 }

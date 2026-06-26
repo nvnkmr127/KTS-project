@@ -28,10 +28,10 @@ class DailyDiary extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
-                'created' => 'Daily diary posted',
-                'updated' => 'Daily diary updated',
-                'deleted' => 'Daily diary deleted',
-                default => "Daily diary {$eventName}"
+                'created' => "Daily diary posted for Class '{$this->batch_name}' on {$this->diary_date}",
+                'updated' => "Daily diary updated for Class '{$this->batch_name}' on {$this->diary_date}",
+                'deleted' => "Daily diary deleted for Class '{$this->batch_name}' on {$this->diary_date}",
+                default => "Daily diary {$eventName} for Class '{$this->batch_name}'"
             });
     }
 }

@@ -69,7 +69,11 @@ class Enquiry extends Model
         return LogOptions::defaults()
             ->logOnly(['status', 'next_follow_up_date', 'assigned_to_user_id'])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(fn (string $eventName) => "The enquiry for '{$this->student_name}' has been {$eventName}");
+            ->setDescriptionForEvent(function (string $eventName) {
+                $courseName = $this->course ? $this->course->name : '';
+                $courseStr = $courseName ? " for course {$courseName}" : '';
+                return "The enquiry for '{$this->student_name}'{$courseStr} has been {$eventName}";
+            });
     }
 
     public function course(): BelongsTo

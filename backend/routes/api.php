@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Api\ActivityLogApiController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\BiometricWebhookController;
 use App\Http\Controllers\Api\CollegeAdminDashboardController;
@@ -112,6 +113,20 @@ Route::post('/v1/login', function(Request $request) {
             
         // Merge and deduplicate
         $classes = array_values(array_unique(array_merge($timetableClasses, $classTeacherBatches, $substituteBatches)));
+    }
+
+    // Log successful login
+    try {
+        activity()
+            ->causedBy($user)
+            ->withProperties([
+                'ip_address' => $request->ip(),
+                'user_agent' => substr($request->userAgent() ?? '', 0, 200),
+            ])
+            ->event('login')
+            ->log('login success');
+    } catch (\Throwable $e) {
+        // Safe fallback
     }
 
     return response()->json([
@@ -331,6 +346,36 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+
+    Route::post('/logout', function (Request $request) {
+        $user = $request->user();
+        if ($user) {
+            try {
+                // Revoke current token
+                $request->user()->currentAccessToken()->delete();
+            } catch (\Throwable $e) {}
+
+            try {
+                // Log activity log
+                activity()
+                    ->causedBy($user)
+                    ->withProperties([
+                        'ip_address' => $request->ip(),
+                        'user_agent' => substr($request->userAgent() ?? '', 0, 200),
+                    ])
+                    ->event('logout')
+                    ->log('Signed out');
+            } catch (\Throwable $e) {}
+        }
+        return response()->json(['success' => true, 'message' => 'Logged out successfully']);
+    });
+
+    // ── Activity Logs ────────────────────────────────────────────────────
+    Route::get('/activity-logs', [App\Http\Controllers\Api\ActivityLogApiController::class, 'index']);
+    Route::get('/activity-logs/my-stats', [App\Http\Controllers\Api\ActivityLogApiController::class, 'myStats']);
+    Route::get('/activity-logs/users', [App\Http\Controllers\Api\ActivityLogApiController::class, 'users']);
+    Route::get('/activity-logs/summary', [App\Http\Controllers\Api\ActivityLogApiController::class, 'summary']);
+    Route::post('/activity-logs/clear', [App\Http\Controllers\Api\ActivityLogApiController::class, 'clear']);
 
 
 

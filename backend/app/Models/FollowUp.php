@@ -20,7 +20,10 @@ class FollowUp extends Model
         return LogOptions::defaults()
             ->logOnly(['notes'])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(fn (string $eventName) => "Follow-up note was {$eventName}");
+            ->setDescriptionForEvent(function (string $eventName) {
+                $excerpt = $this->notes ? ("'" . substr($this->notes, 0, 30) . "...'") : '';
+                return "Follow-up note {$excerpt} was {$eventName}";
+            });
     }
 
     /**

@@ -154,15 +154,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
-    // Check demo credentials first (works without backend)
-    const demo = DEMO_USERS[email.trim().toLowerCase()];
-    if (demo && password === demo.password) {
-      localStorage.setItem('token', 'demo-token');
-      localStorage.setItem('user', JSON.stringify(demo.user));
-      setUser(demo.user);
-      return { ok: true };
-    }
-
     try {
       const res = await api.login({ email, password });
       if (res.user) {
@@ -172,6 +163,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return { ok: false, error: 'Login failed' };
     } catch (e: any) {
+      // Check if credentials match a demo user as a fallback (works without backend or database seeding)
+      const demo = DEMO_USERS[email.trim().toLowerCase()];
+      if (demo && password === demo.password) {
+        localStorage.setItem('token', 'demo-token');
+        localStorage.setItem('user', JSON.stringify(demo.user));
+        setUser(demo.user);
+        return { ok: true };
+      }
       return { ok: false, error: e.message || 'Invalid credentials. Please check your email and password.' };
     }
   };
