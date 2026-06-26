@@ -100,7 +100,6 @@ export function Students() {
     try {
       await Promise.all(selectedIds.map(id => api.updateResource('students', id, { status: 'left' })));
       const deletedCount = selectedIds.length;
-      const idsToRestore = [...selectedIds];
       setSelectedIds([]);
       await loadStudents();
       showToast(

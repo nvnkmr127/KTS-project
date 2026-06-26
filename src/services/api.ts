@@ -1,7 +1,7 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 600000; // 10 minutes cache TTL, relying primarily on mutation-based invalidation
+const CACHE_TTL = 5000; // 5 seconds cache TTL, allowing data to update without browser refresh
 
 export function clearApiCache(resource?: string) {
   if (!resource) {
@@ -47,7 +47,10 @@ async function request(path: string, options: RequestInit = {}) {
                        path.includes('/attendance') || 
                        path.includes('/substitutes') ||
                        path.includes('/substitute-assignments') ||
-                       path.includes('/activity-logs');
+                       path.includes('/activity-logs') ||
+                       path.includes('/bus/') ||
+                       path.includes('/realtime') ||
+                       path.includes('/live-feed');
 
   if (method === 'GET' && !bypassCache) {
     const cached = cache.get(path);

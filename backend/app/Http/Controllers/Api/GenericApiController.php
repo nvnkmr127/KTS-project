@@ -207,13 +207,17 @@ class GenericApiController extends Controller
         } elseif ($resource === 'payslips') {
             $query->with('user');
         } elseif ($resource === 'student-fees') {
-            $query->with(['student', 'feeCategory']);
+            $query->with(['student.batch', 'feeCategory']);
         } elseif ($resource === 'timetable') {
             $query->with(['batch', 'subject', 'user', 'timeSlot', 'classroom']);
         } elseif ($resource === 'activity-logs' || $resource === 'failed-logins') {
             $query->with(['causer', 'subject']);
         } elseif ($resource === 'substitute-assignments') {
             $query->with(['timetable.batch', 'timetable.timeSlot', 'substituteUser', 'absentUser']);
+        } elseif ($resource === 'students') {
+            $query->with(['batch.academicYear', 'studentFees']);
+        } elseif ($resource === 'faculty') {
+            $query->with(['subjects', 'assignedBatches']);
         }
 
         $limit = $request->get('limit', 1000);
@@ -242,9 +246,9 @@ class GenericApiController extends Controller
             });
         } elseif ($resource === 'faculty') {
             $data = $data->map(function ($item) {
-                $sub = $item->subjects()->first();
+                $sub = $item->subjects->first();
                 $item->subject = $sub ? $sub->name : 'Academics';
-                $item->classes = $item->assignedBatches()->pluck('name')->toArray();
+                $item->classes = $item->assignedBatches->pluck('name')->toArray();
                 return $item;
             });
         } elseif ($resource === 'batches') {
@@ -290,9 +294,9 @@ class GenericApiController extends Controller
         } elseif ($resource === 'students') {
             $data = $data->map(function ($item) {
                 // Calculate fee status
-                $totalPaid = $item->studentFees()->sum('paid_amount');
-                $totalAmount = $item->studentFees()->sum('amount');
-                $totalConcession = $item->studentFees()->sum('concession_amount');
+                $totalPaid = $item->studentFees->sum('paid_amount');
+                $totalAmount = $item->studentFees->sum('amount');
+                $totalConcession = $item->studentFees->sum('concession_amount');
                 $netAmount = $totalAmount - $totalConcession;
                 
                 $feeStatus = 'Paid';
@@ -396,9 +400,10 @@ class GenericApiController extends Controller
                 $item->days = 1;
             }
         } elseif ($resource === 'faculty') {
-            $sub = $item->subjects()->first();
+            $item->load(['subjects', 'assignedBatches']);
+            $sub = $item->subjects->first();
             $item->subject = $sub ? $sub->name : 'Academics';
-            $item->classes = $item->assignedBatches()->pluck('name')->toArray();
+            $item->classes = $item->assignedBatches->pluck('name')->toArray();
         } elseif ($resource === 'batches') {
             $item->load('classTeacher');
             $item->class_teacher_name = $item->classTeacher ? $item->classTeacher->name : 'N/A';
@@ -410,7 +415,7 @@ class GenericApiController extends Controller
             $item->designation = $item->user ? ($item->user->department ?? 'Senior Teacher') : 'Senior Teacher';
             $item->init = collect(explode(' ', $item->name))->map(fn($n) => $n[0] ?? '')->join('');
         } elseif ($resource === 'student-fees') {
-            $item->load(['student', 'feeCategory']);
+            $item->load(['student.batch', 'feeCategory']);
             $item->student_name = $item->student ? $item->student->name : 'Student';
             $item->student_roll = $item->student ? ($item->student->enrollment_number ?? 'N/A') : 'N/A';
             
@@ -422,9 +427,10 @@ class GenericApiController extends Controller
             $item->fee_status = ucfirst($item->status ?? '');
             $item->fee_balance = $item->getRemainingAmount();
         } elseif ($resource === 'students') {
-            $totalPaid = $item->studentFees()->sum('paid_amount');
-            $totalAmount = $item->studentFees()->sum('amount');
-            $totalConcession = $item->studentFees()->sum('concession_amount');
+            $item->load(['batch.academicYear', 'studentFees']);
+            $totalPaid = $item->studentFees->sum('paid_amount');
+            $totalAmount = $item->studentFees->sum('amount');
+            $totalConcession = $item->studentFees->sum('concession_amount');
             $netAmount = $totalAmount - $totalConcession;
             
             $feeStatus = 'Paid';
