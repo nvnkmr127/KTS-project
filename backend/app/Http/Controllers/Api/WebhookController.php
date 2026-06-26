@@ -91,7 +91,7 @@ class WebhookController extends Controller
         // We look for a token in the query or header to verify the source.
         // It's configurable via Settings > Facebook Leads in the dashboard.
         $webhookToken = Setting::get('facebook_lead_webhook_token')
-                        ?? env('WEBHOOK_TOKEN')
+                        ?? config('services.webhook.token')
                         ?? 'b97fcbb4a2fb607a5366fbf06614dcbc';
         $sentToken = $request->header('X-Webhook-Token') ?? $request->input('token');
 

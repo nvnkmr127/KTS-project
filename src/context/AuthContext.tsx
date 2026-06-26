@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
-import { api } from '../services/api';
+import { api, ApiError } from '../services/api';
 
 interface AuthContextValue {
   user: User | null;
@@ -25,8 +25,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('user', JSON.stringify(res.user));
           }
         } catch (e) {
-          console.error("Failed to refresh user profile:", e);
-          logout();
+          // Only logout on a real 401 (token truly invalid/expired).
+          // Network errors, 5xx server errors, or CORS failures are transient
+          // and should NOT kick the user out — keep them on their cached session.
+          if (e instanceof ApiError && e.status === 401) {
+            logout();
+          } else {
+            console.warn('Could not refresh session (non-auth error, keeping user logged in):', e);
+          }
         }
       }
     }
@@ -69,9 +75,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           alert('Account is inactive, contact admin.');
         }
       } catch (e: any) {
-        // If profile fetch fails (e.g. returns 403 Forbidden because account was set to inactive)
-        logout();
-        alert(e.message || 'Account is inactive, contact admin.');
+        // Only logout for a confirmed 403 "account inactive" response from the server.
+        // Any other error (network timeout, 500, CORS, etc.) is a TRANSIENT issue —
+        // logging the user out for a wifi blip is very bad UX.
+        if (e instanceof ApiError && e.status === 403) {
+          logout();
+          alert(e.message || 'Account is inactive, contact admin.');
+        } else if (e instanceof ApiError && e.status === 401) {
+          // 401 is already handled by kts:unauthorized event in api.ts — skip duplicate action
+          console.warn('Session expired (handled by kts:unauthorized)');
+        } else {
+          // Transient error — silently ignore and keep user logged in
+          console.warn('Polling /me failed (transient, keeping session):', e);
+        }
       }
     }, 15000);
 

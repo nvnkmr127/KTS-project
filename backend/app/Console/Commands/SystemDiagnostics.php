@@ -149,6 +149,18 @@ class SystemDiagnostics extends Command
         foreach ($requiredKeys as $key) {
             $value = env($key);
             if (empty($value)) {
+                $value = match ($key) {
+                    'APP_KEY' => config('app.key'),
+                    'APP_URL' => config('app.url'),
+                    'DB_CONNECTION' => config('database.default'),
+                    'DB_HOST' => config('database.connections.'.config('database.default').'.host'),
+                    'DB_DATABASE' => config('database.connections.'.config('database.default').'.database'),
+                    'DB_USERNAME' => config('database.connections.'.config('database.default').'.username'),
+                    'MAIL_HOST' => config('mail.mailers.smtp.host') ?? config('mail.host'),
+                    default => null,
+                };
+            }
+            if (empty($value)) {
                 $missing[] = $key;
             }
 

@@ -56,7 +56,7 @@ class FinalSystemTest extends Command
         }
     }
 
-    private function test_database_tables()
+    private function testDatabaseTables()
     {
         try {
             $requiredTables = ['system_notifications', 'notification_preferences', 'users', 'students'];
@@ -78,7 +78,7 @@ class FinalSystemTest extends Command
         }
     }
 
-    private function test_notification_service()
+    private function testNotificationService()
     {
         try {
             $service = app(\App\Services\NotificationService::class);
@@ -107,7 +107,7 @@ class FinalSystemTest extends Command
         }
     }
 
-    private function test_routes()
+    private function testRoutes()
     {
         try {
             $requiredRoutes = [
@@ -132,15 +132,14 @@ class FinalSystemTest extends Command
         }
     }
 
-    private function test_commands($isQuick)
+    private function testCommands($isQuick)
     {
         $commands = [
             'notifications:status' => 'Notification status command',
-            'system:simple-health' => 'Simple health check command',
+            'system:health-check' => 'System health check command',
         ];
 
         if (! $isQuick) {
-            $commands['notifications:test'] = 'Notification test command';
             $commands['fees:send-reminders'] = 'Fee reminders command';
         }
 
@@ -164,7 +163,7 @@ class FinalSystemTest extends Command
         }
     }
 
-    private function test_dashboard()
+    private function testDashboard()
     {
         try {
             // Check if view file exists

@@ -68,4 +68,8 @@ return [
         'password' => env('MILLITRACK_PASSWORD'),
     ],
 
+    'webhook' => [
+        'token' => env('WEBHOOK_TOKEN'),
+    ],
+
 ];

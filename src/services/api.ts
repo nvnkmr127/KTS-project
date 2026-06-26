@@ -39,18 +39,32 @@ export function clearApiCache(resource?: string) {
   }
 }
 
-async function request(path: string, options: RequestInit = {}) {
-  const method = options.method || 'GET';
-  
+// Custom error class carrying the HTTP status code so callers can distinguish
+// 401/403 auth errors from generic network/server errors.
+export class ApiError extends Error {
+  status: number;
+  isAuthError: boolean;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.isAuthError = status === 401 || status === 403;
+  }
+}
+
+async function request(path: string, options: RequestInit & { silent?: boolean } = {}) {
+  const { silent = false, ...fetchOptions } = options;
+  const method = fetchOptions.method || 'GET';
+
   // Cache GET requests (excluding real-time/dynamic resources like settings, attendance, and activity logs)
-  const bypassCache = path.includes('/settings') || 
-                       path.includes('/attendance') || 
-                       path.includes('/substitutes') ||
-                       path.includes('/substitute-assignments') ||
-                       path.includes('/activity-logs') ||
-                       path.includes('/bus/') ||
-                       path.includes('/realtime') ||
-                       path.includes('/live-feed');
+  const bypassCache = path.includes('/settings') ||
+    path.includes('/attendance') ||
+    path.includes('/substitutes') ||
+    path.includes('/substitute-assignments') ||
+    path.includes('/activity-logs') ||
+    path.includes('/bus/') ||
+    path.includes('/realtime') ||
+    path.includes('/live-feed');
 
   if (method === 'GET' && !bypassCache) {
     const cached = cache.get(path);
@@ -71,12 +85,12 @@ async function request(path: string, options: RequestInit = {}) {
   };
 
   const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && !silent) {
       // Clear auth state without a hard redirect — let React's own render logic
       // (`if (!user) return <Login />;` in App.tsx) handle showing the login screen.
       // A hard `window.location.href = '/login'` redirect would cause a full-page
@@ -88,7 +102,9 @@ async function request(path: string, options: RequestInit = {}) {
       window.dispatchEvent(new Event('kts:unauthorized'));
     }
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || errorData.message || 'API request failed');
+    // Throw ApiError (with status code) instead of plain Error so callers can
+    // distinguish 401/403 auth errors from transient network/server errors.
+    throw new ApiError(errorData.error || errorData.message || 'API request failed', response.status);
   }
 
   const result = await response.json();
@@ -148,7 +164,7 @@ export const api = {
       body: JSON.stringify(data),
     });
   },
-  
+
   async bulkCreateResource(resource: string, records: any[]) {
     clearApiCache(resource);
     return request(`/resources/${resource}/bulk`, {
@@ -200,11 +216,11 @@ export const api = {
         const records = JSON.parse(localRecords) as any[];
         // Filter records for this class
         const classRecords = records.filter(r => r.className.toLowerCase() === batchName.toLowerCase());
-        
+
         if (original && original.success && original.data && Array.isArray(original.data.students)) {
           original.data.students = original.data.students.map((student: any) => {
             const studentRecords = classRecords.filter(r => String(r.studentId) === String(student.id));
-            
+
             // Group records by date to compute full day (2 periods present), half day (1 present), or absent (0 present)
             const dates = Array.from(new Set(studentRecords.map(r => r.date)));
             let customTotal = 0;
@@ -213,7 +229,7 @@ export const api = {
             dates.forEach(d => {
               const firstRecord = studentRecords.find(r => r.date === d && r.session === 'first_period');
               const lunchRecord = studentRecords.find(r => r.date === d && r.session === 'lunch_period');
-              
+
               if (firstRecord || lunchRecord) {
                 customTotal += 2; // Two sessions per day
                 if (firstRecord && firstRecord.status === 'present') customPresent += 1;
@@ -252,11 +268,11 @@ export const api = {
 
         if (studentRecords.length > 0 && original && original.success && original.data) {
           const list = original.data.attendances || [];
-          
+
           studentRecords.forEach((record: any) => {
             const isFirst = record.session === 'first_period';
             const idKey = `custom-${record.session}-${date}`;
-            
+
             // Check if already in the list to avoid duplicate rendering
             if (!list.some((a: any) => String(a.id) === idKey)) {
               list.push({
@@ -330,7 +346,7 @@ export const api = {
 
         if (todayRecords.length > 0) {
           const list = original.data.attendances || [];
-          
+
           // Pre-fetch batches to map className to batchId dynamically
           const batches = await request('/resources/batches?limit=1000').catch(() => []);
           const batchMap: Record<string, number> = {};
@@ -339,13 +355,13 @@ export const api = {
               batchMap[String(b.name).toLowerCase()] = Number(b.id);
             });
           }
-          
+
           // Map each local record to the today list format
           todayRecords.forEach((record: any) => {
             const isFirst = record.session === 'first_period';
             const idKey = `today-custom-${record.studentId}-${record.session}`;
             const resolvedBatchId = batchMap[String(record.className).toLowerCase()] || 1;
-            
+
             // Check if already in today list
             if (!list.some((a: any) => String(a.id) === idKey || (String(a.student_id) === String(record.studentId) && String(a.time_slot_id) === (isFirst ? '1' : '6')))) {
               // Find student details from record to populate batch_id
@@ -519,7 +535,7 @@ export const api = {
   async clearActivityLogs() {
     return request('/activity-logs/clear', { method: 'POST' });
   },
-  
+
   async restoreActivityLog(id: string | number) {
     return request(`/activity-logs/${id}/restore`, { method: 'POST' });
   },
@@ -539,14 +555,25 @@ export const originalRemoveItem = localStorage.removeItem.bind(localStorage);
 // @ts-ignore
 localStorage.setItem = function (key: string, value: string) {
   originalSetItem(key, value);
-  
+
   const keysToExclude = ['token', 'user', 'selected_academic_year_id', 'timetable_period_timings', 'kts_student_attendance_records'];
-  
+
   const token = localStorage.getItem('token');
   if (token && !keysToExclude.includes(key)) {
-    api.saveSetting(key, value).catch((err) => {
-      console.error(`Failed to automatically sync key "${key}" to database:`, err);
-    });
+    // Use silent mode so background DB-sync failures never trigger kts:unauthorized
+    // or cause the user to be logged out for an unrelated background operation.
+    request(`/resources/settings`, { method: 'GET', silent: true })
+      .then(async (settings: any) => {
+        const existing = Array.isArray(settings) ? settings.find((s: any) => s.key === key) : null;
+        if (existing) {
+          await request(`/resources/settings/${existing.id}`, { method: 'PUT', body: JSON.stringify({ key, value }), silent: true });
+        } else {
+          await request('/resources/settings', { method: 'POST', body: JSON.stringify({ key, value, group: 'general', type: 'json', is_public: false, is_encrypted: false }), silent: true });
+        }
+      })
+      .catch((err) => {
+        console.error(`Failed to automatically sync key "${key}" to database:`, err);
+      });
   }
 };
 
@@ -554,12 +581,20 @@ localStorage.setItem = function (key: string, value: string) {
 // @ts-ignore
 localStorage.removeItem = function (key: string) {
   originalRemoveItem(key);
-  
+
   const token = localStorage.getItem('token');
   if (token && key !== 'token' && key !== 'user') {
-    api.deleteSetting(key).catch((err) => {
-      console.error(`Failed to automatically delete key "${key}" from database settings:`, err);
-    });
+    // Use silent mode so background DB-sync failures never trigger kts:unauthorized.
+    request(`/resources/settings`, { method: 'GET', silent: true })
+      .then(async (settings: any) => {
+        const existing = Array.isArray(settings) ? settings.find((s: any) => s.key === key) : null;
+        if (existing) {
+          await request(`/resources/settings/${existing.id}`, { method: 'DELETE', silent: true });
+        }
+      })
+      .catch((err) => {
+        console.error(`Failed to automatically delete key "${key}" from database settings:`, err);
+      });
   }
 };
 

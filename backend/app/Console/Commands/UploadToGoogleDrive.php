@@ -218,8 +218,8 @@ class UploadToGoogleDrive extends Command
             return $folder->id;
 
         } catch (\Exception $e) {
-            // If we can't create in root, try to get the folder ID from env
-            $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
+            // If we can't create in root, try to get the folder ID from config
+            $folderId = config('filesystems.disks.google.folderId');
             if ($folderId) {
                 $this->info("Using existing folder ID from environment: {$folderId}");
 
