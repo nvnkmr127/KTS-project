@@ -81,7 +81,12 @@
             "providers": [
                 "App\\Providers\\ViewServiceProvider"
             ]
-        }
+        },
+        "google/apiclient-services": [
+            "Drive",
+            "Sheets",
+            "Gmail"
+        ]
     },
     "config": {
         "optimize-autoloader": true,
