@@ -23,8 +23,21 @@ class ActivityLogApiController extends Controller
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
 
+            // Auto delete logs older than 60 days
+            Activity::where('created_at', '<', Carbon::now()->subDays(60))->delete();
+
             $userMorphClass = (new \App\Models\User())->getMorphClass();
             $query = Activity::query()->with('causer');
+
+            // Apply recycle bin filtering
+            if ($request->boolean('recycled')) {
+                // Recycle bin: 30 to 60 days old
+                $query->where('created_at', '>=', Carbon::now()->subDays(60))
+                      ->where('created_at', '<', Carbon::now()->subDays(30));
+            } else {
+                // Active logs: last 30 days
+                $query->where('created_at', '>=', Carbon::now()->subDays(30));
+            }
 
             // Apply role-based visibility
             if ($user->can('manage settings')) {
@@ -145,9 +158,10 @@ class ActivityLogApiController extends Controller
 
             $userMorphClass = (new \App\Models\User())->getMorphClass();
 
-            // Base query for user's own activity
+            // Base query for user's own activity (active logs only: last 30 days)
             $baseQuery = Activity::where('causer_id', $user->id)
-                                 ->where('causer_type', $userMorphClass);
+                                 ->where('causer_type', $userMorphClass)
+                                 ->where('created_at', '>=', Carbon::now()->subDays(30));
 
             $totalActions = (clone $baseQuery)->count();
 
@@ -365,6 +379,59 @@ class ActivityLogApiController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Failed to clear activity logs: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Restore an auto-deleted activity log (move back to active logs by setting created_at to now).
+     */
+    public function restore(Request $request, $id)
+    {
+        try {
+            $user = auth('sanctum')->user();
+            if (!$user || !$user->can('manage settings')) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+
+            $log = Activity::findOrFail($id);
+            $log->created_at = Carbon::now();
+            $log->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Activity log restored successfully.'
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to restore activity log: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Permanently delete an activity log from the recycle bin.
+     */
+    public function destroy(Request $request, $id)
+    {
+        try {
+            $user = auth('sanctum')->user();
+            if (!$user || !$user->can('manage settings')) {
+                return response()->json(['error' => 'Forbidden'], 403);
+            }
+
+            $log = Activity::findOrFail($id);
+            $log->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Activity log permanently deleted.'
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to delete activity log: ' . $e->getMessage()
             ], 500);
         }
     }

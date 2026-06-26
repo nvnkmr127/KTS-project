@@ -109,6 +109,27 @@ class Setting extends Model
                     return 'Student attendance records updated';
                 }
                 $settingKey = str_replace('_', ' ', $this->key);
+                
+                $value = $this->value;
+                $isJsonOrLong = false;
+                if (is_array($value) || is_object($value)) {
+                    $isJsonOrLong = true;
+                } elseif (is_string($value)) {
+                    $trimmed = trim($value);
+                    if (str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[') || strlen($trimmed) > 100) {
+                        $isJsonOrLong = true;
+                    }
+                }
+
+                if ($isJsonOrLong) {
+                    return match($eventName) {
+                        'created' => "System setting '{$settingKey}' created",
+                        'updated' => "System setting '{$settingKey}' updated",
+                        'deleted' => "System setting '{$settingKey}' deleted",
+                        default => "System setting '{$settingKey}' {$eventName}",
+                    };
+                }
+
                 return match($eventName) {
                     'created' => "System setting '{$settingKey}' created with value '{$this->value}'",
                     'updated' => "System setting '{$settingKey}' updated to '{$this->value}'",

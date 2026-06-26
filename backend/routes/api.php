@@ -376,6 +376,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
     Route::get('/activity-logs/users', [App\Http\Controllers\Api\ActivityLogApiController::class, 'users']);
     Route::get('/activity-logs/summary', [App\Http\Controllers\Api\ActivityLogApiController::class, 'summary']);
     Route::post('/activity-logs/clear', [App\Http\Controllers\Api\ActivityLogApiController::class, 'clear']);
+    Route::post('/activity-logs/{id}/restore', [App\Http\Controllers\Api\ActivityLogApiController::class, 'restore']);
+    Route::delete('/activity-logs/{id}', [App\Http\Controllers\Api\ActivityLogApiController::class, 'destroy']);
 
 
 

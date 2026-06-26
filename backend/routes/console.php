@@ -894,6 +894,17 @@ Schedule::call(function () {
 
 /*
 |--------------------------------------------------------------------------
+| Activity Logs Cleanup Schedule
+|--------------------------------------------------------------------------
+*/
+Schedule::call(function () {
+    // Auto delete logs older than 60 days
+    $deleted = \Spatie\Activitylog\Models\Activity::where('created_at', '<', \Illuminate\Support\Carbon::now()->subDays(60))->delete();
+    \Illuminate\Support\Facades\Log::info("Cleaned up $deleted activity logs older than 60 days.");
+})->dailyAt('03:30')->name('activity-logs-cleanup')->description('Prunes activity logs older than 60 days');
+
+/*
+|--------------------------------------------------------------------------
 | BACKUP SCHEDULE SUMMARY
 |--------------------------------------------------------------------------
 |

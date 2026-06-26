@@ -265,6 +265,20 @@ class LogUserAction
                 return 'Student attendance records updated';
             }
             $val = $request->input('value');
+            $isJsonOrLong = false;
+            if (is_array($val) || is_object($val)) {
+                $isJsonOrLong = true;
+            } elseif (is_string($val)) {
+                $trimmed = trim($val);
+                if (str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[') || strlen($trimmed) > 100) {
+                    $isJsonOrLong = true;
+                }
+            }
+
+            if ($isJsonOrLong) {
+                return "Updated system setting '{$settingName}'";
+            }
+
             $formattedVal = $this->formatValueForDescription($val);
             $valStr = ($val !== null && $settingName !== 'biometric api key') ? " to '{$formattedVal}'" : "";
             return "Updated system setting '{$settingName}'{$valStr}";

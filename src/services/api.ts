@@ -507,6 +507,14 @@ export const api = {
   async clearActivityLogs() {
     return request('/activity-logs/clear', { method: 'POST' });
   },
+  
+  async restoreActivityLog(id: string | number) {
+    return request(`/activity-logs/${id}/restore`, { method: 'POST' });
+  },
+
+  async deleteActivityLog(id: string | number) {
+    return request(`/activity-logs/${id}`, { method: 'DELETE' });
+  },
 };
 
 // Preserve original localStorage methods bound to the localStorage instance

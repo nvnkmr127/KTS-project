@@ -1169,9 +1169,7 @@ const formatVal = (v: any): string => {
         return `Present: ${present}, Absent: ${absent}`;
       }
 
-      return v.map((item: any) => {
-        return `${formatVal(item)}`;
-      }).join(', ');
+      return `${v.length} items`;
     }
     return v.map(item => formatVal(item)).join(', ');
   }
@@ -1231,7 +1229,10 @@ const cleanJsonInString = (str: string): string => {
         cleanPrefix = cleanPrefix.substring(0, cleanPrefix.length - 2).trim();
       }
       
-      const formattedJson = formatVal(parsed);
+      let formattedJson = formatVal(parsed);
+      if (formattedJson.length > 120) {
+        formattedJson = formattedJson.substring(0, 120) + '...';
+      }
       return `${cleanPrefix}${formattedJson ? ` to: ${formattedJson}` : ''}${suffix ? ` ${suffix}` : ''}`;
     } catch (e) {}
   }
