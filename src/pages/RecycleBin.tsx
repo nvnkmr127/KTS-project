@@ -259,6 +259,16 @@ export function RecycleBin() {
     }
   };
 
+  const isRestorableLog = (log: any) => {
+    if (!log.properties || !log.properties.original_created_at) {
+      return false;
+    }
+    const originalDate = new Date(log.properties.original_created_at);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    return originalDate >= thirtyDaysAgo;
+  };
+
   // ── Restore Activity Log ───────────────────────────────────────────────
   const restoreActivityLog = async (id: string) => {
     setProcessing(true);
@@ -266,9 +276,11 @@ export function RecycleBin() {
       await api.restoreActivityLog(id);
       await loadDeletedActivityLogs();
       showToast('Activity log restored successfully!', true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error restoring activity log:', err);
-      showToast('Failed to restore activity log.', false);
+      const errMsg = err.error || err.message || 'Failed to restore activity log.';
+      showToast(errMsg, false);
+      alert(errMsg);
     } finally {
       setProcessing(false);
       setConfirm(null);
@@ -749,7 +761,13 @@ export function RecycleBin() {
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                       <button
-                        onClick={() => setConfirm({ type: 'restore', entity: 'activity_log', id: String(log.id), name: formatDescription(log) })}
+                        onClick={() => {
+                          if (!isRestorableLog(log)) {
+                            alert("Can't restore the logs.");
+                            return;
+                          }
+                          setConfirm({ type: 'restore', entity: 'activity_log', id: String(log.id), name: formatDescription(log) });
+                        }}
                         className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg hover:opacity-80 cursor-pointer transition-opacity"
                         title="Restore activity log"
                       >

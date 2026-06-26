@@ -80,6 +80,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   const [activityTotal, setActivityTotal] = useState(0);
   const [activityOffset, setActivityOffset] = useState(0);
   const ACTIVITY_PAGE_SIZE = 50;
+  const [deletingLogId, setDeletingLogId] = useState<string | number | null>(null);
 
 
   // Load academic years
@@ -185,6 +186,27 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
       alert(err.message || 'Failed to clear activity logs.');
     } finally {
       setClearingLogs(false);
+    }
+  };
+
+  const handleDeleteActivityLog = async (id: string | number) => {
+    if (!window.confirm('Are you sure you want to delete this activity log? It will be moved to the Recycle Bin.')) {
+      return;
+    }
+    setDeletingLogId(id);
+    try {
+      const res = await api.deleteActivityLog(id);
+      if (res.success) {
+        setActivityLogs(prev => prev.filter(log => log.id !== id));
+        setActivityTotal(prev => prev - 1);
+      } else {
+        alert(res.error || 'Failed to delete activity log.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Failed to delete activity log.');
+    } finally {
+      setDeletingLogId(null);
     }
   };
 
@@ -803,7 +825,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
               ) : (
                 <div>
                   {activityLogs.map((log) => (
-                    <div key={log.id} className="flex gap-3 py-3 border-b border-[var(--b)] last:border-0">
+                    <div key={log.id} className="flex gap-3 py-3 border-b border-[var(--b)] last:border-0 items-start">
                       {/* Left: event dot */}
                       <div className="flex-shrink-0 mt-0.5">
                         <div className={`w-2 h-2 rounded-full mt-1.5 ${eventDotColor(log.event)}`} />
@@ -853,6 +875,18 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                           </button>
                         )}
                         {activityExpandedId === String(log.id) && renderActivityProperties(log)}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                        <button
+                          onClick={() => handleDeleteActivityLog(log.id)}
+                          disabled={activityLoading || deletingLogId === log.id}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold bg-[var(--red-bg)] text-[var(--red-tx)] rounded-lg hover:opacity-80 cursor-pointer transition-opacity"
+                          title="Delete (move to Recycle Bin)"
+                        >
+                          <Trash2 size={11} /> Delete
+                        </button>
                       </div>
                     </div>
                   ))}

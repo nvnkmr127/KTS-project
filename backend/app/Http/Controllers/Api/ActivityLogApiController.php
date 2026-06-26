@@ -357,8 +357,16 @@ class ActivityLogApiController extends Controller
                 return response()->json(['error' => 'Forbidden'], 403);
             }
 
-            // Truncate activity logs
-            Activity::truncate();
+            // Move all active logs (< 30 days old) to recycle bin by setting created_at to 31 days ago
+            $activeLogs = Activity::where('created_at', '>=', Carbon::now()->subDays(30))->get();
+            $affected = 0;
+            foreach ($activeLogs as $log) {
+                $log->setCustomProperty('original_created_at', $log->created_at->toIso8601String());
+                $log->setCustomProperty('deleted_at', Carbon::now()->toIso8601String());
+                $log->created_at = Carbon::now()->subDays(31);
+                $log->save();
+                $affected++;
+            }
 
             // Log the action itself after clearing
             activity()
@@ -368,11 +376,11 @@ class ActivityLogApiController extends Controller
                     'user_agent' => $request->userAgent(),
                 ])
                 ->event('deleted')
-                ->log('Cleared all activity logs');
+                ->log('Cleared all active activity logs (moved to Recycle Bin)');
 
             return response()->json([
                 'success' => true,
-                'message' => 'All activity logs cleared successfully.'
+                'message' => "All active activity logs ({$affected}) moved to Recycle Bin successfully."
             ]);
 
         } catch (\Throwable $e) {
@@ -395,7 +403,21 @@ class ActivityLogApiController extends Controller
             }
 
             $log = Activity::findOrFail($id);
-            $log->created_at = Carbon::now();
+            
+            $originalCreatedAt = $log->getCustomProperty('original_created_at');
+
+            // If it doesn't have original_created_at OR the original date is older than 30 days ago, it cannot be restored!
+            if (!$originalCreatedAt || Carbon::parse($originalCreatedAt)->lt(Carbon::now()->subDays(30))) {
+                return response()->json([
+                    'success' => false,
+                    'error' => "Can't restore the logs. Logs in the 30 to 60 days span cannot be restored."
+                ], 400);
+            }
+
+            // Restore: set created_at back to original_created_at and remove properties
+            $log->created_at = Carbon::parse($originalCreatedAt);
+            $log->forgetCustomProperty('original_created_at');
+            $log->forgetCustomProperty('deleted_at');
             $log->save();
 
             return response()->json([
@@ -422,12 +444,30 @@ class ActivityLogApiController extends Controller
             }
 
             $log = Activity::findOrFail($id);
-            $log->delete();
+            
+            // Check if log is active (< 30 days old)
+            $is_active = $log->created_at >= Carbon::now()->subDays(30);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Activity log permanently deleted.'
-            ]);
+            if ($is_active) {
+                // Move to recycle bin (set created_at to 31 days ago, saving original_created_at)
+                $log->setCustomProperty('original_created_at', $log->created_at->toIso8601String());
+                $log->setCustomProperty('deleted_at', Carbon::now()->toIso8601String());
+                $log->created_at = Carbon::now()->subDays(31);
+                $log->save();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Activity log transferred to Recycle Bin.'
+                ]);
+            } else {
+                // Permanently delete from database
+                $log->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Activity log permanently deleted.'
+                ]);
+            }
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
