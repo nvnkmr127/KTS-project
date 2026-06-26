@@ -29,6 +29,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                 'Website',               // source
                 'Rampur',                // village
                 'Priya Patel',           // referral_name
+                '123456789012',          // aadhar_number
 
                 // Financial Information
                 85000,                   // total_fee_amount
@@ -52,6 +53,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                 'Social Media',         // source
                 'Kondapur',             // village
                 'Rahul Kumar',          // referral_name
+                '234567890123',          // aadhar_number
 
                 // Financial Information
                 85000,                  // total_fee_amount
@@ -75,6 +77,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                 'Referrals',           // source
                 'Sonapur',             // village
                 'Anita Singh',         // referral_name
+                '345678901234',          // aadhar_number
 
                 // Financial Information
                 120000,                // total_fee_amount (PG course - higher fee)
@@ -98,6 +101,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                 'Walk-in',            // source
                 'Mehsana',            // village
                 '',                   // referral_name (empty - no referral)
+                '456789012345',          // aadhar_number
 
                 // Financial Information
                 85000,                // total_fee_amount
@@ -121,6 +125,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                 'Student Referral',   // source
                 'Jaipur',             // village
                 'Mohan Sharma',       // referral_name
+                '567890123456',          // aadhar_number
 
                 // Financial Information
                 85000,                // total_fee_amount
@@ -144,6 +149,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                 'Online Ads',         // source
                 'Kochi',              // village
                 'Deepa Thomas',       // referral_name
+                '678901234567',          // aadhar_number
 
                 // Financial Information
                 85000,                // total_fee_amount
@@ -160,7 +166,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
     public function headings(): array
     {
         return [
-            // Student Information Columns (A-I)
+            // Student Information Columns (A-J)
             'full_name',              // A - Required
             'father_name',            // B - Required
             'gender',                 // C - Required (Male/Female)
@@ -170,15 +176,16 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
             'source',                 // G - Optional (how they found college)
             'village',                // H - Optional (student location)
             'referral_name',          // I - Optional (who referred them)
+            'aadhar_number',          // J - Optional (12-digit number)
 
-            // Financial Information Columns (J-P)
-            'total_fee_amount',       // J - Optional (override default fees)
-            'paid_amount',            // K - Optional (amount already paid)
-            'concession_amount',      // L - Optional (discounts/scholarships)
-            'uniform_fee',            // M - Optional (uniform fee amount)
-            'payment_date',           // N - Optional (YYYY-MM-DD format)
-            'payment_method',         // O - Optional (Cash/Online/Cheque/UPI/Bank Transfer)
-            'payment_remarks',         // P - Optional (notes about payment)
+            // Financial Information Columns (K-Q)
+            'total_fee_amount',       // K - Optional (override default fees)
+            'paid_amount',            // L - Optional (amount already paid)
+            'concession_amount',      // M - Optional (discounts/scholarships)
+            'uniform_fee',            // N - Optional (uniform fee amount)
+            'payment_date',           // O - Optional (YYYY-MM-DD format)
+            'payment_method',         // P - Optional (Cash/Online/Cheque/UPI/Bank Transfer)
+            'payment_remarks',         // Q - Optional (notes about payment)
         ];
     }
 
@@ -194,13 +201,14 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
             'G' => 15, // source
             'H' => 15, // village
             'I' => 18, // referral_name
-            'J' => 18, // total_fee_amount
-            'K' => 15, // paid_amount
-            'L' => 18, // concession_amount
-            'M' => 15, // uniform_fee
-            'N' => 15, // payment_date
-            'O' => 18, // payment_method
-            'P' => 40, // payment_remarks
+            'J' => 20, // aadhar_number
+            'K' => 18, // total_fee_amount
+            'L' => 15, // paid_amount
+            'M' => 18, // concession_amount
+            'N' => 15, // uniform_fee
+            'O' => 15, // payment_date
+            'P' => 18, // payment_method
+            'Q' => 40, // payment_remarks
         ];
     }
 
@@ -211,8 +219,8 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
 
         // Add title and instructions
         $sheet->setCellValue('A1', 'STUDENT BULK IMPORT TEMPLATE WITH FINANCIAL DATA');
-        $sheet->setCellValue('A2', 'Instructions: Fill student data (A-I) and financial data (J-P). Financial columns are optional.');
-        $sheet->setCellValue('A3', 'Date Format: YYYY-MM-DD | Mobile: 10-digit numbers | Amounts: Numbers only (no commas)');
+        $sheet->setCellValue('A2', 'Instructions: Fill student data (A-J) and financial data (K-Q). Financial columns are optional.');
+        $sheet->setCellValue('A3', 'Date Format: YYYY-MM-DD | Mobile/Aadhar: Numbers (Aadhar is 12-digit) | Amounts: Numbers only (no commas)');
 
         return [
             // Title styling
@@ -275,8 +283,8 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                 ],
             ],
 
-            // Student information columns (A-I) - Light blue background
-            'A4:I4' => [
+            // Student information columns (A-J) - Light blue background
+            'A4:J4' => [
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['argb' => 'D9E2F3'],
@@ -287,8 +295,8 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                 ],
             ],
 
-            // Financial information columns (J-P) - Light green background
-            'J4:P4' => [
+            // Financial information columns (K-Q) - Light green background
+            'K4:Q4' => [
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['argb' => 'E2EFDA'],
@@ -300,7 +308,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
             ],
 
             // Data rows styling
-            'A5:P10' => [
+            'A5:Q10' => [
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -310,7 +318,7 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
             ],
 
             // Numeric columns formatting (amounts)
-            'J:M' => [
+            'K:N' => [
                 'numberFormat' => [
                     'formatCode' => '#,##0',
                 ],
@@ -322,21 +330,26 @@ class StudentsSampleExport implements FromArray, ShouldAutoSize, WithColumnWidth
                     'formatCode' => 'yyyy-mm-dd',
                 ],
             ],
-            'N:N' => [
+            'O:O' => [
                 'numberFormat' => [
                     'formatCode' => 'yyyy-mm-dd',
                 ],
             ],
 
-            // Mobile number columns - text format to preserve leading zeros
+            // Mobile number and Aadhar columns - text format to preserve leading zeros
             'E:F' => [
                 'numberFormat' => [
                     'formatCode' => '@', // Text format
                 ],
             ],
+            'J:J' => [
+                'numberFormat' => [
+                    'formatCode' => '@', // Text format for Aadhar
+                ],
+            ],
 
             // Merge title cell across all columns
-            'A1:P1' => [
+            'A1:Q1' => [
                 'alignment' => [
                     'horizontal' => Alignment::HORIZONTAL_CENTER,
                 ],

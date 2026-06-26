@@ -64,6 +64,7 @@ class Student extends Model
         'email',
         'enrollment_number',
         'biometric_employee_code',
+        'aadhar_number',
         'gender',
         'father_name',
         'student_mobile',

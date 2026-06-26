@@ -166,6 +166,7 @@ class StudentsImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithVal
                 'status' => 'active',
                 'source' => $source,
                 'referral_name' => $row['referral_name'] ?? null,
+                'aadhar_number' => $row['aadhar_number'] ?? $row['aadhar_card_number'] ?? $row['aadhar'] ?? null,
             ];
 
             // Only add email if the column exists
@@ -1271,6 +1272,7 @@ class StudentsImport implements SkipsOnFailure, ToModel, WithHeadingRow, WithVal
             ],
             'source' => 'nullable|string',
             'referral_name' => 'nullable|string|max:255',
+            'aadhar_number' => 'nullable|string|max:20',
             // 🆕 NEW: Financial data validation rules
             'paid_amount' => 'nullable|numeric|min:0',
             'concession_amount' => 'nullable|numeric|min:0',

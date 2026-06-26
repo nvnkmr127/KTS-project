@@ -38,6 +38,7 @@ interface Student {
   academicYearId?: string;
   academicYearName?: string;
   biometric_employee_code?: string;
+  aadhar_number?: string;
 }
 
 const INITIALS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -130,6 +131,7 @@ export function Students() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [phoneVal, setPhoneVal] = useState('');
   const [biometricVal, setBiometricVal] = useState('');
+  const [aadharVal, setAadharVal] = useState('');
 
   useEffect(() => {
     if (selectedAcademicYearId) {
@@ -183,11 +185,13 @@ export function Students() {
     if (modal === 'add') {
       setPhoneVal('');
       setBiometricVal('');
+      setAadharVal('');
       setFormErrors({});
       setHasUnsavedChanges(false);
     } else if (modal === 'edit' && selected) {
       setPhoneVal(selected.phone || '');
       setBiometricVal(selected.biometric_employee_code || '');
+      setAadharVal(selected.aadhar_number || '');
       setFormErrors({});
       setHasUnsavedChanges(false);
     } else {
@@ -294,6 +298,19 @@ export function Students() {
   }, [activeDetailStudent]);
 
   useEffect(() => {
+    if (activeDetailStudent) {
+      const match = students.find(std => String(std.id) === String(activeDetailStudent.id));
+      if (match) {
+        if (JSON.stringify(match) !== JSON.stringify(activeDetailStudent)) {
+          setActiveDetailStudent(match);
+        }
+      } else {
+        setActiveDetailStudent(null);
+      }
+    }
+  }, [students]);
+
+  useEffect(() => {
     setCurrentPage(1);
   }, [search, classFilter, statusFilter, ayFilter]);
 
@@ -318,6 +335,7 @@ export function Students() {
         academicYearId: s.batch && s.batch.academic_year ? String(s.batch.academic_year.id) : '',
         academicYearName: s.batch && s.batch.academic_year ? s.batch.academic_year.name : 'N/A',
         biometric_employee_code: s.biometric_employee_code || '',
+        aadhar_number: s.aadhar_number || '',
       }));
       setStudents(mapped);
     } catch (err) {
@@ -340,8 +358,9 @@ export function Students() {
     const lastName = fd.get('lastName') as string;
     const statusVal = fd.get('studentStatus') as string;
     const parentVal = fd.get('parent') as string;
-    const phone = fd.get('phone') as string;
-    const bio = fd.get('biometric_employee_code') as string;
+    const phone = phoneVal;
+    const bio = biometricVal;
+    const aadharNum = aadharVal;
 
     const errors: Record<string, string> = {};
     if (!firstName.trim()) errors.firstName = 'First Name is required';
@@ -354,6 +373,9 @@ export function Students() {
     }
     if (bio && !/^[A-Za-z0-9-]+$/.test(bio)) {
       errors.biometric_employee_code = 'Biometric Code must be alphanumeric (hyphens allowed)';
+    }
+    if (aadharNum && aadharNum.replace(/\D/g, '').length !== 12) {
+      errors.aadhar_number = 'Aadhar Card Number must be exactly 12 digits';
     }
 
     if (Object.keys(errors).length > 0) {
@@ -374,6 +396,7 @@ export function Students() {
       section: fd.get('section'),
       status: statusVal === 'Active' ? 'active' : statusVal === 'Left' ? 'left' : 'transfer',
       biometric_employee_code: bio || null,
+      aadhar_number: aadharNum || null,
     };
 
     try {
@@ -570,6 +593,7 @@ export function Students() {
                   { label: 'Admission Date', value: formatDate(s.admissionDate) },
                   { label: 'Parent / Guardian', value: s.parent },
                   { label: 'Mobile', value: s.phone },
+                  { label: 'Aadhar Number', value: s.aadhar_number },
                 ].map(item => (
                   <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
                     <div className="text-[10px] text-[var(--tx3)] mb-0.5">{item.label}</div>
@@ -1206,35 +1230,62 @@ export function Students() {
                     placeholder="House no, Street, Area, City"
                   />
                 </div>
-                <div>
-                  <label className="flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">
-                    Biometric Code
-                    <span
-                      className="cursor-help w-3.5 h-3.5 rounded-full bg-[var(--surf3)] text-[10px] text-[var(--tx3)] flex items-center justify-center font-bold"
-                      title="Format: Alphanumeric characters and hyphens allowed (e.g. BIO-123 or STU-1001). Leave empty if not yet assigned."
-                    >
-                      ?
-                    </span>
-                  </label>
-                  <input
-                    name="biometric_employee_code"
-                    value={biometricVal}
-                    onChange={(e) => {
-                      setHasUnsavedChanges(true);
-                      const val = e.target.value.replace(/[^A-Za-z0-9-]/g, '');
-                      setBiometricVal(val);
-                      if (formErrors.biometric_employee_code) {
-                        setFormErrors(prev => {
-                          const copy = { ...prev };
-                          delete copy.biometric_employee_code;
-                          return copy;
-                        });
-                      }
-                    }}
-                    className={`w-full bg-[var(--surf2)] border ${formErrors.biometric_employee_code ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
-                    placeholder="e.g. STU-1001"
-                  />
-                  {formErrors.biometric_employee_code && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.biometric_employee_code}</span>}
+                <div className="space-y-4">
+                  <div>
+                    <label className="flex items-center gap-1.5 text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">
+                      Biometric Code
+                      <span
+                        className="cursor-help w-3.5 h-3.5 rounded-full bg-[var(--surf3)] text-[10px] text-[var(--tx3)] flex items-center justify-center font-bold"
+                        title="Format: Alphanumeric characters and hyphens allowed (e.g. BIO-123 or STU-1001). Leave empty if not yet assigned."
+                      >
+                        ?
+                      </span>
+                    </label>
+                    <input
+                      name="biometric_employee_code"
+                      value={biometricVal}
+                      onChange={(e) => {
+                        setHasUnsavedChanges(true);
+                        const val = e.target.value.replace(/[^A-Za-z0-9-]/g, '');
+                        setBiometricVal(val);
+                        if (formErrors.biometric_employee_code) {
+                          setFormErrors(prev => {
+                            const copy = { ...prev };
+                            delete copy.biometric_employee_code;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full bg-[var(--surf2)] border ${formErrors.biometric_employee_code ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                      placeholder="e.g. STU-1001"
+                    />
+                    {formErrors.biometric_employee_code && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.biometric_employee_code}</span>}
+                  </div>
+
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">
+                      Aadhar Number
+                    </label>
+                    <input
+                      name="aadhar_number"
+                      value={aadharVal}
+                      onChange={(e) => {
+                        setHasUnsavedChanges(true);
+                        const val = e.target.value.replace(/\D/g, '').substring(0, 12);
+                        setAadharVal(val);
+                        if (formErrors.aadhar_number) {
+                          setFormErrors(prev => {
+                            const copy = { ...prev };
+                            delete copy.aadhar_number;
+                            return copy;
+                          });
+                        }
+                      }}
+                      className={`w-full bg-[var(--surf2)] border ${formErrors.aadhar_number ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                      placeholder="e.g. 123456789012"
+                    />
+                    {formErrors.aadhar_number && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.aadhar_number}</span>}
+                  </div>
                 </div>
               </div>
               {/* Inline error feedback */}
@@ -1348,7 +1399,8 @@ const SYNONYMS: Record<string, string[]> = {
   admissionDate: ['admission date', 'doj', 'joining date', 'admission_date', 'adm date'],
   parent: ['parent name', 'parent', 'father name', 'father', 'guardian', 'mother name', 'mother', 'parent_name'],
   phone: ['mobile number', 'mobile', 'phone', 'phone number', 'contact', 'student mobile', 'parent mobile', 'mobile_no', 'phone_no'],
-  address: ['address', 'village', 'city', 'location', 'residence', 'street']
+  address: ['address', 'village', 'city', 'location', 'residence', 'street'],
+  aadhar_number: ['aadhar number', 'aadhar', 'aadhar card number', 'aadhar card', 'aadhaar', 'aadhaar number', 'aadhar_number', 'aadhaar_number']
 };
 
 const cleanDate = (val: any): string => {
@@ -1417,6 +1469,7 @@ interface MappedStudent {
   parent: string;
   phone: string;
   address: string;
+  aadhar_number?: string;
 }
 
 const validateStudent = (s: MappedStudent) => {
@@ -1431,6 +1484,9 @@ const validateStudent = (s: MappedStudent) => {
   if (!s.parent.trim() || s.parent === 'N/A') errors.push('Parent name is required');
   if (!s.phone.trim() || s.phone === 'N/A') errors.push('Mobile number is required');
   if (!s.address.trim()) errors.push('Address is required');
+  if (s.aadhar_number && s.aadhar_number.replace(/\D/g, '').length !== 12) {
+    errors.push('Aadhar must be exactly 12 digits');
+  }
   return errors;
 };
 
@@ -1601,7 +1657,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
 
       const dataRows = rawRows.slice(headerIndex + 1);
       const studentsList: MappedStudent[] = dataRows
-        .map((row) => {
+        .map((row): MappedStudent | null => {
           if (row.filter(c => c !== undefined && c !== null && String(c).trim() !== '').length === 0) {
             return null;
           }
@@ -1631,6 +1687,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
           const rawParent = colMap.parent !== undefined ? row[colMap.parent] : '';
           const rawPhone = colMap.phone !== undefined ? row[colMap.phone] : '';
           const rawAddress = colMap.address !== undefined ? row[colMap.address] : '';
+          const rawAadhar = colMap.aadhar_number !== undefined ? row[colMap.aadhar_number] : '';
 
           return {
             id: Math.random().toString(36).substr(2, 9),
@@ -1644,6 +1701,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             parent: rawParent ? String(rawParent).trim() : 'N/A',
             phone: rawPhone ? String(rawPhone).trim() : 'N/A',
             address: rawAddress ? String(rawAddress).trim() : '',
+            aadhar_number: rawAadhar ? String(rawAadhar).trim() : '',
           };
         })
         .filter((s): s is MappedStudent => s !== null);
@@ -1700,6 +1758,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
       parent: '',
       phone: '',
       address: '',
+      aadhar_number: '',
     };
     setMappedStudents(prev => [...prev, newStudent]);
   };
@@ -1726,6 +1785,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
       class: s.class,
       section: s.section,
       status: 'active',
+      aadhar_number: s.aadhar_number || null,
     }));
 
     try {
@@ -1744,12 +1804,12 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
   // ── Sample template download ─────────────────────────────────────────────
   const SAMPLE_HEADERS = [
     'First Name', 'Last Name', 'Class', 'Section', 'Gender',
-    'Date of Birth', 'Admission Date', 'Parent Name', 'Mobile Number', 'Address',
+    'Date of Birth', 'Admission Date', 'Parent Name', 'Mobile Number', 'Address', 'Aadhar Number',
   ];
   const SAMPLE_ROWS = [
-    ['Ravi',   'Teja',  '9',  'B', 'Male',   '2012-05-15', '2026-06-01', 'Nageswara Rao', '9876543210', 'Nizamabad Main Street'],
-    ['Anjali', 'Devi',  '10', 'A', 'Female', '2011-09-22', '2026-06-01', 'Srinivas',      '9848022338', 'Housing Board Colony'],
-    ['Arun',   'Kumar', '8',  'C', 'Male',   '2013-03-10', '2026-06-01', 'Ramesh',        '9700123456', 'Old Town, Nizamabad'],
+    ['Ravi',   'Teja',  '9',  'B', 'Male',   '2012-05-15', '2026-06-01', 'Nageswara Rao', '9876543210', 'Nizamabad Main Street', '123456789012'],
+    ['Anjali', 'Devi',  '10', 'A', 'Female', '2011-09-22', '2026-06-01', 'Srinivas',      '9848022338', 'Housing Board Colony', '234567890123'],
+    ['Arun',   'Kumar', '8',  'C', 'Male',   '2013-03-10', '2026-06-01', 'Ramesh',        '9700123456', 'Old Town, Nizamabad', '345678901234'],
   ];
 
   const downloadTemplate = (format: 'xlsx' | 'csv') => {
@@ -1894,6 +1954,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                     { n: '8', label: 'Parent Name',     req: true  },
                     { n: '9', label: 'Mobile Number',   req: true  },
                     { n: '10', label: 'Address',        req: true  },
+                    { n: '11', label: 'Aadhar Number',  req: false },
                   ].map(col => (
                     <div
                       key={col.n}
@@ -1914,7 +1975,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                 <div className="bg-[var(--surf2)] rounded-lg p-2.5 overflow-x-auto">
                   <div className="text-[10px] text-[var(--tx3)] mb-1.5 font-medium uppercase tracking-wider">Example row</div>
                   <div className="flex gap-2 text-[10.5px] text-[var(--tx2)] whitespace-nowrap">
-                    {['Ravi', 'Teja', '9', 'B', 'Male', '2012-05-15', '2026-06-01', 'Nageswara Rao', '9876543210', 'Nizamabad'].map((v, i) => (
+                    {['Ravi', 'Teja', '9', 'B', 'Male', '2012-05-15', '2026-06-01', 'Nageswara Rao', '9876543210', 'Nizamabad', '123456789012'].map((v, i) => (
                       <span key={i} className="px-2 py-0.5 bg-[var(--surf)] border border-[var(--b)] rounded font-mono text-[10px]">{v}</span>
                     ))}
                   </div>
@@ -1922,7 +1983,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
 
                 <div className="flex items-center gap-3 mt-2.5 text-[10.5px]">
                   <span className="flex items-center gap-1 text-[var(--blue-tx)]">
-                    <span className="w-2 h-2 rounded-full bg-[var(--blue)]" /> All 10 columns are required
+                    <span className="w-2 h-2 rounded-full bg-[var(--blue)]" /> 10 columns are required (Aadhar is optional)
                   </span>
                   <span className="ml-auto text-[var(--tx3)]">
                     Dates accepted as: YYYY-MM-DD · DD/MM/YYYY · DD-MM-YYYY
@@ -1968,6 +2029,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                       <th className="px-2 py-2 text-left font-medium w-[130px]">Admission Date</th>
                       <th className="px-2 py-2 text-left font-medium w-[140px]">Parent Name *</th>
                       <th className="px-2 py-2 text-left font-medium w-[120px]">Mobile *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Aadhar</th>
                       <th className="px-2 py-2 text-left font-medium">Address</th>
                       <th className="px-2 py-2 text-center font-medium w-[50px]">Action</th>
                     </tr>
@@ -2063,6 +2125,14 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                               value={s.phone}
                               onChange={(e) => updateStudentField(s.id, 'phone', e.target.value)}
                               className={`w-full bg-[var(--surf2)] border ${s.phone === 'N/A' || !s.phone ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.aadhar_number || ''}
+                              onChange={(e) => updateStudentField(s.id, 'aadhar_number', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${s.aadhar_number && s.aadhar_number.replace(/\D/g, '').length !== 12 ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              placeholder="12-digit"
                             />
                           </td>
                           <td className="px-1 py-1.5">
