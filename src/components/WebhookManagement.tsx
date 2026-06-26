@@ -6,7 +6,8 @@ import {
   Globe, Plus, Trash2, Edit2, CheckCircle2, Shield, 
   AlertCircle, RefreshCw, X, Loader2, Save,
   Activity, Search, Clock, ShieldAlert, Power, List, 
-  Send, Eye, EyeOff, Copy, ArrowLeft, Play, AlertTriangle
+  Send, Eye, EyeOff, Copy, ArrowLeft, Play, AlertTriangle,
+  Settings
 } from 'lucide-react';
 
 interface Webhook {
@@ -37,8 +38,21 @@ interface WebhookCall {
   created_at: string;
 }
 
+const formatDateTime = (dateStr?: string) => {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+};
+
 export function WebhookManagement() {
-  const [view, setView] = useState<'list' | 'configure'>('list');
+  const [view, setView] = useState<'list' | 'configure' | 'logs'>('list');
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loadingWebhooks, setLoadingWebhooks] = useState(false);
 
@@ -75,6 +89,9 @@ export function WebhookManagement() {
   const [testingDaily, setTestingDaily] = useState(false);
   const [sendingDaily, setSendingDaily] = useState(false);
   const [replayingCallId, setReplayingCallId] = useState<string | null>(null);
+
+  const [inspectingCall, setInspectingCall] = useState<WebhookCall | null>(null);
+  const [activeInspectTab, setActiveInspectTab] = useState<'payload' | 'response'>('payload');
 
   // Message states
   const [successMsg, setSuccessMsg] = useState('');
@@ -352,6 +369,12 @@ export function WebhookManagement() {
     setSecretVisible(false);
     loadWebhookCalls(w.id);
     setView('configure');
+  };
+
+  const openLogsView = (w: Webhook) => {
+    setSelectedWebhook(w);
+    loadWebhookCalls(w.id);
+    setView('logs');
   };
 
   // Open Create / New View
@@ -777,7 +800,15 @@ export function WebhookManagement() {
                             <button
                               onClick={() => openConfigureView(w)}
                               className="p-1.5 bg-[var(--surf2)] border border-[var(--b)] hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--blue-tx)] rounded-lg transition-all cursor-pointer"
-                              title="Configure & Logs"
+                              title="Configure"
+                            >
+                              <Settings size={12} />
+                            </button>
+
+                            <button
+                              onClick={() => openLogsView(w)}
+                              className="p-1.5 bg-[var(--surf2)] border border-[var(--b)] hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--blue-tx)] rounded-lg transition-all cursor-pointer"
+                              title="View Logs"
                             >
                               <List size={12} />
                             </button>
@@ -811,7 +842,7 @@ export function WebhookManagement() {
             </div>
           </Card>
         </>
-      ) : (
+      ) : view === 'configure' ? (
         /* ================= CONFIGURE / EDIT VIEW ================= */
         <div className="space-y-4">
           {/* Breadcrumbs & Title Row */}
@@ -1139,6 +1170,283 @@ export function WebhookManagement() {
               </Card>
             </div>
           </form>
+        </div>
+      ) : (
+        /* ================= WEBHOOK LOGS VIEW ================= */
+        <div className="space-y-4">
+          {/* Breadcrumbs & Title Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-1.5 text-[11px] text-[var(--tx3)]">
+                <span className="hover:text-[var(--tx)] cursor-pointer" onClick={() => setView('list')}>Webhooks</span>
+                <span>/</span>
+                <span>Logs</span>
+              </div>
+              <h2 className="text-[15px] font-bold text-[var(--tx)] mt-1 flex items-center gap-2">
+                <List size={16} className="text-[var(--blue-tx)]" />
+                Webhook Logs for <span className="font-mono text-[13px] bg-[var(--surf2)] px-2 py-0.5 rounded border border-[var(--b)]">{selectedWebhook?.url}</span>
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => selectedWebhook && loadWebhookCalls(selectedWebhook.id)}
+                className="px-3.5 py-1.5 border border-[var(--b)] hover:bg-[var(--surf2)] text-[11.5px] font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw size={12} />
+                Refresh Logs
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className="px-3.5 py-1.5 border border-[var(--b)] hover:bg-[var(--surf2)] text-[11.5px] font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <X size={12} />
+                Close
+              </button>
+            </div>
+          </div>
+
+          {/* Stats Cards Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-[var(--surf)] border border-[var(--b)] border-l-4 border-l-blue-500 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <span className="text-[9.5px] font-semibold text-[var(--tx3)] uppercase tracking-wider block">Total Attempts</span>
+                <span className="text-[20px] font-extrabold text-[var(--tx)] mt-1 block">
+                  {loadingCalls ? <Loader2 size={14} className="animate-spin inline" /> : webhookCalls.length}
+                </span>
+              </div>
+              <Activity size={18} className="text-blue-500 opacity-80" />
+            </div>
+
+            <div className="bg-[var(--surf)] border border-[var(--b)] border-l-4 border-l-emerald-500 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <span className="text-[9.5px] font-semibold text-[var(--tx3)] uppercase tracking-wider block">Successful Deliveries</span>
+                <span className="text-[20px] font-extrabold text-[var(--tx)] mt-1 block">
+                  {loadingCalls ? (
+                    <Loader2 size={14} className="animate-spin inline" />
+                  ) : (
+                    webhookCalls.filter(c => c.success).length
+                  )}
+                </span>
+              </div>
+              <CheckCircle2 size={18} className="text-emerald-500 opacity-80" />
+            </div>
+
+            <div className="bg-[var(--surf)] border border-[var(--b)] border-l-4 border-l-rose-500 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <span className="text-[9.5px] font-semibold text-[var(--tx3)] uppercase tracking-wider block">Failed Deliveries</span>
+                <span className="text-[20px] font-extrabold text-[var(--tx)] mt-1 block">
+                  {loadingCalls ? (
+                    <Loader2 size={14} className="animate-spin inline" />
+                  ) : (
+                    webhookCalls.filter(c => !c.success).length
+                  )}
+                </span>
+              </div>
+              <AlertCircle size={18} className="text-rose-500 opacity-80" />
+            </div>
+
+            <div className="bg-[var(--surf)] border border-[var(--b)] border-l-4 border-l-amber-500 rounded-xl p-3.5 flex items-center justify-between">
+              <div>
+                <span className="text-[9.5px] font-semibold text-[var(--tx3)] uppercase tracking-wider block">Success Rate</span>
+                <span className="text-[20px] font-extrabold text-[var(--tx)] mt-1 block">
+                  {loadingCalls ? (
+                    <Loader2 size={14} className="animate-spin inline" />
+                  ) : (
+                    `${webhookCalls.length > 0 ? Math.round((webhookCalls.filter(c => c.success).length / webhookCalls.length) * 100) : 100}%`
+                  )}
+                </span>
+              </div>
+              <Activity size={18} className="text-amber-500 opacity-80" />
+            </div>
+          </div>
+
+          {/* Webhook Logs Table Card */}
+          <Card padding={false} className="overflow-hidden">
+            <div className="px-4 py-3 border-b border-[var(--b)]">
+              <h3 className="text-[12.5px] font-bold text-[var(--tx)]">Delivery History</h3>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[var(--b)] bg-[var(--surf2)] text-[10.5px] font-bold text-[var(--tx3)] uppercase tracking-wider">
+                    <th className="px-4 py-2.5">Attempt ID</th>
+                    <th className="px-4 py-2.5">Status</th>
+                    <th className="px-4 py-2.5">HTTP Code</th>
+                    <th className="px-4 py-2.5">Response Time</th>
+                    <th className="px-4 py-2.5">Timestamp</th>
+                    <th className="px-4 py-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingCalls ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12">
+                        <div className="flex items-center justify-center gap-2">
+                          <Loader2 className="animate-spin text-[var(--blue)]" size={16} />
+                          <span className="text-[12px] text-[var(--tx3)]">Loading delivery history...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : webhookCalls.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-12 text-[12px] text-[var(--tx3)] italic">
+                        No delivery attempts recorded for this webhook.
+                      </td>
+                    </tr>
+                  ) : (
+                    webhookCalls.map(call => (
+                      <tr key={call.id} className="border-b border-[var(--b)]/60 text-[12px] hover:bg-[var(--surf2)]/25">
+                        <td className="px-4 py-3.5 font-mono text-[11px] text-[var(--tx2)]">
+                          #{call.id}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          {call.success ? (
+                            <Badge variant="green">Success</Badge>
+                          ) : (
+                            <Badge variant="red">Failed</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 font-mono font-semibold">
+                          <span className={call.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+                            {call.status_code || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 font-mono text-[11px] text-[var(--tx2)]">
+                          {call.execution_time_ms ? `${call.execution_time_ms}ms` : 'N/A'}
+                        </td>
+                        <td className="px-4 py-3.5 text-[11px] text-[var(--tx2)]">
+                          {formatDateTime(call.created_at)}
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setInspectingCall(call);
+                                setActiveInspectTab('payload');
+                              }}
+                              className="px-2.5 py-1 bg-[var(--blue-bg)] text-[var(--blue-tx)] hover:bg-[var(--blue-bg)]/80 text-[11px] font-semibold rounded transition-colors cursor-pointer"
+                            >
+                              Inspect
+                            </button>
+                            
+                            <button
+                              onClick={() => handleReplayCall(call.id)}
+                              disabled={replayingCallId === call.id}
+                              className="p-1 hover:bg-[var(--surf3)] text-[var(--tx3)] hover:text-[var(--blue-tx)] rounded transition-colors cursor-pointer disabled:opacity-50"
+                              title="Replay payload"
+                            >
+                              {replayingCallId === call.id ? (
+                                <Loader2 size={12} className="animate-spin text-[var(--blue)]" />
+                              ) : (
+                                <Play size={12} />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ================= INSPECT TRANSACTION DETAILS MODAL ================= */}
+      {inspectingCall && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-fadeIn">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[800px] shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-[var(--b)] flex items-center justify-between">
+              <h3 className="text-[15px] font-bold text-[var(--tx)]">Transaction Details</h3>
+              <button
+                onClick={() => setInspectingCall(null)}
+                className="p-1.5 rounded-lg hover:bg-[var(--surf2)] text-[var(--tx3)] hover:text-[var(--tx)] transition-colors cursor-pointer"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Custom Tabs */}
+            <div className="px-6 pt-4 border-b border-[var(--b)] bg-[var(--surf)] flex gap-4">
+              <button
+                onClick={() => setActiveInspectTab('payload')}
+                className={`pb-3 text-[13px] font-medium border-b-2 transition-all cursor-pointer ${
+                  activeInspectTab === 'payload'
+                    ? 'text-[var(--blue)] border-[var(--blue)] font-semibold'
+                    : 'text-[var(--tx3)] border-transparent hover:text-[var(--tx)]'
+                }`}
+              >
+                Request Payload
+              </button>
+              <button
+                onClick={() => setActiveInspectTab('response')}
+                className={`pb-3 text-[13px] font-medium border-b-2 transition-all cursor-pointer ${
+                  activeInspectTab === 'response'
+                    ? 'text-[var(--blue)] border-[var(--blue)] font-semibold'
+                    : 'text-[var(--tx3)] border-transparent hover:text-[var(--tx)]'
+                }`}
+              >
+                Response Body
+              </button>
+            </div>
+
+            {/* Code Block Container */}
+            <div className="p-6 overflow-y-auto flex-1 bg-[var(--surf)]">
+              <pre className="bg-[#1e2530] text-slate-100 p-4 rounded-xl font-mono text-[12px] overflow-auto max-h-[400px] whitespace-pre-wrap break-all leading-relaxed border border-slate-800">
+                <code>
+                  {(() => {
+                    const data = activeInspectTab === 'payload' ? inspectingCall.payload : inspectingCall.response_body;
+                    if (!data) return '{}';
+                    if (typeof data === 'string') {
+                      try {
+                        return JSON.stringify(JSON.parse(data), null, 2);
+                      } catch {
+                        return data;
+                      }
+                    }
+                    return JSON.stringify(data, null, 2);
+                  })()}
+                </code>
+              </pre>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-[var(--b)] bg-[var(--surf2)]/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="text-[11px] text-[var(--tx3)] font-mono">
+                ID: {inspectingCall.id} | {formatDateTime(inspectingCall.created_at)}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleReplayCall(inspectingCall.id)}
+                  disabled={replayingCallId === inspectingCall.id}
+                  className="px-3.5 py-1.5 bg-[#28b5d6] hover:bg-[#209cb8] text-white text-[12px] font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {replayingCallId === inspectingCall.id ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={13} />
+                  )}
+                  Replay Event
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInspectingCall(null)}
+                  className="px-4 py-1.5 border border-[var(--b)] bg-[var(--surf)] hover:bg-[var(--surf2)] text-[12px] font-semibold rounded-lg text-[var(--tx)] cursor-pointer transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
