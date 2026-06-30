@@ -66,37 +66,11 @@ export function Expenses() {
           receipt: !!e.receipt,
         };
       });
-      // MOCK DATA START
-      setExpenses((prev) => {
-        const hasMocks = prev.some((e) => e.id.startsWith('mock-'));
-        const mockList = hasMocks ? [] : [
-          { id: 'mock-1', category: 'Electricity', description: 'Power bill for May 2026', amount: 8400, date: '2026-05-15', vendor: 'Telangana SPDCL', status: 'Approved', receipt: true },
-          { id: 'mock-2', category: 'Maintenance', description: 'Plumbing repairs in block A', amount: 3500, date: '2026-05-20', vendor: 'Local Plumber', status: 'Approved', receipt: false },
-          { id: 'mock-3', category: 'Stationery', description: 'Whiteboard markers and chalk', amount: 1500, date: '2026-05-22', vendor: 'Royal Stationery', status: 'Approved', receipt: true },
-          { id: 'mock-4', category: 'Utilities', description: 'Drinking water cans supply', amount: 2400, date: '2026-05-25', vendor: 'Bisleri Distributors', status: 'Pending', receipt: false },
-          { id: 'mock-5', category: 'Transport', description: 'School bus diesel filling', amount: 12000, date: '2026-05-28', vendor: 'HP Petrol Pump', status: 'Approved', receipt: true },
-        ];
-        const combined = [...mockList, ...mapped];
-        return combined.map((newItem) => {
-          const existing = prev.find((e) => e.id === newItem.id);
-          return existing ? { ...newItem, status: existing.status } : newItem;
-        });
-      });
-      // MOCK DATA END
+      setExpenses(mapped);
     } catch (err) {
       console.error('Error loading expenses:', err);
       // Fallback if API is not connected or failing
-      setExpenses((prev) => {
-        const hasMocks = prev.some((e) => e.id.startsWith('mock-'));
-        if (hasMocks) return prev;
-        return [
-          { id: 'mock-1', category: 'Electricity', description: 'Power bill for May 2026', amount: 8400, date: '2026-05-15', vendor: 'Telangana SPDCL', status: 'Approved', receipt: true },
-          { id: 'mock-2', category: 'Maintenance', description: 'Plumbing repairs in block A', amount: 3500, date: '2026-05-20', vendor: 'Local Plumber', status: 'Approved', receipt: false },
-          { id: 'mock-3', category: 'Stationery', description: 'Whiteboard markers and chalk', amount: 1500, date: '2026-05-22', vendor: 'Royal Stationery', status: 'Approved', receipt: true },
-          { id: 'mock-4', category: 'Utilities', description: 'Drinking water cans supply', amount: 2400, date: '2026-05-25', vendor: 'Bisleri Distributors', status: 'Pending', receipt: false },
-          { id: 'mock-5', category: 'Transport', description: 'School bus diesel filling', amount: 12000, date: '2026-05-28', vendor: 'HP Petrol Pump', status: 'Approved', receipt: true },
-        ];
-      });
+      setExpenses([]);
     } finally {
       setLoading(false);
     }

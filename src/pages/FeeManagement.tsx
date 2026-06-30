@@ -308,7 +308,7 @@ export function FeeManagement() {
     setLoading(true);
     try {
       const [studentsData, categoriesData, allStudentFees] = await Promise.all([
-        api.getResources('students', { with: 'batch' }),
+        api.getResources('students', { with: 'batch.academicYear', limit: '1000' }),
         api.getResources('fee-categories').catch(() => []),
         api.getResources('student-fees', { limit: '10000' }).catch(() => []),
       ]);

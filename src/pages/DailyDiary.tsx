@@ -429,7 +429,7 @@ function TeacherDiaryView() {
         homework,
         notes,
         diary_date: new Date().toISOString().slice(0, 10),
-        parents_count: 35, // Mock parent count
+        parents_count: 0,
       });
       setTopics('');
       setHomework('');

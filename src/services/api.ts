@@ -1,16 +1,20 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 const cache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 5000; // 5 seconds cache TTL, allowing data to update without browser refresh
+const CACHE_TTL = 300000; // 5 minutes cache TTL, allowing data to update without browser refresh
 
 export function clearApiCache(resource?: string) {
   if (!resource) {
     cache.clear();
     return;
   }
-  const prefix = `/resources/${resource}`;
+  const prefix1 = `/resources/${resource}`;
+  const prefix2 = `/${resource}`;
   for (const key of cache.keys()) {
-    if (key === prefix || key.startsWith(prefix + '?') || key.startsWith(prefix + '/')) {
+    if (
+      key === prefix1 || key.startsWith(prefix1 + '?') || key.startsWith(prefix1 + '/') ||
+      key === prefix2 || key.startsWith(prefix2 + '?') || key.startsWith(prefix2 + '/')
+    ) {
       cache.delete(key);
     }
   }
@@ -57,12 +61,7 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
   const method = fetchOptions.method || 'GET';
 
   // Cache GET requests (excluding real-time/dynamic resources like settings, attendance, and activity logs)
-  const bypassCache = path.includes('/settings') ||
-    path.includes('/attendance') ||
-    path.includes('/substitutes') ||
-    path.includes('/substitute-assignments') ||
-    path.includes('/activity-logs') ||
-    path.includes('/bus/') ||
+  const bypassCache = path.includes('/bus/') ||
     path.includes('/realtime') ||
     path.includes('/live-feed');
 
@@ -554,33 +553,44 @@ export const originalRemoveItem = localStorage.removeItem.bind(localStorage);
 // Monkey-patch localStorage.setItem to automatically sync with database settings
 // @ts-ignore
 localStorage.setItem = function (key: string, value: string) {
+  const currentVal = localStorage.getItem(key);
   originalSetItem(key, value);
+
+  if (currentVal === value) {
+    return;
+  }
 
   const keysToExclude = ['token', 'user', 'selected_academic_year_id', 'timetable_period_timings', 'kts_student_attendance_records'];
 
   const token = localStorage.getItem('token');
   if (token && !keysToExclude.includes(key)) {
     // Use silent mode so background DB-sync failures never trigger kts:unauthorized
-    // or cause the user to be logged out for an unrelated background operation.
-    request(`/resources/settings`, { method: 'GET', silent: true })
-      .then(async (settings: any) => {
-        const existing = Array.isArray(settings) ? settings.find((s: any) => s.key === key) : null;
-        if (existing) {
-          await request(`/resources/settings/${existing.id}`, { method: 'PUT', body: JSON.stringify({ key, value }), silent: true });
-        } else {
-          await request('/resources/settings', { method: 'POST', body: JSON.stringify({ key, value, group: 'general', type: 'json', is_public: false, is_encrypted: false }), silent: true });
-        }
-      })
-      .catch((err) => {
-        console.error(`Failed to automatically sync key "${key}" to database:`, err);
-      });
+    request('/resources/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        key,
+        value,
+        group: 'general',
+        type: 'json',
+        is_public: false,
+        is_encrypted: false
+      }),
+      silent: true
+    }).catch((err) => {
+      console.error(`Failed to automatically sync key "${key}" to database:`, err);
+    });
   }
 };
 
 // Monkey-patch localStorage.removeItem to automatically delete from database settings
 // @ts-ignore
 localStorage.removeItem = function (key: string) {
+  const currentVal = localStorage.getItem(key);
   originalRemoveItem(key);
+
+  if (currentVal === null) {
+    return;
+  }
 
   const token = localStorage.getItem('token');
   if (token && key !== 'token' && key !== 'user') {

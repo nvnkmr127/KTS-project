@@ -340,6 +340,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } catch (tErr) {
         console.error('Error loading timetable in AppContext:', tErr);
       }
+
+      // Delay pre-fetching of non-critical tab resources by 1.5 seconds
+      setTimeout(() => {
+        api.getResources('students', { with: 'batch.academicYear', limit: '1000' }).catch(() => {});
+        api.getResources('batches').catch(() => {});
+        api.getResources('holidays').catch(() => {});
+        api.getSubstituteStaff().catch(() => {});
+        api.getResources('daily-diaries').catch(() => {});
+        api.getResources('fee-categories').catch(() => {});
+        api.getResources('student-fees', { limit: '10000' }).catch(() => {});
+      }, 1500);
     }
     loadInitialData();
   }, [user]);

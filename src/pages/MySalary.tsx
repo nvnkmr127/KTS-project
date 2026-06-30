@@ -7,8 +7,9 @@ import { useAuth } from '../context/AuthContext';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { api } from '../services/api';
+import { api, originalSetItem } from '../services/api';
 import { STAFF } from './StaffManagement';
+import { generateMonths, getYearMonth, calculateLeaveAccrual } from '../utils/salaryHelpers';
 
 interface PayslipRecord {
   id: string;
@@ -34,18 +35,19 @@ const tooltipStyle = {
 };
 
 const getComponentAmt = (
-  comp: { id: string; type: 'earning' | 'deduction'; calculationType?: 'flat' | 'percentage' },
+  comp: { id: string; name?: string; calculationType?: string },
   salaries: Record<string, number>,
   basicAmt: number,
-  fallbackAmt: number
+  fallbackAmt: number,
+  lop: number = 0
 ) => {
   if (comp.id === 'basic') return basicAmt;
   const val = salaries[comp.id];
   if (val !== undefined) {
     if (comp.calculationType === 'percentage') {
-      return Math.round((val / 100) * basicAmt);
+      return Math.round((val / 100) * basicAmt) + (comp.id === 'deductions' ? lop : 0);
     }
-    return val;
+    return val + (comp.id === 'deductions' ? lop : 0);
   }
   return fallbackAmt;
 };
@@ -80,6 +82,25 @@ export function MySalary() {
   const [selectedSlip, setSelectedSlip] = useState<PayslipRecord | null>(null);
   const [components, setComponents] = useState<any[]>([]);
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
+  const [leavesList, setLeavesList] = useState<any[]>([]);
+  const [myStaffRecord, setMyStaffRecord] = useState<any>(null);
+
+  const getLopDeduction = (s: any, monthStr: string): number => {
+    const ym = getYearMonth(monthStr);
+    if (!ym) return 0;
+    const { year, month } = ym;
+    const { unpaidDaysInTargetMonth } = calculateLeaveAccrual(leavesList, String(s.id), s.joinDate, year, month);
+    if (unpaidDaysInTargetMonth <= 0) return 0;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const baseSalary = Number(s.salary) || 25000;
+    const perDaySalary = baseSalary / daysInMonth;
+    return Math.round(unpaidDaysInTargetMonth * perDaySalary);
+  };
+
+  const getRowLop = (p: PayslipRecord) => {
+    if (!myStaffRecord) return 0;
+    return getLopDeduction(myStaffRecord, p.month);
+  };
 
   const [dbSyncCompleted, setDbSyncCompleted] = useState(false);
 
@@ -90,7 +111,7 @@ export function MySalary() {
         
         const compSetting = settings.find((s: any) => s.key === 'salary_components');
         if (compSetting && compSetting.value) {
-          localStorage.setItem('salary_components', compSetting.value);
+          originalSetItem('salary_components', compSetting.value);
           setComponents(JSON.parse(compSetting.value));
         } else {
           const savedComps = localStorage.getItem('salary_components');
@@ -108,7 +129,7 @@ export function MySalary() {
 
         const salariesSetting = settings.find((s: any) => s.key === 'staff_salaries');
         if (salariesSetting && salariesSetting.value) {
-          localStorage.setItem('staff_salaries', salariesSetting.value);
+          originalSetItem('staff_salaries', salariesSetting.value);
           setStaffSalaries(JSON.parse(salariesSetting.value));
         } else {
           const savedSalaries = localStorage.getItem('staff_salaries');
@@ -117,7 +138,7 @@ export function MySalary() {
         
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         if (staffSetting && staffSetting.value) {
-          localStorage.setItem('kts_staff_members', staffSetting.value);
+          originalSetItem('kts_staff_members', staffSetting.value);
         }
       } catch (err) {
         console.error('Error syncing settings from DB:', err);
@@ -147,6 +168,34 @@ export function MySalary() {
     if (!user) return;
     setLoading(true);
     try {
+      const savedSalariesStr = localStorage.getItem('staff_salaries');
+      const currentSalaries = savedSalariesStr ? JSON.parse(savedSalariesStr) : staffSalaries;
+      const userSalaries = currentSalaries[user.id] || 
+        currentSalaries[Object.keys(currentSalaries).find(k => isNameMatch(k, user.name)) || ''] || 
+        {};
+
+      const leavesData = await api.getResources('leaves').catch(() => []);
+      const mappedLeaves = (leavesData || []).map((l: any) => ({
+        id: String(l.id),
+        staffId: String(l.user_id || ''),
+        staffName: l.staff_name || '',
+        type: l.leave_type || '',
+        from: l.start_date || '',
+        to: l.end_date || '',
+        days: Number(l.days) || 1,
+        status: l.status || 'Pending',
+      }));
+      setLeavesList(mappedLeaves);
+
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
+      let staffRecord = currentStaffList.find(
+        (s: any) =>
+          (s.email && user.email && s.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+          isNameMatch(s.name, user.name)
+      );
+      setMyStaffRecord(staffRecord);
+
       // Fetch payslips from backend API
       const data = await api.getResources('payslips');
       const apiSlips = data
@@ -156,9 +205,9 @@ export function MySalary() {
           const deductions = Number(p.total_deductions) || 0;
           const net = Number(p.net_salary) || 0;
 
-          const basic = Math.round(gross * 0.65);
-          const hra = Math.round(gross * 0.20);
-          const allowances = gross - basic - hra;
+          const basic = userSalaries['basic'] !== undefined ? userSalaries['basic'] : Math.round(gross * 0.65);
+          const hra = userSalaries['hra'] !== undefined ? userSalaries['hra'] : Math.round(gross * 0.20);
+          const allowances = userSalaries['allowances'] !== undefined ? userSalaries['allowances'] : gross - basic - hra;
 
           return {
             id: String(p.id),
@@ -170,34 +219,13 @@ export function MySalary() {
             deductions,
             gross,
             net,
-            status: p.status === 'paid' ? 'Paid' : p.status === 'on_hold' ? 'On Hold' : 'Pending',
+            status: p.status?.toLowerCase() === 'paid' ? 'Paid' : 'Pending',
             month: `${p.month} ${p.year}`,
           };
         });
 
-      // Filter and include mock data matching the logged-in teacher
-      const mockSalaries = [
-        { id: 'mock-s1', userId: '3', name: 'Mrs. Lakshmi Devi', basic: 22750, hra: 7000, allowances: 5250, deductions: 3000, gross: 35000, net: 32000, status: 'Paid' as const, month: 'May 2026' },
-        { id: 'mock-s2', userId: '4', name: 'Mr. R. K. Prasad', basic: 26000, hra: 8000, allowances: 6000, deductions: 3500, gross: 40000, net: 36500, status: 'Paid' as const, month: 'May 2026' },
-        { id: 'mock-s3', userId: '5', name: 'Ms. S. Anitha', basic: 19500, hra: 6000, allowances: 4500, deductions: 2500, gross: 30000, net: 27500, status: 'Pending' as const, month: 'May 2026' },
-        { id: 'mock-s4', userId: '6', name: 'Mr. V. Suresh', basic: 21125, hra: 6500, allowances: 4875, deductions: 2800, gross: 32500, net: 29700, status: 'On Hold' as const, month: 'May 2026' },
-      ];
-
-      const matchingMock = mockSalaries.filter(
-        (m) => String(m.userId) === String(user.id) || isNameMatch(m.name, user.name)
-      );
-
-      // Merge backend payslips with matching mock data, ordering by date/ID
-      const merged = [...matchingMock, ...apiSlips];
-
-      // Load current staff list to generate virtual pending slips if none exists
-      const savedStaffStr = localStorage.getItem('kts_staff_members');
-      const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
-      let staffRecord = currentStaffList.find(
-        (s: any) =>
-          (s.email && user.email && s.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
-          isNameMatch(s.name, user.name)
-      );
+      // Merge backend payslips
+      const merged: PayslipRecord[] = apiSlips;
 
       if (!staffRecord && user) {
         // Fallback: construct a virtual staff record using logged-in user info
@@ -231,15 +259,38 @@ export function MySalary() {
       }
 
       // Standard months list to match admin panel's filters
-      const targetMonths = ['May 2026', 'April 2026', 'March 2026', 'February 2026'];
+      const targetMonths = generateMonths();
 
       // Ensure that for each target month, there is a payslip. If not, generate a virtual one.
       targetMonths.forEach((month) => {
         const hasSlip = merged.some((s) => s.month === month);
         if (!hasSlip && staffRecord) {
-          const basic = staffRecord.salary ? Math.round(staffRecord.salary * 0.65) : 25000;
-          const hra = staffRecord.salary ? Math.round(staffRecord.salary * 0.20) : 8000;
-          const allowances = staffRecord.salary ? staffRecord.salary - basic - hra : 5000;
+          const basic = userSalaries['basic'] !== undefined ? userSalaries['basic'] : (staffRecord.salary ? Math.round(staffRecord.salary * 0.65) : 25000);
+          const hra = userSalaries['hra'] !== undefined ? userSalaries['hra'] : (staffRecord.salary ? Math.round(staffRecord.salary * 0.20) : 8000);
+          const allowances = userSalaries['allowances'] !== undefined ? userSalaries['allowances'] : (staffRecord.salary ? staffRecord.salary - basic - hra : 5000);
+          const lop = getLopDeduction(staffRecord, month);
+          const deductions = (userSalaries['deductions'] !== undefined ? userSalaries['deductions'] : 3000) + lop;
+
+          let gross = 0;
+          let totalDeductions = 0;
+          const slipActiveComponents = components.filter(
+            (c) => !c.month || c.month === 'All' || c.month === month
+          );
+          slipActiveComponents.forEach((c) => {
+            const fallback = c.id === 'basic' ? basic : c.id === 'hra' ? hra : c.id === 'allowances' ? allowances : c.id === 'deductions' ? deductions : 0;
+            const val = userSalaries[c.id];
+            let amt = fallback;
+            if (val !== undefined) {
+              if (c.calculationType === 'percentage') {
+                amt = Math.round((val / 100) * basic) + (c.id === 'deductions' ? lop : 0);
+              } else {
+                amt = val + (c.id === 'deductions' ? lop : 0);
+              }
+            }
+            if (c.type === 'earning') gross += amt;
+            else totalDeductions += amt;
+          });
+          const net = Math.max(0, gross - totalDeductions);
 
           merged.push({
             id: `virtual-${staffRecord.id}-${month}`,
@@ -248,9 +299,9 @@ export function MySalary() {
             basic,
             hra,
             allowances,
-            deductions: 3000,
-            gross: staffRecord.salary || 38000,
-            net: staffRecord.salary ? staffRecord.salary - 3000 : 35000,
+            deductions,
+            gross,
+            net,
             status: 'Pending',
             month: month
           });
@@ -359,10 +410,15 @@ export function MySalary() {
     let earningsSum = 0;
     let deductionsSum = 0;
     const basicAmt = userSalaries['basic'] !== undefined ? userSalaries['basic'] : p.basic;
+    const lop = getRowLop(p);
     
-    components.forEach((c) => {
+    const slipActiveComponents = components.filter(
+      (c) => !c.month || c.month === 'All' || c.month === p.month
+    );
+
+    slipActiveComponents.forEach((c) => {
       const fallback = getFallbackAmt(c, p);
-      const amt = getComponentAmt(c, userSalaries, basicAmt, fallback);
+      const amt = getComponentAmt(c, userSalaries, basicAmt, fallback, lop);
       if (c.type === 'earning') earningsSum += amt;
       else deductionsSum += amt;
     });
@@ -378,12 +434,18 @@ export function MySalary() {
   const latestPayslip = payslips.find(p => p.status === 'Paid') || payslips[0];
   const activeBasic = userSalaries['basic'] !== undefined ? userSalaries['basic'] : (latestPayslip?.basic ?? 25000);
   
+  const activeMonth = latestPayslip?.month || 'May 2026';
+  const activeComponents = components.filter(
+    (c) => !c.month || c.month === 'All' || c.month === activeMonth
+  );
+
   // Calculate dynamic components
   let grossSalary = 0;
   let totalDeductionsSum = 0;
-  const salaryDetails = components.map(c => {
+  const latestLop = latestPayslip ? getRowLop(latestPayslip) : 0;
+  const salaryDetails = activeComponents.map(c => {
     const fallback = getFallbackAmt(c, latestPayslip || { basic: 25000, hra: 8000, allowances: 5000, deductions: 3000, gross: 38000 });
-    const amt = getComponentAmt(c, userSalaries, activeBasic, fallback);
+    const amt = getComponentAmt(c, userSalaries, activeBasic, fallback, latestLop);
     if (c.type === 'earning') grossSalary += amt;
     else totalDeductionsSum += amt;
     return { name: c.name, type: c.type, amount: amt };
@@ -574,25 +636,30 @@ export function MySalary() {
               {(() => {
                 const foundKey = Object.keys(staffSalaries).find(k => isNameMatch(k, selectedSlip.name));
                 const slipSalaries = (foundKey ? staffSalaries[foundKey] : undefined) || (selectedSlip.userId ? staffSalaries[selectedSlip.userId] : undefined) || {};
+                const lop = getRowLop(selectedSlip);
                 let earningsSum = 0;
                 let deductionsSum = 0;
                 const basicAmt = slipSalaries['basic'] !== undefined ? slipSalaries['basic'] : selectedSlip.basic;
                 
-                components.forEach((c) => {
+                const slipActiveComponents = components.filter(
+                  (c) => !c.month || c.month === 'All' || c.month === selectedSlip.month
+                );
+
+                slipActiveComponents.forEach((c) => {
                   const fallback = getFallbackAmt(c, selectedSlip);
-                  const amt = getComponentAmt(c, slipSalaries, basicAmt, fallback);
+                  const amt = getComponentAmt(c, slipSalaries, basicAmt, fallback, lop);
                   if (c.type === 'earning') earningsSum += amt;
                   else deductionsSum += amt;
                 });
 
-                const earnings = components.filter(c => c.type === 'earning').map(c => ({
+                const earnings = slipActiveComponents.filter(c => c.type === 'earning').map(c => ({
                   label: c.name,
-                  amount: getComponentAmt(c, slipSalaries, basicAmt, getFallbackAmt(c, selectedSlip))
+                  amount: getComponentAmt(c, slipSalaries, basicAmt, getFallbackAmt(c, selectedSlip), lop)
                 }));
 
-                const deductions = components.filter(c => c.type === 'deduction').map(c => ({
+                const deductions = slipActiveComponents.filter(c => c.type === 'deduction').map(c => ({
                   label: c.name,
-                  amount: getComponentAmt(c, slipSalaries, basicAmt, getFallbackAmt(c, selectedSlip))
+                  amount: getComponentAmt(c, slipSalaries, basicAmt, getFallbackAmt(c, selectedSlip), lop)
                 }));
 
                 const grossVal = earningsSum;

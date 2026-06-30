@@ -12,13 +12,7 @@ import { Award, TrendingUp, Users, Percent } from 'lucide-react';
 const CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies'];
 
-const RESULTS_MOCK = [
-  { name: 'Priya Sharma', init: 'PS', roll: '8A-002', maths: 92, science: 88, english: 85, telugu: 90, social: 78, total: 433, percentage: 86.6, grade: 'A+', rank: 1 },
-  { name: 'Arjun Reddy', init: 'AR', roll: '8B-001', maths: 88, science: 82, english: 79, telugu: 85, social: 84, total: 418, percentage: 83.6, grade: 'A', rank: 2 },
-  { name: 'Ananya Singh', init: 'AS', roll: '8A-008', maths: 85, science: 90, english: 82, telugu: 76, social: 82, total: 415, percentage: 83, grade: 'A', rank: 3 },
-  { name: 'Vikram K', init: 'VK', roll: '8A-010', maths: 78, science: 75, english: 88, telugu: 82, social: 80, total: 403, percentage: 80.6, grade: 'A', rank: 4 },
-  { name: 'Meena Nair', init: 'MN', roll: '7B-004', maths: 65, science: 70, english: 74, telugu: 79, social: 68, total: 356, percentage: 71.2, grade: 'B+', rank: 5 },
-];
+
 
 const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
   PS: { bg: 'var(--teal-bg)', color: 'var(--teal-tx)' },
@@ -177,20 +171,6 @@ export function Performance() {
         const roll = s.enrollment_number || `${selectedClass}-${String(idx + 1).padStart(3, '0')}`;
         return calculateStudentStats(s.name, roll, initials || 'ST');
       });
-    } else {
-      // Fallback mock data matching class prefix
-      const mockClassFilter = RESULTS_MOCK.filter((r) => r.roll.startsWith(selectedClass));
-      calculatedList = mockClassFilter.map((r) => {
-        const defaultMark = finalSubject === 'Science' ? r.science : finalSubject === 'English' ? r.english : finalSubject === 'Telugu' ? r.telugu : finalSubject === 'Social Studies' ? r.social : r.maths;
-        return {
-          name: r.name,
-          roll: r.roll,
-          init: r.init,
-          examScores: activeExams.length > 0 ? { [activeExams[0].id]: defaultMark } : {},
-          average: defaultMark,
-          hasMarks: true,
-        };
-      });
     }
 
     // Rank students by average percentage
@@ -205,7 +185,7 @@ export function Performance() {
 
   // Metrics calculations
   const totalStudents = studentData.length;
-  const scoredStudents = studentData.filter(s => s.hasMarks || !students.length); // if using mock, consider scored
+  const scoredStudents = studentData.filter(s => s.hasMarks);
   const classAvg = scoredStudents.length > 0 ? Math.round(scoredStudents.reduce((sum, s) => sum + s.average, 0) / scoredStudents.length) : 0;
   const highestScore = scoredStudents.length > 0 ? Math.max(...scoredStudents.map(s => s.average)) : 0;
   const passingRate = scoredStudents.length > 0 ? Math.round((scoredStudents.filter(s => s.average >= 35).length / scoredStudents.length) * 100) : 0;

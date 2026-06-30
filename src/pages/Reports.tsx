@@ -15,73 +15,14 @@ import { TabBar } from '../components/ui';
 import { api } from '../services/api';
 
 // --- FALLBACK MOCK DATA (used if database is empty) ---
-const defaultTermData = [
-  { cls: 'Class 6', t1: 95, t2: 88, t3: 0 },
-  { cls: 'Class 7', t1: 92, t2: 85, t3: 0 },
-  { cls: 'Class 8', t1: 88, t2: 72, t3: 0 },
-  { cls: 'Class 9', t1: 94, t2: 91, t3: 0 },
-  { cls: 'Class 10', t1: 90, t2: 84, t3: 0 },
-];
-
-const defaultAttPieData = [
-  { name: 'LKG–2nd', value: 95, color: 'var(--purple)' },
-  { name: '3rd–5th', value: 91, color: 'var(--blue)' },
-  { name: '6th–8th', value: 89, color: 'var(--teal)' },
-  { name: '9th–10th', value: 92, color: 'var(--coral)' },
-];
-
-const defaultYoyData = [
-  { month: 'Jan', 'Last Year (2025)': 120000, 'This Year (2026)': 145000 },
-  { month: 'Feb', 'Last Year (2025)': 132000, 'This Year (2026)': 158000 },
-  { month: 'Mar', 'Last Year (2025)': 141000, 'This Year (2026)': 162000 },
-  { month: 'Apr', 'Last Year (2025)': 118000, 'This Year (2026)': 138000 },
-  { month: 'May', 'Last Year (2025)': 95000, 'This Year (2026)': 115000 },
-  { month: 'Jun', 'Last Year (2025)': 175000, 'This Year (2026)': 210000 },
-  { month: 'Jul', 'Last Year (2025)': 160000, 'This Year (2026)': 195000 },
-  { month: 'Aug', 'Last Year (2025)': 155000, 'This Year (2026)': 188000 },
-  { month: 'Sep', 'Last Year (2025)': 148000, 'This Year (2026)': 175000 },
-  { month: 'Oct', 'Last Year (2025)': 152000, 'This Year (2026)': 182000 },
-  { month: 'Nov', 'Last Year (2025)': 130000, 'This Year (2026)': 0 },
-  { month: 'Dec', 'Last Year (2025)': 140000, 'This Year (2026)': 0 },
-];
-
-const defaultFunnelData = [
-  { stage: 'Invoiced Fees', value: 850000, percentage: 100, fill: 'var(--blue)' },
-  { stage: 'Verified/Billed', value: 810000, percentage: 95.2, fill: 'var(--purple)' },
-  { stage: 'Paid (Partial & Full)', value: 680000, percentage: 80, fill: 'var(--teal)' },
-  { stage: 'Fully Settled', value: 510000, percentage: 60, fill: 'var(--green)' },
-];
-
-const defaultCohortData = [
-  { cohort: 'Cohort 2022', enrolled: 180, year1: 100, year2: 92, year3: 88, year4: 85, avgPaid: '94.2%' },
-  { cohort: 'Cohort 2023', enrolled: 200, year1: 100, year2: 94, year3: 90, year4: null, avgPaid: '95.6%' },
-  { cohort: 'Cohort 2024', enrolled: 220, year1: 100, year2: 95, year3: null, year4: null, avgPaid: '92.1%' },
-  { cohort: 'Cohort 2025', enrolled: 250, year1: 100, year2: null, year3: null, year4: null, avgPaid: '88.5%' },
-];
-
-const defaultStaffAbsenceData = [
-  { name: 'K. Sunitha (Science)', role: 'Teacher', absences: 5, status: 'On Leave', rate: '77.2%' },
-  { name: 'M. Srinivas (Maths)', role: 'Teacher', absences: 4, status: 'Active', rate: '81.8%' },
-  { name: 'P. Rajesh (Social)', role: 'Teacher', absences: 3, status: 'Active', rate: '86.3%' },
-  { name: 'B. Anitha (Telugu)', role: 'Teacher', absences: 3, status: 'Active', rate: '86.3%' },
-  { name: 'T. Venkat (English)', role: 'Teacher', absences: 2, status: 'Active', rate: '90.9%' },
-];
-
-const staffAttTrend = [
-  { week: 'Week 1', rate: 94 },
-  { week: 'Week 2', rate: 92 },
-  { week: 'Week 3', rate: 95 },
-  { week: 'Week 4', rate: 93 },
-];
-
-const defaultForecastData = [
-  { month: 'Jul 2026', 'Min Expected': 140000, 'Projected Collection': 185000, 'Max Target': 210000, outstanding: 250000 },
-  { month: 'Aug 2026', 'Min Expected': 120000, 'Projected Collection': 160000, 'Max Target': 190000, outstanding: 210000 },
-  { month: 'Sep 2026', 'Min Expected': 155000, 'Projected Collection': 198000, 'Max Target': 230000, outstanding: 170000 },
-  { month: 'Oct 2026', 'Min Expected': 130000, 'Projected Collection': 175000, 'Max Target': 200000, outstanding: 140000 },
-  { month: 'Nov 2026', 'Min Expected': 110000, 'Projected Collection': 145000, 'Max Target': 180000, outstanding: 120000 },
-  { month: 'Dec 2026', 'Min Expected': 90000, 'Projected Collection': 125000, 'Max Target': 160000, outstanding: 95000 },
-];
+const defaultTermData: any[] = [];
+const defaultAttPieData: any[] = [];
+const defaultYoyData: any[] = [];
+const defaultFunnelData: any[] = [];
+const defaultCohortData: any[] = [];
+const defaultStaffAbsenceData: any[] = [];
+const staffAttTrend: any[] = [];
+const defaultForecastData: any[] = [];
 
 const exportsList = [
   { label: 'Fee Report', sub: 'PDF · Excel', icon: <Wallet size={14} />, iconBg: 'var(--teal-bg)', iconColor: 'var(--teal-tx)' },
@@ -115,15 +56,15 @@ export function Reports() {
   const [loading, setLoading] = useState(true);
 
   // Dynamic calculated states
-  const [kpis, setKpis] = useState({ reports: 48, lastExport: 'Today', dataPoints: '12k+' });
+  const [kpis, setKpis] = useState({ reports: 0, lastExport: 'Never', dataPoints: '0' });
   const [termFeeData, setTermFeeData] = useState(defaultTermData);
-  const [attPie, setAttPie] = useState(defaultAttPieData);
+  const [attPie] = useState(defaultAttPieData);
   const [yoyCollection, setYoyCollection] = useState(defaultYoyData);
   const [funnel, setFunnel] = useState(defaultFunnelData);
   const [cohorts, setCohorts] = useState<CohortData[]>(defaultCohortData);
   const [staffAbsences, setStaffAbsences] = useState(defaultStaffAbsenceData);
-  const [staffKPIs, setStaffKPIs] = useState({ rate: '93.5%', worstName: 'K. Sunitha (Science)', worstVal: '5 days', perfectCount: '14 Staff' });
-  const [financialKPIs, setFinancialKPIs] = useState({ outstanding: '₹2,45,000', projected: '₹9,88,000', accuracy: '94.2%' });
+  const [staffKPIs, setStaffKPIs] = useState({ rate: '0%', worstName: 'N/A', worstVal: '0 days', perfectCount: '0 Staff' });
+  const [financialKPIs, setFinancialKPIs] = useState({ outstanding: '₹0', projected: '₹0', accuracy: '0%' });
   const [forecast, setForecast] = useState(defaultForecastData);
 
   useEffect(() => {

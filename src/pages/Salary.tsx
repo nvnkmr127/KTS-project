@@ -7,8 +7,9 @@ import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
-import { api } from '../services/api';
+import { api, originalSetItem } from '../services/api';
 import { STAFF, StaffMember } from './StaffManagement';
+import { getYearMonth, hasJoinedBy, generateMonths, calculateLeaveAccrual } from '../utils/salaryHelpers';
 
 interface StaffPayroll {
   id: string;
@@ -25,6 +26,8 @@ interface StaffPayroll {
   status: 'Paid' | 'Pending' | 'On Hold';
   month: string;
 }
+
+
 
 const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
   LD: { bg: 'var(--purple-bg)', color: 'var(--purple-tx)' },
@@ -49,18 +52,19 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 const YEARS = [2026, 2027];
 
 const getComponentAmt = (
-  comp: { id: string; type: 'earning' | 'deduction'; calculationType?: 'flat' | 'percentage' },
+  comp: { id: string; name?: string; calculationType?: string },
   salaries: Record<string, number>,
   basicAmt: number,
-  fallbackAmt: number
+  fallbackAmt: number,
+  lop: number = 0
 ) => {
   if (comp.id === 'basic') return basicAmt;
   const val = salaries[comp.id];
   if (val !== undefined) {
     if (comp.calculationType === 'percentage') {
-      return Math.round((val / 100) * basicAmt);
+      return Math.round((val / 100) * basicAmt) + (comp.id === 'deductions' ? lop : 0);
     }
-    return val;
+    return val + (comp.id === 'deductions' ? lop : 0);
   }
   return fallbackAmt;
 };
@@ -84,15 +88,49 @@ const getFallbackAmt = (
 
 export function Salary() {
   const [payroll, setPayroll] = useState<StaffPayroll[]>([]);
-  const [faculty, setFaculty] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [leavesList, setLeavesList] = useState<any[]>([]);
   const [selectedSlip, setSelectedSlip] = useState<StaffPayroll | null>(null);
   const [showProcessModal, setShowProcessModal] = useState(false);
-  const [monthFilter, setMonthFilter] = useState('May 2026');
+  const [monthFilter, setMonthFilter] = useState(() => {
+    const saved = localStorage.getItem('kts_salary_month_filter');
+    return saved || generateMonths()[0] || 'May 2026';
+  });
   const [components, setComponents] = useState<any[]>([]);
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
+
+  const getLopDeduction = (s: any, monthStr: string): number => {
+    const ym = getYearMonth(monthStr);
+    if (!ym) return 0;
+    const { year, month } = ym;
+    const { unpaidDaysInTargetMonth } = calculateLeaveAccrual(leavesList, String(s.id), s.joinDate, year, month);
+    if (unpaidDaysInTargetMonth <= 0) return 0;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const baseSalary = Number(s.salary) || 25000;
+    const perDaySalary = baseSalary / daysInMonth;
+    return Math.round(unpaidDaysInTargetMonth * perDaySalary);
+  };
+
+  const getRowLop = (p: StaffPayroll) => {
+    const staffObj = staffMembers.find(s => s.name === p.name || String(s.id) === String(p.userId));
+    if (!staffObj) return 0;
+    return getLopDeduction(staffObj, p.month);
+  };
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [modalValues, setModalValues] = useState<Record<string, number>>({});
+  const [modalMonth, setModalMonth] = useState(() => {
+    const firstMonth = generateMonths()[0] || 'May 2026';
+    return firstMonth.split(' ')[0];
+  });
+  const [modalYear, setModalYear] = useState(() => {
+    const firstMonth = generateMonths()[0] || 'May 2026';
+    return firstMonth.split(' ')[1] || '2026';
+  });
+
+  const modalMonthYear = `${modalMonth} ${modalYear}`;
+  const modalActiveComponents = components.filter(
+    (c) => !c.month || c.month === 'All' || c.month === modalMonthYear
+  );
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('kts_staff_members');
     return saved ? JSON.parse(saved) : STAFF;
@@ -100,20 +138,32 @@ export function Salary() {
 
   useEffect(() => {
     if (selectedStaffId) {
-      const staff = faculty.find(f => String(f.id) === selectedStaffId);
+      const staff = staffMembers.find(f => String(f.id) === selectedStaffId);
       const salaries = staff ? ((staffSalaries[staff.id] || staffSalaries[staff.name] || {})) : {};
       const initial: Record<string, number> = {};
+      
+      const defaultBasic = staff?.salary ? Math.round(staff.salary * 0.65) : 25000;
+      const defaultHra = staff?.salary ? Math.round(staff.salary * 0.20) : 8000;
+      const defaultAllowances = staff?.salary ? staff.salary - defaultBasic - defaultHra : 5000;
+      const lop = staff ? getLopDeduction(staff, modalMonthYear) : 0;
+      const defaultDeductions = (salaries['deductions'] !== undefined ? salaries['deductions'] : 3000) + lop;
+
       components.forEach((comp) => {
-        const defaultVal = comp.id === 'basic' ? 25000 : comp.id === 'hra' ? 8000 : comp.id === 'allowances' ? 5000 : comp.id === 'deductions' ? 3000 : 0;
+        let defaultVal = 0;
+        if (comp.id === 'basic') defaultVal = defaultBasic;
+        else if (comp.id === 'hra') defaultVal = defaultHra;
+        else if (comp.id === 'allowances') defaultVal = defaultAllowances;
+        else if (comp.id === 'deductions') defaultVal = defaultDeductions;
+
         initial[comp.id] = salaries[comp.id] !== undefined
-          ? salaries[comp.id]
+          ? (comp.id === 'deductions' ? salaries[comp.id] + lop : salaries[comp.id])
           : (comp.calculationType === 'percentage' ? 0 : defaultVal);
       });
       setModalValues(initial);
     } else {
       setModalValues({});
     }
-  }, [selectedStaffId, components, staffSalaries, faculty]);
+  }, [selectedStaffId, components, staffSalaries, staffMembers, modalMonthYear, leavesList]);
 
   const [dbSyncCompleted, setDbSyncCompleted] = useState(false);
 
@@ -124,7 +174,7 @@ export function Salary() {
         
         const compSetting = settings.find((s: any) => s.key === 'salary_components');
         if (compSetting && compSetting.value) {
-          localStorage.setItem('salary_components', compSetting.value);
+          originalSetItem('salary_components', compSetting.value);
           setComponents(JSON.parse(compSetting.value));
         } else {
           const savedComps = localStorage.getItem('salary_components');
@@ -133,7 +183,7 @@ export function Salary() {
 
         const salariesSetting = settings.find((s: any) => s.key === 'staff_salaries');
         if (salariesSetting && salariesSetting.value) {
-          localStorage.setItem('staff_salaries', salariesSetting.value);
+          originalSetItem('staff_salaries', salariesSetting.value);
           setStaffSalaries(JSON.parse(salariesSetting.value));
         } else {
           const savedSalaries = localStorage.getItem('staff_salaries');
@@ -142,7 +192,7 @@ export function Salary() {
         
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         if (staffSetting && staffSetting.value) {
-          localStorage.setItem('kts_staff_members', staffSetting.value);
+          originalSetItem('kts_staff_members', staffSetting.value);
           setStaffMembers(JSON.parse(staffSetting.value));
         } else {
           const savedStaff = localStorage.getItem('kts_staff_members');
@@ -174,52 +224,61 @@ export function Salary() {
 
   const loadPayroll = async () => {
     setLoading(true);
+    // Load staff from local storage/STAFF first so staffMembers is always populated
+    const savedStaffRaw = localStorage.getItem('kts_staff_members');
+    const currentStaffList = savedStaffRaw ? JSON.parse(savedStaffRaw) : STAFF;
+    setStaffMembers(currentStaffList);
+
     try {
+      const leavesData = await api.getResources('leaves').catch(() => []);
+      const mappedLeaves = (leavesData || []).map((l: any) => ({
+        id: String(l.id),
+        staffId: String(l.user_id || ''),
+        staffName: l.staff_name || '',
+        type: l.leave_type || '',
+        from: l.start_date || '',
+        to: l.end_date || '',
+        days: Number(l.days) || 1,
+        status: l.status || 'Pending',
+      }));
+      setLeavesList(mappedLeaves);
+
       const data = await api.getResources('payslips');
+      const savedSalariesStr = localStorage.getItem('staff_salaries');
+      const currentSalaries = savedSalariesStr ? JSON.parse(savedSalariesStr) : staffSalaries;
+
       const mapped = data.map((p: any) => {
         const gross = Number(p.gross_salary) || 0;
         const deductions = Number(p.total_deductions) || 0;
         const net = Number(p.net_salary) || 0;
 
-        const basic = Math.round(gross * 0.65);
-        const hra = Math.round(gross * 0.20);
-        const allowances = gross - basic - hra;
+        const staff = currentStaffList.find((s: any) => String(s.id) === String(p.user_id));
+        const name = staff ? staff.name : (p.name || 'Staff Member');
+        const init = staff ? staff.name.split(' ').map((n: any) => n[0]).join('').slice(0, 2).toUpperCase() : (p.init || 'SM');
+        const designation = staff ? staff.designation : (p.designation || 'Senior Teacher');
+        const salaries = staff ? (currentSalaries[staff.id] || currentSalaries[staff.name] || {}) : {};
+
+        const basic = salaries['basic'] !== undefined ? salaries['basic'] : Math.round(gross * 0.65);
+        const hra = salaries['hra'] !== undefined ? salaries['hra'] : Math.round(gross * 0.20);
+        const allowances = salaries['allowances'] !== undefined ? salaries['allowances'] : gross - basic - hra;
 
         return {
           id: String(p.id),
           userId: String(p.user_id || ''),
-          name: p.name || 'Staff Member',
-          init: p.init || 'SM',
-          designation: p.designation || 'Senior Teacher',
+          name,
+          init,
+          designation,
           basic,
           hra,
           allowances,
           deductions,
           gross,
           net,
-          status: p.status === 'paid' ? 'Paid' : p.status === 'on_hold' ? 'On Hold' : 'Pending',
+          status: p.status?.toLowerCase() === 'paid' ? 'Paid' : 'Pending',
           month: `${p.month} ${p.year}`,
         };
       });
-      // MOCK DATA START
-      const mockSalaries = [
-        { id: 'mock-s1', userId: '3', name: 'Mrs. Lakshmi Devi', init: 'LD', designation: 'Mathematics Teacher', basic: 22750, hra: 7000, allowances: 5250, deductions: 3000, gross: 35000, net: 32000, status: 'Paid', month: 'May 2026' },
-        { id: 'mock-s2', userId: '4', name: 'Mr. R. K. Prasad', init: 'RP', designation: 'Science Teacher', basic: 26000, hra: 8000, allowances: 6000, deductions: 3500, gross: 40000, net: 36500, status: 'Paid', month: 'May 2026' },
-        { id: 'mock-s3', userId: '5', name: 'Ms. S. Anitha', init: 'SA', designation: 'English Teacher', basic: 19500, hra: 6000, allowances: 4500, deductions: 2500, gross: 30000, net: 27500, status: 'Pending', month: 'May 2026' },
-        { id: 'mock-s4', userId: '6', name: 'Mr. V. Suresh', init: 'VS', designation: 'Social Studies Teacher', basic: 21125, hra: 6500, allowances: 4875, deductions: 2800, gross: 32500, net: 29700, status: 'On Hold', month: 'May 2026' },
-      ];
-      setPayroll([...mockSalaries, ...mapped]);
-      // MOCK DATA END
-
-      const savedStaffStr = localStorage.getItem('kts_staff_members');
-      const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
-      setStaffMembers(currentStaffList);
-      const mappedStaff = currentStaffList.map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        subject: s.subject || s.designation || 'Staff',
-      }));
-      setFaculty(mappedStaff);
+      setPayroll(mapped);
     } catch (err) {
       console.error('Error loading payroll data:', err);
     } finally {
@@ -242,7 +301,7 @@ export function Salary() {
     let gross = 0;
     let totalDeductions = 0;
 
-    components.forEach((c) => {
+    modalActiveComponents.forEach((c) => {
       const inputVal = modalValues[c.id] || 0;
       const amt = c.calculationType === 'percentage'
         ? Math.round((inputVal / 100) * basicInputVal)
@@ -259,12 +318,12 @@ export function Salary() {
 
     const data = {
       user_id: Number(userId),
-      month: fd.get('month') as string,
-      year: Number(fd.get('year')),
+      month: modalMonth,
+      year: Number(modalYear),
       gross_salary: gross,
       total_deductions: totalDeductions,
       net_salary: net,
-      status: (fd.get('status') as string).toLowerCase().replace(' ', '_'),
+      status: fd.get('status') === 'Paid' ? 'Paid' : 'Generated',
       working_days: 30,
       days_present: 30,
       leave_days: 0,
@@ -280,9 +339,13 @@ export function Salary() {
     }
   };
 
+  const activeComponents = components.filter(
+    (c) => monthFilter === 'All' || !c.month || c.month === 'All' || c.month === monthFilter
+  );
+
   const handleExport = () => {
     // Generate CSV content
-    const headers = ['Staff Name', 'Designation', 'Month', ...components.map(c => c.name), 'Net Pay', 'Status'];
+    const headers = ['Staff Name', 'Designation', 'Month', ...activeComponents.map(c => c.name), 'Net Pay', 'Status'];
     const rows = filtered.map((p) => {
       const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
       const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
@@ -290,7 +353,7 @@ export function Salary() {
       // Calculate dynamic net pay
       let earningsSum = 0;
       let deductionsSum = 0;
-      components.forEach((c) => {
+      activeComponents.forEach((c) => {
         const fallback = getFallbackAmt(c, p);
         const amt = getComponentAmt(c, salaries, basicAmt, fallback);
         if (c.type === 'earning') earningsSum += amt;
@@ -298,7 +361,7 @@ export function Salary() {
       });
       const rowNetPay = Math.max(0, earningsSum - deductionsSum);
 
-      const compValues = components.map(c => {
+      const compValues = activeComponents.map(c => {
         const fallback = getFallbackAmt(c, p);
         return getComponentAmt(c, salaries, basicAmt, fallback);
       });
@@ -395,17 +458,36 @@ export function Salary() {
 
   const filtered = monthFilter === 'All'
     ? payroll
-    : staffMembers.map((s) => {
+    : staffMembers
+        .filter((s) => {
+          const targetYM = getYearMonth(monthFilter);
+          return hasJoinedBy(s.joinDate, targetYM);
+        })
+        .map((s) => {
         const processed = payroll.find(p => 
           p.name.toLowerCase() === s.name.toLowerCase() && 
           p.month === monthFilter
         );
         if (processed) return processed;
 
-        const init = s.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
-        const basic = s.salary ? Math.round(s.salary * 0.65) : 25000;
-        const hra = s.salary ? Math.round(s.salary * 0.20) : 8000;
-        const allowances = s.salary ? s.salary - basic - hra : 5000;
+        const init = s.name.split(' ').map((n: any) => n[0]).join('').slice(0, 2).toUpperCase();
+        const salaries = staffSalaries[s.id] || staffSalaries[s.name] || {};
+        const basic = salaries['basic'] !== undefined ? salaries['basic'] : (s.salary ? Math.round(s.salary * 0.65) : 25000);
+        const hra = salaries['hra'] !== undefined ? salaries['hra'] : (s.salary ? Math.round(s.salary * 0.20) : 8000);
+        const allowances = salaries['allowances'] !== undefined ? salaries['allowances'] : (s.salary ? s.salary - basic - hra : 5000);
+        
+        const lop = getLopDeduction(s, monthFilter);
+        const deductions = (salaries['deductions'] !== undefined ? salaries['deductions'] : 3000) + lop;
+
+        let gross = 0;
+        let totalDeductions = 0;
+        activeComponents.forEach((c) => {
+          const fallback = c.id === 'basic' ? basic : c.id === 'hra' ? hra : c.id === 'allowances' ? allowances : c.id === 'deductions' ? deductions : 0;
+          const amt = getComponentAmt(c, salaries, basic, fallback, lop);
+          if (c.type === 'earning') gross += amt;
+          else totalDeductions += amt;
+        });
+        const net = Math.max(0, gross - totalDeductions);
 
         return {
           id: `virtual-${s.id}`,
@@ -416,9 +498,9 @@ export function Salary() {
           basic,
           hra,
           allowances,
-          deductions: 3000,
-          gross: s.salary || 38000,
-          net: s.salary ? s.salary - 3000 : 35000,
+          deductions,
+          gross,
+          net,
           status: 'Pending' as const,
           month: monthFilter
         };
@@ -427,10 +509,11 @@ export function Salary() {
   const totalGross = filtered.reduce((s, p) => {
     const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+    const lop = getRowLop(p);
     let earningsSum = 0;
-    components.forEach((c) => {
+    activeComponents.forEach((c) => {
       const fallback = getFallbackAmt(c, p);
-      const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+      const amt = getComponentAmt(c, salaries, basicAmt, fallback, lop);
       if (c.type === 'earning') {
         earningsSum += amt;
       }
@@ -441,11 +524,12 @@ export function Salary() {
   const totalNet = filtered.reduce((s, p) => {
     const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+    const lop = getRowLop(p);
     let earningsSum = 0;
     let deductionsSum = 0;
-    components.forEach((c) => {
+    activeComponents.forEach((c) => {
       const fallback = getFallbackAmt(c, p);
-      const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+      const amt = getComponentAmt(c, salaries, basicAmt, fallback, lop);
       if (c.type === 'earning') earningsSum += amt;
       else deductionsSum += amt;
     });
@@ -455,10 +539,11 @@ export function Salary() {
   const totalDeductions = filtered.reduce((s, p) => {
     const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
+    const lop = getRowLop(p);
     let deductionsSum = 0;
-    components.forEach((c) => {
+    activeComponents.forEach((c) => {
       const fallback = getFallbackAmt(c, p);
-      const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+      const amt = getComponentAmt(c, salaries, basicAmt, fallback, lop);
       if (c.type === 'deduction') deductionsSum += amt;
     });
     return s + deductionsSum;
@@ -482,9 +567,16 @@ export function Salary() {
               Monthly Payroll — {monthFilter} {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
             </div>
             <div className="flex gap-2">
-              <select value={monthFilter} onChange={(e) => setMonthFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] text-[var(--tx)] cursor-pointer outline-none">
-                <option value="All">All Months</option>
-                {['May 2026', 'April 2026', 'March 2026', 'February 2026'].map((m) => <option key={m} value={m}>{m}</option>)}
+              <select
+                value={monthFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setMonthFilter(val);
+                  originalSetItem('kts_salary_month_filter', val);
+                }}
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] text-[var(--tx)] cursor-pointer outline-none"
+              >
+                {generateMonths().map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
               <button
                 onClick={handleExport}
@@ -494,6 +586,16 @@ export function Salary() {
               </button>
               <button
                 onClick={() => {
+                  if (monthFilter !== 'All') {
+                    const parts = monthFilter.split(' ');
+                    if (parts.length === 2) {
+                      setModalMonth(parts[0]);
+                      setModalYear(parts[1]);
+                    }
+                  } else {
+                    setModalMonth('May');
+                    setModalYear('2026');
+                  }
                   setSelectedStaffId('');
                   setShowProcessModal(true);
                 }}
@@ -503,13 +605,13 @@ export function Salary() {
               </button>
             </div>
           </div>
-
+ 
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[12px] min-w-[700px]">
               <thead>
                 <tr className="border-b border-[var(--b)]">
                   <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Staff</th>
-                  {components.map((comp) => (
+                  {activeComponents.map((comp) => (
                     <th key={comp.id} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{comp.name}</th>
                   ))}
                   <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Net Pay</th>
@@ -518,16 +620,17 @@ export function Salary() {
                 </tr>
               </thead>
               <tbody>
-                 {filtered.map((p) => {
+                {filtered.map((p) => {
                   const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+                  const lop = getRowLop(p);
                   
                   // Calculate dynamic net pay
                   let earningsSum = 0;
                   let deductionsSum = 0;
                   const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
-                  components.forEach((c) => {
+                  activeComponents.forEach((c) => {
                     const fallback = getFallbackAmt(c, p);
-                    const amt = getComponentAmt(c, salaries, basicAmt, fallback);
+                    const amt = getComponentAmt(c, salaries, basicAmt, fallback, lop);
                     if (c.type === 'earning') earningsSum += amt;
                     else deductionsSum += amt;
                   });
@@ -544,10 +647,10 @@ export function Salary() {
                           </div>
                         </div>
                       </td>
-                      {components.map((comp) => {
+                      {activeComponents.map((comp) => {
                         const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
                         const fallback = getFallbackAmt(comp, p);
-                        const amt = getComponentAmt(comp, salaries, basicAmt, fallback);
+                        const amt = getComponentAmt(comp, salaries, basicAmt, fallback, lop);
                         return (
                           <td key={comp.id} className={`px-2 py-2.5 ${comp.type === 'deduction' ? 'text-[var(--red-tx)]' : 'text-[var(--tx2)]'}`}>
                             {comp.type === 'deduction' ? '-' : ''}₹{amt.toLocaleString()}
@@ -633,21 +736,36 @@ export function Salary() {
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >
                   <option value="">Choose teacher...</option>
-                  {faculty.map((f) => (
-                    <option key={f.id} value={f.id}>{f.name} ({f.subject})</option>
+                  {staffMembers.filter((f) => {
+                    const targetYM = getYearMonth(modalMonthYear);
+                    return hasJoinedBy(f.joinDate, targetYM);
+                  }).map((f) => (
+                    <option key={f.id} value={f.id}>{f.name} ({f.subject || f.designation || 'Staff'})</option>
                   ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Month *</label>
-                  <select name="month" required defaultValue="May" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                  <select 
+                    name="month" 
+                    required 
+                    value={modalMonth} 
+                    onChange={(e) => setModalMonth(e.target.value)} 
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
+                  >
                     {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Year *</label>
-                  <select name="year" required defaultValue="2026" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                  <select 
+                    name="year" 
+                    required 
+                    value={modalYear} 
+                    onChange={(e) => setModalYear(e.target.value)} 
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
+                  >
                     {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
@@ -656,7 +774,7 @@ export function Salary() {
                 <div key={selectedStaffId} className="space-y-3 border-t border-[var(--b)] pt-3">
                   <div className="text-[11.5px] font-bold text-[var(--tx)]">Component Breakdown</div>
                   <div className="grid grid-cols-2 gap-3">
-                    {components.map((comp) => {
+                    {modalActiveComponents.map((comp) => {
                       return (
                         <div key={comp.id}>
                           <label className="block text-[11px] font-medium text-[var(--tx2)] mb-1">
@@ -678,7 +796,7 @@ export function Salary() {
                     const basicAmt = modalValues['basic'] || 0;
                     let grossSum = 0;
                     let deductionsSum = 0;
-                    components.forEach((c) => {
+                    modalActiveComponents.forEach((c) => {
                       const inputVal = modalValues[c.id] || 0;
                       const amt = c.calculationType === 'percentage'
                         ? Math.round((inputVal / 100) * basicAmt)
@@ -756,19 +874,23 @@ export function Salary() {
                 let deductionsSum = 0;
                 const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : selectedSlip.basic;
                 
-                components.forEach((c) => {
+                const slipActiveComponents = components.filter(
+                  (c) => !c.month || c.month === 'All' || c.month === selectedSlip.month
+                );
+
+                slipActiveComponents.forEach((c) => {
                   const fallback = getFallbackAmt(c, selectedSlip);
                   const amt = getComponentAmt(c, salaries, basicAmt, fallback);
                   if (c.type === 'earning') earningsSum += amt;
                   else deductionsSum += amt;
                 });
 
-                const earnings = components.filter(c => c.type === 'earning').map(c => ({
+                const earnings = slipActiveComponents.filter(c => c.type === 'earning').map(c => ({
                   label: c.name,
                   amount: getComponentAmt(c, salaries, basicAmt, getFallbackAmt(c, selectedSlip))
                 }));
 
-                const deductions = components.filter(c => c.type === 'deduction').map(c => ({
+                const deductions = slipActiveComponents.filter(c => c.type === 'deduction').map(c => ({
                   label: c.name,
                   amount: getComponentAmt(c, salaries, basicAmt, getFallbackAmt(c, selectedSlip))
                 }));

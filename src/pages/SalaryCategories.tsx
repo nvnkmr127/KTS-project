@@ -2,36 +2,45 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Tag, Users, Wallet, Loader2 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/ui';
-import { api } from '../services/api';
+import { api, originalSetItem } from '../services/api';
 import { STAFF } from './StaffManagement';
+import { getYearMonth, hasJoinedBy, generateMonths } from '../utils/salaryHelpers';
 
 interface SalaryComponent {
   id: string;
   name: string;
   type: 'earning' | 'deduction';
   calculationType?: 'flat' | 'percentage';
+  month?: string;
 }
-
-
 
 export function SalaryCategories() {
   const [faculty, setFaculty] = useState<any[]>([]);
   const loading = false;
   const [components, setComponents] = useState<SalaryComponent[]>([]);
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
+  const [monthFilter, setMonthFilter] = useState<string>(() => {
+    return localStorage.getItem('kts_salary_month_filter') || generateMonths()[0] || 'May 2026';
+  });
 
   // Component Modal
   const [showCompModal, setShowCompModal] = useState(false);
   const [compName, setCompName] = useState('');
   const [compType, setCompType] = useState<'earning' | 'deduction'>('earning');
   const [compCalcType, setCompCalcType] = useState<'flat' | 'percentage'>('flat');
+  const [compMonth, setCompMonth] = useState<string>(() => generateMonths()[0] || 'May 2026');
 
   // Assign Salary Modal
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
   // Helper to get component amount
-  const getComponentAmt = (comp: SalaryComponent, salaries: Record<string, number>, basicAmt: number) => {
+  const getComponentAmt = (
+    comp: SalaryComponent,
+    salaries: Record<string, number>,
+    basicAmt: number,
+    fallbackAmt: number
+  ) => {
     if (comp.id === 'basic') return basicAmt;
     const val = salaries[comp.id];
     if (val !== undefined) {
@@ -40,8 +49,7 @@ export function SalaryCategories() {
       }
       return val;
     }
-    const defaultVal = comp.id === 'hra' ? 8000 : comp.id === 'allowances' ? 5000 : comp.id === 'deductions' ? 3000 : 0;
-    return defaultVal;
+    return fallbackAmt;
   };
 
   const saveSettingToDb = async (key: string, value: string) => {
@@ -66,7 +74,7 @@ export function SalaryCategories() {
         
         const compSetting = settings.find((s: any) => s.key === 'salary_components');
         if (compSetting && compSetting.value) {
-          localStorage.setItem('salary_components', compSetting.value);
+          originalSetItem('salary_components', compSetting.value);
           setComponents(JSON.parse(compSetting.value));
         } else {
           const savedComps = localStorage.getItem('salary_components');
@@ -75,20 +83,20 @@ export function SalaryCategories() {
             saveSettingToDb('salary_components', savedComps);
           } else {
             const defaultComps: SalaryComponent[] = [
-              { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat' },
-              { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat' },
-              { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat' },
-              { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat' },
+              { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat', month: 'All' },
+              { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat', month: 'All' },
+              { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat', month: 'All' },
+              { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat', month: 'All' },
             ];
             setComponents(defaultComps);
-            localStorage.setItem('salary_components', JSON.stringify(defaultComps));
+            originalSetItem('salary_components', JSON.stringify(defaultComps));
             saveSettingToDb('salary_components', JSON.stringify(defaultComps));
           }
         }
 
         const salariesSetting = settings.find((s: any) => s.key === 'staff_salaries');
         if (salariesSetting && salariesSetting.value) {
-          localStorage.setItem('staff_salaries', salariesSetting.value);
+          originalSetItem('staff_salaries', salariesSetting.value);
           setStaffSalaries(JSON.parse(salariesSetting.value));
         } else {
           const savedSalaries = localStorage.getItem('staff_salaries');
@@ -100,7 +108,7 @@ export function SalaryCategories() {
 
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         if (staffSetting && staffSetting.value) {
-          localStorage.setItem('kts_staff_members', staffSetting.value);
+          originalSetItem('kts_staff_members', staffSetting.value);
         }
       } catch (err) {
         console.error('Error syncing settings from DB in SalaryCategories:', err);
@@ -109,13 +117,13 @@ export function SalaryCategories() {
           setComponents(JSON.parse(savedComps));
         } else {
           const defaultComps: SalaryComponent[] = [
-            { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat' },
-            { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat' },
-            { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat' },
-            { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat' },
+            { id: 'basic', name: 'Basic', type: 'earning', calculationType: 'flat', month: 'All' },
+            { id: 'hra', name: 'HRA', type: 'earning', calculationType: 'flat', month: 'All' },
+            { id: 'allowances', name: 'Allowances', type: 'earning', calculationType: 'flat', month: 'All' },
+            { id: 'deductions', name: 'Deductions', type: 'deduction', calculationType: 'flat', month: 'All' },
           ];
           setComponents(defaultComps);
-          localStorage.setItem('salary_components', JSON.stringify(defaultComps));
+          originalSetItem('salary_components', JSON.stringify(defaultComps));
         }
         const savedSalaries = localStorage.getItem('staff_salaries');
         if (savedSalaries) setStaffSalaries(JSON.parse(savedSalaries));
@@ -133,6 +141,8 @@ export function SalaryCategories() {
         id: s.id,
         name: s.name,
         subject: s.subject || s.designation || 'Staff',
+        joinDate: s.joinDate,
+        salary: s.salary,
       }));
       setFaculty(mappedStaff);
     };
@@ -143,8 +153,17 @@ export function SalaryCategories() {
   // Save components helper
   const saveComponents = (newComps: SalaryComponent[]) => {
     setComponents(newComps);
-    localStorage.setItem('salary_components', JSON.stringify(newComps));
+    originalSetItem('salary_components', JSON.stringify(newComps));
     saveSettingToDb('salary_components', JSON.stringify(newComps));
+  };
+
+  // Trigger opening modal
+  const openAddComponentModal = () => {
+    setCompMonth(monthFilter);
+    setCompName('');
+    setCompType('earning');
+    setCompCalcType('flat');
+    setShowCompModal(true);
   };
 
   // Add Component
@@ -152,9 +171,10 @@ export function SalaryCategories() {
     e.preventDefault();
     if (!compName.trim()) return;
     
-    const id = compName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const monthSuffix = compMonth === 'All' ? '' : `_${compMonth.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    const id = `${compName.toLowerCase().replace(/[^a-z0-9]/g, '_')}${monthSuffix}`;
     if (components.some((c) => c.id === id)) {
-      alert('Component already exists!');
+      alert('Component already exists for this period!');
       return;
     }
 
@@ -163,6 +183,7 @@ export function SalaryCategories() {
       name: compName.trim(),
       type: compType,
       calculationType: compCalcType,
+      month: compMonth,
     };
 
     const updated = [...components, newComp];
@@ -191,18 +212,35 @@ export function SalaryCategories() {
         }
       });
       setStaffSalaries(updatedSalaries);
-      localStorage.setItem('staff_salaries', JSON.stringify(updatedSalaries));
+      originalSetItem('staff_salaries', JSON.stringify(updatedSalaries));
       saveSettingToDb('staff_salaries', JSON.stringify(updatedSalaries));
     }
   };
+
+  // Active components based on monthFilter
+  const activeComponents = components.filter(
+    (c) => monthFilter === 'All' || !c.month || c.month === 'All' || c.month === monthFilter
+  );
 
   // Open Edit Salary Modal
   const openEditSalary = (staff: any) => {
     setEditingStaff(staff);
     const salaries = staffSalaries[staff.id] || staffSalaries[staff.name] || {};
     const initialValues: Record<string, string> = {};
+    
+    const defaultBasic = staff.salary ? Math.round(staff.salary * 0.65) : 25000;
+    const defaultHra = staff.salary ? Math.round(staff.salary * 0.20) : 8000;
+    const defaultAllowances = staff.salary ? staff.salary - defaultBasic - defaultHra : 5000;
+    const defaultDeductions = 3000;
+
     components.forEach((comp) => {
-      initialValues[comp.id] = String(salaries[comp.id] ?? (comp.id === 'basic' ? 25000 : comp.id === 'hra' ? 8000 : comp.id === 'allowances' ? 5000 : comp.id === 'deductions' ? 3000 : 0));
+      let defaultVal = 0;
+      if (comp.id === 'basic') defaultVal = defaultBasic;
+      else if (comp.id === 'hra') defaultVal = defaultHra;
+      else if (comp.id === 'allowances') defaultVal = defaultAllowances;
+      else if (comp.id === 'deductions') defaultVal = defaultDeductions;
+
+      initialValues[comp.id] = String(salaries[comp.id] ?? (comp.calculationType === 'percentage' ? 0 : defaultVal));
     });
     setEditValues(initialValues);
   };
@@ -212,19 +250,15 @@ export function SalaryCategories() {
     e.preventDefault();
     if (!editingStaff) return;
 
-    const parsedValues: Record<string, number> = {};
-    components.forEach((comp) => {
+    const salaries = staffSalaries[editingStaff.id] || staffSalaries[editingStaff.name] || {};
+    const parsedValues: Record<string, number> = { ...salaries }; // Preserve values from components of other months
+    activeComponents.forEach((comp) => {
       parsedValues[comp.id] = Number(editValues[comp.id]) || 0;
     });
 
-    const updated = {
-      ...staffSalaries,
-      [editingStaff.id]: parsedValues,
-      [editingStaff.name]: parsedValues,
-    };
-
+    const updated = { ...staffSalaries, [editingStaff.id]: parsedValues };
     setStaffSalaries(updated);
-    localStorage.setItem('staff_salaries', JSON.stringify(updated));
+    originalSetItem('staff_salaries', JSON.stringify(updated));
     saveSettingToDb('staff_salaries', JSON.stringify(updated));
     setEditingStaff(null);
   };
@@ -239,12 +273,27 @@ export function SalaryCategories() {
           </h1>
           <p className="text-[11px] text-[var(--tx3)]">Define salary components and assign salaries to staff members</p>
         </div>
-        <button
-          onClick={() => setShowCompModal(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 font-medium transition-all"
-        >
-          <Plus size={13} /> Add Component
-        </button>
+        <div className="flex gap-2">
+          <select
+            value={monthFilter}
+            onChange={(e) => {
+              const val = e.target.value;
+              setMonthFilter(val);
+              originalSetItem('kts_salary_month_filter', val);
+            }}
+            className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+          >
+            {generateMonths().map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+          <button
+            onClick={openAddComponentModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 font-medium transition-all"
+          >
+            <Plus size={13} /> Add Component
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-4">
@@ -255,11 +304,11 @@ export function SalaryCategories() {
           </div>
           
           <div className="space-y-2">
-            {components.map((comp) => (
+            {activeComponents.map((comp) => (
               <div key={comp.id} className="flex items-center justify-between p-2.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl group transition-all hover:border-[var(--b2)]">
                 <div>
                   <div className="text-[11.5px] font-semibold text-[var(--tx)]">{comp.name}</div>
-                  <div className="text-[9px] mt-0.5 flex gap-1">
+                  <div className="text-[9px] mt-0.5 flex flex-wrap gap-1">
                     {comp.type === 'earning' ? (
                       <span className="text-[var(--teal-tx)] font-medium bg-[var(--teal-bg)] px-1.5 py-0.5 rounded text-[8.5px]">Earning</span>
                     ) : (
@@ -267,6 +316,9 @@ export function SalaryCategories() {
                     )}
                     <span className="text-[var(--tx3)] font-medium bg-[var(--surf3)] px-1.5 py-0.5 rounded text-[8.5px] capitalize">
                       {comp.calculationType === 'percentage' ? '%' : 'Flat'}
+                    </span>
+                    <span className="text-[var(--blue-tx)] font-medium bg-[var(--blue-bg)] px-1.5 py-0.5 rounded text-[8.5px]">
+                      {comp.month === 'All' || !comp.month ? 'All Months' : comp.month}
                     </span>
                   </div>
                 </div>
@@ -295,7 +347,7 @@ export function SalaryCategories() {
               <thead>
                 <tr className="border-b border-[var(--b)]">
                   <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Staff Name</th>
-                  {components.map((comp) => (
+                  {activeComponents.map((comp) => (
                     <th key={comp.id} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{comp.name}</th>
                   ))}
                   <th className="text-[10.5px] font-bold text-[var(--blue-tx)] text-left px-2 py-2 whitespace-nowrap bg-[var(--blue-bg)]/30 rounded-t-lg">Net Salary</th>
@@ -303,15 +355,33 @@ export function SalaryCategories() {
                 </tr>
               </thead>
               <tbody>
-                {faculty.map((staff) => {
+                {faculty.filter(staff => {
+                  const targetYM = getYearMonth(monthFilter);
+                  return hasJoinedBy(staff.joinDate, targetYM);
+                }).map((staff) => {
                   const salaries = staffSalaries[staff.id] || staffSalaries[staff.name] || {};
                   
                   // Compute net salary
                   let earningsSum = 0;
                   let deductionsSum = 0;
-                  const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : 25000;
-                  components.forEach((c) => {
-                    const amt = getComponentAmt(c, salaries, basicAmt);
+                  const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : (staff.salary ? Math.round(staff.salary * 0.65) : 25000);
+                  const hraAmt = salaries['hra'] !== undefined ? salaries['hra'] : (staff.salary ? Math.round(staff.salary * 0.20) : 8000);
+                  const allowancesAmt = salaries['allowances'] !== undefined ? salaries['allowances'] : (staff.salary ? staff.salary - basicAmt - hraAmt : 5000);
+                  const deductionsAmt = salaries['deductions'] !== undefined ? salaries['deductions'] : 3000;
+
+                  const getFallbackAmtLocal = (c: SalaryComponent) => {
+                    const id = c.id.toLowerCase();
+                    const name = c.name.toLowerCase();
+                    if (id === 'basic' || name === 'basic') return basicAmt;
+                    if (id === 'hra' || name === 'hra') return hraAmt;
+                    if (id === 'allowances' || name.includes('allowance') || name.includes('earning')) return allowancesAmt;
+                    if (id === 'deductions' || id === 'deduction' || name.includes('deduction')) return deductionsAmt;
+                    return 0;
+                  };
+
+                  activeComponents.forEach((c) => {
+                    const fallback = getFallbackAmtLocal(c);
+                    const amt = getComponentAmt(c, salaries, basicAmt, fallback);
                     if (c.type === 'earning') {
                       earningsSum += amt;
                     } else {
@@ -333,10 +403,11 @@ export function SalaryCategories() {
                           </div>
                         </div>
                       </td>
-                      {components.map((comp) => {
+                      {activeComponents.map((comp) => {
                         const val = salaries[comp.id];
                         const isPercentage = comp.calculationType === 'percentage';
-                        const amt = getComponentAmt(comp, salaries, basicAmt);
+                        const fallback = getFallbackAmtLocal(comp);
+                        const amt = getComponentAmt(comp, salaries, basicAmt, fallback);
                         return (
                           <td key={comp.id} className={`px-2 py-2.5 ${comp.type === 'deduction' ? 'text-[var(--red-tx)]' : 'text-[var(--tx2)]'}`}>
                             {isPercentage && val !== undefined ? `${val}% (₹${amt.toLocaleString()})` : `₹${amt.toLocaleString()}`}
@@ -405,6 +476,19 @@ export function SalaryCategories() {
                   <option value="percentage">Percentage of Basic (%)</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-[11px] font-medium text-[var(--tx2)] mb-1">Applicable Month *</label>
+                <select
+                  value={compMonth}
+                  onChange={(e) => setCompMonth(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                >
+                  <option value="All">All Months</option>
+                  {generateMonths().map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="flex gap-2 p-4 bg-[var(--surf2)] border-t border-[var(--b)]">
               <button type="button" onClick={() => setShowCompModal(false)} className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf)] rounded-xl text-[12px] font-medium text-[var(--tx)] cursor-pointer">Cancel</button>
@@ -426,7 +510,7 @@ export function SalaryCategories() {
               <button type="button" onClick={() => setEditingStaff(null)} className="text-[var(--tx2)] hover:text-[var(--tx)] cursor-pointer">✕</button>
             </div>
             <div className="p-4 space-y-3 max-h-[350px] overflow-y-auto">
-              {components.map((comp) => (
+              {activeComponents.map((comp) => (
                 <div key={comp.id}>
                   <label className="block text-[11px] font-medium text-[var(--tx2)] mb-1">
                     {comp.name} {comp.type === 'deduction' ? '(Deduction)' : '(Earning)'} {comp.calculationType === 'percentage' ? '(%)' : '(₹)'}

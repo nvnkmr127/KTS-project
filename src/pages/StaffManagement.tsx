@@ -5,7 +5,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { useApp } from '../context/AppContext';
-import { api } from '../services/api';
+import { api, originalSetItem } from '../services/api';
 import { TableSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -68,7 +68,7 @@ export function StaffManagement() {
         const settings = await api.getResources('settings');
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         if (staffSetting && staffSetting.value) {
-          localStorage.setItem('kts_staff_members', staffSetting.value);
+          originalSetItem('kts_staff_members', staffSetting.value);
           setStaffList(JSON.parse(staffSetting.value));
         } else {
           const saved = localStorage.getItem('kts_staff_members');
@@ -394,7 +394,7 @@ export function StaffManagement() {
   };
 
   useEffect(() => {
-    localStorage.setItem('kts_staff_members', JSON.stringify(staffList));
+    originalSetItem('kts_staff_members', JSON.stringify(staffList));
     saveSettingToDb('kts_staff_members', JSON.stringify(staffList));
   }, [staffList]);
 
@@ -1029,10 +1029,7 @@ export function StaffManagement() {
                       status: p.status === 'paid' ? 'Paid' : 'Pending',
                       month: `${p.month} ${p.year}`,
                     };
-                  }) : [
-                    { id: 'mock-s1', name: modal.staff!.name, designation: modal.staff!.designation, basic: Math.round(modal.staff!.salary * 0.65), hra: Math.round(modal.staff!.salary * 0.20), allowances: modal.staff!.salary - Math.round(modal.staff!.salary * 0.65) - Math.round(modal.staff!.salary * 0.20), deductions: 3000, gross: modal.staff!.salary, net: modal.staff!.salary - 3000, status: 'Paid', month: 'May 2026' },
-                    { id: 'mock-s2', name: modal.staff!.name, designation: modal.staff!.designation, basic: Math.round(modal.staff!.salary * 0.65), hra: Math.round(modal.staff!.salary * 0.20), allowances: modal.staff!.salary - Math.round(modal.staff!.salary * 0.65) - Math.round(modal.staff!.salary * 0.20), deductions: 3000, gross: modal.staff!.salary, net: modal.staff!.salary - 3000, status: 'Paid', month: 'April 2026' },
-                  ];
+                  }) : [];
 
                   return (
                     <div className="space-y-4">
