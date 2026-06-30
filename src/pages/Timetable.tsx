@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge';
 import { useApp, TIMETABLE_DAYS } from '../context/AppContext';
 import type { TimetablePeriod, PeriodTiming } from '../context/AppContext';
 import { api } from '../services/api';
+import { STAFF } from './StaffManagement';
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'Library', 'Break'];
 
@@ -63,8 +64,38 @@ export function Timetable() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const data = await api.getResources('faculty');
-        const list = data.map((t: any) => ({
+        const resignedNames = new Set<string>();
+        try {
+          const s = localStorage.getItem('kts_staff_members');
+          if (s) JSON.parse(s).filter((x: any) => x?.status === 'Resigned' && x.name)
+                   .forEach((x: any) => resignedNames.add(x.name.toLowerCase().trim()));
+        } catch {}
+
+        let activeTeachers: any[] = [];
+        try {
+          const facultyData = await api.getResources('faculty');
+          activeTeachers = (facultyData || []).filter((t: any) => {
+            if ((t.status || '').toLowerCase() === 'inactive') return false;
+            if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
+            return true;
+          });
+        } catch {}
+
+        if (activeTeachers.length === 0) {
+          try {
+            const s = localStorage.getItem('kts_staff_members');
+            if (s) activeTeachers = JSON.parse(s)
+              .filter((x: any) => x?.id && x.name && x.status !== 'Resigned')
+              .map((x: any) => ({ id: String(x.id), name: x.name }));
+          } catch {}
+        }
+
+        if (activeTeachers.length === 0) {
+          activeTeachers = STAFF.filter(s => s.status !== 'Resigned')
+            .map(s => ({ id: String(s.id), name: s.name }));
+        }
+
+        const list = activeTeachers.map((t: any) => ({
           id: String(t.id),
           name: t.name,
         }));
@@ -104,7 +135,18 @@ export function Timetable() {
     const cell = classTimetable[day]?.[period] ?? null;
     setEditCell({ day, period, current: cell });
     setEditSubject(cell?.subject ?? 'Mathematics');
-    setEditTeacher(cell?.teacherId ?? (teachers[0]?.id || ''));
+    
+    // Get list of available teachers for this cell (not busy in other classes)
+    const available = teachers.filter(t => {
+      const isBusy = Object.keys(timetable).some(clsId => {
+        if (clsId === selectedClass) return false;
+        const c = timetable[clsId]?.[day]?.[period];
+        return c && String(c.teacherId) === String(t.id);
+      });
+      return !isBusy;
+    });
+
+    setEditTeacher(cell?.teacherId ?? (available[0]?.id || ''));
     setEditRoom(cell?.room ?? 'Room 12');
   };
 
@@ -341,7 +383,15 @@ export function Timetable() {
                   onChange={(e) => setEditTeacher(e.target.value)}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >
-                  {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teachers.filter(t => {
+                    if (!editCell) return true;
+                    const isBusy = Object.keys(timetable).some(clsId => {
+                      if (clsId === selectedClass) return false;
+                      const cell = timetable[clsId]?.[editCell.day]?.[editCell.period];
+                      return cell && String(cell.teacherId) === String(t.id);
+                    });
+                    return !isBusy;
+                  }).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div>

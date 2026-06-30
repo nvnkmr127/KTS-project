@@ -37,7 +37,7 @@ export function StaffAccess() {
       try {
         const parsed = JSON.parse(savedStaffStr);
         if (Array.isArray(parsed)) {
-          loadedStaff = parsed.filter((s) => s && s.id);
+          loadedStaff = parsed.filter((s) => s && s.id && s.status !== 'Resigned');
         }
       } catch (err) {
         console.error('Error parsing staff list:', err);

@@ -205,7 +205,6 @@ export function FeeManagement() {
 
   const handleViewStudentDetails = async (student: any) => {
     setActiveDetailStudent(student);
-    loadStudentFees(student.studentId);
     setSelectedStudentAttendance(null);
     try {
       if (student.batchId) {
@@ -318,7 +317,7 @@ export function FeeManagement() {
       if (Array.isArray(allStudentFees)) {
         allStudentFees.forEach((fee: any) => {
           const studentId = String(fee.student_id || fee.studentId);
-          const categoryName = fee.feeCategory?.name || fee.category || 'School Fee';
+          const categoryName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
           if (studentId) {
             const list = studentFeesMap.get(studentId) || [];
             if (!list.includes(categoryName.toLowerCase())) {
@@ -430,7 +429,9 @@ export function FeeManagement() {
       loadStudentFees(collectStudent.studentId);
       setPaymentMethod('Cash');
       setPaymentRemarks('');
-    } else if (!activeDetailStudent) {
+    } else if (activeDetailStudent) {
+      loadStudentFees(activeDetailStudent.studentId);
+    } else {
       setStudentFeesList([]);
     }
   }, [collectStudent, activeDetailStudent]);
@@ -582,7 +583,7 @@ export function FeeManagement() {
             });
 
             allocated.push({
-              name: fee.feeCategory?.name || fee.category || 'School Fee',
+              name: fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee',
               amount: paymentForThisFee
             });
 
@@ -658,7 +659,7 @@ export function FeeManagement() {
 
     if (assignType === 'student') {
       const duplicates = itemsToAssign.filter(item =>
-        existingFees.some(f => (f.feeCategory?.name || f.category || '').toLowerCase() === item.category.toLowerCase())
+        existingFees.some(f => (f.fee_category?.name || f.feeCategory?.name || f.category || '').toLowerCase() === item.category.toLowerCase())
       );
       if (duplicates.length > 0) {
         setDuplicateWarningMsg(
@@ -946,11 +947,25 @@ export function FeeManagement() {
                 {loadingStudentFees ? (
                   <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
                 ) : studentFeesList.length === 0 ? (
-                  <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">No fee records assigned.</div>
+                  <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex flex-col items-center justify-center gap-2">
+                    <span>No fee records assigned.</span>
+                    <button
+                      onClick={() => {
+                        setAssignType('student');
+                        setAssignedItems([]);
+                        setCurrentAmount('8500');
+                        setModalStudentId(std.studentId);
+                        setShowAssignModal(true);
+                      }}
+                      className="mt-1 flex items-center gap-1 px-2.5 py-1.5 text-[10.5px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer font-semibold"
+                    >
+                      <Plus size={11} /> Assign Fee
+                    </button>
+                  </div>
                 ) : (
                   <div className="space-y-2 overflow-y-auto pr-1 max-h-[220px] lg:max-h-none lg:flex-1">
                     {studentFeesList.map((fee) => {
-                      const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
+                      const feeName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
                       const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
                       return (
                         <div key={fee.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
@@ -1546,7 +1561,7 @@ export function FeeManagement() {
                   ) : (
                     <div className="max-h-[120px] overflow-y-auto space-y-1.5 pr-1">
                       {existingFees.map((fee) => {
-                        const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
+                        const feeName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
                         return (
                           <div key={fee.id} className="flex items-center justify-between p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg text-[11px]">
                             <div>
@@ -1613,7 +1628,7 @@ export function FeeManagement() {
                               className="accent-[var(--blue)] w-3.5 h-3.5 rounded"
                             />
                             <span>
-                              {f.feeCategory?.name || f.category || 'School Fee'} (Due: ₹{rem.toLocaleString()})
+                              {f.fee_category?.name || f.feeCategory?.name || f.category || 'School Fee'} (Due: ₹{rem.toLocaleString()})
                             </span>
                           </label>
                         );
@@ -1702,7 +1717,7 @@ export function FeeManagement() {
                       const rem = Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount);
                       return (
                         <option key={f.id} value={f.id}>
-                          {f.feeCategory?.name || f.category || 'School Fee'} (Remaining: ₹{rem.toLocaleString()})
+                          {f.fee_category?.name || f.feeCategory?.name || f.category || 'School Fee'} (Remaining: ₹{rem.toLocaleString()})
                         </option>
                       );
                     })
@@ -1807,7 +1822,7 @@ export function FeeManagement() {
               <div>
                 <div className="text-[14px] font-bold text-[var(--tx)]">Edit Paid Amount</div>
                 <div className="text-[11px] text-[var(--tx3)]">
-                  {selectedEditFee.feeCategory?.name || selectedEditFee.category || 'School Fee'}
+                  {selectedEditFee.fee_category?.name || selectedEditFee.feeCategory?.name || selectedEditFee.category || 'School Fee'}
                 </div>
               </div>
               <button

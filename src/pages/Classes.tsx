@@ -5,6 +5,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
+import { STAFF } from './StaffManagement';
 
 interface ClassData {
   id: string;
@@ -28,7 +29,19 @@ const ALL_SUBJECTS = ['Maths', 'Physics', 'Chemistry', 'Biology', 'Science', 'En
 export function Classes() {
   const { selectedAcademicYearId } = useApp();
   const [classes, setClasses] = useState<ClassData[]>([]);
-  const [teachers, setTeachers] = useState<any[]>([]);
+  // Pre-populate teachers from local storage / STAFF constant so dropdown always works
+  const [teachers, setTeachers] = useState<any[]>(() => {
+    try {
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      if (savedStaffStr) {
+        const arr = JSON.parse(savedStaffStr).filter(
+          (s: any) => s && s.id && s.name && s.status !== 'Resigned'
+        );
+        if (arr.length > 0) return arr;
+      }
+    } catch {}
+    return STAFF.filter(s => s.status !== 'Resigned');
+  });
   const [loading, setLoading] = useState(false);
   const [expandedClass, setExpandedClass] = useState<string | null>('8');
   const [showAddSection, setShowAddSection] = useState(false);
@@ -38,6 +51,8 @@ export function Classes() {
   const [deleting, setDeleting] = useState(false);
   const [editSectionData, setEditSectionData] = useState<{ classId: string; section: SectionData } | null>(null);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [customSubjects, setCustomSubjects] = useState<string[]>([]);
+  const [customSubjectInput, setCustomSubjectInput] = useState('');
 
   const handleNumberKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
@@ -53,19 +68,53 @@ export function Classes() {
     e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
   };
 
-  const loadClasses = async () => {
+   const loadClasses = async () => {
     setLoading(true);
+
+    // ── Teachers (fully independent – never blocks class loading) ──────────
+    const resignedNames = new Set<string>();
     try {
-      const [allBatches, teachersData, studentsData] = await Promise.all([
+      const s = localStorage.getItem('kts_staff_members');
+      if (s) JSON.parse(s).filter((x: any) => x?.status === 'Resigned' && x.name)
+               .forEach((x: any) => resignedNames.add(x.name.toLowerCase().trim()));
+    } catch {}
+
+    let activeTeachers: any[] = [];
+    try {
+      const facultyData = await api.getResources('faculty');
+      activeTeachers = (facultyData || []).filter((t: any) => {
+        if ((t.status || '').toLowerCase() === 'inactive') return false;
+        if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
+        return true;
+      });
+    } catch {}
+
+    if (activeTeachers.length === 0) {
+      try {
+        const s = localStorage.getItem('kts_staff_members');
+        if (s) activeTeachers = JSON.parse(s)
+          .filter((x: any) => x?.id && x.name && x.status !== 'Resigned')
+          .map((x: any) => ({ id: x.id, name: x.name, status: x.status, department: x.department || '' }));
+      } catch {}
+    }
+
+    if (activeTeachers.length === 0) {
+      activeTeachers = STAFF.filter(s => s.status !== 'Resigned')
+        .map(s => ({ id: s.id, name: s.name, status: s.status, department: s.department || '' }));
+    }
+
+    setTeachers(activeTeachers);
+
+    // ── Batches + Students (backend-dependent) ─────────────────────────────
+    try {
+      const [allBatches, studentsData] = await Promise.all([
         api.getResources('batches'),
-        api.getResources('faculty'),
         api.getResources('students'),
       ]);
       const batchesData = allBatches.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
-      setTeachers(teachersData);
 
       const classGroups: Record<string, SectionData[]> = {};
-      const defaultClasses = ['6', '7', '8', '9', '10'];
+      const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
       batchesData.forEach((b: any) => {
         const batchName = b.name;
@@ -77,17 +126,11 @@ export function Classes() {
           classId = match[1];
           sectionLetter = match[2];
         } else {
-          if (batchName === 'Default Batch') {
-            classId = '8';
-            sectionLetter = 'A';
-          }
+          if (batchName === 'Default Batch') { classId = '8'; sectionLetter = 'A'; }
         }
 
         const studentsInBatch = studentsData.filter((s: any) => String(s.batch_id) === String(b.id)).length;
-
-        if (!classGroups[classId]) {
-          classGroups[classId] = [];
-        }
+        if (!classGroups[classId]) classGroups[classId] = [];
 
         const savedSubjects = localStorage.getItem(`batch_subjects_${batchName}`);
         const subjectsList = savedSubjects ? JSON.parse(savedSubjects) : (classId === '8' ? ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social'] : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS']);
@@ -98,7 +141,7 @@ export function Classes() {
           name: `Section ${sectionLetter}`,
           classTeacher: b.class_teacher_name || 'Select teacher',
           classTeacherId: b.class_teacher_id ? String(b.class_teacher_id) : undefined,
-          students: studentsInBatch > 0 ? studentsInBatch : (classId === '8' ? 42 : 38),
+          students: studentsInBatch,
           realStudents: studentsInBatch,
           subjects: subjectsList,
           capacity: capacityVal,
@@ -108,8 +151,8 @@ export function Classes() {
       defaultClasses.forEach((cId) => {
         if (!classGroups[cId]) {
           classGroups[cId] = [
-            { id: `mock-${cId}A`, name: 'Section A', classTeacher: 'Select teacher', students: cId === '8' ? 42 : 38, subjects: localStorage.getItem(`batch_subjects_${cId}A`) ? JSON.parse(localStorage.getItem(`batch_subjects_${cId}A`)!) : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'], capacity: localStorage.getItem(`batch_capacity_${cId}A`) ? Number(localStorage.getItem(`batch_capacity_${cId}A`)) : 40 },
-            { id: `mock-${cId}B`, name: 'Section B', classTeacher: 'Select teacher', students: cId === '8' ? 39 : 35, subjects: localStorage.getItem(`batch_subjects_${cId}B`) ? JSON.parse(localStorage.getItem(`batch_subjects_${cId}B`)!) : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'], capacity: localStorage.getItem(`batch_capacity_${cId}B`) ? Number(localStorage.getItem(`batch_capacity_${cId}B`)) : 40 }
+            { id: `mock-${cId}A`, name: 'Section A', classTeacher: 'Select teacher', students: 0, subjects: localStorage.getItem(`batch_subjects_${cId}A`) ? JSON.parse(localStorage.getItem(`batch_subjects_${cId}A`)!) : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'], capacity: localStorage.getItem(`batch_capacity_${cId}A`) ? Number(localStorage.getItem(`batch_capacity_${cId}A`)) : 40 },
+            { id: `mock-${cId}B`, name: 'Section B', classTeacher: 'Select teacher', students: 0, subjects: localStorage.getItem(`batch_subjects_${cId}B`) ? JSON.parse(localStorage.getItem(`batch_subjects_${cId}B`)!) : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'], capacity: localStorage.getItem(`batch_capacity_${cId}B`) ? Number(localStorage.getItem(`batch_capacity_${cId}B`)) : 40 }
           ];
         }
       });
@@ -119,13 +162,9 @@ export function Classes() {
         name: cId,
         sections: classGroups[cId].sort((a, b) => a.name.localeCompare(b.name)),
       })).sort((a, b) => {
-        const numA = Number(a.id);
-        const numB = Number(b.id);
-        const isNumA = !isNaN(numA);
-        const isNumB = !isNaN(numB);
-        if (isNumA && isNumB) {
-          return numA - numB;
-        }
+        const numA = Number(a.id), numB = Number(b.id);
+        const isNumA = !isNaN(numA), isNumB = !isNaN(numB);
+        if (isNumA && isNumB) return numA - numB;
         if (isNumA) return -1;
         if (isNumB) return 1;
         return a.id.localeCompare(b.id);
@@ -138,6 +177,7 @@ export function Classes() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadClasses();
@@ -316,7 +356,7 @@ export function Classes() {
           Class & Section Management {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
         </div>
         <div className="flex gap-2">
-          <button onClick={() => { setErrorMsg(null); setSelectedSubjects(['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS']); setShowAddSection(true); }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
+          <button onClick={() => { setErrorMsg(null); setSelectedSubjects(['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS']); setCustomSubjects([]); setCustomSubjectInput(''); setShowAddSection(true); }} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90">
             <Plus size={12} /> Add Class / Section
           </button>
         </div>
@@ -365,7 +405,7 @@ export function Classes() {
                         {!isMock && (
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => { setErrorMsg(null); setSelectedSubjects(sec.subjects); setEditSectionData({ classId: cls.id, section: sec }); }}
+                              onClick={() => { setErrorMsg(null); setSelectedSubjects(sec.subjects); const existingCustom = sec.subjects.filter(s => !ALL_SUBJECTS.includes(s)); setCustomSubjects(existingCustom); setCustomSubjectInput(''); setEditSectionData({ classId: cls.id, section: sec }); }}
                               className="p-1.5 rounded-lg text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer transition-colors"
                               title="Edit Section"
                             >
@@ -459,12 +499,45 @@ export function Classes() {
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class Teacher</label>
                 <select name="teacherId" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
                   <option value="">Select teacher</option>
-                  {teachers.filter(t => !assignedTeacherIds.has(String(t.id))).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Subjects</label>
-                <div className="grid grid-cols-2 gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2.5 max-h-[120px] overflow-y-auto">
+                {/* Manual subject entry */}
+                <div className="flex gap-1.5 mb-2">
+                  <input
+                    type="text"
+                    value={customSubjectInput}
+                    onChange={(e) => setCustomSubjectInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = customSubjectInput.trim();
+                        if (val && !ALL_SUBJECTS.includes(val) && !customSubjects.includes(val)) {
+                          setCustomSubjects([...customSubjects, val]);
+                          if (!selectedSubjects.includes(val)) setSelectedSubjects([...selectedSubjects, val]);
+                        }
+                        setCustomSubjectInput('');
+                      }
+                    }}
+                    placeholder="Type subject name & press + or Enter"
+                    className="flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] placeholder:text-[var(--tx3)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = customSubjectInput.trim();
+                      if (val && !ALL_SUBJECTS.includes(val) && !customSubjects.includes(val)) {
+                        setCustomSubjects([...customSubjects, val]);
+                        if (!selectedSubjects.includes(val)) setSelectedSubjects([...selectedSubjects, val]);
+                      }
+                      setCustomSubjectInput('');
+                    }}
+                    className="px-3 py-1.5 bg-[var(--blue)] text-white rounded-lg text-[12px] font-bold cursor-pointer hover:opacity-90 flex items-center"
+                  >+</button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2.5 max-h-[150px] overflow-y-auto">
                   {ALL_SUBJECTS.map((sub) => (
                     <label key={sub} className="flex items-center gap-2 text-[11px] text-[var(--tx2)] cursor-pointer">
                       <input
@@ -482,6 +555,35 @@ export function Classes() {
                       />
                       {sub}
                     </label>
+                  ))}
+                  {customSubjects.map((sub) => (
+                    <div key={sub} className="flex items-center gap-1.5">
+                      <label className="flex items-center gap-2 text-[11px] text-[var(--blue-tx)] font-medium cursor-pointer flex-1">
+                        <input
+                          type="checkbox"
+                          value={sub}
+                          checked={selectedSubjects.includes(sub)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSubjects([...selectedSubjects, sub]);
+                            } else {
+                              setSelectedSubjects(selectedSubjects.filter(s => s !== sub));
+                            }
+                          }}
+                          className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
+                        />
+                        {sub}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomSubjects(customSubjects.filter(s => s !== sub));
+                          setSelectedSubjects(selectedSubjects.filter(s => s !== sub));
+                        }}
+                        className="text-[var(--tx3)] hover:text-[var(--red-tx)] cursor-pointer"
+                        title="Remove custom subject"
+                      ><X size={10} /></button>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -513,7 +615,7 @@ export function Classes() {
               <button onClick={() => setShowAssignTeacher(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-2 max-h-[300px] overflow-y-auto">
-              {teachers.filter(t => !assignedTeacherIds.has(String(t.id)) || showAssignTeacher.classTeacherId === String(t.id)).map((teacher) => (
+              {teachers.map((teacher) => (
                 <button
                   key={teacher.id}
                   onClick={() => handleAssignTeacher(teacher.id)}
@@ -647,12 +749,45 @@ export function Classes() {
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
                 >
                   <option value="">Select teacher</option>
-                  {teachers.filter(t => !assignedTeacherIds.has(String(t.id)) || editSectionData.section.classTeacherId === String(t.id)).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Subjects</label>
-                <div className="grid grid-cols-2 gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2.5 max-h-[120px] overflow-y-auto">
+                {/* Manual subject entry */}
+                <div className="flex gap-1.5 mb-2">
+                  <input
+                    type="text"
+                    value={customSubjectInput}
+                    onChange={(e) => setCustomSubjectInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const val = customSubjectInput.trim();
+                        if (val && !ALL_SUBJECTS.includes(val) && !customSubjects.includes(val)) {
+                          setCustomSubjects([...customSubjects, val]);
+                          if (!selectedSubjects.includes(val)) setSelectedSubjects([...selectedSubjects, val]);
+                        }
+                        setCustomSubjectInput('');
+                      }
+                    }}
+                    placeholder="Type subject name & press + or Enter"
+                    className="flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] placeholder:text-[var(--tx3)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const val = customSubjectInput.trim();
+                      if (val && !ALL_SUBJECTS.includes(val) && !customSubjects.includes(val)) {
+                        setCustomSubjects([...customSubjects, val]);
+                        if (!selectedSubjects.includes(val)) setSelectedSubjects([...selectedSubjects, val]);
+                      }
+                      setCustomSubjectInput('');
+                    }}
+                    className="px-3 py-1.5 bg-[var(--blue)] text-white rounded-lg text-[12px] font-bold cursor-pointer hover:opacity-90 flex items-center"
+                  >+</button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-2.5 max-h-[150px] overflow-y-auto">
                   {ALL_SUBJECTS.map((sub) => (
                     <label key={sub} className="flex items-center gap-2 text-[11px] text-[var(--tx2)] cursor-pointer">
                       <input
@@ -670,6 +805,35 @@ export function Classes() {
                       />
                       {sub}
                     </label>
+                  ))}
+                  {customSubjects.map((sub) => (
+                    <div key={sub} className="flex items-center gap-1.5">
+                      <label className="flex items-center gap-2 text-[11px] text-[var(--blue-tx)] font-medium cursor-pointer flex-1">
+                        <input
+                          type="checkbox"
+                          value={sub}
+                          checked={selectedSubjects.includes(sub)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSubjects([...selectedSubjects, sub]);
+                            } else {
+                              setSelectedSubjects(selectedSubjects.filter(s => s !== sub));
+                            }
+                          }}
+                          className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
+                        />
+                        {sub}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomSubjects(customSubjects.filter(s => s !== sub));
+                          setSelectedSubjects(selectedSubjects.filter(s => s !== sub));
+                        }}
+                        className="text-[var(--tx3)] hover:text-[var(--red-tx)] cursor-pointer"
+                        title="Remove custom subject"
+                      ><X size={10} /></button>
+                    </div>
                   ))}
                 </div>
               </div>

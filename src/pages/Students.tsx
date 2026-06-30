@@ -165,6 +165,8 @@ export function Students() {
   };
 
   const [batchesList, setBatchesList] = useState<any[]>([]);
+  const [modalSelectedClass, setModalSelectedClass] = useState<string>('');
+  const [modalSelectedSection, setModalSelectedSection] = useState<string>('');
   const [attendancePercentage, setAttendancePercentage] = useState<number | null>(null);
   const [studentFeesList, setStudentFeesList] = useState<any[]>([]);
   const [loadingStudentFees, setLoadingStudentFees] = useState(false);
@@ -180,6 +182,63 @@ export function Students() {
     }
   }, [modal, activeDetailStudent]);
 
+  // Derive classes and sections from batches (mirrors Classes.tsx logic)
+  const getClassesFromBatches = (batches: any[]): string[] => {
+    if (!batches || batches.length === 0) {
+      // Fallback safety classes if fail to load
+      return ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+    }
+    // Priority: Union of default classes (1-10) and any custom classes from database batches
+    const classSet = new Set<string>(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+    batches.forEach((b: any) => {
+      const match = b.name?.match(/^(.+?)([A-Z])$/);
+      if (match) classSet.add(match[1]);
+    });
+    return Array.from(classSet).sort((a, b) => {
+      const nA = Number(a), nB = Number(b);
+      if (!isNaN(nA) && !isNaN(nB)) return nA - nB;
+      if (!isNaN(nA)) return -1;
+      if (!isNaN(nB)) return 1;
+      return a.localeCompare(b);
+    });
+  };
+
+  const getSectionsForClass = (batches: any[], classId: string): string[] => {
+    if (!batches || batches.length === 0) {
+      // Fallback safety sections if fail to load
+      return ['A', 'B', 'C'];
+    }
+    const sectionSet = new Set<string>();
+    batches.forEach((b: any) => {
+      const match = b.name?.match(/^(.+?)([A-Z])$/);
+      if (match && match[1] === classId) sectionSet.add(match[2]);
+    });
+    const sorted = Array.from(sectionSet).sort();
+    // If we have batches loaded but none for this class, fall back to Class tab's mock sections ['A', 'B']
+    return sorted.length > 0 ? sorted : ['A', 'B'];
+  };
+
+  const availableClasses = getClassesFromBatches(batchesList);
+  const availableSections = getSectionsForClass(batchesList, modalSelectedClass);
+
+  // Reset section to first available when class changes
+  useEffect(() => {
+    if (modalSelectedClass) {
+      const sections = getSectionsForClass(batchesList, modalSelectedClass);
+      setModalSelectedSection(prev => sections.includes(prev) ? prev : (sections[0] || 'A'));
+    }
+  }, [modalSelectedClass, batchesList]);
+
+  // If batchesList loads AFTER 'add' modal opened, refresh the default class/section
+  useEffect(() => {
+    if (modal === 'add' && batchesList.length > 0 && !modalSelectedClass) {
+      const firstClass = getClassesFromBatches(batchesList)[0];
+      const cls = firstClass || '8';
+      setModalSelectedClass(cls);
+      setModalSelectedSection(getSectionsForClass(batchesList, cls)[0] || 'A');
+    }
+  }, [batchesList, modal]);
+
   useEffect(() => {
     if (modal === 'add') {
       setPhoneVal('');
@@ -187,12 +246,19 @@ export function Students() {
       setAadharVal('');
       setFormErrors({});
       setHasUnsavedChanges(false);
+      // Set default class to the first available class
+      const firstClass = getClassesFromBatches(batchesList)[0];
+      const cls = firstClass || '8';
+      setModalSelectedClass(cls);
+      setModalSelectedSection(getSectionsForClass(batchesList, cls)[0] || 'A');
     } else if (modal === 'edit' && selected) {
       setPhoneVal(selected.phone || '');
       setBiometricVal(selected.biometric_employee_code || '');
       setAadharVal(selected.aadhar_number || '');
       setFormErrors({});
       setHasUnsavedChanges(false);
+      setModalSelectedClass(selected.class || '8');
+      setModalSelectedSection(selected.section || 'A');
     } else {
       setHasUnsavedChanges(false);
     }
@@ -652,11 +718,25 @@ export function Students() {
                   <Loader2 size={13} className="animate-spin" /> Loading breakdown...
                 </div>
               ) : studentFeesList.length === 0 ? (
-                <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic">No fee records assigned.</div>
+                <div className="text-center py-6 text-[11px] text-[var(--tx3)] italic flex flex-col items-center justify-center gap-2">
+                  <span>No fee records assigned.</span>
+                  {activeDetailStudent && (
+                    <button
+                      onClick={() => {
+                        sessionStorage.setItem('admitted_student', JSON.stringify({ id: String(activeDetailStudent.id), name: activeDetailStudent.name }));
+                        window.history.pushState({}, '', '/fee-management');
+                        window.dispatchEvent(new PopStateEvent('popstate'));
+                      }}
+                      className="mt-1 flex items-center gap-1 px-2.5 py-1.5 text-[10.5px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer font-semibold"
+                    >
+                      <Plus size={11} /> Assign Fee
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                   {studentFeesList.map(fee => {
-                    const feeName = fee.feeCategory?.name || fee.category || 'School Fee';
+                    const feeName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
                     const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
                     return (
                       <div key={fee.id} className="p-2.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
@@ -828,7 +908,7 @@ export function Students() {
             ))}
           </select>
           <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-            {['All', '6', '7', '8', '9', '10'].map((c) => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
+            {['All', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((c) => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
           </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
             {['All', 'Active', 'Transferred', 'Left'].map((s) => <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>)}
@@ -1097,22 +1177,22 @@ export function Students() {
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class *</label>
                   <select
                     name="class"
-                    defaultValue={selected?.class || '8'}
-                    onChange={() => setHasUnsavedChanges(true)}
+                    value={modalSelectedClass}
+                    onChange={(e) => { setModalSelectedClass(e.target.value); setHasUnsavedChanges(true); }}
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                   >
-                    {['6','7','8','9','10'].map((c) => <option key={c} value={c}>Class {c}</option>)}
+                    {availableClasses.map((c) => <option key={c} value={c}>Class {c}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Section *</label>
                   <select
                     name="section"
-                    defaultValue={selected?.section || 'A'}
-                    onChange={() => setHasUnsavedChanges(true)}
+                    value={modalSelectedSection}
+                    onChange={(e) => { setModalSelectedSection(e.target.value); setHasUnsavedChanges(true); }}
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                   >
-                    {['A','B','C'].map((s) => <option key={s} value={s}>Section {s}</option>)}
+                    {availableSections.map((s) => <option key={s} value={s}>Section {s}</option>)}
                   </select>
                 </div>
                 <div>
