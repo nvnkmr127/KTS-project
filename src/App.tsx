@@ -100,6 +100,28 @@ const getInitialPage = (isTeacher: boolean): PageId => {
   return isTeacher ? 'teacher-dashboard' : 'dashboard';
 };
 
+const getPreloadedPages = (isTeacher: boolean): Record<string, boolean> => {
+  const initial: Record<string, boolean> = {};
+  if (isTeacher) {
+    const allowed = [
+      'teacher-dashboard', 'homework', 'allot-attendance', 'performance', 'my-salary',
+      'dashboard', 'fee', 'fee-categories', 'students', 'staff', 'salary', 'expenses', 
+      'reports', 'timetable', 'classes', 'faculty', 'bus', 'whatsapp', 'meetings', 'recycle-bin'
+    ];
+    allowed.forEach(p => { initial[p] = true; });
+  } else {
+    const allowed = [
+      'dashboard', 'fee', 'fee-categories', 'attendance', 'diary', 'bus', 'faculty', 
+      'reports', 'students', 'staff', 'staff-attendance', 'classes', 'salary', 
+      'salary-categories', 'expenses', 'whatsapp', 'leave', 'substitute', 'staff-access', 
+      'exams', 'meetings', 'timetable', 'promotion', 'settings', 'webhook', 
+      'activity-logs', 'recycle-bin', 'alumni', 'search'
+    ];
+    allowed.forEach(p => { initial[p] = true; });
+  }
+  return initial;
+};
+
 function AppShell() {
   const { user } = useAuth();
   const isTeacher = user?.role === 'teacher';
@@ -122,12 +144,33 @@ function AppShell() {
   const [dark, setDark] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [preSearchPage, setPreSearchPage] = useState<PageId>(() => getInitialPage(isTeacher));
+
+  const [visitedPages, setVisitedPages] = useState<Record<string, boolean>>(() => ({
+    [getInitialPage(isTeacher)]: true,
+  }));
+
+  useEffect(() => {
+    if (page) {
+      setVisitedPages((prev) => prev[page] ? prev : { ...prev, [page]: true });
+    }
+  }, [page]);
+
+  // Defer preloading of all allowed pages by 1.5 seconds in the background
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisitedPages((prev) => {
+        const preloaded = getPreloadedPages(isTeacher);
+        return { ...preloaded, ...prev };
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [isTeacher]);
 
   useEffect(() => {
     if (user) {
       const initialPage = getInitialPage(isTeacher);
       setPage(initialPage);
+      setVisitedPages({ [initialPage]: true });
       // Sync URL if on root path
       if (window.location.pathname === '/' || window.location.pathname === '') {
         window.history.replaceState({}, '', PAGE_TO_PATH[initialPage]);
@@ -198,50 +241,182 @@ function AppShell() {
           />
 
           {/* Admin pages */}
-          {page === 'dashboard' && <Dashboard onNavigate={navigate} />}
-          {page === 'fee' && <FeeManagement />}
-          {page === 'fee-categories' && <FeeCategories />}
-          {page === 'attendance' && <Attendance />}
-          {page === 'diary' && <DailyDiary />}
-          {page === 'bus' && <BusTracking />}
-          {page === 'faculty' && <Faculty />}
-          {page === 'reports' && <Reports />}
-          {page === 'students' && <Students />}
-          {page === 'staff' && <StaffManagement />}
-          {page === 'staff-attendance' && <StaffAttendance />}
-          {page === 'classes' && <Classes />}
-          {page === 'salary' && <Salary />}
-          {page === 'salary-categories' && <SalaryCategories />}
-          {page === 'expenses' && <Expenses />}
-          {page === 'whatsapp' && <WhatsApp />}
-          {page === 'leave' && <Leave />}
-          {page === 'substitute' && <Substitute />}
-          {page === 'staff-access' && <StaffAccess />}
-          {page === 'exams' && <Examinations />}
-          {page === 'meetings' && <Meetings />}
-          {page === 'timetable' && <Timetable />}
-          {page === 'promotion' && <Promotion />}
-          {page === 'settings' && <Settings initialTab={0} />}
-          {page === 'webhook' && <Settings initialTab={3} />}
-          {page === 'activity-logs' && (
-            isTeacher ? <TeacherActivityLogs /> : <Settings initialTab={2} />
+          {visitedPages['dashboard'] && (
+            <div className={page === 'dashboard' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Dashboard onNavigate={navigate} />
+            </div>
           )}
-          {page === 'recycle-bin' && <RecycleBin />}
-          {page === 'alumni' && <Alumni />}
-          {page === 'search' && (
-            <SearchPage
-              searchQuery={searchQuery}
-              onNavigate={navigate}
-              onClearSearch={() => setSearchQuery('')}
-            />
+          {visitedPages['fee'] && (
+            <div className={page === 'fee' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <FeeManagement />
+            </div>
+          )}
+          {visitedPages['fee-categories'] && (
+            <div className={page === 'fee-categories' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <FeeCategories />
+            </div>
+          )}
+          {visitedPages['attendance'] && (
+            <div className={page === 'attendance' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Attendance />
+            </div>
+          )}
+          {visitedPages['diary'] && (
+            <div className={page === 'diary' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <DailyDiary />
+            </div>
+          )}
+          {visitedPages['bus'] && (
+            <div className={page === 'bus' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <BusTracking />
+            </div>
+          )}
+          {visitedPages['faculty'] && (
+            <div className={page === 'faculty' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Faculty />
+            </div>
+          )}
+          {visitedPages['reports'] && (
+            <div className={page === 'reports' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Reports />
+            </div>
+          )}
+          {visitedPages['students'] && (
+            <div className={page === 'students' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Students />
+            </div>
+          )}
+          {visitedPages['staff'] && (
+            <div className={page === 'staff' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <StaffManagement />
+            </div>
+          )}
+          {visitedPages['staff-attendance'] && (
+            <div className={page === 'staff-attendance' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <StaffAttendance />
+            </div>
+          )}
+          {visitedPages['classes'] && (
+            <div className={page === 'classes' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Classes />
+            </div>
+          )}
+          {visitedPages['salary'] && (
+            <div className={page === 'salary' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Salary />
+            </div>
+          )}
+          {visitedPages['salary-categories'] && (
+            <div className={page === 'salary-categories' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <SalaryCategories />
+            </div>
+          )}
+          {visitedPages['expenses'] && (
+            <div className={page === 'expenses' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Expenses />
+            </div>
+          )}
+          {visitedPages['whatsapp'] && (
+            <div className={page === 'whatsapp' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <WhatsApp />
+            </div>
+          )}
+          {visitedPages['leave'] && (
+            <div className={page === 'leave' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Leave />
+            </div>
+          )}
+          {visitedPages['substitute'] && (
+            <div className={page === 'substitute' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Substitute />
+            </div>
+          )}
+          {visitedPages['staff-access'] && (
+            <div className={page === 'staff-access' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <StaffAccess />
+            </div>
+          )}
+          {visitedPages['exams'] && (
+            <div className={page === 'exams' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Examinations />
+            </div>
+          )}
+          {visitedPages['meetings'] && (
+            <div className={page === 'meetings' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Meetings />
+            </div>
+          )}
+          {visitedPages['timetable'] && (
+            <div className={page === 'timetable' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Timetable />
+            </div>
+          )}
+          {visitedPages['promotion'] && (
+            <div className={page === 'promotion' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Promotion />
+            </div>
+          )}
+          {visitedPages['settings'] && (
+            <div className={page === 'settings' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Settings initialTab={0} />
+            </div>
+          )}
+          {visitedPages['webhook'] && (
+            <div className={page === 'webhook' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Settings initialTab={3} />
+            </div>
+          )}
+          {visitedPages['activity-logs'] && (
+            <div className={page === 'activity-logs' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              {isTeacher ? <TeacherActivityLogs /> : <Settings initialTab={2} />}
+            </div>
+          )}
+          {visitedPages['recycle-bin'] && (
+            <div className={page === 'recycle-bin' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <RecycleBin />
+            </div>
+          )}
+          {visitedPages['alumni'] && (
+            <div className={page === 'alumni' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Alumni />
+            </div>
+          )}
+          {visitedPages['search'] && (
+            <div className={page === 'search' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <SearchPage
+                searchQuery={searchQuery}
+                onNavigate={navigate}
+                onClearSearch={() => setSearchQuery('')}
+              />
+            </div>
           )}
 
           {/* Teacher pages */}
-          {page === 'teacher-dashboard' && <TeacherDashboard />}
-          {page === 'homework' && <Homework />}
-          {page === 'allot-attendance' && <AllotAttendance />}
-          {page === 'performance' && <Performance />}
-          {page === 'my-salary' && <MySalary />}
+          {visitedPages['teacher-dashboard'] && (
+            <div className={page === 'teacher-dashboard' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <TeacherDashboard />
+            </div>
+          )}
+          {visitedPages['homework'] && (
+            <div className={page === 'homework' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Homework />
+            </div>
+          )}
+          {visitedPages['allot-attendance'] && (
+            <div className={page === 'allot-attendance' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <AllotAttendance />
+            </div>
+          )}
+          {visitedPages['performance'] && (
+            <div className={page === 'performance' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <Performance />
+            </div>
+          )}
+          {visitedPages['my-salary'] && (
+            <div className={page === 'my-salary' ? 'flex-1 flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
+              <MySalary />
+            </div>
+          )}
         </div>
       </div>
       {pendingPage && (

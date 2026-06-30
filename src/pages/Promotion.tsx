@@ -165,8 +165,13 @@ export function Promotion() {
       setStudentsLoading(true);
       setMessage(null);
       try {
-        const data = await api.getResources('students', { batch_id: sourceBatch, limit: '1000' });
-        const mapped = data.map((s: any) => ({
+        // Fetch all students from cache (no params = uses the pre-warmed cached list)
+        // then filter client-side by batch_id — this is instant when cached.
+        const allStudents = await api.getResources('students');
+        const batchStudents = (allStudents || []).filter(
+          (s: any) => String(s.batch_id) === String(sourceBatch)
+        );
+        const mapped = batchStudents.map((s: any) => ({
           id: String(s.id),
           name: s.name,
           roll: s.enrollment_number || 'N/A',

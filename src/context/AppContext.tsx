@@ -350,6 +350,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         api.getResources('daily-diaries').catch(() => {});
         api.getResources('fee-categories').catch(() => {});
         api.getResources('student-fees', { limit: '10000' }).catch(() => {});
+        api.getResources('faculty').catch(() => {});
+        api.getResources('expenses').catch(() => {});
+        api.getResources('settings').catch(() => {});
+        api.getResources('settings', { key: 'kts_student_attendance_records' }).catch(() => {});
+        api.getResources('settings', { key: 'kts_holidays' }).catch(() => {});
+        api.getResources('settings', { key: 'examinations_exams' }).catch(() => {});
+        api.getResources('settings', { key: 'kts_student_marks' }).catch(() => {});
+        api.getResources('settings', { key: 'examinations_schedules' }).catch(() => {});
+        api.getResources('payslips').catch(() => {});
+        api.getResources('biometric-logs').catch(() => {});
+        api.getResources('homework').catch(() => {});
+        api.getResources('alumni').catch(() => {});
       }, 1500);
     }
     loadInitialData();

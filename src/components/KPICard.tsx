@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface KPICardProps {
@@ -10,12 +10,17 @@ interface KPICardProps {
   iconColor: string;
   trend?: { direction: 'up' | 'down'; label: string };
   onClick?: () => void;
+  hoverValue?: React.ReactNode;
 }
 
-export function KPICard({ label, value, sub, icon, iconBg, iconColor, trend, onClick }: KPICardProps) {
+export function KPICard({ label, value, sub, icon, iconBg, iconColor, trend, onClick, hoverValue }: KPICardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       className={`bg-[var(--surf)] border border-[var(--b)] rounded-xl p-3 relative overflow-hidden transition-all duration-200 ${
         onClick
           ? 'cursor-pointer hover:border-[var(--blue)] hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'
@@ -30,7 +35,15 @@ export function KPICard({ label, value, sub, icon, iconBg, iconColor, trend, onC
       </div>
       <div className="text-[10.5px] text-[var(--tx3)] mb-1">{label}</div>
       <div className="text-[20px] font-semibold text-[var(--tx)] leading-none mb-1">{value}</div>
-      {sub && !trend && <div className="text-[10.5px] text-[var(--tx3)]">{sub}</div>}
+      {(sub || hoverValue) && !trend && (
+        <div className="text-[10.5px] text-[var(--tx3)] min-h-[16px] transition-all duration-150">
+          {isHovered && hoverValue ? (
+            <span className="text-[var(--tx2)] font-medium">{hoverValue}</span>
+          ) : (
+            sub
+          )}
+        </div>
+      )}
       {trend && (
         <div className="flex items-center gap-1.5 mt-1">
           <span
@@ -47,9 +60,18 @@ export function KPICard({ label, value, sub, icon, iconBg, iconColor, trend, onC
             )}
             {trend.label}
           </span>
-          {sub && <span className="text-[10.5px] text-[var(--tx3)]">{sub}</span>}
+          {(sub || hoverValue) && (
+            <span className="text-[10.5px] text-[var(--tx3)] min-h-[16px] transition-all duration-150">
+              {isHovered && hoverValue ? (
+                <span className="text-[var(--tx2)] font-medium">{hoverValue}</span>
+              ) : (
+                sub
+              )}
+            </span>
+          )}
         </div>
       )}
     </div>
   );
 }
+

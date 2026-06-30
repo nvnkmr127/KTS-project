@@ -56,6 +56,8 @@ export class ApiError extends Error {
   }
 }
 
+const activeRequests = new Map<string, Promise<any>>();
+
 async function request(path: string, options: RequestInit & { silent?: boolean } = {}) {
   const { silent = false, ...fetchOptions } = options;
   const method = fetchOptions.method || 'GET';
@@ -70,50 +72,71 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       return cached.data;
     }
+    const inFlight = activeRequests.get(path);
+    if (inFlight) {
+      return inFlight;
+    }
   }
 
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    Pragma: 'no-cache',
-    Expires: '0',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...options.headers,
+  const performRequest = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      };
+
+      const response = await fetch(`${BASE_URL}${path}`, {
+        ...fetchOptions,
+        headers,
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 && !silent) {
+          // Clear auth state without a hard redirect — let React's own render logic
+          // (`if (!user) return <Login />;` in App.tsx) handle showing the login screen.
+          // A hard `window.location.href = '/login'` redirect would cause a full-page
+          // reload and could hit the Laravel backend's /login route on production servers.
+          originalRemoveItem('token');
+          originalRemoveItem('user');
+          // Dispatch a custom event so AuthContext can listen and clear user state
+          // within the same tab (window.storage events only fire cross-tab).
+          window.dispatchEvent(new Event('kts:unauthorized'));
+        }
+        const errorData = await response.json().catch(() => ({}));
+        // Throw ApiError (with status code) instead of plain Error so callers can
+        // distinguish 401/403 auth errors from transient network/server errors.
+        throw new ApiError(errorData.error || errorData.message || 'API request failed', response.status);
+      }
+
+      const result = await response.json();
+
+      if (method === 'GET' && !bypassCache) {
+        cache.set(path, { data: result, timestamp: Date.now() });
+      }
+
+      return result;
+    } finally {
+      if (method === 'GET' && !bypassCache) {
+        activeRequests.delete(path);
+      }
+    }
   };
 
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...fetchOptions,
-    headers,
-  });
-
-  if (!response.ok) {
-    if (response.status === 401 && !silent) {
-      // Clear auth state without a hard redirect — let React's own render logic
-      // (`if (!user) return <Login />;` in App.tsx) handle showing the login screen.
-      // A hard `window.location.href = '/login'` redirect would cause a full-page
-      // reload and could hit the Laravel backend's /login route on production servers.
-      originalRemoveItem('token');
-      originalRemoveItem('user');
-      // Dispatch a custom event so AuthContext can listen and clear user state
-      // within the same tab (window.storage events only fire cross-tab).
-      window.dispatchEvent(new Event('kts:unauthorized'));
-    }
-    const errorData = await response.json().catch(() => ({}));
-    // Throw ApiError (with status code) instead of plain Error so callers can
-    // distinguish 401/403 auth errors from transient network/server errors.
-    throw new ApiError(errorData.error || errorData.message || 'API request failed', response.status);
-  }
-
-  const result = await response.json();
-
   if (method === 'GET' && !bypassCache) {
-    cache.set(path, { data: result, timestamp: Date.now() });
+    const promise = performRequest();
+    activeRequests.set(path, promise);
+    return promise;
   }
 
-  return result;
+  return performRequest();
 }
+
 
 export const api = {
   async getMe() {

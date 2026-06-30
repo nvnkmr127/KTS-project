@@ -10,6 +10,18 @@ use Illuminate\Support\Facades\Schema;
 class GenericApiController extends Controller
 {
     /**
+     * Cache schema column listings to avoid redundant database queries.
+     */
+    protected function getTableColumns($modelClass)
+    {
+        $table = (new $modelClass)->getTable();
+        
+        return \Cache::remember('schema_columns_' . $table, 86400, function () use ($table) {
+            return Schema::getColumnListing($table);
+        });
+    }
+
+    /**
      * Map resource names to Eloquent model classes.
      */
     protected function getModelClass($resource)
@@ -149,7 +161,7 @@ class GenericApiController extends Controller
         }
 
         // Apply simple field-value filters from query parameters
-        $columns = Schema::getColumnListing((new $modelClass)->getTable());
+        $columns = $this->getTableColumns($modelClass);
         foreach ($request->except(['page', 'limit', 'search', 'with', 'role', 'date']) as $key => $value) {
             if (in_array($key, $columns) && $value !== 'All' && $value !== '') {
                 $query->where($key, $value);
@@ -476,7 +488,7 @@ class GenericApiController extends Controller
         if ($resource === 'settings') {
             $key = $data['key'] ?? null;
             if ($key) {
-                $columns = Schema::getColumnListing((new $modelClass)->getTable());
+                $columns = $this->getTableColumns($modelClass);
                 $data = array_intersect_key($data, array_flip($columns));
                 $item = $modelClass::updateOrCreate(['key' => $key], $data);
                 return response()->json($item, 201);
@@ -791,7 +803,7 @@ class GenericApiController extends Controller
         }
 
         // Filter out fields that do not exist as columns in the database table
-        $columns = Schema::getColumnListing((new $modelClass)->getTable());
+        $columns = $this->getTableColumns($modelClass);
         $data = array_intersect_key($data, array_flip($columns));
 
         $item = $modelClass::create($data);
@@ -932,7 +944,7 @@ class GenericApiController extends Controller
                 }
 
                 // Filter out fields that do not exist as columns in the database table
-                $columns = Schema::getColumnListing((new $modelClass)->getTable());
+                $columns = $this->getTableColumns($modelClass);
                 $data = array_intersect_key($data, array_flip($columns));
 
                 $item = $modelClass::create($data);
@@ -1048,7 +1060,7 @@ class GenericApiController extends Controller
         }
 
         // Filter out fields that do not exist as columns in the database table
-        $columns = Schema::getColumnListing((new $modelClass)->getTable());
+        $columns = $this->getTableColumns($modelClass);
         $data = array_intersect_key($data, array_flip($columns));
 
         $oldStatus = $item->status;

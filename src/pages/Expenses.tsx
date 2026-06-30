@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Plus, X, DollarSign, TrendingDown, AlertTriangle, CheckCircle, Loader2, Calendar, Download } from 'lucide-react';
+import { Plus, X, DollarSign, TrendingDown, AlertTriangle, CheckCircle, Loader2, Calendar, Download, Edit2, Trash2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -46,6 +46,9 @@ export function Expenses() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('Electricity');
   const [customCategory, setCustomCategory] = useState('');
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editCategory, setEditCategory] = useState('');
+  const [editCustomCategory, setEditCustomCategory] = useState('');
 
   const loadExpenses = async () => {
     setLoading(true);
@@ -130,6 +133,65 @@ export function Expenses() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this expense?')) return;
+    
+    // Optimistic local state update
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
+    
+    if (!id.startsWith('mock-') && !id.startsWith('local-')) {
+      try {
+        await api.deleteResource('expenses', id);
+      } catch (err) {
+        console.error('Error deleting expense in backend:', err);
+        loadExpenses();
+      }
+    }
+  };
+
+  const handleEditClick = (expense: Expense) => {
+    setEditingExpense(expense);
+    if (CATEGORY_COLORS[expense.category]) {
+      setEditCategory(expense.category);
+      setEditCustomCategory('');
+    } else {
+      setEditCategory('manual_entry');
+      setEditCustomCategory(expense.category);
+    }
+  };
+
+  const handleUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+    
+    const fd = new FormData(e.currentTarget);
+    const catValue = editCategory === 'manual_entry' ? editCustomCategory.trim() : editCategory;
+    
+    const data = {
+      category: catValue || 'General',
+      amount: parseFloat(fd.get('amount') as string) || 0,
+      description: (fd.get('description') as string) || '',
+      vendor: (fd.get('vendor') as string) || 'N/A',
+      date: (fd.get('date') as string) || new Date().toISOString().slice(0, 10),
+      status: editingExpense.status,
+      receipt: editingExpense.receipt,
+    };
+
+    // Optimistic local state update
+    setExpenses((prev) => prev.map((item) => item.id === editingExpense.id ? { ...item, ...data } : item));
+    const origId = editingExpense.id;
+    setEditingExpense(null);
+
+    if (!origId.startsWith('mock-') && !origId.startsWith('local-')) {
+      try {
+        await api.updateResource('expenses', origId, data);
+      } catch (err) {
+        console.error('Error updating expense in backend:', err);
+        loadExpenses();
+      }
+    }
+  };
+
   const handleExport = () => {
     const headers = ['Category', 'Description', 'Vendor', 'Date', 'Amount', 'Status'];
     const rows = filtered.map((e) => [
@@ -198,10 +260,42 @@ export function Expenses() {
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-        <KPICard label="Total Expenses" value={`₹${(totalExpensesSum / 100000).toFixed(2)}L`} sub={startDate || endDate ? 'Custom Date Range' : 'This Academic Year'} icon={<DollarSign size={15} />} iconBg="var(--red-bg)" iconColor="var(--red-tx)" />
-        <KPICard label="Approved" value={`₹${(totalApproved / 1000).toFixed(0)}K`} sub={`${filtered.filter((e) => e.status === 'Approved').length} items`} icon={<CheckCircle size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
-        <KPICard label="Pending Approval" value={`₹${(totalPending / 1000).toFixed(0)}K`} sub={`${filtered.filter((e) => e.status === 'Pending').length} items`} icon={<AlertTriangle size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
-        <KPICard label="Annual Budget" value="₹25L" sub={`₹${(totalExpensesSum / 100000).toFixed(2)}L spent`} icon={<TrendingDown size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
+        <KPICard 
+          label="Total Expenses" 
+          value={`₹${(totalExpensesSum / 100000).toFixed(2)}L`} 
+          sub={startDate || endDate ? 'Custom Date Range' : 'This Academic Year'} 
+          hoverValue={`Exact: ₹${totalExpensesSum.toLocaleString()}`}
+          icon={<DollarSign size={15} />} 
+          iconBg="var(--red-bg)" 
+          iconColor="var(--red-tx)" 
+        />
+        <KPICard 
+          label="Approved" 
+          value={`₹${(totalApproved / 1000).toFixed(0)}K`} 
+          sub={`${filtered.filter((e) => e.status === 'Approved').length} items`} 
+          hoverValue={`Exact: ₹${totalApproved.toLocaleString()}`}
+          icon={<CheckCircle size={15} />} 
+          iconBg="var(--teal-bg)" 
+          iconColor="var(--teal-tx)" 
+        />
+        <KPICard 
+          label="Pending Approval" 
+          value={`₹${(totalPending / 1000).toFixed(0)}K`} 
+          sub={`${filtered.filter((e) => e.status === 'Pending').length} items`} 
+          hoverValue={`Exact: ₹${totalPending.toLocaleString()}`}
+          icon={<AlertTriangle size={15} />} 
+          iconBg="var(--amber-bg)" 
+          iconColor="var(--amber-tx)" 
+        />
+        <KPICard 
+          label="Annual Budget" 
+          value="₹25L" 
+          sub={`₹${(totalExpensesSum / 100000).toFixed(2)}L spent`} 
+          hoverValue={`Exact Spent: ₹${totalExpensesSum.toLocaleString()}`}
+          icon={<TrendingDown size={15} />} 
+          iconBg="var(--blue-bg)" 
+          iconColor="var(--blue-tx)" 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5 mb-2.5">
@@ -303,7 +397,7 @@ export function Expenses() {
             <table className="w-full border-collapse text-[12px] min-w-[700px]">
               <thead>
                 <tr className="border-b border-[var(--b)]">
-                  {['Category', 'Description', 'Vendor', 'Date', 'Amount', 'Status', ''].map((h) => (
+                  {['Category', 'Description', 'Vendor', 'Date', 'Amount', 'Status', 'Actions'].map((h) => (
                     <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -327,9 +421,25 @@ export function Expenses() {
                       {e.status === 'Rejected' && <Badge variant="red">Rejected</Badge>}
                     </td>
                     <td className="px-2 py-2.5">
-                      {e.status === 'Pending' && (
-                        <button onClick={() => handleApprove(e.id)} className="text-[11px] text-[var(--teal-tx)] hover:underline cursor-pointer">Approve</button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {e.status === 'Pending' && (
+                          <button onClick={() => handleApprove(e.id)} className="text-[11px] text-[var(--teal-tx)] hover:underline cursor-pointer mr-1 font-medium">Approve</button>
+                        )}
+                        <button 
+                          onClick={() => handleEditClick(e)} 
+                          className="p-1 text-[var(--tx3)] hover:text-[var(--blue)] hover:bg-[var(--surf3)] rounded transition-colors cursor-pointer"
+                          title="Edit"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(e.id)} 
+                          className="p-1 text-[var(--tx3)] hover:text-[var(--red)] hover:bg-[var(--surf3)] rounded transition-colors cursor-pointer"
+                          title="Delete"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -435,6 +545,92 @@ export function Expenses() {
             <div className="flex gap-2 p-5 pt-0">
               <button type="button" onClick={() => setShowAdd(false)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
               <button type="submit" className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer">Submit for Approval</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Expense Modal */}
+      {editingExpense && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleUpdate} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[460px] shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div className="text-[14px] font-bold text-[var(--tx)]">Edit Expense</div>
+              <button type="button" onClick={() => setEditingExpense(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Category *</label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                  >
+                    {Object.keys(CATEGORY_COLORS).map((c) => <option key={c} value={c}>{c}</option>)}
+                    <option value="manual_entry">Manual Entry</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Amount (₹) *</label>
+                  <input 
+                    type="number" 
+                    name="amount" 
+                    required 
+                    defaultValue={editingExpense.amount}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" 
+                    placeholder="15000" 
+                  />
+                </div>
+              </div>
+              {editCategory === 'manual_entry' && (
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Custom Category *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCustomCategory}
+                    onChange={(e) => setEditCustomCategory(e.target.value)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    placeholder="e.g. Office Supplies"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Description *</label>
+                <input 
+                  name="description" 
+                  required 
+                  defaultValue={editingExpense.description}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" 
+                  placeholder="Describe the expense..." 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Vendor / Payee</label>
+                  <input 
+                    name="vendor" 
+                    defaultValue={editingExpense.vendor}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" 
+                    placeholder="Vendor name" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Date *</label>
+                  <input 
+                    type="date" 
+                    name="date" 
+                    required 
+                    defaultValue={editingExpense.date}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" 
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button type="button" onClick={() => setEditingExpense(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button type="submit" className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer">Save Changes</button>
             </div>
           </form>
         </div>
