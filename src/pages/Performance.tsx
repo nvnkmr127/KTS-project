@@ -330,7 +330,7 @@ export function Performance() {
                   No distribution statistics available.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart data={chartData} barSize={24} margin={{ top: 10, right: 4, left: -20, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="var(--b)" />
                     <XAxis dataKey="range" tick={{ fontSize: 9.5, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />

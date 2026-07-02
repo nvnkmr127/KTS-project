@@ -788,7 +788,7 @@ export function Attendance() {
               <Card>
                 <CardHeader title="Monthly Attendance" />
                 <div className="h-[175px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <LineChart data={monthlyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                       <CartesianGrid vertical={false} stroke="var(--b)" />
                       <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />

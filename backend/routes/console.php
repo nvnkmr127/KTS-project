@@ -848,7 +848,7 @@ Schedule::command('etimeoffice:auto-sync', ['--range=today'])
 
 // ETimeOffice Auto-Sync (off-school hours: 6:00 PM to 8:00 AM - runs every 5 hours)
 Schedule::command('etimeoffice:auto-sync', ['--range=today'])
-    ->everyFiveHours()
+    ->everySixHours()
     ->days([1, 2, 3, 4, 5, 6])
     ->unlessBetween('08:00', '18:00')
     ->name('etimeoffice-auto-sync-off-hours')

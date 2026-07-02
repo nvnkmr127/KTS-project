@@ -1140,7 +1140,7 @@ export function StaffManagement() {
                           <div className="text-[11.5px] text-[var(--tx3)]">No attendance logs found</div>
                         ) : (
                           <>
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                               <PieChart>
                                 <Pie
                                   data={pieData}

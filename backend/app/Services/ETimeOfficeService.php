@@ -141,6 +141,11 @@ class ETimeOfficeService
 
             $punchData = $response['data']['PunchData'] ?? [];
 
+            // Normalize single associative array to list
+            if (!empty($punchData) && !isset($punchData[0])) {
+                $punchData = [$punchData];
+            }
+
             Log::info('eTimeOffice data fetched successfully', [
                 'records_count' => count($punchData),
                 'from_date' => $fromDate->format('Y-m-d H:i'),
@@ -193,6 +198,10 @@ class ETimeOfficeService
             // DownloadInOutPunchData returns 'InOutPunchData' key (not 'PunchData')
             $inOutData = $response['data']['InOutPunchData'] ?? $response['data']['PunchData'] ?? [];
 
+            // Normalize single associative array to list
+            if (!empty($inOutData) && !isset($inOutData[0])) {
+                $inOutData = [$inOutData];
+            }
 
             Log::info('eTimeOffice IN/OUT data fetched', [
                 'records_count' => count($inOutData),
@@ -383,7 +392,7 @@ class ETimeOfficeService
 
         try {
             $url = $this->apiUrl.'/'.$endpoint;
-            $queryString = http_build_query($params);
+            $queryString = urldecode(http_build_query($params));
             $fullUrl = $url.'?'.$queryString;
 
             Log::info('Making eTimeOffice API call', [
@@ -393,7 +402,7 @@ class ETimeOfficeService
             ]);
 
             $response = Http::timeout(60)
-
+                ->withoutVerifying()
                 ->withHeaders([
                     'Authorization' => 'Basic '.$this->authToken,
                     'Accept' => 'application/json',
@@ -415,7 +424,7 @@ class ETimeOfficeService
             Log::info('eTimeOffice API call successful', [
                 'endpoint' => $endpoint,
                 'response_size' => strlen($response->body()),
-                'has_data' => isset($data['PunchData']),
+                'has_data' => !empty($data['PunchData']) || !empty($data['InOutPunchData']),
             ]);
 
             return [
@@ -440,7 +449,7 @@ class ETimeOfficeService
     /**
      * Find student using biometric code with fallback
      */
-    private function findStudentByBiometricCode(string $biometricCode): ?Student
+    public function findStudentByBiometricCode(string $biometricCode): ?Student
     {
         // First try biometric employee code
         $student = Student::where('biometric_employee_code', $biometricCode)->first();

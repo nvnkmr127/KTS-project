@@ -1,0 +1,23 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine on
+    
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    # The negative lookahead (?!public/) ensures we only prepend public/ 
+    # if it's not already there, preventing infinite rewrite loops.
+    RewriteRule ^$ public/index.php [L]
+    RewriteRule ^((?!public/).*)$ public/$1 [L,NC]
+</IfModule>
+
+# Disable directory browsing
+Options -Indexes
+
+# Block access to hidden files (like .env)
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>

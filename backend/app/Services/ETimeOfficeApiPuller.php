@@ -57,7 +57,7 @@ class ETimeOfficeApiPuller
             'ToDate' => $toDate->format('d/m/Y_H:i'),
         ];
 
-        $url = rtrim($this->apiUrl, '/').'/DownloadPunchData?'.http_build_query($params);
+        $url = rtrim($this->apiUrl, '/').'/DownloadPunchData?'.urldecode(http_build_query($params));
 
         Log::info('ETimeOffice API Request', [
             'url' => $url,
@@ -68,6 +68,7 @@ class ETimeOfficeApiPuller
 
         try {
             $response = Http::timeout(60)
+                ->withoutVerifying()
                 ->withHeaders([
                     'Authorization' => 'Basic '.$this->authToken,
                     'Accept' => 'application/json',

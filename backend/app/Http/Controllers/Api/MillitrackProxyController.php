@@ -53,6 +53,7 @@ class MillitrackProxyController extends Controller
                 (string) config('services.millitrack.username', ''),
                 (string) config('services.millitrack.password', '')
             )
+            ->withoutVerifying()
             ->timeout(10)          // 10 s connect+read timeout
             ->acceptJson();
     }
@@ -213,7 +214,7 @@ class MillitrackProxyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => "Millitrack returned HTTP {$response->status()} for device {$deviceId}.",
-                ], 502);
+                ], 400);
             }
 
             return response()->json([
@@ -228,7 +229,7 @@ class MillitrackProxyController extends Controller
                 'success' => false,
                 'message' => 'Could not reach Millitrack server.',
                 'detail'  => $e->getMessage(),
-            ], 502);
+            ], 400);
         }
     }
 

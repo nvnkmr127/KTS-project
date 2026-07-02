@@ -292,7 +292,12 @@ class Setting extends Model
                 if (is_string($value)) {
                     $decoded = json_decode($value, true);
 
-                    return $decoded !== null ? $decoded : $value;
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        json_encode(null); // reset JSON error state
+                        return $value;
+                    }
+
+                    return $decoded;
                 }
 
                 return $value;
@@ -326,8 +331,16 @@ class Setting extends Model
             return 'float';
         }
 
-        if (is_array($value) || (is_string($value) && json_decode($value, true) !== null)) {
+        if (is_array($value)) {
             return 'json';
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return 'json';
+            }
+            json_encode(null); // reset JSON error state
         }
 
         if (is_string($value)) {

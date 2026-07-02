@@ -452,7 +452,7 @@ export function Expenses() {
           <Card>
             <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">By Category</div>
             <div className="h-[130px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie data={categoryData} cx="50%" cy="50%" outerRadius={52} paddingAngle={2} dataKey="value">
                     {categoryData.map((entry, i) => (
@@ -479,7 +479,7 @@ export function Expenses() {
           <Card>
             <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Monthly Trend</div>
             <div className="h-[100px]">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <BarChart data={monthlyData} barSize={16} margin={{ top: 2, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="var(--b)" />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />

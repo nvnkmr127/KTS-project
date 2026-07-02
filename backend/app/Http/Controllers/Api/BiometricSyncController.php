@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Attendance;
 use App\Models\Attendance\BiometricLog;
 use App\Models\Setting;
 use App\Services\ETimeOfficeService;
@@ -88,7 +89,7 @@ class BiometricSyncController extends Controller
             return response()->json([
                 'connected' => false,
                 'message'   => 'Connection error: ' . $e->getMessage(),
-            ], 503);
+            ], 400);
         }
     }
 
@@ -135,7 +136,7 @@ class BiometricSyncController extends Controller
                     'success' => false,
                     'message' => $result['error'] ?? 'Sync failed',
                     'data'    => [],
-                ], 502);
+                ], 400);
             }
 
             $punchRecords = $result['data'] ?? [];
@@ -164,7 +165,7 @@ class BiometricSyncController extends Controller
                 'success' => false,
                 'message' => 'Sync failed: ' . $e->getMessage(),
                 'data'    => [],
-            ], 500);
+            ], 400);
         }
     }
 
@@ -202,7 +203,7 @@ class BiometricSyncController extends Controller
                     'success' => false,
                     'message' => $result['error'] ?? 'Sync failed',
                     'data'    => [],
-                ], 502);
+                ], 400);
             }
 
             $punchRecords = $result['data'] ?? [];
@@ -249,7 +250,7 @@ class BiometricSyncController extends Controller
                 'success' => false,
                 'message' => 'Sync failed: ' . $e->getMessage(),
                 'data'    => [],
-            ], 500);
+            ], 400);
         }
     }
 
@@ -289,7 +290,7 @@ class BiometricSyncController extends Controller
                     'success' => false,
                     'message' => $result['error'] ?? 'Incremental sync failed',
                     'data'    => [],
-                ], 502);
+                ], 400);
             }
 
             $punchRecords = $result['data'] ?? [];
@@ -339,7 +340,7 @@ class BiometricSyncController extends Controller
                 'success' => false,
                 'message' => 'Incremental sync failed: ' . $e->getMessage(),
                 'data'    => [],
-            ], 500);
+            ], 400);
         }
     }
 
@@ -394,7 +395,7 @@ class BiometricSyncController extends Controller
         $saved = 0;
         foreach ($punchRecords as $record) {
             try {
-                $dateStr  = $record['DateString'] ?? null; // dd/MM/yyyy
+                $dateStr  = $record['DateString'] ?? $record['PunchDate'] ?? $record['LogDateTime'] ?? $record['Date'] ?? null; // dd/MM/yyyy
                 $empCode  = $record['Empcode'] ?? null;
                 $inTime   = $record['INTime'] ?? '--:--';
                 $outTime  = $record['OUTTime'] ?? '--:--';
@@ -406,9 +407,16 @@ class BiometricSyncController extends Controller
                 $earlyOut = $record['Erl_Out'] ?? '00:00';
                 $name     = $record['Name'] ?? null;
 
-                if (!$dateStr || !$empCode) continue;
+                if (!$dateStr || !$empCode) {
+                    Log::warning('BiometricSync: skipped record missing date or empcode', ['record' => $record]);
+                    continue;
+                }
 
-                $carbonDate = Carbon::createFromFormat('d/m/Y', $dateStr);
+                // Handle both "dd/MM/yyyy" and "dd/MM/yyyy HH:mm:ss" formats
+                // eTimeOffice uses dd/MM/yyyy which Carbon::parse treats as mm/dd/yyyy if it uses slashes.
+                // Replace slashes with dashes to force European/Indian date format parsing (d-m-Y).
+                $dateStr = str_replace('/', '-', explode(' ', $dateStr)[0]);
+                $carbonDate = Carbon::parse($dateStr);
                 $scanDate   = $carbonDate->toDateString();
 
                 // Use IN time for the primary datetime
@@ -416,7 +424,7 @@ class BiometricSyncController extends Controller
                     ? Carbon::parse("{$scanDate} {$inTime}:00")
                     : $carbonDate->startOfDay();
 
-                BiometricLog::updateOrCreate(
+                $biometricLog = BiometricLog::updateOrCreate(
                     ['employee_code' => $empCode, 'scan_datetime' => $scanDatetime],
                     [
                         'device_id'        => 'etimeoffice-pull',
@@ -437,11 +445,54 @@ class BiometricSyncController extends Controller
                         ]),
                     ]
                 );
+
+                $student = $this->etimeoffice->findStudentByBiometricCode($empCode);
+                if ($student) {
+                    $inTimeFormatted = ($inTime && $inTime !== '--:--') ? $inTime . ':00' : null;
+                    $outTimeFormatted = ($outTime && $outTime !== '--:--') ? $outTime . ':00' : null;
+                    
+                    $attendanceStatus = 'present';
+                    if ($lateIn && $lateIn !== '00:00') {
+                        $attendanceStatus = 'late';
+                    }
+
+                    Log::info('BiometricSync: Attempting to create Attendance record', [
+                        'student_id' => $student->id,
+                        'attendance_date' => $scanDate,
+                        'batch_id' => $student->batch_id,
+                        'check_in_time' => $inTimeFormatted,
+                    ]);
+
+                    $attendance = Attendance::updateOrCreate(
+                        [
+                            'student_id' => $student->id,
+                            'attendance_date' => $scanDate,
+                        ],
+                        [
+                            'batch_id' => $student->batch_id,
+                            'faculty_id' => 1, // Required by database constraints
+                            'check_in_time' => $inTimeFormatted,
+                            'check_out_time' => $outTimeFormatted,
+                            'status' => $attendanceStatus,
+                            'marked_at' => now(),
+                            'device_id' => 'etimeoffice-api',
+                            'biometric_log_id' => $biometricLog->id,
+                            'notes' => "Synced via eTimeOffice API | Status: {$status} | Work: {$workTime}",
+                        ]
+                    );
+
+                    Log::info('BiometricSync: Successfully created Attendance record', ['attendance_id' => $attendance->id]);
+                    $biometricLog->update(['attendance_id' => $attendance->id]);
+                } else {
+                    Log::warning('BiometricSync: Student not found for empcode', ['empcode' => $empCode]);
+                    $biometricLog->update(['processing_notes' => "Student not found for empcode: {$empCode}"]);
+                }
                 $saved++;
             } catch (\Exception $e) {
-                Log::warning('BiometricSync: failed to save InOut record', [
+                Log::error('BiometricSync: failed to save InOut record', [
                     'record' => $record,
                     'error'  => $e->getMessage(),
+                    'trace'  => $e->getTraceAsString(),
                 ]);
             }
         }

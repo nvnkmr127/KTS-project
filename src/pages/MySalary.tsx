@@ -572,7 +572,7 @@ export function MySalary() {
             <Card>
               <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Net Pay Trend</div>
               <div className="h-[120px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart data={trendData} barSize={20} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="var(--b)" />
                     <XAxis dataKey="month" tick={{ fontSize: 9, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />

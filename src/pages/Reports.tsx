@@ -402,7 +402,7 @@ export function Reports() {
               <Card>
                 <CardHeader title="Term-wise Fee Collection" />
                 <div className="h-[200px] p-2">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <BarChart data={termFeeData} barSize={12} barGap={3} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid vertical={false} stroke="var(--b)" />
                       <XAxis dataKey="cls" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
@@ -420,7 +420,7 @@ export function Reports() {
               <Card>
                 <CardHeader title="Attendance by Class Group" />
                 <div className="h-[160px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <PieChart>
                       <Pie
                         data={attPie}
@@ -496,7 +496,7 @@ export function Reports() {
                   </div>
 
                   <div className="h-[220px] p-2 mt-2">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <LineChart data={yoyCollection} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                         <CartesianGrid vertical={false} stroke="var(--b)" />
                         <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
@@ -696,7 +696,7 @@ export function Reports() {
               <Card>
                 <CardHeader title="Weekly Staff Presence Trend" />
                 <div className="h-[180px] p-2">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <AreaChart data={staffAttTrend} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorAtt" x1="0" y1="0" x2="0" y2="1">
@@ -760,7 +760,7 @@ export function Reports() {
               </div>
 
               <div className="h-[260px] p-4 pt-1">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <ComposedChart data={forecast} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="var(--b)" />
                     <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
