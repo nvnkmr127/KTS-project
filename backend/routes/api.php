@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Api\ActivityLogApiController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\BiometricWebhookController;
+use App\Http\Controllers\Api\BiometricSyncController;
 use App\Http\Controllers\Api\CollegeAdminDashboardController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\WebhookController;
@@ -217,6 +218,17 @@ Route::prefix('v1')->group(function () {
     Route::post('/webhooks/test-daily-summary', [\App\Http\Controllers\Admin\WebhookController::class, 'testDailySummary']);
     Route::post('/webhooks/send-daily-summary', [\App\Http\Controllers\Admin\WebhookController::class, 'sendDailySummary']);
     Route::post('/webhooks/calls/{call}/replay', [\App\Http\Controllers\Admin\WebhookController::class, 'replay'])->where('call', '[0-9]+');
+
+    // ── e-TimeOffice Biometric Pull Sync (auth:sanctum applied per-route below) ──
+    Route::middleware('auth:sanctum')->prefix('biometric')->group(function () {
+        Route::get('/status',           [BiometricSyncController::class, 'status'])->name('api.biometric.status');
+        Route::get('/test-connection',  [BiometricSyncController::class, 'testConnection'])->name('api.biometric.test-connection');
+        Route::get('/sync/in-out',      [BiometricSyncController::class, 'syncInOut'])->name('api.biometric.sync.in-out');
+        Route::get('/sync/punch',       [BiometricSyncController::class, 'syncPunch'])->name('api.biometric.sync.punch');
+        Route::get('/sync/incremental', [BiometricSyncController::class, 'syncIncremental'])->name('api.biometric.sync.incremental');
+        Route::post('/credentials',     [BiometricSyncController::class, 'saveCredentials'])->name('api.biometric.credentials');
+        Route::post('/reset-cursor',    [BiometricSyncController::class, 'resetCursor'])->name('api.biometric.reset-cursor');
+    });
 });
 
 // Health check endpoints

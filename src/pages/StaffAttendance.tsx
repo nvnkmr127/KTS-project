@@ -1,12 +1,29 @@
-import { useState, useEffect } from 'react';
-import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/ui';
 import { STAFF, StaffMember } from './StaffManagement';
-import { api } from '../services/api';
+import { api, originalSetItem } from '../services/api';
+import { useApp } from '../context/AppContext';
+
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Leave' | 'Half Day';
+
+interface BiometricRecord {
+  Empcode: string;
+  Name?: string;
+  INTime?: string;
+  OUTTime?: string;
+  WorkTime?: string;
+  OverTime?: string;
+  Status?: string;
+  DateString?: string;
+  Remark?: string;
+  Late_In?: string;
+  Erl_Out?: string;
+  PunchDate?: string;
+}
 
 interface LocalPunch {
   id: string;
@@ -55,29 +72,38 @@ const parsePunchDate = (punchDateStr: string): string => {
   return '';
 };
 
+const formatDateDDMMYYYY = (isoDate: string) => {
+  const parts = isoDate.split('-');
+  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  return isoDate;
+};
+
+type ConnectionStatus = 'unknown' | 'connected' | 'disconnected' | 'testing';
+
 export function StaffAttendance() {
+  const { leaveRequests } = useApp();
   const [date, setDate] = useState<string>(() => {
     return new Date().toISOString().slice(0, 10);
   });
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
-  
-  // Local storage manual attendance overrides
+
+  // Manual attendance overrides
   const [manualAttendance, setManualAttendance] = useState<Record<string, Record<string, AttendanceStatus>>>(() => {
     const saved = localStorage.getItem('kts_staff_attendance');
     return saved ? JSON.parse(saved) : {};
   });
 
-  // Local simulated biometric punches
+  // Local simulated biometric punches (fallback)
   const [localPunches, setLocalPunches] = useState<LocalPunch[]>(() => {
     const saved = localStorage.getItem('kts_biometric_punches');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // API biometric logs
-  const [apiPunches, setApiPunches] = useState<any[]>([]);
+  // Real biometric records pulled from e-TimeOffice API (via backend proxy)
+  const [biometricRecords, setBiometricRecords] = useState<BiometricRecord[]>([]);
 
-  // Attendance Mode: 'biometric' or 'manual'
+  // Attendance Mode
   const [attendanceMode, setAttendanceMode] = useState<'biometric' | 'manual'>(() => {
     const saved = localStorage.getItem('kts_staff_attendance_mode');
     return (saved as 'biometric' | 'manual') || 'biometric';
@@ -86,43 +112,408 @@ export function StaffAttendance() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
 
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncMsg, setLastSyncMsg] = useState<string | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('unknown');
 
-  // Load staff members from localStorage (sync with Staff Management)
+  // Timing settings states (with default fallbacks)
+  const [schoolStartTime, setSchoolStartTime] = useState('08:30');
+  const [schoolEndTime, setSchoolEndTime] = useState('17:30');
+  const [presentCutoffMorning, setPresentCutoffMorning] = useState('09:00');
+  const [presentCutoffEvening, setPresentCutoffEvening] = useState('16:30');
+  const [lateEntryCutoff, setLateEntryCutoff] = useState('09:50');
+  const [earlyEntryCutoff, setEarlyEntryCutoff] = useState('15:00');
+
+  // Load staff members, attendance, and biometric punches from DB settings / localStorage
   useEffect(() => {
-    const savedStaffStr = localStorage.getItem('kts_staff_members');
-    if (savedStaffStr) {
+    async function syncFromDb() {
       try {
-        const parsed = JSON.parse(savedStaffStr);
-        if (Array.isArray(parsed)) {
-          setStaffList(parsed);
-          return;
+        const settings = await api.getResources('settings');
+        
+        // Load timings configurations
+        const startSetting = settings.find((s: any) => s.key === 'school_start_time');
+        const endSetting = settings.find((s: any) => s.key === 'school_end_time');
+        const presMSetting = settings.find((s: any) => s.key === 'present_cutoff_morning');
+        const presESetting = settings.find((s: any) => s.key === 'present_cutoff_evening');
+        const lateSetting = settings.find((s: any) => s.key === 'late_entry_cutoff');
+        const earlySetting = settings.find((s: any) => s.key === 'early_entry_cutoff');
+
+        const sStart = startSetting?.value || '08:30';
+        const sEnd = endSetting?.value || '17:30';
+        const pCutM = presMSetting?.value || '09:00';
+        const pCutE = presESetting?.value || '16:30';
+        const lCutM = lateSetting?.value || '09:50';
+        const eCutE = earlySetting?.value || '15:00';
+
+        setSchoolStartTime(sStart);
+        setSchoolEndTime(sEnd);
+        setPresentCutoffMorning(pCutM);
+        setPresentCutoffEvening(pCutE);
+        setLateEntryCutoff(lCutM);
+        setEarlyEntryCutoff(eCutE);
+
+        // 1. Staff Members
+        let currentStaffList = STAFF;
+        const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
+        if (staffSetting && staffSetting.value) {
+          originalSetItem('kts_staff_members', staffSetting.value);
+          currentStaffList = JSON.parse(staffSetting.value);
+          setStaffList(currentStaffList);
+        } else {
+          const saved = localStorage.getItem('kts_staff_members');
+          currentStaffList = saved ? JSON.parse(saved) : STAFF;
+          setStaffList(currentStaffList);
         }
+
+        // 2. Staff Attendance & 3. Biometric Punches
+        const attendanceSetting = settings.find((s: any) => s.key === 'kts_staff_attendance');
+        const punchesSetting = settings.find((s: any) => s.key === 'kts_biometric_punches');
+        
+        let loadedAttendance: Record<string, Record<string, AttendanceStatus>> = {};
+        let loadedPunches: LocalPunch[] = [];
+
+        if (attendanceSetting && attendanceSetting.value) {
+          originalSetItem('kts_staff_attendance', attendanceSetting.value);
+          loadedAttendance = JSON.parse(attendanceSetting.value);
+        } else {
+          const savedAtt = localStorage.getItem('kts_staff_attendance');
+          if (savedAtt) loadedAttendance = JSON.parse(savedAtt);
+        }
+
+        if (punchesSetting && punchesSetting.value) {
+          originalSetItem('kts_biometric_punches', punchesSetting.value);
+          loadedPunches = JSON.parse(punchesSetting.value);
+        } else {
+          const savedPunches = localStorage.getItem('kts_biometric_punches');
+          if (savedPunches) loadedPunches = JSON.parse(savedPunches);
+        }
+
+        setManualAttendance(loadedAttendance);
+        setLocalPunches(loadedPunches);
+
+        // Recalculate existing attendance statuses using the new double punch rules
+        let updated = false;
+        const newAttendance = { ...loadedAttendance };
+
+        Object.keys(newAttendance).forEach((dateKey) => {
+          const dayRecords = { ...(newAttendance[dateKey] || {}) };
+          
+          currentStaffList.forEach((staff) => {
+            const staffPunches = loadedPunches.filter(
+              (p) => String(p.staffId) === String(staff.id) && p.timestamp.startsWith(dateKey)
+            );
+
+            if (staffPunches.length > 0) {
+              const checkInPunches = staffPunches.filter((p) => {
+                const timePart = p.timestamp.split(' ')[1] || '';
+                return timePart >= (sStart + ':00') && timePart <= (lCutM + ':00');
+              });
+              let hasCheckIn = checkInPunches.length > 0;
+
+              const checkOutPunches = staffPunches.filter((p) => {
+                const timePart = p.timestamp.split(' ')[1] || '';
+                return timePart >= (eCutE + ':00') && timePart <= (sEnd + ':00');
+              });
+              let hasCheckOut = checkOutPunches.length > 0;
+
+              if (!hasCheckIn || !hasCheckOut) {
+                const todayPunches = staffPunches.filter((p) => p.timestamp.startsWith(dateKey));
+                if (todayPunches.length > 0) {
+                  if (!hasCheckIn) {
+                    const earliest = todayPunches[0].timestamp.split(' ')[1]?.substring(0, 5);
+                    if (earliest && earliest >= sStart && earliest <= lCutM) hasCheckIn = true;
+                  }
+                  if (!hasCheckOut && todayPunches.length > 1) {
+                    const latest = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1]?.substring(0, 5);
+                    if (latest && latest >= eCutE && latest <= sEnd) hasCheckOut = true;
+                  }
+                }
+              }
+
+              let calculatedStatus: AttendanceStatus = 'Absent';
+              if (hasCheckIn && hasCheckOut) {
+                calculatedStatus = 'Present';
+              } else if (hasCheckIn || hasCheckOut) {
+                calculatedStatus = 'Half Day';
+              }
+
+              const currentStatus = dayRecords[staff.id];
+              if (currentStatus !== calculatedStatus) {
+                dayRecords[staff.id] = calculatedStatus;
+                updated = true;
+              }
+            }
+          });
+
+          newAttendance[dateKey] = dayRecords;
+        });
+
+        if (updated) {
+          setManualAttendance(newAttendance);
+          localStorage.setItem('kts_staff_attendance', JSON.stringify(newAttendance));
+        }
+
       } catch (err) {
-        console.error('Error parsing staff members:', err);
+        console.error('Error syncing data from DB in StaffAttendance:', err);
+        // Fallback to localStorage if API fails
+        const savedStaff = localStorage.getItem('kts_staff_members');
+        setStaffList(savedStaff ? JSON.parse(savedStaff) : STAFF);
+        
+        const savedAtt = localStorage.getItem('kts_staff_attendance');
+        if (savedAtt) setManualAttendance(JSON.parse(savedAtt));
+        
+        const savedPunches = localStorage.getItem('kts_biometric_punches');
+        if (savedPunches) setLocalPunches(JSON.parse(savedPunches));
       }
     }
-    setStaffList(STAFF);
+    
+    syncFromDb();
   }, []);
 
-  // Fetch biometric logs from API when date changes
+  // Check biometric status on mount
   useEffect(() => {
-    async function fetchBiometricLogs() {
+    async function fetchStatus() {
       try {
-        const logs = await api.getResources('biometric-logs');
-        if (Array.isArray(logs)) {
-          setApiPunches(logs);
+        const res = await api.biometricStatus();
+        if (res?.configured) {
+          setConnectionStatus('connected');
+          if (res.last_sync) {
+            const d = new Date(res.last_sync);
+            setLastSyncTime(d.toLocaleString());
+          }
+        } else {
+          setConnectionStatus('disconnected');
         }
-      } catch (err) {
-        console.log('Backend biometric-logs API is offline/unavailable, falling back to local simulation.', err);
+      } catch {
+        setConnectionStatus('disconnected');
       }
     }
-    fetchBiometricLogs();
+    fetchStatus();
+  }, []);
+
+  // Sync biometric IN/OUT data for the selected date from the real API
+  const syncBiometric = useCallback(async (silent = false) => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    if (!silent) setLastSyncMsg(null);
+
+    try {
+      const result = await api.biometricSyncInOut(date, date, 'ALL');
+
+      if (result?.success) {
+        const records: BiometricRecord[] = result.data || [];
+        setBiometricRecords(records);
+        setConnectionStatus('connected');
+        const now = new Date().toLocaleTimeString();
+        setLastSyncTime(now);
+
+        // Convert biometric records to LocalPunch format for saving
+        const newPunches: LocalPunch[] = [];
+        const calculatedStatuses: Record<string, AttendanceStatus> = {};
+
+        staffList.forEach((staff) => {
+          // Get biometric records matching this staff member
+          const staffBioRecords = records.filter((record) => {
+            const empCode = String(record.Empcode || '').toLowerCase().trim();
+            const name    = String(record.Name || '').toLowerCase().trim();
+
+            const matchesBiometricCode = staff.biometric_employee_code && (
+              empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
+              (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
+            );
+
+            const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesBiometricCode;
+            const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
+
+            let dateMatch = false;
+            if (record.DateString) {
+              const parsed = parsePunchDate(record.DateString);
+              dateMatch = parsed === date;
+            } else if (record.PunchDate) {
+              const parsed = parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10);
+              dateMatch = parsed === date;
+            }
+
+            return (matchCode || matchName) && dateMatch;
+          });
+
+          // Generate punches
+          const staffPunches: LocalPunch[] = [];
+          staffBioRecords.forEach((rec) => {
+            if (rec.INTime && rec.INTime !== '--:--') {
+              staffPunches.push({ id: `bio-in-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
+            }
+            if (rec.OUTTime && rec.OUTTime !== '--:--') {
+              staffPunches.push({ id: `bio-out-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
+            }
+            if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
+              staffPunches.push({ id: `bio-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: rec.PunchDate });
+            }
+          });
+
+          newPunches.push(...staffPunches);
+
+          // Calculate attendance status from biometric punches using timing rules
+          const checkInPunches = staffPunches.filter((p) => {
+            const timePart = p.timestamp.split(' ')[1] || '';
+            return timePart >= (schoolStartTime + ':00') && timePart <= (lateEntryCutoff + ':00');
+          });
+          let hasCheckIn = checkInPunches.length > 0;
+
+          const checkOutPunches = staffPunches.filter((p) => {
+            const timePart = p.timestamp.split(' ')[1] || '';
+            return timePart >= (earlyEntryCutoff + ':00') && timePart <= (schoolEndTime + ':00');
+          });
+          let hasCheckOut = checkOutPunches.length > 0;
+
+          // Fallbacks if no punches in windows
+          if (!hasCheckIn || !hasCheckOut) {
+            const todayPunches = staffPunches.filter((p) => p.timestamp.startsWith(date));
+            if (todayPunches.length > 0) {
+              if (!hasCheckIn) {
+                const earliest = todayPunches[0].timestamp.split(' ')[1]?.substring(0, 5);
+                if (earliest && earliest >= schoolStartTime && earliest <= lateEntryCutoff) hasCheckIn = true;
+              }
+              if (!hasCheckOut && todayPunches.length > 1) {
+                const latest = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1]?.substring(0, 5);
+                if (latest && latest >= earlyEntryCutoff && latest <= schoolEndTime) hasCheckOut = true;
+              }
+            }
+          }
+
+          let status: AttendanceStatus = 'Absent';
+          if (hasCheckIn && hasCheckOut) {
+            status = 'Present';
+          } else if (hasCheckIn || hasCheckOut) {
+            status = 'Half Day';
+          }
+
+          // Respect leave requests if any
+          const hasApprovedLeave = leaveRequests.some((l) => 
+            String(l.staffId) === String(staff.id) &&
+            l.status === 'Approved' &&
+            date >= l.from &&
+            date <= l.to
+          );
+          if (hasApprovedLeave) {
+            status = 'Leave';
+          }
+
+          calculatedStatuses[staff.id] = status;
+        });
+
+        // Update localPunches (filter out previous punches for this date)
+        setLocalPunches((prev) => {
+          const otherDatePunches = prev.filter((p) => !p.timestamp.startsWith(date));
+          return [...otherDatePunches, ...newPunches];
+        });
+
+        // Update manualAttendance with the biometric-calculated statuses
+        setManualAttendance((prev) => {
+          const updatedDateRecords = { ...(prev[date] || {}), ...calculatedStatuses };
+          return { ...prev, [date]: updatedDateRecords };
+        });
+
+        if (!silent) {
+          setLastSyncMsg(`✓ Synced ${result.saved ?? records.length} records at ${now}`);
+        }
+      } else if (result?.message?.includes('not configured')) {
+        setConnectionStatus('disconnected');
+        if (!silent) setLastSyncMsg('⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.');
+        await fetchFallbackLogs();
+      } else {
+        if (!silent) setLastSyncMsg(`⚠ ${result?.message || 'Sync returned no data'}`);
+        await fetchFallbackLogs();
+      }
+    } catch (err: any) {
+      setConnectionStatus('disconnected');
+      if (!silent) setLastSyncMsg('✗ Sync failed — check biometric credentials in Settings.');
+      await fetchFallbackLogs();
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [date, isSyncing, staffList, leaveRequests, schoolStartTime, schoolEndTime, presentCutoffMorning, presentCutoffEvening, lateEntryCutoff, earlyEntryCutoff]);
+
+  // Fallback: load from backend biometric_logs table
+  const fetchFallbackLogs = async () => {
+    try {
+      const logs = await api.getResources('biometric-logs');
+      if (Array.isArray(logs)) {
+        const mapped: BiometricRecord[] = logs.map((l: any) => ({
+          Empcode: l.employee_code || l.Empcode || '',
+          Name: l.raw_data?.name || l.raw_data?.Name || '',
+          PunchDate: l.scan_datetime,
+          INTime: l.raw_data?.in_time || (l.scan_datetime ? l.scan_datetime.slice(11, 16) : undefined),
+          OUTTime: l.raw_data?.out_time,
+          WorkTime: l.raw_data?.work_time,
+          Status: l.raw_data?.status,
+          DateString: l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined,
+        }));
+        setBiometricRecords(mapped);
+      }
+    } catch {
+      // silently ignore
+    }
+  };
+
+  // Auto-sync when date changes
+  useEffect(() => {
+    syncBiometric(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
+
+  // Live auto-sync interval based on school hours (8:00 AM to 6:00 PM: 1s, otherwise: 5h)
+  useEffect(() => {
+    const getIntervalDuration = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+
+      // School timings: 8:00 AM to 6:00 PM (8 to 18)
+      if (currentHour >= 8 && currentHour < 18) {
+        return 1000; // 1 second
+      } else {
+        return 5 * 60 * 60 * 1000; // 5 hours
+      }
+    };
+
+    let timerId: NodeJS.Timeout | null = null;
+    let currentInterval = getIntervalDuration();
+
+    const startTimer = (ms: number) => {
+      if (timerId) clearInterval(timerId);
+      timerId = setInterval(() => {
+        // Sync biometric logs silently
+        syncBiometric(true);
+
+        // Check if the time block has transitioned and we need a different interval
+        const nextInterval = getIntervalDuration();
+        if (nextInterval !== ms) {
+          startTimer(nextInterval);
+        }
+      }, ms);
+    };
+
+    // Start initial timer
+    startTimer(currentInterval);
+
+    return () => {
+      if (timerId) clearInterval(timerId);
+    };
+  }, [syncBiometric]);
 
   // Persistence hooks
   useEffect(() => {
     localStorage.setItem('kts_staff_attendance', JSON.stringify(manualAttendance));
   }, [manualAttendance]);
+
+  // Force biometric mode if the device is connected/working
+  useEffect(() => {
+    if (connectionStatus === 'connected' && attendanceMode !== 'biometric') {
+      setAttendanceMode('biometric');
+    }
+  }, [connectionStatus, attendanceMode]);
 
   useEffect(() => {
     localStorage.setItem('kts_biometric_punches', JSON.stringify(localPunches));
@@ -135,86 +526,149 @@ export function StaffAttendance() {
   // Extract unique categories for filtering
   const allCategories = Array.from(new Set(staffList.map((s) => s.category || 'Teaching')));
 
-  // Helper to count punches for a staff member on the selected date
+  // Find biometric record(s) for a given staff member on the selected date
+  const getBiometricRecordsForStaff = (staff: StaffMember): BiometricRecord[] => {
+    return biometricRecords.filter((record) => {
+      const empCode = String(record.Empcode || '').toLowerCase().trim();
+      const name    = String(record.Name || '').toLowerCase().trim();
+
+      // Matches biometric employee code
+      const matchesBiometricCode = staff.biometric_employee_code && (
+        empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
+        (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
+      );
+
+      const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesBiometricCode;
+      const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
+
+      let dateMatch = false;
+      if (record.DateString) {
+        const parsed = parsePunchDate(record.DateString);
+        dateMatch = parsed === date;
+      } else if (record.PunchDate) {
+        const parsed = parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10);
+        dateMatch = parsed === date;
+      }
+
+      return (matchCode || matchName) && dateMatch;
+    });
+  };
+
+  // Helper to count all punches (biometric API + local simulation)
   const getPunchesForStaffOnDate = (staff: StaffMember) => {
     if (attendanceMode === 'manual') {
       const manualStatus = manualAttendance[date]?.[staff.id] || 'Present';
       if (manualStatus === 'Present') {
         return [
           { id: 'm1', staffId: staff.id, timestamp: `${date} 09:00:00` },
-          { id: 'm2', staffId: staff.id, timestamp: `${date} 17:00:00` }
+          { id: 'm2', staffId: staff.id, timestamp: `${date} 17:00:00` },
         ];
       }
       if (manualStatus === 'Half Day') {
-        return [
-          { id: 'm1', staffId: staff.id, timestamp: `${date} 09:00:00` }
-        ];
+        return [{ id: 'm1', staffId: staff.id, timestamp: `${date} 09:00:00` }];
       }
-      return []; // Absent or Leave
+      return [];
     }
 
+    // Local simulation punches
     const localCount = localPunches.filter(
       (p) => p.staffId === staff.id && p.timestamp.startsWith(date)
     );
 
-    const apiCount = apiPunches.filter((p) => {
-      const dataObj = p.punch_data || p;
-      const punchDateStr = dataObj.PunchDate || dataObj.punch_date || dataObj.scan_datetime;
-      if (!punchDateStr) return false;
-
-      const parsedDate = parsePunchDate(punchDateStr) || punchDateStr.slice(0, 10);
-      if (parsedDate !== date) return false;
-
-      const code = String(dataObj.Empcode || dataObj.emp_code || dataObj.employee_code || '').toLowerCase().trim();
-      const name = String(dataObj.Name || dataObj.name || '').toLowerCase().trim();
-
-      return (
-        code === String(staff.id).toLowerCase().trim() ||
-        code === staff.phone.trim() ||
-        name === staff.name.toLowerCase().trim() ||
-        normalizeName(name) === normalizeName(staff.name)
-      );
-    });
+    // Real biometric records
+    const apiRecords = getBiometricRecordsForStaff(staff);
+    const apiCount: LocalPunch[] = [];
+    for (const rec of apiRecords) {
+      if (rec.INTime && rec.INTime !== '--:--') {
+        apiCount.push({ id: `bio-in-${rec.Empcode}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
+      }
+      if (rec.OUTTime && rec.OUTTime !== '--:--') {
+        apiCount.push({ id: `bio-out-${rec.Empcode}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
+      }
+      if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
+        apiCount.push({ id: `bio-${rec.Empcode}`, staffId: staff.id, timestamp: rec.PunchDate });
+      }
+    }
 
     return [...localCount, ...apiCount];
   };
 
-  // Get current status of a staff member for the selected date
   const getStatus = (staff: StaffMember): AttendanceStatus => {
     const manualStatus = manualAttendance[date]?.[staff.id];
 
-    // If manual status is set to 'Leave', we always respect it (even in biometric mode)
-    if (manualStatus === 'Leave') {
+    // If manual status override exists, respect it (keeps controls working!)
+    if (manualStatus) {
+      return manualStatus;
+    }
+
+    // Check if there is an approved leave request for this staff member on the selected date
+    const hasApprovedLeave = leaveRequests.some((l) => 
+      String(l.staffId) === String(staff.id) &&
+      l.status === 'Approved' &&
+      date >= l.from &&
+      date <= l.to
+    );
+
+    if (hasApprovedLeave) {
       return 'Leave';
     }
 
     if (attendanceMode === 'manual') {
-      return manualStatus || 'Present'; // Default to Present in manual mode
+      return 'Present'; // Default to Present in manual mode
     }
 
     // Biometric Mode
-    const punchesCount = getPunchesForStaffOnDate(staff).length;
-    if (punchesCount === 0) return 'Absent';
-    if (punchesCount === 1) return 'Half Day';
-    return 'Present';
+    // Calculate check-in and check-out based on windows
+    const punchesList = getPunchesForStaffOnDate(staff);
+    const checkInPunches = punchesList.filter((p) => {
+      const timePart = p.timestamp.split(' ')[1] || '';
+      return timePart >= (schoolStartTime + ':00') && timePart <= (lateEntryCutoff + ':00');
+    });
+    let hasCheckIn = checkInPunches.length > 0;
+
+    const checkOutPunches = punchesList.filter((p) => {
+      const timePart = p.timestamp.split(' ')[1] || '';
+      return timePart >= (earlyEntryCutoff + ':00') && timePart <= (schoolEndTime + ':00');
+    });
+    let hasCheckOut = checkOutPunches.length > 0;
+
+    // Fallbacks if no punches in windows
+    if (!hasCheckIn || !hasCheckOut) {
+      const todayPunches = punchesList.filter((p) => p.timestamp.startsWith(date));
+      if (todayPunches.length > 0) {
+        if (!hasCheckIn) {
+          const earliest = todayPunches[0].timestamp.split(' ')[1]?.substring(0, 5);
+          if (earliest && earliest >= schoolStartTime && earliest <= lateEntryCutoff) hasCheckIn = true;
+        }
+        if (!hasCheckOut && todayPunches.length > 1) {
+          const latest = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1]?.substring(0, 5);
+          if (latest && latest >= earlyEntryCutoff && latest <= schoolEndTime) hasCheckOut = true;
+        }
+      }
+    }
+
+    if (hasCheckIn && hasCheckOut) return 'Present';
+    if (hasCheckIn || hasCheckOut) return 'Half Day';
+    return 'Absent';
   };
 
-  // Set manual override status
   const setManualStatus = (staffId: string, status: AttendanceStatus) => {
+    if (connectionStatus === 'connected') return; // Block changes if biometric device is connected/working
     setManualAttendance((prev) => {
       const dateRecords = prev[date] ? { ...prev[date] } : {};
-      dateRecords[staffId] = status;
-      return {
-        ...prev,
-        [date]: dateRecords,
-      };
+      if (dateRecords[staffId] === status) {
+        delete dateRecords[staffId];
+      } else {
+        dateRecords[staffId] = status;
+      }
+      return { ...prev, [date]: dateRecords };
     });
   };
 
-  // Add a test simulated biometric punch for a staff member
+  // Add a test simulated biometric punch
   const addSimulatedPunch = (staffId: string) => {
     const now = new Date();
-    const timeStr = now.toTimeString().split(' ')[0]; // HH:MM:SS
+    const timeStr = now.toTimeString().split(' ')[0];
     const newPunch: LocalPunch = {
       id: 'punch-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       staffId,
@@ -223,30 +677,47 @@ export function StaffAttendance() {
     setLocalPunches((prev) => [...prev, newPunch]);
   };
 
-  // Reset/Clear local simulation punches for the selected date
+  // Reset local simulation punches for the selected date
   const clearSimulatedPunches = () => {
     if (window.confirm('Clear all local simulated punches for this date?')) {
       setLocalPunches((prev) => prev.filter((p) => !p.timestamp.startsWith(date)));
     }
   };
 
-  // Filter staff list based on search and category
+  // Filter staff list
   const filteredStaff = staffList.filter((s) => {
     const matchSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.designation.toLowerCase().includes(search.toLowerCase()) ||
       (s.department || '').toLowerCase().includes(search.toLowerCase());
-    
     const matchCategory = categoryFilter === 'All' || (s.category || 'Teaching') === categoryFilter;
     return matchSearch && matchCategory;
   });
 
-  // Calculate metrics for the selected date
+  // KPI metrics
   const totalStaff = staffList.length;
   const presentCount = staffList.filter((s) => getStatus(s) === 'Present').length;
-  const absentCount = staffList.filter((s) => getStatus(s) === 'Absent').length;
+  const absentCount  = staffList.filter((s) => getStatus(s) === 'Absent').length;
   const halfDayCount = staffList.filter((s) => getStatus(s) === 'Half Day').length;
-  const leaveCount = staffList.filter((s) => getStatus(s) === 'Leave').length;
+  const leaveCount   = staffList.filter((s) => getStatus(s) === 'Leave').length;
+
+  const ConnectionDot = () => (
+    <span className="flex items-center gap-1.5">
+      {connectionStatus === 'connected' ? (
+        <><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+        <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5"><Wifi size={10} /> Live</span></>
+      ) : connectionStatus === 'disconnected' ? (
+        <><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
+        <span className="text-[10px] text-red-500 font-medium flex items-center gap-0.5"><WifiOff size={10} /> Offline</span></>
+      ) : connectionStatus === 'testing' ? (
+        <><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
+        <span className="text-[10px] text-amber-600 font-medium">Testing…</span></>
+      ) : (
+        <><span className="w-2 h-2 rounded-full bg-[var(--tx3)]/40 inline-block" />
+        <span className="text-[10px] text-[var(--tx3)] font-medium">Unknown</span></>
+      )}
+    </span>
+  );
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
@@ -295,18 +766,23 @@ export function StaffAttendance() {
       </div>
 
       <Card>
-        {/* Header with Attendance Mode Toggle */}
+        {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5 border-b border-[var(--b)] pb-4">
           <div>
             <div className="text-[13.5px] font-bold text-[var(--tx)]">Staff Daily Attendance</div>
-            <div className="text-[11px] text-[var(--tx3)]">Record staff daily attendance using biometric machine inputs or manual overrides</div>
+            <div className="text-[11px] text-[var(--tx3)] flex items-center gap-1.5 mt-0.5">
+              <Fingerprint size={12} className="text-[var(--blue-tx)]" />
+              e-TimeOffice biometric sync •&nbsp;<ConnectionDot />
+              {lastSyncTime && <span className="ml-1 text-[var(--tx3)]">· Last sync: {lastSyncTime}</span>}
+            </div>
           </div>
-          
-          <div className="flex items-center gap-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-2">
-            <span className="text-[11.5px] font-semibold text-[var(--tx2)] flex items-center gap-1.5">
-              <Fingerprint size={14} className="text-[var(--blue-tx)]" /> Input Mode:
-            </span>
-            <div className="flex items-center gap-1">
+
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Mode Toggle */}
+            <div className="flex items-center gap-1 bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-1.5">
+              <span className="text-[10.5px] font-semibold text-[var(--tx2)] flex items-center gap-1 px-1">
+                <Fingerprint size={12} className="text-[var(--blue-tx)]" /> Mode:
+              </span>
               <button
                 type="button"
                 onClick={() => setAttendanceMode('biometric')}
@@ -316,21 +792,39 @@ export function StaffAttendance() {
                     : 'text-[var(--tx3)] hover:text-[var(--tx2)]'
                 }`}
               >
-                Biometric Sync
+                Biometric
               </button>
               <button
                 type="button"
                 onClick={() => setAttendanceMode('manual')}
-                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                disabled={connectionStatus === 'connected'}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                  connectionStatus === 'connected'
+                    ? 'opacity-40 cursor-not-allowed text-[var(--tx3)]'
+                    : 'cursor-pointer hover:text-[var(--tx2)]'
+                } ${
                   attendanceMode === 'manual'
                     ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)] border border-[var(--amber-tx)]/20'
-                    : 'text-[var(--tx3)] hover:text-[var(--tx2)]'
+                    : 'text-[var(--tx3)]'
                 }`}
-                title="Use this if biometric machine is under maintenance or offline"
+                title={connectionStatus === 'connected' ? "Manual mode is disabled because the biometric device is connected and working." : "Use this if biometric machine is under maintenance or offline"}
               >
-                Manual Override
+                Manual
               </button>
             </div>
+
+            {/* Sync Button */}
+            {attendanceMode === 'biometric' && (
+              <button
+                type="button"
+                onClick={() => syncBiometric(false)}
+                disabled={isSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+              >
+                <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
+                {isSyncing ? 'Syncing…' : 'Sync Now'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -353,9 +847,7 @@ export function StaffAttendance() {
           >
             <option value="All">All Categories</option>
             {allCategories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
+              <option key={cat} value={cat}>{cat}</option>
             ))}
           </select>
 
@@ -370,22 +862,24 @@ export function StaffAttendance() {
           </div>
         </div>
 
-        {/* Mode info message */}
+        {/* Mode banner */}
         <div className="flex items-center justify-between p-3.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl mb-4">
-          <div className="flex items-center gap-2">
-            <Fingerprint size={16} className={attendanceMode === 'biometric' ? 'text-[var(--blue-tx)]' : 'text-[var(--amber-tx)]'} />
-            <span className="text-[11.5px] text-[var(--tx2)]">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Fingerprint size={15} className={attendanceMode === 'biometric' ? 'text-[var(--blue-tx)] shrink-0' : 'text-[var(--amber-tx)] shrink-0'} />
+            <span className="text-[11.5px] text-[var(--tx2)] leading-relaxed">
               {attendanceMode === 'biometric' ? (
                 <>
-                  <strong>Biometric Mode active:</strong> Attendance is set based on machine impressions for <strong>{(() => {
-                    const parts = date.split('-');
-                    return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : date;
-                  })()}</strong>.<br />
-                  <span className="text-[10px] text-[var(--tx3)]">Rules: 0 impressions = Absent | 1 impression = Half Day | 2+ impressions = Present.</span>
+                  <strong>Biometric Mode:</strong> Attendance driven by e-TimeOffice impressions for <strong>{formatDateDDMMYYYY(date)}</strong>.<br />
+                  <span className="text-[10px] text-[var(--tx3)]">Rules: 0 punches = Absent · 1 punch = Half Day · 2+ punches = Present.</span>
+                  {lastSyncMsg && (
+                    <span className={`block mt-0.5 text-[10.5px] ${lastSyncMsg.startsWith('✓') ? 'text-emerald-600' : lastSyncMsg.startsWith('⚠') ? 'text-amber-600' : 'text-red-500'}`}>
+                      {lastSyncMsg}
+                    </span>
+                  )}
                 </>
               ) : (
                 <>
-                  <strong>Manual Override active:</strong> Attendance is editable manually. Use this mode when the biometric machine is offline or undergoing maintenance.
+                  <strong>Manual Override active:</strong> Attendance is editable manually. Use this when the biometric machine is offline or under maintenance.
                 </>
               )}
             </span>
@@ -393,19 +887,19 @@ export function StaffAttendance() {
           {attendanceMode === 'biometric' && (
             <button
               onClick={clearSimulatedPunches}
-              className="text-[11px] text-[var(--red-tx)] hover:underline cursor-pointer font-medium"
+              className="text-[10.5px] text-[var(--red-tx)] hover:underline cursor-pointer font-medium ml-3 shrink-0"
             >
-              Reset Simulation Punches
+              Clear Simulation Punches
             </button>
           )}
         </div>
 
         {/* Staff Attendance Table */}
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12px] min-w-[700px]">
+          <table className="w-full border-collapse text-[12px] min-w-[850px]">
             <thead>
               <tr className="border-b border-[var(--b)] text-[var(--tx3)]">
-                {['Staff Member', 'Category & Department', 'Punches Today', 'Status & Controls'].map((h) => (
+                {['Staff Member', 'Category & Department', 'Check-In', 'Check-Out', 'Working Hours', 'Status', 'Controls'].map((h) => (
                   <th
                     key={h}
                     className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-3 py-2 whitespace-nowrap"
@@ -417,20 +911,85 @@ export function StaffAttendance() {
             </thead>
             <tbody>
               {filteredStaff.map((s) => {
-                const status = getStatus(s);
-                const punchesList = getPunchesForStaffOnDate(s);
-                
+                const status        = getStatus(s);
+                const punchesList   = getPunchesForStaffOnDate(s);
+                const bioRecords    = getBiometricRecordsForStaff(s);
+                const bioRecord     = bioRecords[0]; // primary record
+                // Determine raw check-in and check-out times (first and last punches of the day):
+                let inTime: string | null = null;
+                let outTime: string | null = null;
+                let workTime: string | null = null;
+                let isLate = false;
+                let isEarly = false;
+
+                const todayPunches = punchesList.filter((p) => p.timestamp.startsWith(date));
+                if (todayPunches.length > 0) {
+                  todayPunches.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+                  
+                  // First punch is check-in
+                  const earliest = todayPunches[0].timestamp.split(' ')[1]?.substring(0, 5) || null;
+                  inTime = earliest;
+
+                  // Last punch (if different and more than one punch) is check-out
+                  if (todayPunches.length > 1) {
+                    const latest = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1]?.substring(0, 5) || null;
+                    if (latest !== earliest) {
+                      outTime = latest;
+                    }
+                  }
+                } else {
+                  // Fallbacks from bioRecord
+                  if (bioRecord?.INTime && bioRecord.INTime !== '--:--') {
+                    inTime = bioRecord.INTime;
+                  }
+                  if (bioRecord?.OUTTime && bioRecord.OUTTime !== '--:--') {
+                    outTime = bioRecord.OUTTime;
+                  }
+                }
+
+                // Determine Lateness (if first punch is after Present Cutoff Morning)
+                if (inTime) {
+                  if (inTime > presentCutoffMorning) {
+                    isLate = true;
+                  }
+                }
+
+                // Determine Early Departure (if last punch is before Present Cutoff Evening)
+                if (outTime) {
+                  if (outTime < presentCutoffEvening) {
+                    isEarly = true;
+                  }
+                }
+
+                // Compute Working Hours based on first and last punch times
+                if (inTime && outTime) {
+                  const [inH, inM] = inTime.split(':').map(Number);
+                  const [outH, outM] = outTime.split(':').map(Number);
+                  const diffMinutes = (outH * 60 + outM) - (inH * 60 + inM);
+                  if (diffMinutes > 0) {
+                    const hours = Math.floor(diffMinutes / 60);
+                    const minutes = diffMinutes % 60;
+                    workTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                  } else {
+                    workTime = '00:00';
+                  }
+                } else if (bioRecord?.WorkTime && bioRecord.WorkTime !== '00:00') {
+                  workTime = bioRecord.WorkTime;
+                }
+                const hasApprovedLeave = leaveRequests.some((l) => 
+                  String(l.staffId) === String(s.id) &&
+                  l.status === 'Approved' &&
+                  date >= l.from &&
+                  date <= l.to
+                );
+
                 return (
                   <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)]/40 transition-colors last:border-0">
                     {/* Staff info */}
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2.5">
                         <Avatar
-                          initials={s.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')
-                            .slice(0, 2)}
+                          initials={s.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
                           bg="var(--purple-bg)"
                           color="var(--purple-tx)"
                         />
@@ -447,89 +1006,126 @@ export function StaffAttendance() {
                       <div className="text-[10.5px] text-[var(--tx3)]">{s.department || 'N/A'}</div>
                     </td>
 
-                    {/* Biometric Punches Count */}
+                    {/* Check-In */}
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          punchesList.length === 0
-                            ? 'bg-[var(--red-bg)] text-[var(--red-tx)]'
-                            : punchesList.length === 1
-                            ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)]'
-                            : 'bg-[var(--teal-bg)] text-[var(--teal-tx)]'
-                        }`}>
-                          {punchesList.length} punch{punchesList.length !== 1 ? 'es' : ''}
-                        </span>
-
-                        {attendanceMode === 'biometric' && (
-                          <button
-                            type="button"
-                            onClick={() => addSimulatedPunch(s.id)}
-                            className="p-1 border border-[var(--b)] bg-[var(--surf2)] hover:border-[var(--blue)] hover:bg-[var(--blue-bg)] hover:text-[var(--blue-tx)] rounded text-[10px] font-semibold cursor-pointer transition-colors flex items-center gap-0.5"
-                            title="Simulate Fingerprint Biometric Impression"
-                          >
-                            <Plus size={10} /> Punch
-                          </button>
+                        {attendanceMode === 'biometric' ? (
+                          <>
+                            <span className={`font-semibold ${inTime ? 'text-emerald-700' : 'text-[var(--tx3)]/60'}`}>
+                              {inTime || '—'}
+                            </span>
+                            {isLate && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 text-[9px] font-bold">
+                                Late
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => addSimulatedPunch(s.id)}
+                              className="p-1 border border-[var(--b)] bg-[var(--surf2)] hover:border-[var(--blue)] hover:bg-[var(--blue-bg)] hover:text-[var(--blue-tx)] rounded text-[9.5px] font-semibold cursor-pointer transition-colors"
+                              title="Simulate Check-In/Punch"
+                            >
+                              + Sim
+                            </button>
+                          </>
+                        ) : (
+                          <span className="font-medium text-[var(--tx2)]">
+                            {status === 'Present' || status === 'Half Day' ? '09:00 AM' : '—'}
+                          </span>
                         )}
                       </div>
-                      {punchesList.length > 0 && (
-                        <div className="text-[9px] text-[var(--tx3)] mt-1.5 max-w-[150px] truncate">
-                          {punchesList.map(p => p.timestamp.slice(11, 16)).join(', ')}
+                    </td>
+
+                    {/* Check-Out */}
+                    <td className="px-3 py-2.5">
+                      {attendanceMode === 'biometric' ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-semibold ${outTime ? 'text-red-600' : 'text-[var(--tx3)]/60'}`}>
+                            {outTime || '—'}
+                          </span>
+                          {isEarly && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 text-[9px] font-bold">
+                              Early
+                            </span>
+                          )}
                         </div>
+                      ) : (
+                        <span className="font-medium text-[var(--tx2)]">
+                          {status === 'Present' ? '05:00 PM' : '—'}
+                        </span>
                       )}
                     </td>
 
-                    {/* Status Buttons */}
+                    {/* Working Hours */}
+                    <td className="px-3 py-2.5">
+                      {attendanceMode === 'biometric' ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-semibold ${workTime ? 'text-[var(--tx)]' : 'text-[var(--tx3)]/60'}`}>
+                            {workTime || '—'}
+                          </span>
+                          {bioRecord?.OverTime && bioRecord.OverTime !== '00:00' && (
+                            <span className="text-[9.5px] text-emerald-600 font-bold">
+                              +OT {bioRecord.OverTime}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="font-semibold text-[var(--tx2)]">
+                          {status === 'Present' ? '8.0 hrs' : status === 'Half Day' ? '4.0 hrs' : '—'}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Status badge */}
+                    <td className="px-3 py-2.5">
+                      <span className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border ${
+                        status === 'Present'
+                          ? 'bg-teal-500/10 text-teal-600 border-teal-500/20'
+                          : status === 'Absent'
+                          ? 'bg-red-500/10 text-red-600 border-red-500/20'
+                          : status === 'Half Day'
+                          ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                          : 'bg-purple-500/10 text-purple-600 border-purple-500/20'
+                      }`}>
+                        {status}
+                      </span>
+                    </td>
+
+                    {/* Controls */}
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1.5">
-                        {attendanceMode === 'manual' ? (
-                          // Manual Mode Buttons
+                        {hasApprovedLeave ? (
+                          <span className="px-2.5 py-1 text-[10px] font-bold text-purple-600 bg-purple-500/10 border border-purple-500/20 rounded-lg">
+                            Approved Leave
+                          </span>
+                        ) : (
                           [
                             { value: 'Present', bg: 'hover:bg-teal-500/10 hover:text-teal-600', active: 'bg-teal-500/10 text-teal-600 border border-teal-500/20' },
-                            { value: 'Absent', bg: 'hover:bg-red-500/10 hover:text-red-600', active: 'bg-red-500/10 text-red-600 border border-red-500/20' },
+                            { value: 'Absent',  bg: 'hover:bg-red-500/10 hover:text-red-600',  active: 'bg-red-500/10 text-red-600 border border-red-500/20' },
                             { value: 'Half Day', bg: 'hover:bg-amber-500/10 hover:text-amber-600', active: 'bg-amber-500/10 text-amber-600 border border-amber-500/20' },
-                            { value: 'Leave', bg: 'hover:bg-purple-500/10 hover:text-purple-600', active: 'bg-purple-500/10 text-purple-600 border border-purple-500/20' },
+                            { value: 'Leave',   bg: 'hover:bg-purple-500/10 hover:text-purple-600', active: 'bg-purple-500/10 text-purple-600 border border-purple-500/20' },
                           ].map((opt) => (
                             <button
                               key={opt.value}
                               type="button"
+                              disabled={connectionStatus === 'connected'}
                               onClick={() => setManualStatus(s.id, opt.value as AttendanceStatus)}
-                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all border border-transparent cursor-pointer ${
+                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all ${
+                                connectionStatus === 'connected'
+                                  ? 'opacity-40 cursor-not-allowed border-transparent text-[var(--tx3)]'
+                                  : 'cursor-pointer'
+                              } ${
                                 status === opt.value
                                   ? opt.active
-                                  : `text-[var(--tx3)] bg-transparent ${opt.bg}`
+                                  : connectionStatus === 'connected'
+                                    ? 'bg-transparent text-[var(--tx3)]'
+                                    : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${opt.bg}`
                               }`}
+                              title={connectionStatus === 'connected' ? "Manual edit disabled because biometric device is working" : `Set to ${opt.value}`}
                             >
                               {opt.value}
                             </button>
                           ))
-                        ) : (
-                          // Biometric Mode Badges (Read-Only)
-                          <div className="flex items-center gap-2">
-                            <span className={`px-3 py-1 text-[11px] font-semibold rounded-lg border ${
-                              status === 'Present'
-                                ? 'bg-teal-500/10 text-teal-600 border-teal-500/20'
-                                : status === 'Absent'
-                                ? 'bg-red-500/10 text-red-600 border-red-500/20'
-                                : status === 'Half Day'
-                                ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                                : 'bg-purple-500/10 text-purple-600 border-purple-500/20'
-                            }`}>
-                              {status}
-                            </span>
-                            {/* Allow toggling Leave even in Biometric Mode */}
-                            <button
-                              type="button"
-                              onClick={() => setManualStatus(s.id, status === 'Leave' ? 'Present' : 'Leave')}
-                              className={`px-2 py-1 text-[10px] font-semibold rounded border cursor-pointer transition-colors ${
-                                status === 'Leave'
-                                  ? 'bg-purple-500/10 text-purple-600 border-purple-500/20'
-                                  : 'text-[var(--tx3)] border-[var(--b)] hover:bg-[var(--surf3)]'
-                              }`}
-                              title="Toggle Leave Status for this staff member"
-                            >
-                              {status === 'Leave' ? 'Cancel Leave' : 'Set Leave'}
-                            </button>
-                          </div>
                         )}
                       </div>
                     </td>
@@ -538,7 +1134,7 @@ export function StaffAttendance() {
               })}
               {filteredStaff.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="text-center py-8 text-[var(--tx3)]">
+                  <td colSpan={7} className="text-center py-8 text-[var(--tx3)]">
                     No staff members found matching search or filters
                   </td>
                 </tr>

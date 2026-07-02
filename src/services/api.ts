@@ -565,6 +565,41 @@ export const api = {
   async deleteActivityLog(id: string | number) {
     return request(`/activity-logs/${id}`, { method: 'DELETE' });
   },
+
+  // ── Biometric e-TimeOffice Integration ────────────────────────────────
+  async biometricStatus() {
+    return request('/biometric/status');
+  },
+
+  async biometricTestConnection(credentials: { corporate_id: string; username: string; password?: string }) {
+    const params = new URLSearchParams(credentials as any).toString();
+    return request(`/biometric/test-connection?${params}`);
+  },
+
+  async biometricSaveCredentials(credentials: any) {
+    return request('/biometric/credentials', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    });
+  },
+
+  async biometricSyncInOut(fromDate: string, toDate: string, empcode = 'ALL') {
+    return request(`/biometric/sync/in-out?from_date=${fromDate}&to_date=${toDate}&empcode=${empcode}`);
+  },
+
+  async biometricSyncPunch(fromDate: string, toDate: string, empcode = 'ALL') {
+    return request(`/biometric/sync/punch?from_date=${fromDate}&to_date=${toDate}&empcode=${empcode}`);
+  },
+
+  async biometricSyncIncremental(empcode = 'ALL', reset = false) {
+    return request(`/biometric/sync/incremental?empcode=${empcode}&reset=${reset ? '1' : '0'}`);
+  },
+
+  async biometricResetCursor() {
+    return request('/biometric/reset-cursor', {
+      method: 'POST'
+    });
+  },
 };
 
 // Preserve original localStorage methods bound to the localStorage instance

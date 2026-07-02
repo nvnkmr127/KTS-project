@@ -810,12 +810,12 @@ Schedule::call(function () {
     }
 })->daily()->at('04:00')->name('log-rotation-daily')->description('Log rotation and cleanup');
 
-// ETimeOffice Auto-Sync (using the correct command)
+// ETimeOffice Auto-Sync (during school hours: 8:00 AM to 6:00 PM)
 Schedule::command('etimeoffice:auto-sync', ['--range=today'])
     ->everyMinute()
     ->days([1, 2, 3, 4, 5, 6])
-    ->between('09:00', '18:00')
-    ->name('etimeoffice-auto-sync')
+    ->between('08:00', '18:00')
+    ->name('etimeoffice-auto-sync-school-hours')
     ->withoutOverlapping(10)
     ->when(function () {
         // Only run if ETimeOffice is enabled in settings
@@ -830,10 +830,10 @@ Schedule::command('etimeoffice:auto-sync', ['--range=today'])
         }
     })
     ->before(function () {
-        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync', 'STARTING');
+        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync (School Hours)', 'STARTING');
     })
     ->after(function () {
-        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync', 'COMPLETED');
+        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync (School Hours)', 'COMPLETED');
     })
     ->onFailure(function () {
         $logPath = storage_path('logs/etimeoffice-sync.log');
@@ -841,10 +841,45 @@ Schedule::command('etimeoffice:auto-sync', ['--range=today'])
         if (file_exists($logPath)) {
             $lastLines = shell_exec('tail -n 20 '.escapeshellarg($logPath));
         }
-        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync', 'FAILED', ['last_output' => $lastLines]);
+        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync (School Hours)', 'FAILED', ['last_output' => $lastLines]);
     })
     ->appendOutputTo(storage_path('logs/etimeoffice-sync.log'))
-    ->description('ETimeOffice attendance auto-sync');
+    ->description('ETimeOffice attendance auto-sync during school hours');
+
+// ETimeOffice Auto-Sync (off-school hours: 6:00 PM to 8:00 AM - runs every 5 hours)
+Schedule::command('etimeoffice:auto-sync', ['--range=today'])
+    ->everyFiveHours()
+    ->days([1, 2, 3, 4, 5, 6])
+    ->unlessBetween('08:00', '18:00')
+    ->name('etimeoffice-auto-sync-off-hours')
+    ->withoutOverlapping(10)
+    ->when(function () {
+        try {
+            if (class_exists('App\Models\Setting')) {
+                return \App\Models\Setting::where('key', 'etimeoffice_enabled')->value('value') === '1';
+            } else {
+                return DB::table('settings')->where('key', 'etimeoffice_enabled')->value('value') === '1';
+            }
+        } catch (Exception $e) {
+            return false;
+        }
+    })
+    ->before(function () {
+        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync (Off Hours)', 'STARTING');
+    })
+    ->after(function () {
+        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync (Off Hours)', 'COMPLETED');
+    })
+    ->onFailure(function () {
+        $logPath = storage_path('logs/etimeoffice-sync.log');
+        $lastLines = '';
+        if (file_exists($logPath)) {
+            $lastLines = shell_exec('tail -n 20 '.escapeshellarg($logPath));
+        }
+        logSchedulerActivity('etimeoffice:auto-sync', 'ETimeOffice Auto-Sync (Off Hours)', 'FAILED', ['last_output' => $lastLines]);
+    })
+    ->appendOutputTo(storage_path('logs/etimeoffice-sync.log'))
+    ->description('ETimeOffice attendance auto-sync during off hours');
 
 // Birthday Webhook Schedule
 Schedule::command('webhook:send-birthday')

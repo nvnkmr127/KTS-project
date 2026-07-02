@@ -31,14 +31,15 @@ class ETimeOfficeApiPuller
      */
     private function loadConfiguration()
     {
-        $this->apiUrl = Setting::where('key', 'etimeoffice_api_url')->value('value') ?? 'https://api.etimeoffice.com/api';
-        $this->corporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value');
-        $this->username = Setting::where('key', 'etimeoffice_username')->value('value');
-        $this->password = Setting::where('key', 'etimeoffice_password')->value('value');
+        $this->apiUrl = Setting::where('key', 'etimeoffice_api_url')->value('value') ?: env('ETIMEOFFICE_API_URL', 'https://api.etimeoffice.com/api');
+        $this->corporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value') ?: env('ETIMEOFFICE_CORPORATE_ID', '');
+        $this->username = Setting::where('key', 'etimeoffice_username')->value('value') ?: env('ETIMEOFFICE_USERNAME', '');
+        $this->password = Setting::where('key', 'etimeoffice_password')->value('value') ?: env('ETIMEOFFICE_PASSWORD', '');
 
         if ($this->corporateId && $this->username && $this->password) {
             $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");
         }
+
     }
 
     /**

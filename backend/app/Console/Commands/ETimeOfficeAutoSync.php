@@ -13,15 +13,44 @@ class ETimeOfficeAutoSync extends Command
     protected $signature = 'etimeoffice:auto-sync 
                            {--frequency=5 : Sync frequency in minutes}
                            {--range=today : Date range to sync (today, yesterday, last_3_days)}
-                           {--test : Run in test mode}';
+                           {--test : Run in test mode}
+                           {--daemon : Run continuously as a background process}';
 
-    protected $description = 'Automatically sync attendance data from ETimeOffice every few minutes';
+    protected $description = 'Automatically sync attendance data from ETimeOffice (can run as a daemon)';
 
     public function handle()
     {
         $frequency = $this->option('frequency');
         $range = $this->option('range');
         $testMode = $this->option('test');
+        $isDaemon = $this->option('daemon');
+
+        if ($isDaemon) {
+            $this->info("Starting ETimeOffice Auto-Sync Daemon Mode");
+            $this->info("School hours (8 AM - 6 PM): Pulling every second");
+            $this->info("Off hours (6 PM - 8 AM): Pulling every 5 hours");
+            $this->info("Press Ctrl+C to exit.");
+
+            while (true) {
+                $now = now();
+                $currentHour = $now->hour;
+
+                // timings: 8:00 AM to 6:00 PM (8 to 18) -> run every second
+                // off-hours -> run every 5 hours (5 * 3600 seconds)
+                if ($currentHour >= 8 && $currentHour < 18) {
+                    $sleepSeconds = 1;
+                } else {
+                    $sleepSeconds = 5 * 3600;
+                }
+
+                if ($this->isSyncEnabled()) {
+                    $this->performSync($range, $testMode);
+                }
+
+                sleep($sleepSeconds);
+            }
+            return 0;
+        }
 
         $this->info("Starting ETimeOffice Auto-Sync (every {$frequency} minutes)");
         $this->info("Date Range: {$range}");

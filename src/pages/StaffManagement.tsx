@@ -32,6 +32,7 @@ export interface StaffMember {
   salary: number;
   qualifications: string;
   documents?: string[];
+  biometric_employee_code?: string;
 }
 
 export const STAFF: StaffMember[] = [
@@ -478,6 +479,7 @@ export function StaffManagement() {
     const joinDateVal = fd.get('joinDate') as string;
     const salaryVal = parseFloat(fd.get('salary') as string) || 0;
     const qualificationsVal = (fd.get('qualifications') as string) || 'N/A';
+    const biometricCodeVal = (fd.get('biometric_employee_code') as string) || '';
 
     const categoryVal = selectedCategory === 'manual_entry' ? customCategory.trim() : selectedCategory;
     const documentsVal = [
@@ -532,6 +534,7 @@ export function StaffManagement() {
         salary: salaryVal,
         qualifications: qualificationsVal,
         documents: documentsVal,
+        biometric_employee_code: biometricCodeVal,
       };
       setStaffList(prev => [newStaff, ...prev]);
     } else if (modal?.type === 'edit' && modal.staff) {
@@ -548,6 +551,7 @@ export function StaffManagement() {
         salary: salaryVal,
         qualifications: qualificationsVal,
         documents: documentsVal,
+        biometric_employee_code: biometricCodeVal,
       } : s));
     }
     setModal(null);
@@ -642,6 +646,7 @@ export function StaffManagement() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {[
                         { label: 'Category', value: modal.staff.category || 'Teaching' },
+                        { label: 'Biometric Employee Code', value: modal.staff.biometric_employee_code || 'Not Mapped' },
                         { label: 'Subject / Assigned Route', value: modal.staff.subject ?? 'N/A' },
                         { label: 'Join Date', value: modal.staff.joinDate },
                         { label: 'Phone', value: modal.staff.phone },
@@ -1447,6 +1452,13 @@ export function StaffManagement() {
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Join Date</label>
                   <input name="joinDate" type="date" defaultValue={modal.staff?.joinDate || new Date().toISOString().slice(0, 10)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Biometric Machine Employee Code</label>
+                  <input name="biometric_employee_code" defaultValue={modal.staff?.biometric_employee_code} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" placeholder="e.g. 00000001" />
                 </div>
               </div>
 

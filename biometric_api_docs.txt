@@ -1,0 +1,184 @@
+=== PAGE 1 ===
+E-timeoffice API Documentation
+ Overview
+The e-time-office API provides attendance and punch data integration APIs for employee attendance
+systems.
+These APIs allow you to:
+ Download raw punch data
+ Download raw punch data with Machine ID (MCID)
+ Download IN/OUT attendance data
+ Download only latest punch records using Last record tracking
+ Base URL
+https://api.etimeoffice.com/api/
+ Authentication
+All APIs use Basic Authentication.
+Authorization Header
+Authorization: Basic <BASE64_ENCODED_VALUE>
+Authentication Format
+The Base64 encoded string must follow this format:
+Corporateid:Username:Password:True
+Example
+support:support:support@1:true
+Example Base64 Encoded Value
+c3VwcG9ydDpzdXBwb3J0OnN1cHBvcnQ6dHJ1ZTo=
+ Common Headers
+Authorization: Basic c3VwcG9ydDpzdXBwb3J0OnN1cHBvcnQ6dHJ1ZTo=
+Content-Type: application/json
+ Date Format
+All date parameters must use the following format:
+dd/MM/yyyy_HH:mm
+=== PAGE 2 ===
+Example
+01/01/2026_01:00
+API 1 — Download Raw Punch Data
+
+Downloads raw employee punch data without IN/OUT flag.
+Endpoint
+GET /DownloadPunchData
+Full URL
+https://api.etimeoffice.com/api/DownloadPunchData
+Query Parameters
+Parameter Type Required Description
+Empcode String Yes Employee code. Use ALL for all employees.
+From Date String Yes Start date and time.
+To Date String Yes End date and time.
+Example Request
+GET
+https://api.etimeoffice.com/api/DownloadPunchData?Empcode=0001&FromDate=01/01/2026_01:
+00&ToDate=01/12/2026_00:00
+Sample Response
+[
+{
+"Empcode": "0001",
+"PunchDate": "01/01/2026 09:00:00"
+}
+]
+=== PAGE 3 ===
+API 2 — Download Punch Data with MCID
+
+Downloads raw punch data including Machine ID (MCID).
+Endpoint
+GET /DownloadPunchDataMCID
+Full URL
+https://api.etimeoffice.com/api/DownloadPunchDataMCID
+Example Request
+GET
+https://api.etimeoffice.com/api/DownloadPunchDataMCID?Empcode=0001&FromDate=01/01/202
+6_01:00&ToDate=01/12/2026_00:00
+Sample Response
+{
+"Error": false,
+"Msg": "Success",
+"IsAdmin": true,
+"PunchData": [
+{
+"Name": "JIGNESH PADHIYAR",
+"Empcode": "0001",
+"PunchDate": "01/01/2026 15:58:00",
+"M_Flag": null,
+"mcid": "3"
+}
+]
+}
+=== PAGE 4 ===
+API 3 — Download IN/OUT Punch Data
+
+Downloads attendance data with IN Time, OUT Time, Work Time, and Status.
+Endpoint
+GET /DownloadInOutPunchData
+Full URL
+https://api.etimeoffice.com/api/DownloadInOutPunchData
+Example Request
+GET
+https://api.etimeoffice.com/api/DownloadInOutPunchData?Empcode=ALL&FromDate=01/01/2026
+&ToDate=01/12/2026
+Sample Response
+{
+"InOutPunchData": [
+{
+"Empcode": "0001",
+"INTime": "12:06",
+"OUTTime": "--:--",
+"WorkTime": "00:00",
+"OverTime": "00:00",
+"Status": "P/2",
+"DateString": "01/01/2026",
+"Remark": "MIS-LT",
+"Erl_Out": "00:00",
+"Late_In": "02:36",
+"Name": "JIGNESH PADHIYAR"
+}
+],
+"Error": false,
+"Msg": "Success",
+=== PAGE 5 ===
+"IsAdmin": true
+}
+API 4 — Download Latest Punch Data using LastRecord
+
+Downloads only new/latest punch records after the provided LastRecord value.
+This API is useful for incremental synchronization.
+Endpoint
+GET /DownloadLastPunchData
+Full URL
+https://api.etimeoffice.com/api/DownloadLastPunchData
+Query Parameters
+Parameter Type Required Description
+Empcode String Yes Employee code or ALL.
+LastRecord String Yes Last synced record value in format MMyyyy$ID.
+Important Notes
+ During the first API call, pass the initial LastRecord value.
+ Save the returned MaxRecord value in your database.
+ Pass the saved MaxRecord value in the next API call.
+ This prevents duplicate data download.
+Example Request
+GET
+https://api.etimeoffice.com/api/DownloadLastPunchData?Empcode=ALL&LastRecord=042026$45
+4
+Sample Response
+{
+=== PAGE 6 ===
+"Error": false,
+"Msg": "Success",
+"IsAdmin": true,
+"PunchData": [
+{
+"Name": "RAVI PARMAR",
+"Empcode": "0005",
+"PunchDate": "30/04/2026 09:46:00",
+"M_Flag": null,
+"ID": 455,
+"Table": "TextFileData042026",
+"EmpcardNo": "00000005"
+},
+{
+"Name": "TANAY MISTRY",
+"Empcode": "0010",
+"PunchDate": "30/04/2026 09:49:00",
+"M_Flag": null,
+"ID": 456,
+"Table": "TextFileData042026",
+"EmpcardNo": "00000010"
+}
+],
+"MaxRecord": "042026$456",
+"TableName": "TextFileData092026"
+}
+HTTP Status Codes
+Status Code Description
+200 Request successful
+400 Invalid request parameters
+=== PAGE 7 ===
+Status Code Description
+401 Unauthorized
+404 Resource not found
+500 Internal server error
+Best Practices
+ Always store the MaxRecord value when using LastRecord API.
+ Use proper Base64 encoding for authentication.
+ Validate date formats before sending requests.
+ Use HTTPS endpoints only.
+ Large date ranges may increase response time.
+Support
+If you have queries regarding our API - respond/output please contact our technical support team @ +91-
+99245 02024.

@@ -7,7 +7,7 @@ import {
   Calendar, Plus, Trash2, Edit2, CheckCircle2, Shield, 
   AlertCircle, RefreshCw, RotateCcw, X, Loader2, Save,
   Activity, User, Search, Clock, GitCompare, ArrowRight,
-  ShieldAlert, ChevronDown, ChevronRight
+  ShieldAlert, ChevronDown, ChevronRight, Fingerprint, Key
 } from 'lucide-react';
 import { TabBar } from '../components/ui';
 import { WebhookManagement } from '../components/WebhookManagement';
@@ -51,6 +51,30 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSuccess, setSettingsSuccess] = useState('');
+
+  // Biometric integration states
+  const [bioCorporateId, setBioCorporateId] = useState('');
+  const [bioUsername, setBioUsername] = useState('');
+  const [bioPassword, setBioPassword] = useState('');
+  const [bioStatus, setBioStatus] = useState<any>(null);
+  const [loadingBioStatus, setLoadingBioStatus] = useState(false);
+  const [isTestingBio, setIsTestingBio] = useState(false);
+  const [testBioResult, setTestBioResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [savingBio, setSavingBio] = useState(false);
+  const [bioSuccess, setBioSuccess] = useState('');
+  const [bioError, setBioError] = useState('');
+  const [resettingCursor, setResettingCursor] = useState(false);
+
+  // School timing settings states
+  const [schoolStartTime, setSchoolStartTime] = useState('08:30');
+  const [schoolEndTime, setSchoolEndTime] = useState('17:30');
+  const [presentCutoffMorning, setPresentCutoffMorning] = useState('09:00');
+  const [presentCutoffEvening, setPresentCutoffEvening] = useState('16:30');
+  const [lateEntryCutoff, setLateEntryCutoff] = useState('09:50');
+  const [earlyEntryCutoff, setEarlyEntryCutoff] = useState('15:00');
+  const [savingTimings, setSavingTimings] = useState(false);
+  const [timingsSuccess, setTimingsSuccess] = useState('');
+  const [timingsError, setTimingsError] = useState('');
 
   // Cache/Maintenance states
   const [clearingCache, setClearingCache] = useState(false);
@@ -142,6 +166,167 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     }
   };
 
+  // Load Biometric Settings/Status
+  const loadBiometricSettings = async () => {
+    setLoadingBioStatus(true);
+    setBioError('');
+    try {
+      const res = await api.biometricStatus();
+      setBioStatus(res);
+      if (res?.corporate_id) setBioCorporateId(res.corporate_id);
+      if (res?.username) setBioUsername(res.username);
+
+      // Load school timings configurations from settings
+      const settings = await api.getResources('settings');
+      if (Array.isArray(settings)) {
+        const startSetting = settings.find((s: any) => s.key === 'school_start_time');
+        const endSetting = settings.find((s: any) => s.key === 'school_end_time');
+        const presMSetting = settings.find((s: any) => s.key === 'present_cutoff_morning');
+        const presESetting = settings.find((s: any) => s.key === 'present_cutoff_evening');
+        const lateSetting = settings.find((s: any) => s.key === 'late_entry_cutoff');
+        const earlySetting = settings.find((s: any) => s.key === 'early_entry_cutoff');
+
+        if (startSetting) setSchoolStartTime(startSetting.value);
+        if (endSetting) setSchoolEndTime(endSetting.value);
+        if (presMSetting) setPresentCutoffMorning(presMSetting.value);
+        if (presESetting) setPresentCutoffEvening(presESetting.value);
+        if (lateSetting) setLateEntryCutoff(lateSetting.value);
+        if (earlySetting) setEarlyEntryCutoff(earlySetting.value);
+      }
+    } catch (err: any) {
+      console.error('Error loading biometric status:', err);
+      setBioError(err.message || 'Failed to load biometric status');
+    } finally {
+      setLoadingBioStatus(false);
+    }
+  };
+
+  // Save Biometric School Timings
+  const handleSaveTimings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingTimings(true);
+    setTimingsSuccess('');
+    setTimingsError('');
+
+    try {
+      const keys = [
+        { key: 'school_start_time', value: schoolStartTime },
+        { key: 'school_end_time', value: schoolEndTime },
+        { key: 'present_cutoff_morning', value: presentCutoffMorning },
+        { key: 'present_cutoff_evening', value: presentCutoffEvening },
+        { key: 'late_entry_cutoff', value: lateEntryCutoff },
+        { key: 'early_entry_cutoff', value: earlyEntryCutoff },
+      ];
+
+      await Promise.all(keys.map(async (item) => {
+        const existing = await api.getResources('settings', { key: item.key });
+        if (Array.isArray(existing) && existing.length > 0) {
+          await api.updateResource('settings', String(existing[0].id), { value: item.value });
+        } else {
+          await api.createResource('settings', {
+            key: item.key,
+            value: item.value,
+            group: 'biometric',
+            type: 'string',
+            is_public: true
+          });
+        }
+      }));
+
+      // Also set the items in localstorage so other components see them immediately
+      keys.forEach((item) => {
+        localStorage.setItem(item.key, item.value);
+      });
+
+      setTimingsSuccess('School timings and cutoffs saved successfully!');
+      setTimeout(() => setTimingsSuccess(''), 4000);
+    } catch (err: any) {
+      console.error('Error saving school timings:', err);
+      setTimingsError(err.message || 'Failed to save school timings.');
+    } finally {
+      setSavingTimings(false);
+    }
+  };
+
+  // Test Biometric Connection
+  const handleTestBiometric = async () => {
+    if (!bioCorporateId || !bioUsername) {
+      setBioError('Please enter Corporate ID and Username to test connection.');
+      return;
+    }
+    setIsTestingBio(true);
+    setTestBioResult(null);
+    setBioError('');
+    try {
+      const res = await api.biometricTestConnection({
+        corporate_id: bioCorporateId,
+        username: bioUsername,
+        password: bioPassword
+      });
+      if (res?.connected) {
+        setTestBioResult({ success: true, message: res.message || 'Successfully connected to e-TimeOffice API!' });
+      } else {
+        setTestBioResult({ success: false, message: res.message || 'Failed to connect. Check credentials.' });
+      }
+    } catch (err: any) {
+      console.error(err);
+      setTestBioResult({ success: false, message: err.message || 'Connection error.' });
+    } finally {
+      setIsTestingBio(false);
+    }
+  };
+
+  // Save Biometric Credentials
+  const handleSaveBiometric = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bioCorporateId || !bioUsername) {
+      setBioError('Corporate ID and Username are required.');
+      return;
+    }
+    setSavingBio(true);
+    setBioSuccess('');
+    setBioError('');
+    try {
+      const res = await api.biometricSaveCredentials({
+        corporate_id: bioCorporateId,
+        username: bioUsername,
+        password: bioPassword
+      });
+      if (res?.success) {
+        setBioSuccess('Biometric credentials saved successfully!');
+        loadBiometricSettings();
+      } else {
+        setBioError(res?.message || 'Failed to save biometric credentials.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setBioError(err.message || 'Failed to save biometric credentials.');
+    } finally {
+      setSavingBio(false);
+    }
+  };
+
+  // Reset Sync Cursor
+  const handleResetCursor = async () => {
+    if (!window.confirm('Are you sure you want to reset the incremental sync cursor? This will re-fetch all records starting from the beginning of the current month.')) {
+      return;
+    }
+    setResettingCursor(true);
+    try {
+      const res = await api.biometricResetCursor();
+      if (res?.success) {
+        alert('Sync cursor reset successfully!');
+        loadBiometricSettings();
+      } else {
+        alert('Failed to reset sync cursor.');
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setResettingCursor(false);
+    }
+  };
+
   // Load Activity Logs
   async function loadActivityLogs(reset = true, nextOffset?: number) {
     setActivityLoading(true);
@@ -218,6 +403,8 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     } else if (tab === 2) {
       api.getActivityUsers().then(setActivityUsers).catch(() => {});
       api.getActivitySummary().then(r => setActivitySummary(r.data ?? r ?? [])).catch(() => {});
+    } else if (tab === 5) {
+      loadBiometricSettings();
     }
   }, [tab]);
 
@@ -440,7 +627,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     <div className="flex-1 overflow-y-auto p-4 bg-[var(--bg)]">
       
       <TabBar 
-        tabs={['Academic Years', 'School Profile', 'Activity Logs', 'Webhook Management', 'System Maintenance']}
+        tabs={['Academic Years', 'School Profile', 'Activity Logs', 'Webhook Management', 'System Maintenance', 'Biometric Integration']}
         active={tab}
         onChange={setTab}
       />
@@ -1040,6 +1227,275 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                 </div>
               </div>
             </Card>
+          </div>
+        )}
+
+        {/* Tab 5: Biometric Integration (e-TimeOffice API) */}
+        {tab === 5 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <div className="flex items-center justify-between mb-4 border-b border-[var(--b)] pb-3">
+                <div>
+                  <h3 className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
+                    <Fingerprint size={14} className="text-[var(--blue-tx)]" /> Biometric Sync Configuration
+                  </h3>
+                  <p className="text-[11px] text-[var(--tx3)] mt-0.5">
+                    Configure connection credentials to pull daily punch records directly from the external e-TimeOffice server.
+                  </p>
+                </div>
+              </div>
+
+              {loadingBioStatus ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 size={20} className="animate-spin text-[var(--blue)]" />
+                </div>
+              ) : (
+                <form onSubmit={handleSaveBiometric} className="space-y-4">
+                  {bioSuccess && (
+                    <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15 rounded-xl text-[11.5px] flex items-center gap-2">
+                      <CheckCircle2 size={13} className="shrink-0" />
+                      <span>{bioSuccess}</span>
+                    </div>
+                  )}
+
+                  {bioError && (
+                    <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/15 rounded-xl text-[11.5px] flex items-center gap-2">
+                      <AlertCircle size={13} className="shrink-0" />
+                      <span>{bioError}</span>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Corporate ID *</label>
+                      <input 
+                        value={bioCorporateId}
+                        onChange={(e) => setBioCorporateId(e.target.value)}
+                        required 
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                        placeholder="e.g. KTSNIZAM"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">API Username *</label>
+                      <input 
+                        value={bioUsername}
+                        onChange={(e) => setBioUsername(e.target.value)}
+                        required 
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                        placeholder="Username"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">API Password *</label>
+                      <input 
+                        type="password"
+                        value={bioPassword}
+                        onChange={(e) => setBioPassword(e.target.value)}
+                        required={!bioStatus?.configured}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                        placeholder={bioStatus?.configured ? "•••••••• (Saved)" : "Password"}
+                      />
+                    </div>
+                  </div>
+
+                  {testBioResult && (
+                    <div className={`p-3 border rounded-xl text-[11.5px] flex items-center gap-2 ${
+                      testBioResult.success 
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/15'
+                        : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/15'
+                    }`}>
+                      {testBioResult.success ? <CheckCircle2 size={13} className="shrink-0" /> : <AlertCircle size={13} className="shrink-0" />}
+                      <span>{testBioResult.message}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2.5 pt-2 border-t border-[var(--b)]">
+                    <button
+                      type="submit"
+                      disabled={savingBio}
+                      className="px-4 py-2 bg-[var(--blue)] hover:opacity-90 disabled:opacity-50 text-white text-[11.5px] font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      {savingBio && <Loader2 size={12} className="animate-spin" />}
+                      <Save size={12} />
+                      Save Credentials
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTestBiometric}
+                      disabled={isTestingBio}
+                      className="px-4 py-2 bg-[var(--surf3)] hover:bg-[var(--surf)] border border-[var(--b)] hover:border-[var(--blue)] disabled:opacity-50 text-[11.5px] font-semibold text-[var(--tx2)] rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                    >
+                      {isTestingBio && <Loader2 size={12} className="animate-spin" />}
+                      <RefreshCw size={12} />
+                      Test Connection
+                    </button>
+                  </div>
+                </form>
+              )}
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <div className="flex items-center justify-between mb-4 border-b border-[var(--b)] pb-3">
+                <div>
+                  <h3 className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
+                    <Clock size={14} className="text-[var(--blue-tx)]" /> Biometric School Timings & Attendance Cutoffs
+                  </h3>
+                  <p className="text-[11px] text-[var(--tx3)] mt-0.5">
+                    Define operational hours and cutoffs for automatic biometric check-in/check-out classification.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveTimings} className="space-y-4">
+                {timingsSuccess && (
+                  <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15 rounded-xl text-[11.5px] flex items-center gap-2">
+                    <CheckCircle2 size={13} className="shrink-0" />
+                    <span>{timingsSuccess}</span>
+                  </div>
+                )}
+
+                {timingsError && (
+                  <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/15 rounded-xl text-[11.5px] flex items-center gap-2">
+                    <AlertCircle size={13} className="shrink-0" />
+                    <span>{timingsError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-3 border-b border-[var(--b)]/50">
+                  <div>
+                    <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">School Start Time *</label>
+                    <input 
+                      type="time"
+                      value={schoolStartTime}
+                      onChange={(e) => setSchoolStartTime(e.target.value)}
+                      required 
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">School End Time *</label>
+                    <input 
+                      type="time"
+                      value={schoolEndTime}
+                      onChange={(e) => setSchoolEndTime(e.target.value)}
+                      required 
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-3 border-b border-[var(--b)]/50">
+                  <div>
+                    <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Morning Present Cutoff Time *</label>
+                    <input 
+                      type="time"
+                      value={presentCutoffMorning}
+                      onChange={(e) => setPresentCutoffMorning(e.target.value)}
+                      required 
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                    />
+                    <span className="text-[10px] text-[var(--tx3)] mt-1 block">Punches before this cutoff are marked "Present" (No Late Marks).</span>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Evening Present Cutoff Time *</label>
+                    <input 
+                      type="time"
+                      value={presentCutoffEvening}
+                      onChange={(e) => setPresentCutoffEvening(e.target.value)}
+                      required 
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                    />
+                    <span className="text-[10px] text-[var(--tx3)] mt-1 block">Punches after this cutoff are marked "Present" (No Early Marks).</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Morning Late Entry Cutoff *</label>
+                    <input 
+                      type="time"
+                      value={lateEntryCutoff}
+                      onChange={(e) => setLateEntryCutoff(e.target.value)}
+                      required 
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                    />
+                    <span className="text-[10px] text-[var(--tx3)] mt-1 block">Punches between morning Present Cutoff and this cutoff are marked "Late". Punches after this cutoff are ignored (Absent).</span>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Evening Early Entry Cutoff *</label>
+                    <input 
+                      type="time"
+                      value={earlyEntryCutoff}
+                      onChange={(e) => setEarlyEntryCutoff(e.target.value)}
+                      required 
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                    />
+                    <span className="text-[10px] text-[var(--tx3)] mt-1 block">Punches between this cutoff and evening Present Cutoff are marked "Early". Punches before this cutoff are ignored.</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-[var(--b)]">
+                  <button
+                    type="submit"
+                    disabled={savingTimings}
+                    className="px-4 py-2 bg-[var(--blue)] hover:opacity-90 disabled:opacity-50 text-white text-[11.5px] font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    {savingTimings && <Loader2 size={12} className="animate-spin" />}
+                    <Save size={12} />
+                    Save Timings & Cutoffs
+                  </button>
+                </div>
+              </form>
+            </Card>
+
+            {bioStatus?.configured && (
+              <Card>
+                <div className="flex items-center justify-between mb-3 border-b border-[var(--b)] pb-2.5">
+                  <h4 className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-1.5">
+                    <Key size={13} className="text-[var(--blue-tx)]" /> System Sync Status
+                  </h4>
+                </div>
+                <div className="space-y-2.5 text-[11.5px]">
+                  <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
+                    <span className="text-[var(--tx3)]">Last Successful Sync:</span>
+                    <span className="font-semibold text-[var(--tx)]">
+                      {bioStatus.last_sync ? new Date(bioStatus.last_sync).toLocaleString() : 'Never'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
+                    <span className="text-[var(--tx3)]">Last Sync Cursor (MaxRecord):</span>
+                    <span className="font-mono text-[var(--tx2)] font-semibold">
+                      {bioStatus.last_record || 'None (Month beginning)'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
+                    <span className="text-[var(--tx3)]">Synced Today:</span>
+                    <span className="font-semibold text-[var(--teal-tx)]">{bioStatus.today_records} logs</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-[var(--tx3)]">Synced This Week:</span>
+                    <span className="font-semibold text-[var(--blue-tx)]">{bioStatus.week_records} logs</span>
+                  </div>
+
+                  <div className="pt-2 border-t border-[var(--b)] flex justify-between items-center">
+                    <div>
+                      <div className="font-semibold text-[11px] text-[var(--tx)]">Incremental Cursor Reset</div>
+                      <p className="text-[10px] text-[var(--tx3)]">Force full sync of the current month on next pull.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetCursor}
+                      disabled={resettingCursor}
+                      className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/15 rounded-lg text-[10.5px] font-semibold cursor-pointer disabled:opacity-50 transition-all"
+                    >
+                      Reset Cursor
+                    </button>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         )}
       </div>
