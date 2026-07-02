@@ -65,7 +65,10 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
   // Cache GET requests (excluding real-time/dynamic resources like settings, attendance, and activity logs)
   const bypassCache = path.includes('/bus/') ||
     path.includes('/realtime') ||
-    path.includes('/live-feed');
+    path.includes('/live-feed') ||
+    path.includes('/biometric') ||
+    path.includes('biometric-logs') ||
+    path.includes('/attendance');
 
   if (method === 'GET' && !bypassCache) {
     const cached = cache.get(path);

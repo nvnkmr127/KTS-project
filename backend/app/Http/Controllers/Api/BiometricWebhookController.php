@@ -275,7 +275,9 @@ class BiometricWebhookController extends Controller
         $startTime = microtime(true);
 
         // First try direct biometric code lookup
-        $faculty = User::role('staff')->where('biometric_employee_code', $biometricCode)->first();
+        $faculty = User::whereHas('roles', function ($q) {
+            $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+        })->where('biometric_employee_code', $biometricCode)->first();
 
         if ($faculty) {
             $queryTime = round((microtime(true) - $startTime) * 1000, 2);
@@ -334,7 +336,9 @@ class BiometricWebhookController extends Controller
         ];
 
         foreach ($patterns as $pattern) {
-            $faculty = User::role('staff')->where('employee_id', 'LIKE', "%{$pattern}%")->first();
+            $faculty = User::whereHas('roles', function ($q) {
+                $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+            })->where('employee_id', 'LIKE', "%{$pattern}%")->first();
             if ($faculty) {
                 Log::info('Faculty found by employee ID pattern', [
                     'pattern' => $pattern,

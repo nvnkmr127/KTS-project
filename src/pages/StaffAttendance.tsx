@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
@@ -43,7 +43,8 @@ const normalizeName = (name: string) => {
 const parsePunchDate = (punchDateStr: string): string => {
   if (!punchDateStr) return '';
   try {
-    const parts = punchDateStr.trim().split(' ');
+    const cleanStr = punchDateStr.includes('T') ? punchDateStr.split('T')[0] : punchDateStr;
+    const parts = cleanStr.trim().split(' ');
     const datePart = parts[0];
     if (datePart.includes('/')) {
       const dateParts = datePart.split('/');
@@ -57,7 +58,7 @@ const parsePunchDate = (punchDateStr: string): string => {
       const dateParts = datePart.split('-');
       if (dateParts.length === 3) {
         if (dateParts[0].length === 4) {
-          return datePart;
+          return `${dateParts[0]}-${dateParts[1].padStart(2, '0')}-${dateParts[2].slice(0, 2).padStart(2, '0')}`;
         } else {
           const day = dateParts[0];
           const month = dateParts[1];
@@ -86,7 +87,10 @@ export function StaffAttendance() {
     return new Date().toISOString().slice(0, 10);
   });
 
-  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>(() => {
+    const saved = localStorage.getItem('kts_staff_members');
+    return saved ? JSON.parse(saved) : STAFF;
+  });
 
   // Manual attendance overrides
   const [manualAttendance, setManualAttendance] = useState<Record<string, Record<string, AttendanceStatus>>>(() => {
@@ -114,6 +118,9 @@ export function StaffAttendance() {
 
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncingPunches, setIsSyncingPunches] = useState(false);
+  const syncInProgress = useRef(false);
+  const syncPunchesInProgress = useRef(false);
   const [lastSyncMsg, setLastSyncMsg] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('unknown');
@@ -128,10 +135,8 @@ export function StaffAttendance() {
 
   // Load staff members, attendance, and biometric punches from DB settings / localStorage
   useEffect(() => {
-    async function syncFromDb() {
-      try {
-        const settings = await api.getResources('settings');
-        
+    api.getResources('settings')
+      .then((settings) => {
         // Load timings configurations
         const startSetting = settings.find((s: any) => s.key === 'school_start_time');
         const endSetting = settings.find((s: any) => s.key === 'school_end_time');
@@ -192,70 +197,8 @@ export function StaffAttendance() {
 
         setManualAttendance(loadedAttendance);
         setLocalPunches(loadedPunches);
-
-        // Recalculate existing attendance statuses using the new double punch rules
-        let updated = false;
-        const newAttendance = { ...loadedAttendance };
-
-        Object.keys(newAttendance).forEach((dateKey) => {
-          const dayRecords = { ...(newAttendance[dateKey] || {}) };
-          
-          currentStaffList.forEach((staff) => {
-            const staffPunches = loadedPunches.filter(
-              (p) => String(p.staffId) === String(staff.id) && p.timestamp.startsWith(dateKey)
-            );
-
-            if (staffPunches.length > 0) {
-              const checkInPunches = staffPunches.filter((p) => {
-                const timePart = p.timestamp.split(' ')[1] || '';
-                return timePart >= (sStart + ':00') && timePart <= (lCutM + ':00');
-              });
-              let hasCheckIn = checkInPunches.length > 0;
-
-              const checkOutPunches = staffPunches.filter((p) => {
-                const timePart = p.timestamp.split(' ')[1] || '';
-                return timePart >= (eCutE + ':00') && timePart <= (sEnd + ':00');
-              });
-              let hasCheckOut = checkOutPunches.length > 0;
-
-              if (!hasCheckIn || !hasCheckOut) {
-                const todayPunches = staffPunches.filter((p) => p.timestamp.startsWith(dateKey));
-                if (todayPunches.length > 0) {
-                  if (!hasCheckIn) {
-                    const earliest = todayPunches[0].timestamp.split(' ')[1]?.substring(0, 5);
-                    if (earliest && earliest >= sStart && earliest <= lCutM) hasCheckIn = true;
-                  }
-                  if (!hasCheckOut && todayPunches.length > 1) {
-                    const latest = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1]?.substring(0, 5);
-                    if (latest && latest >= eCutE && latest <= sEnd) hasCheckOut = true;
-                  }
-                }
-              }
-
-              let calculatedStatus: AttendanceStatus = 'Absent';
-              if (hasCheckIn && hasCheckOut) {
-                calculatedStatus = 'Present';
-              } else if (hasCheckIn || hasCheckOut) {
-                calculatedStatus = 'Half Day';
-              }
-
-              const currentStatus = dayRecords[staff.id];
-              if (currentStatus !== calculatedStatus) {
-                dayRecords[staff.id] = calculatedStatus;
-                updated = true;
-              }
-            }
-          });
-
-          newAttendance[dateKey] = dayRecords;
-        });
-
-        if (updated) {
-          setManualAttendance(newAttendance);
-          localStorage.setItem('kts_staff_attendance', JSON.stringify(newAttendance));
-        }
-
-      } catch (err) {
+      })
+      .catch((err) => {
         console.error('Error syncing data from DB in StaffAttendance:', err);
         // Fallback to localStorage if API fails
         const savedStaff = localStorage.getItem('kts_staff_members');
@@ -266,17 +209,13 @@ export function StaffAttendance() {
         
         const savedPunches = localStorage.getItem('kts_biometric_punches');
         if (savedPunches) setLocalPunches(JSON.parse(savedPunches));
-      }
-    }
-    
-    syncFromDb();
+      });
   }, []);
 
   // Check biometric status on mount
   useEffect(() => {
-    async function fetchStatus() {
-      try {
-        const res = await api.biometricStatus();
+    api.biometricStatus()
+      .then((res) => {
         if (res?.configured) {
           setConnectionStatus('connected');
           if (res.last_sync) {
@@ -286,185 +225,221 @@ export function StaffAttendance() {
         } else {
           setConnectionStatus('disconnected');
         }
-      } catch {
+      })
+      .catch(() => {
         setConnectionStatus('disconnected');
-      }
-    }
-    fetchStatus();
+      });
   }, []);
 
+  // Fetch logs from the local biometric_logs table (which gets instant webhook data)
+  const fetchLocalBiometricLogs = useCallback(() => {
+    api.getResources('biometric-logs', { date })
+      .then((logs) => {
+        if (Array.isArray(logs)) {
+          const mapped: BiometricRecord[] = logs.map((l: any) => {
+            const scanTime = l.scan_datetime ? l.scan_datetime.slice(11, 16) : undefined;
+            const scanType = String(l.scan_type || '').toLowerCase();
+            return {
+              Empcode: l.employee_code || l.Empcode || '',
+              Name: l.raw_data?.name || l.raw_data?.Name || l.raw_data?.EmpName || '',
+              PunchDate: l.scan_datetime,
+              INTime: l.raw_data?.in_time || (scanType === 'in' ? scanTime : undefined),
+              OUTTime: l.raw_data?.out_time || (scanType === 'out' ? scanTime : undefined),
+              WorkTime: l.raw_data?.work_time,
+              Status: l.raw_data?.status,
+              DateString: l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined,
+            };
+          });
+
+          // Merge with existing biometricRecords to avoid overwriting or losing records
+          setBiometricRecords((prev) => {
+            const map = new Map<string, BiometricRecord>();
+
+            // Add previous ones
+            prev.forEach((r) => {
+              const key = `${r.Empcode}-${r.PunchDate || r.INTime || r.OUTTime}`;
+              map.set(key, r);
+            });
+
+            // Add/overwrite with newly fetched local logs
+            mapped.forEach((r) => {
+              const key = `${r.Empcode}-${r.PunchDate || r.INTime || r.OUTTime}`;
+              map.set(key, r);
+            });
+
+            return Array.from(map.values());
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Error fetching local biometric logs:', err);
+      });
+  }, [date]);
+
   // Sync biometric IN/OUT data for the selected date from the real API
-  const syncBiometric = useCallback(async (silent = false) => {
-    if (isSyncing) return;
+  const syncBiometric = useCallback((silent = false) => {
+    if (syncInProgress.current) return;
+    syncInProgress.current = true;
     setIsSyncing(true);
     if (!silent) setLastSyncMsg(null);
 
-    try {
-      const result = await api.biometricSyncInOut(date, date, 'ALL');
-
-      if (result?.success) {
-        const records: BiometricRecord[] = result.data || [];
-        setBiometricRecords(records);
-        setConnectionStatus('connected');
-        const now = new Date().toLocaleTimeString();
-        setLastSyncTime(now);
-
-        // Convert biometric records to LocalPunch format for saving
-        const newPunches: LocalPunch[] = [];
-        const calculatedStatuses: Record<string, AttendanceStatus> = {};
-
-        staffList.forEach((staff) => {
-          // Get biometric records matching this staff member
-          const staffBioRecords = records.filter((record) => {
-            const empCode = String(record.Empcode || '').toLowerCase().trim();
-            const name    = String(record.Name || '').toLowerCase().trim();
-
-            const matchesBiometricCode = staff.biometric_employee_code && (
-              empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
-              (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
-            );
-
-            const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesBiometricCode;
-            const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
-
-            let dateMatch = false;
-            if (record.DateString) {
-              const parsed = parsePunchDate(record.DateString);
-              dateMatch = parsed === date;
-            } else if (record.PunchDate) {
-              const parsed = parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10);
-              dateMatch = parsed === date;
-            }
-
-            return (matchCode || matchName) && dateMatch;
+    api.biometricSyncInOut(date, date, 'ALL')
+      .then((result) => {
+        if (result?.success) {
+          const records: BiometricRecord[] = result.data || [];
+          
+          // Merge with existing biometricRecords to keep webhook punches
+          setBiometricRecords((prev) => {
+            const map = new Map<string, BiometricRecord>();
+            prev.forEach((r) => {
+              const key = `${r.Empcode}-${r.PunchDate || r.INTime || r.OUTTime}`;
+              map.set(key, r);
+            });
+            records.forEach((r) => {
+              const key = `${r.Empcode}-${r.PunchDate || r.INTime || r.OUTTime}`;
+              map.set(key, r);
+            });
+            return Array.from(map.values());
           });
 
-          // Generate punches
-          const staffPunches: LocalPunch[] = [];
-          staffBioRecords.forEach((rec) => {
-            if (rec.INTime && rec.INTime !== '--:--') {
-              staffPunches.push({ id: `bio-in-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
-            }
-            if (rec.OUTTime && rec.OUTTime !== '--:--') {
-              staffPunches.push({ id: `bio-out-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
-            }
-            if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
-              staffPunches.push({ id: `bio-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: rec.PunchDate });
-            }
-          });
+          setConnectionStatus('connected');
+          const now = new Date().toLocaleTimeString();
+          setLastSyncTime(now);
 
-          newPunches.push(...staffPunches);
+          // Convert biometric records to LocalPunch format for saving
+          const newPunches: LocalPunch[] = [];
 
-          // Calculate attendance status from biometric punches using timing rules
-          const checkInPunches = staffPunches.filter((p) => {
-            const timePart = p.timestamp.split(' ')[1] || '';
-            return timePart >= (schoolStartTime + ':00') && timePart <= (lateEntryCutoff + ':00');
-          });
-          let hasCheckIn = checkInPunches.length > 0;
+          staffList.forEach((staff) => {
+            // Get biometric records matching this staff member
+            const staffBioRecords = records.filter((record) => {
+              const empCode = String(record.Empcode || '').toLowerCase().trim();
+              const name    = String(record.Name || '').toLowerCase().trim();
 
-          const checkOutPunches = staffPunches.filter((p) => {
-            const timePart = p.timestamp.split(' ')[1] || '';
-            return timePart >= (earlyEntryCutoff + ':00') && timePart <= (schoolEndTime + ':00');
-          });
-          let hasCheckOut = checkOutPunches.length > 0;
+              const matchesBiometricCode = staff.biometric_employee_code && (
+                empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
+                (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
+              );
 
-          // Fallbacks if no punches in windows
-          if (!hasCheckIn || !hasCheckOut) {
-            const todayPunches = staffPunches.filter((p) => p.timestamp.startsWith(date));
-            if (todayPunches.length > 0) {
-              if (!hasCheckIn) {
-                const earliest = todayPunches[0].timestamp.split(' ')[1]?.substring(0, 5);
-                if (earliest && earliest >= schoolStartTime && earliest <= lateEntryCutoff) hasCheckIn = true;
+              const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesBiometricCode;
+              const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
+
+              let dateMatch = false;
+              if (record.DateString) {
+                const parsed = parsePunchDate(record.DateString);
+                dateMatch = parsed === date;
+              } else if (record.PunchDate) {
+                const parsed = parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10);
+                dateMatch = parsed === date;
               }
-              if (!hasCheckOut && todayPunches.length > 1) {
-                const latest = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1]?.substring(0, 5);
-                if (latest && latest >= earlyEntryCutoff && latest <= schoolEndTime) hasCheckOut = true;
+
+              return (matchCode || matchName) && dateMatch;
+            });
+
+            // Generate punches
+            const staffPunches: LocalPunch[] = [];
+            staffBioRecords.forEach((rec) => {
+              if (rec.INTime && rec.INTime !== '--:--') {
+                staffPunches.push({ id: `bio-in-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
               }
-            }
+              if (rec.OUTTime && rec.OUTTime !== '--:--') {
+                staffPunches.push({ id: `bio-out-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
+              }
+              if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
+                staffPunches.push({ id: `bio-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: rec.PunchDate });
+              }
+            });
+
+            newPunches.push(...staffPunches);
+          });
+
+          // Update localPunches (filter out previous punches for this date)
+          setLocalPunches((prev) => {
+            const otherDatePunches = prev.filter((p) => !p.timestamp.startsWith(date));
+            return [...otherDatePunches, ...newPunches];
+          });
+
+          if (!silent) {
+            setLastSyncMsg(`✓ Synced ${result.saved ?? records.length} records at ${now}`);
           }
-
-          let status: AttendanceStatus = 'Absent';
-          if (hasCheckIn && hasCheckOut) {
-            status = 'Present';
-          } else if (hasCheckIn || hasCheckOut) {
-            status = 'Half Day';
-          }
-
-          // Respect leave requests if any
-          const hasApprovedLeave = leaveRequests.some((l) => 
-            String(l.staffId) === String(staff.id) &&
-            l.status === 'Approved' &&
-            date >= l.from &&
-            date <= l.to
-          );
-          if (hasApprovedLeave) {
-            status = 'Leave';
-          }
-
-          calculatedStatuses[staff.id] = status;
-        });
-
-        // Update localPunches (filter out previous punches for this date)
-        setLocalPunches((prev) => {
-          const otherDatePunches = prev.filter((p) => !p.timestamp.startsWith(date));
-          return [...otherDatePunches, ...newPunches];
-        });
-
-        // Update manualAttendance with the biometric-calculated statuses
-        setManualAttendance((prev) => {
-          const updatedDateRecords = { ...(prev[date] || {}), ...calculatedStatuses };
-          return { ...prev, [date]: updatedDateRecords };
-        });
-
-        if (!silent) {
-          setLastSyncMsg(`✓ Synced ${result.saved ?? records.length} records at ${now}`);
+        } else if (result?.message?.includes('not configured')) {
+          setConnectionStatus('disconnected');
+          if (!silent) setLastSyncMsg('⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.');
+          fetchLocalBiometricLogs();
+        } else {
+          if (!silent) setLastSyncMsg(`⚠ ${result?.message || 'Sync returned no data'}`);
+          fetchLocalBiometricLogs();
         }
-      } else if (result?.message?.includes('not configured')) {
+      })
+      .catch((err: any) => {
         setConnectionStatus('disconnected');
-        if (!silent) setLastSyncMsg('⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.');
-        await fetchFallbackLogs();
-      } else {
-        if (!silent) setLastSyncMsg(`⚠ ${result?.message || 'Sync returned no data'}`);
-        await fetchFallbackLogs();
-      }
-    } catch (err: any) {
-      setConnectionStatus('disconnected');
-      if (!silent) setLastSyncMsg('✗ Sync failed — check biometric credentials in Settings.');
-      await fetchFallbackLogs();
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [date, isSyncing, staffList, leaveRequests, schoolStartTime, schoolEndTime, presentCutoffMorning, presentCutoffEvening, lateEntryCutoff, earlyEntryCutoff]);
+        if (!silent) setLastSyncMsg('✗ Sync failed — check biometric credentials in Settings.');
+        fetchLocalBiometricLogs();
+      })
+      .finally(() => {
+        syncInProgress.current = false;
+        setIsSyncing(false);
+      });
+  }, [date, staffList, fetchLocalBiometricLogs]);
 
-  // Fallback: load from backend biometric_logs table
-  const fetchFallbackLogs = async () => {
-    try {
-      const logs = await api.getResources('biometric-logs');
-      if (Array.isArray(logs)) {
-        const mapped: BiometricRecord[] = logs.map((l: any) => ({
-          Empcode: l.employee_code || l.Empcode || '',
-          Name: l.raw_data?.name || l.raw_data?.Name || '',
-          PunchDate: l.scan_datetime,
-          INTime: l.raw_data?.in_time || (l.scan_datetime ? l.scan_datetime.slice(11, 16) : undefined),
-          OUTTime: l.raw_data?.out_time,
-          WorkTime: l.raw_data?.work_time,
-          Status: l.raw_data?.status,
-          DateString: l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined,
-        }));
-        setBiometricRecords(mapped);
-      }
-    } catch {
-      // silently ignore
-    }
-  };
+  // Sync biometric raw punch logs (DownloadPunchData) every second during school hours
+  const syncBiometricPunches = useCallback((silent = false) => {
+    if (syncPunchesInProgress.current) return;
+    syncPunchesInProgress.current = true;
+    setIsSyncingPunches(true);
+
+    api.biometricSyncPunch(date, date, 'ALL')
+      .then((result) => {
+        if (result?.success) {
+          fetchLocalBiometricLogs();
+          setConnectionStatus('connected');
+        }
+      })
+      .catch((err) => {
+        console.error('Error syncing biometric raw punches:', err);
+      })
+      .finally(() => {
+        syncPunchesInProgress.current = false;
+        setIsSyncingPunches(false);
+      });
+  }, [date, fetchLocalBiometricLogs]);
+
+  // Refs to hold latest function references for the intervals
+  const syncBiometricRef = useRef(syncBiometric);
+  const syncBiometricPunchesRef = useRef(syncBiometricPunches);
+  const fetchLocalBiometricLogsRef = useRef(fetchLocalBiometricLogs);
+
+  useEffect(() => {
+    syncBiometricRef.current = syncBiometric;
+  }, [syncBiometric]);
+
+  useEffect(() => {
+    syncBiometricPunchesRef.current = syncBiometricPunches;
+  }, [syncBiometricPunches]);
+
+  useEffect(() => {
+    fetchLocalBiometricLogsRef.current = fetchLocalBiometricLogs;
+  }, [fetchLocalBiometricLogs]);
 
   // Auto-sync when date changes
   useEffect(() => {
+    setBiometricRecords([]); // Clear old records
+    syncBiometricPunches(true);
     syncBiometric(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
-  // Live auto-sync interval based on school hours (8:00 AM to 6:00 PM: 1s, otherwise: 5h)
+  // Local DB polling interval (every 1 second)
+  useEffect(() => {
+    fetchLocalBiometricLogsRef.current();
+
+    const timerId = setInterval(() => {
+      fetchLocalBiometricLogsRef.current();
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, []);
+
+  // Live auto-sync interval for raw punches (every 1 second during school hours)
   useEffect(() => {
     const getIntervalDuration = () => {
       const now = new Date();
@@ -474,7 +449,7 @@ export function StaffAttendance() {
       if (currentHour >= 8 && currentHour < 18) {
         return 1000; // 1 second
       } else {
-        return 5 * 60 * 60 * 1000; // 5 hours
+        return 2 * 60 * 60 * 1000; // 2 hours
       }
     };
 
@@ -484,28 +459,89 @@ export function StaffAttendance() {
     const startTimer = (ms: number) => {
       if (timerId) clearInterval(timerId);
       timerId = setInterval(() => {
-        // Sync biometric logs silently
-        syncBiometric(true);
-
-        // Check if the time block has transitioned and we need a different interval
-        const nextInterval = getIntervalDuration();
-        if (nextInterval !== ms) {
-          startTimer(nextInterval);
-        }
+        syncBiometricPunchesRef.current(true);
       }, ms);
     };
 
     // Start initial timer
     startTimer(currentInterval);
 
+    // Watch for hour changes to dynamically adjust the interval duration
+    const watchTimer = setInterval(() => {
+      const ms = getIntervalDuration();
+      if (ms !== currentInterval) {
+        currentInterval = ms;
+        startTimer(currentInterval);
+      }
+    }, 60000);
+
     return () => {
       if (timerId) clearInterval(timerId);
+      clearInterval(watchTimer);
     };
-  }, [syncBiometric]);
+  }, []);
+
+  // Live auto-sync interval for In/Out summaries (every 15 seconds during school hours)
+  useEffect(() => {
+    const getIntervalDuration = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+
+      // School timings: 8:00 AM to 6:00 PM (8 to 18)
+      if (currentHour >= 8 && currentHour < 18) {
+        return 15000; // 15 seconds
+      } else {
+        return 2 * 60 * 60 * 1000; // 2 hours
+      }
+    };
+
+    let timerId: NodeJS.Timeout | null = null;
+    let currentInterval = getIntervalDuration();
+
+    const startTimer = (ms: number) => {
+      if (timerId) clearInterval(timerId);
+      timerId = setInterval(() => {
+        syncBiometricRef.current(true);
+      }, ms);
+    };
+
+    // Start initial timer
+    startTimer(currentInterval);
+
+    // Watch for hour changes to dynamically adjust the interval duration
+    const watchTimer = setInterval(() => {
+      const ms = getIntervalDuration();
+      if (ms !== currentInterval) {
+        currentInterval = ms;
+        startTimer(currentInterval);
+      }
+    }, 60000);
+
+    return () => {
+      if (timerId) clearInterval(timerId);
+      clearInterval(watchTimer);
+    };
+  }, []);
+
+  const saveSettingToDb = (key: string, value: string) => {
+    api.getResources('settings')
+      .then((settings) => {
+        const setting = settings.find((s: any) => s.key === key);
+        if (setting) {
+          return api.updateResource('settings', setting.id, { key, value });
+        } else {
+          return api.createResource('settings', { key, value, group: 'staff' });
+        }
+      })
+      .catch((err) => {
+        console.error(`Error saving setting ${key} to DB:`, err);
+      });
+  };
 
   // Persistence hooks
   useEffect(() => {
     localStorage.setItem('kts_staff_attendance', JSON.stringify(manualAttendance));
+    saveSettingToDb('kts_staff_attendance', JSON.stringify(manualAttendance));
   }, [manualAttendance]);
 
   // Force biometric mode if the device is connected/working
@@ -653,7 +689,6 @@ export function StaffAttendance() {
   };
 
   const setManualStatus = (staffId: string, status: AttendanceStatus) => {
-    if (connectionStatus === 'connected') return; // Block changes if biometric device is connected/working
     setManualAttendance((prev) => {
       const dateRecords = prev[date] ? { ...prev[date] } : {};
       if (dateRecords[staffId] === status) {
@@ -1108,20 +1143,13 @@ export function StaffAttendance() {
                             <button
                               key={opt.value}
                               type="button"
-                              disabled={connectionStatus === 'connected'}
                               onClick={() => setManualStatus(s.id, opt.value as AttendanceStatus)}
-                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all ${
-                                connectionStatus === 'connected'
-                                  ? 'opacity-40 cursor-not-allowed border-transparent text-[var(--tx3)]'
-                                  : 'cursor-pointer'
-                              } ${
+                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer ${
                                 status === opt.value
                                   ? opt.active
-                                  : connectionStatus === 'connected'
-                                    ? 'bg-transparent text-[var(--tx3)]'
-                                    : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${opt.bg}`
+                                  : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${opt.bg}`
                               }`}
-                              title={connectionStatus === 'connected' ? "Manual edit disabled because biometric device is working" : `Set to ${opt.value}`}
+                              title={`Set to ${opt.value}`}
                             >
                               {opt.value}
                             </button>

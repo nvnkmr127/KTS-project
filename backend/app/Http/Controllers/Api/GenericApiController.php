@@ -170,7 +170,9 @@ class GenericApiController extends Controller
 
         // Apply date filter if present
         if ($request->has('date') && $request->date !== '' && $request->date !== 'All') {
-            if (in_array('created_at', $columns)) {
+            if ($resource === 'biometric-logs' && in_array('scan_datetime', $columns)) {
+                $query->whereDate('scan_datetime', $request->date);
+            } elseif (in_array('created_at', $columns)) {
                 $query->whereDate('created_at', $request->date);
             }
         }
