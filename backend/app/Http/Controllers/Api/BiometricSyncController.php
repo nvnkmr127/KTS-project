@@ -226,16 +226,20 @@ class BiometricSyncController extends Controller
                         $punchDateStr .= ' ' . $record['PunchTime'];
                     }
                     $carbonDate = Carbon::parse(str_replace('/', '-', $punchDateStr));
+                    
+                    $student = $this->etimeoffice->findStudentByBiometricCode($empCode);
+                    
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
                         [
                             'device_id'        => 'etimeoffice-pull',
-                            'scan_type'        => 'in',
+                            'scan_type'        => 'unknown',
                             'processed'        => true,
                             'sync_status'      => 'success',
                             'status'           => 'processed',
                             'processing_notes' => 'Raw punch sync',
                             'raw_data'         => $record,
+                            'student_id'       => $student ? $student->id : null,
                         ]
                     );
                     $saved++;
@@ -313,16 +317,20 @@ class BiometricSyncController extends Controller
                     if (!$empCode || !$punchDateStr) continue;
 
                     $carbonDate = Carbon::parse(str_replace('/', '-', $punchDateStr));
+                    
+                    $student = $this->etimeoffice->findStudentByBiometricCode($empCode);
+                    
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
                         [
                             'device_id'        => $mcid ? "etimeoffice-machine-{$mcid}" : 'etimeoffice-incremental',
-                            'scan_type'        => 'in',
+                            'scan_type'        => 'unknown',
                             'processed'        => true,
                             'sync_status'      => 'success',
                             'status'           => 'processed',
                             'processing_notes' => "Incremental | Name:{$name} | MCID:{$mcid}",
                             'raw_data'         => $record,
+                            'student_id'       => $student ? $student->id : null,
                         ]
                     );
                     $saved++;
@@ -515,8 +523,20 @@ class BiometricSyncController extends Controller
                     Log::info('BiometricSync: Successfully created Attendance record', ['attendance_id' => $attendance->id]);
                     $biometricLog->update(['attendance_id' => $attendance->id]);
                 } else {
-                    Log::warning('BiometricSync: Student not found for empcode', ['empcode' => $empCode]);
-                    $biometricLog->update(['processing_notes' => "Student not found for empcode: {$empCode}"]);
+                    $staff = \App\Models\User::where('biometric_employee_code', $empCode)
+                        ->orWhere('id', $empCode)
+                        ->first();
+                        
+                    if ($staff) {
+                        Log::info('BiometricSync: Staff punch recorded', ['empcode' => $empCode]);
+                        // Append to the existing notes so we don't lose the WorkTime/Remark info
+                        $existingNotes = $biometricLog->processing_notes;
+                        $biometricLog->update(['processing_notes' => "{$existingNotes} | Staff punch for: {$staff->name}"]);
+                    } else {
+                        Log::warning('BiometricSync: Employee/Student not found for empcode', ['empcode' => $empCode]);
+                        $existingNotes = $biometricLog->processing_notes;
+                        $biometricLog->update(['processing_notes' => "{$existingNotes} | Not found in system: {$empCode}"]);
+                    }
                 }
                 $saved++;
             } catch (\Exception $e) {
