@@ -216,8 +216,11 @@ class BiometricSyncController extends Controller
                     $punchDateStr = $record['PunchDate'] ?? null;
                     if (!$empCode || !$punchDateStr) continue;
 
-                    $punchTimeStr = $record['PunchTime'] ?? '00:00:00';
-                    $carbonDate = Carbon::parse(str_replace('/', '-', $punchDateStr) . ' ' . $punchTimeStr);
+                    // DownloadPunchData already returns a combined "dd/MM/yyyy HH:mm:ss" value.
+                    // Replace slashes with dashes so Carbon parses it as day-month-year (Indian
+                    // format). Do NOT append a separate PunchTime — that field does not exist and
+                    // appending it corrupted the datetime, silently dropping every raw punch.
+                    $carbonDate = Carbon::parse(str_replace('/', '-', trim($punchDateStr)));
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
                         [
@@ -450,8 +453,22 @@ class BiometricSyncController extends Controller
                 $student = $this->etimeoffice->findStudentByBiometricCode($empCode);
                 if ($student) {
                     $inTimeFormatted = ($inTime && $inTime !== '--:--') ? $inTime . ':00' : null;
-                    $outTimeFormatted = ($outTime && $outTime !== '--:--') ? $outTime . ':00' : null;
-                    
+
+                    // e-TimeOffice returns the *current running clock time* as OUTTime while an
+                    // employee is still checked in for the ongoing day — it is not a real punch-out.
+                    // Storing it makes check-out show the "present time" instead of the actual
+                    // biometric checkout. Only accept an OUTTime that is a genuine, already-elapsed
+                    // punch: clearly in the past for today, and always valid for past dates.
+                    $outTimeFormatted = null;
+                    if ($outTime && $outTime !== '--:--') {
+                        $candidateOut = Carbon::parse("{$scanDate} {$outTime}:00");
+                        $isPresentTimePlaceholder = $carbonDate->isToday()
+                            && $candidateOut->greaterThanOrEqualTo(now()->subMinutes(2));
+                        if (! $isPresentTimePlaceholder) {
+                            $outTimeFormatted = $outTime . ':00';
+                        }
+                    }
+
                     $attendanceStatus = 'present';
                     if ($lateIn && $lateIn !== '00:00') {
                         $attendanceStatus = 'late';
@@ -462,24 +479,32 @@ class BiometricSyncController extends Controller
                         'attendance_date' => $scanDate,
                         'batch_id' => $student->batch_id,
                         'check_in_time' => $inTimeFormatted,
+                        'check_out_time' => $outTimeFormatted,
                     ]);
+
+                    $attendanceValues = [
+                        'batch_id' => $student->batch_id,
+                        'faculty_id' => 1, // Required by database constraints
+                        'check_in_time' => $inTimeFormatted,
+                        'status' => $attendanceStatus,
+                        'marked_at' => now(),
+                        'device_id' => 'etimeoffice-api',
+                        'biometric_log_id' => $biometricLog->id,
+                        'notes' => "Synced via eTimeOffice API | Status: {$status} | Work: {$workTime}",
+                    ];
+
+                    // Only write check_out_time when we have a genuine punch-out; never clobber a
+                    // previously stored real checkout with the running-clock placeholder (null).
+                    if ($outTimeFormatted !== null) {
+                        $attendanceValues['check_out_time'] = $outTimeFormatted;
+                    }
 
                     $attendance = Attendance::updateOrCreate(
                         [
                             'student_id' => $student->id,
                             'attendance_date' => $scanDate,
                         ],
-                        [
-                            'batch_id' => $student->batch_id,
-                            'faculty_id' => 1, // Required by database constraints
-                            'check_in_time' => $inTimeFormatted,
-                            'check_out_time' => $outTimeFormatted,
-                            'status' => $attendanceStatus,
-                            'marked_at' => now(),
-                            'device_id' => 'etimeoffice-api',
-                            'biometric_log_id' => $biometricLog->id,
-                            'notes' => "Synced via eTimeOffice API | Status: {$status} | Work: {$workTime}",
-                        ]
+                        $attendanceValues
                     );
 
                     Log::info('BiometricSync: Successfully created Attendance record', ['attendance_id' => $attendance->id]);
