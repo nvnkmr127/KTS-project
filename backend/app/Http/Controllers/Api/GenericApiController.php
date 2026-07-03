@@ -135,7 +135,7 @@ class GenericApiController extends Controller
         // Custom filter for faculty role
         if ($resource === 'faculty') {
             $query->whereHas('roles', function ($q) {
-                $q->where('name', 'faculty');
+                $q->whereIn('name', ['faculty', 'staff', 'teacher']);
             });
         }
 

@@ -88,39 +88,70 @@ export function Classes() {
                .forEach((x: any) => resignedNames.add(x.name.toLowerCase().trim()));
     } catch { /* empty */ }
 
-    let activeTeachers: { id: string; name: string; status: string; department: string }[] = [];
+    let localTeachers: any[] = [];
+    try {
+      const s = localStorage.getItem('kts_staff_members');
+      if (s) {
+        const arr = JSON.parse(s);
+        localTeachers = arr.filter((x: any) => x && x.status !== 'Resigned').map((x: any) => ({
+          id: String(x.id),
+          name: x.name,
+          status: x.status || 'Active',
+          department: x.department || ''
+        }));
+      }
+    } catch { /* empty */ }
 
-    // Try fetching from backend first
+    let apiTeachers: any[] = [];
     try {
       const facultyData = await api.getResources('faculty');
-      if (facultyData && facultyData.length > 0) {
-        activeTeachers = facultyData.filter((t: any) => {
+      if (facultyData && Array.isArray(facultyData)) {
+        apiTeachers = facultyData.filter((t: any) => {
           if ((t.status || '').toLowerCase() === 'inactive') return false;
           if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
           return true;
-        });
+        }).map((t: any) => ({
+          id: String(t.id),
+          name: t.name,
+          status: t.status || 'Active',
+          department: t.department || ''
+        }));
       }
     } catch (err) {
       console.error('Failed to fetch faculty for classes:', err);
     }
 
-    // Fallback to local storage if backend fails or returns empty
-    if (activeTeachers.length === 0) {
-      try {
-        const s = localStorage.getItem('kts_staff_members');
-        if (s) {
-          const arr = JSON.parse(s);
-          activeTeachers = arr.filter((x: any) => x.status !== 'Resigned').map((x: any) => ({
-            id: x.id, name: x.name, status: x.status, department: x.department || ''
-          }));
-        }
-      } catch { /* empty */ }
-    }
+    // Merge both backend and local storage lists to ensure all active teachers are available
+    const mergedMap = new Map<string, any>();
+    localTeachers.forEach(t => {
+      const key = `${t.name.toLowerCase().trim()}_${t.id}`;
+      mergedMap.set(key, t);
+    });
 
-    // Final fallback to mock data
+    apiTeachers.forEach(t => {
+      const normName = t.name.toLowerCase().trim();
+      let foundKey: string | null = null;
+      for (const [key, value] of mergedMap.entries()) {
+        const valueNormName = value.name.toLowerCase().trim();
+        if (valueNormName === normName || String(value.id) === String(t.id)) {
+          foundKey = key;
+          break;
+        }
+      }
+      if (foundKey) {
+        const existing = mergedMap.get(foundKey);
+        mergedMap.set(foundKey, { ...existing, ...t });
+      } else {
+        const key = `${t.name.toLowerCase().trim()}_${t.id}`;
+        mergedMap.set(key, t);
+      }
+    });
+
+    let activeTeachers = Array.from(mergedMap.values());
+
     if (activeTeachers.length === 0) {
       activeTeachers = STAFF.filter(s => s.status !== 'Resigned')
-        .map(s => ({ id: s.id, name: s.name, status: s.status, department: s.department || '' }));
+        .map(s => ({ id: String(s.id), name: s.name, status: s.status, department: s.department || '' }));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
