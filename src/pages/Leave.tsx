@@ -9,6 +9,7 @@ import { useApp } from '../context/AppContext';
 import { formatDate } from '../utils/date';
 import { STAFF } from './StaffManagement';
 import { api } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 
 const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
   SR: { bg: 'var(--red-bg)', color: 'var(--red-tx)' },
@@ -79,6 +80,7 @@ function CustomDatePicker({
   holidays: Holiday[];
   label: string;
 }) {
+  const { alert } = useDialog();
   const [isOpen, setIsOpen] = useState(false);
   const [currentYear, setCurrentYear] = useState(() => {
     const d = value ? new Date(value) : new Date();
@@ -199,9 +201,9 @@ function CustomDatePicker({
                   type="button"
                   disabled={!isSelectable}
                   title={hoverTitle}
-                  onClick={() => {
+                  onClick={async () => {
                     if (isSunday || holiday) {
-                      alert(`Cannot select holiday/Sunday: ${holiday?.name || 'Sunday'}`);
+                      await alert(`Cannot select holiday/Sunday: ${holiday?.name || 'Sunday'}`, "Invalid Date");
                       return;
                     }
                     onChange(dateStr);
@@ -232,6 +234,7 @@ function CustomDatePicker({
 }
 
 export function Leave() {
+  const { alert } = useDialog();
   const { user } = useAuth();
   const { leaveRequests, approveLeave, rejectLeave, addLeaveRequest, setHasUnsavedChanges } = useApp();
   const isAdmin = user?.role === 'admin';
@@ -416,7 +419,7 @@ export function Leave() {
     }
   };
 
-  const handleSaveHoliday = () => {
+  const handleSaveHoliday = async () => {
     if (!holidayModal) return;
     let updatedHolidays = [...holidays];
 
@@ -425,7 +428,7 @@ export function Leave() {
       updatedHolidays = updatedHolidays.filter(h => h.date !== holidayModal.dateStr);
     } else {
       if (!modalHolidayName.trim()) {
-        alert('Holiday name is required.');
+        await alert('Holiday name is required.', 'Input Required');
         return;
       }
       const newHoliday: Holiday = {
@@ -529,9 +532,9 @@ export function Leave() {
             return (
               <div
                 key={day}
-                onClick={() => {
+                onClick={async () => {
                   if (isSunday) {
-                    alert('Sundays are automatic school holidays.');
+                    await alert('Sundays are automatic school holidays.', 'Notice');
                     return;
                   }
                   openHolidayModal(dateStr);

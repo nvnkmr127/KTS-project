@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Plus, Upload, X, FileText, CheckCircle2, Download, Printer } from 'lucide-react';
+import { Plus, Upload, X, FileText, CheckCircle2, Download, Printer, Trash2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { StaffFilters } from '../components/Staff/StaffFilters';
@@ -11,6 +11,7 @@ import { StaffFormModal } from '../components/Staff/StaffFormModal';
 import { StaffPayslipModal } from '../components/Staff/StaffPayslipModal';
 
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import * as XLSX from 'xlsx';
 
@@ -56,6 +57,7 @@ const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
 type ModalState = { type: 'add' | 'view' | 'edit'; staff?: StaffMember } | null;
 
 export function StaffManagement() {
+  const { alert, confirm } = useDialog();
   const { leaveRequests } = useApp();
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('kts_staff_members');
@@ -148,7 +150,11 @@ export function StaffManagement() {
       'Subject': s.subject || 'N/A',
       'Phone': s.phone,
       'Email': s.email,
-      'Join Date': s.joinDate,
+      'Join Date': (() => {
+        const parts = (s.joinDate || '').split('-');
+        if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        return s.joinDate;
+      })(),
       'Salary': s.salary,
       'Qualifications': s.qualifications,
       'Status': s.status
@@ -329,6 +335,25 @@ export function StaffManagement() {
     }
   };
 
+  const handleDeleteDoc = async (docName: string) => {
+    const staffId = modal?.staff?.id;
+    if (!staffId) return;
+    if (!await confirm(`Are you sure you want to delete the uploaded document "${docName}"?`, 'Delete Document', true)) return;
+
+    setUploadedDocs(prev => {
+      const next = { ...prev };
+      if (next[staffId]) {
+        const staffDocs = { ...next[staffId] };
+        delete staffDocs[docName];
+        next[staffId] = staffDocs;
+      }
+      localStorage.setItem('kts_staff_uploaded_docs', JSON.stringify(next));
+      return next;
+    });
+
+    setSelectedDocPreview(null);
+  };
+
 
   const saveSettingToDb = async (key: string, value: string) => {
     try {
@@ -375,7 +400,109 @@ export function StaffManagement() {
     }
   }, [modal]);
 
-  const filtered = staffList.filter((s) => {
+  const getStaffAttendancePercentage = (staff: StaffMember) => {
+    // Get all unique dates in the system
+    const recordedDates = new Set<string>();
+    Object.keys(manualAttendance).forEach(d => recordedDates.add(d));
+    biometricPunches.forEach(p => {
+      if (p.timestamp) {
+        recordedDates.add(p.timestamp.slice(0, 10));
+      }
+    });
+
+    // Filter out dates before the employee's join date or in the future
+    const joinTime = new Date(staff.joinDate).getTime();
+    const dates = Array.from(recordedDates).filter(d => {
+      const dateTime = new Date(d).getTime();
+      return !isNaN(dateTime) && dateTime >= joinTime && d <= new Date().toISOString().slice(0, 10);
+    });
+
+    if (dates.length === 0) {
+      // If no attendance records exist in the system yet, fall back to the mock/default percentage
+      return staff.attendance || 100;
+    }
+
+    let presentDays = 0;
+    let totalDays = 0;
+
+    const attendanceMode = localStorage.getItem('kts_staff_attendance_mode') || 'biometric';
+    const lateEntryCutoff = localStorage.getItem('late_entry_cutoff') || '09:50';
+    const earlyEntryCutoff = localStorage.getItem('early_entry_cutoff') || '15:00';
+
+    dates.forEach((dateStr) => {
+      const manualStatus = manualAttendance[dateStr]?.[staff.id];
+      let status: 'Present' | 'Absent' | 'Leave' | 'Half Day' = 'Present';
+      
+      if (manualStatus) {
+        status = manualStatus as any;
+      } else {
+        const hasApprovedLeave = leaveRequests.some((l) => 
+          String(l.staffId) === String(staff.id) &&
+          l.status === 'Approved' &&
+          dateStr >= l.from &&
+          dateStr <= l.to
+        );
+        if (hasApprovedLeave) {
+          status = 'Leave';
+        } else if (attendanceMode === 'manual') {
+          status = 'Present'; // default to present in manual mode
+        } else {
+          // Biometric mode - check punches
+          const punches = biometricPunches.filter(
+            (p) => p.staffId === staff.id && p.timestamp.startsWith(dateStr)
+          );
+          punches.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+          if (punches.length === 0) {
+            status = 'Absent';
+          } else if (punches.length === 1) {
+            status = 'Half Day';
+          } else {
+            const firstPunchTime = punches[0].timestamp.split(' ')[1] || '';
+            const lastPunchTime = punches[punches.length - 1].timestamp.split(' ')[1] || '';
+            
+            let hasCheckIn = firstPunchTime <= (lateEntryCutoff + ':59');
+            let hasCheckOut = lastPunchTime >= (earlyEntryCutoff + ':00');
+            
+            if (!hasCheckIn && !hasCheckOut) {
+              if (punches.length >= 2) {
+                hasCheckIn = true;
+                hasCheckOut = true;
+              } else {
+                hasCheckIn = true; // Half Day
+              }
+            }
+            
+            if (hasCheckIn && hasCheckOut) {
+              status = 'Present';
+            } else {
+              status = 'Half Day';
+            }
+          }
+        }
+      }
+
+      if (status === 'Present') {
+        presentDays += 1;
+        totalDays += 1;
+      } else if (status === 'Half Day') {
+        presentDays += 0.5;
+        totalDays += 1;
+      } else if (status === 'Absent') {
+        totalDays += 1;
+      }
+    });
+
+    if (totalDays === 0) return staff.attendance || 100;
+    return Math.round((presentDays / totalDays) * 100);
+  };
+
+  const staffListWithAttendance = staffList.map(s => ({
+    ...s,
+    attendance: getStaffAttendancePercentage(s)
+  }));
+
+  const filtered = staffListWithAttendance.filter((s) => {
     if (s.status === 'Resigned') return false; // Hidden in recycle bin
     const matchSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -672,11 +799,11 @@ export function StaffManagement() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handlePrintDoc(selectedDocPreview)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold transition-all"
-                  title="Print Document"
+                  onClick={() => handleDeleteDoc(selectedDocPreview)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 rounded-lg cursor-pointer hover:bg-[var(--red-bg)]/80 font-semibold transition-all"
+                  title="Delete Document"
                 >
-                  <Printer size={11} /> Print
+                  <Trash2 size={11} /> Delete
                 </button>
                 <button
                   onClick={() => setSelectedDocPreview(null)}
@@ -864,10 +991,10 @@ export function StaffManagement() {
                       return s;
                     }));
                     setAddDocModalOpen(false);
-                    alert("Document added successfully!");
+                    await alert("Document added successfully!", "Document Uploaded");
   // eslint-disable-next-line unused-imports/no-unused-vars
                   } catch (err) {
-                    alert("Failed to save document file");
+                    await alert("Failed to save document file", "Upload Error");
                   }
                 }}
                 className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none transition-all"

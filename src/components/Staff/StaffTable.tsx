@@ -132,7 +132,13 @@ export function StaffTable({ loading, sortedFiltered, selectedIds, setSelectedId
                             <div className="flex items-center gap-1 text-[var(--tx2)]"><Phone size={10} />{s.phone}</div>
                             <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]"><Mail size={9} />{s.email}</div>
                           </td>
-                          <td className="hidden sm:table-cell px-2 py-2.5 text-[var(--tx2)]">{s.joinDate}</td>
+                          <td className="hidden sm:table-cell px-2 py-2.5 text-[var(--tx2)]">
+                            {(() => {
+                              const parts = (s.joinDate || '').split('-');
+                              if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                              return s.joinDate;
+                            })()}
+                          </td>
                           <td className="hidden lg:table-cell px-2 py-2.5">
                             <span className={`font-semibold ${s.attendance >= 90 ? 'text-[var(--teal-tx)]' : 'text-[var(--amber-tx)]'}`}>{s.attendance}%</span>
                           </td>

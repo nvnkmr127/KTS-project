@@ -8,6 +8,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 
 interface DeletedStudent {
   id: string;
@@ -43,6 +44,7 @@ type ConfirmAction = {
 } | null;
 
 export function RecycleBin() {
+  const { alert } = useDialog();
   const [activeTab, setActiveTab] = useState<Tab>('students');
   const [search, setSearch] = useState('');
 
@@ -293,7 +295,7 @@ export function RecycleBin() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const errMsg = err.error || err.message || 'Failed to restore activity log.';
       showToast(errMsg, false);
-      alert(errMsg);
+      await alert(errMsg, "Error");
     } finally {
       setProcessing(false);
       setConfirm(null);
@@ -774,9 +776,9 @@ export function RecycleBin() {
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (!isRestorableLog(log)) {
-                            alert("Can't restore the logs.");
+                            await alert("Can't restore the logs.", "Cannot Restore");
                             return;
                           }
                           setConfirm({ type: 'restore', entity: 'activity_log', id: String(log.id), name: formatDescription(log) });

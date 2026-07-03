@@ -11,6 +11,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
 import { StaffMember, STAFF } from './StaffManagement';
+import { useDialog } from '../context/DialogContext';
 import * as XLSX from 'xlsx';
 
 
@@ -488,6 +489,7 @@ async function saveSettingToDb(key: string, value: any) {
 }
 
 export function Examinations() {
+  const { alert, confirm } = useDialog();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
@@ -571,16 +573,16 @@ export function Examinations() {
             return next;
           });
 
-          alert(`Successfully imported ${parsedExams.length} exams!`);
+          await alert(`Successfully imported ${parsedExams.length} exams!`, "Import Success");
   // eslint-disable-next-line unused-imports/no-unused-vars
         } catch (err) {
-          alert('Failed to parse Excel rows');
+          await alert('Failed to parse Excel rows', "Import Error");
         }
       };
       reader.readAsBinaryString(file);
   // eslint-disable-next-line unused-imports/no-unused-vars
     } catch (err) {
-      alert('Error reading Excel file');
+      await alert('Error reading Excel file', "Read Error");
     }
   };
 
@@ -595,9 +597,9 @@ export function Examinations() {
     setSelectedExamIds([]);
   };
 
-  const handleBulkExamDelete = () => {
+  const handleBulkExamDelete = async () => {
     if (selectedExamIds.length === 0) return;
-    if (window.confirm(`Are you sure you want to delete the ${selectedExamIds.length} selected exams?`)) {
+    if (await confirm(`Are you sure you want to delete the ${selectedExamIds.length} selected exams?`, 'Delete Exams', true)) {
       setExams(prev => {
         const next = prev.filter(e => !selectedExamIds.includes(e.id));
         localStorage.setItem('examinations_exams', JSON.stringify(next));
@@ -766,10 +768,10 @@ export function Examinations() {
     try {
       localStorage.setItem('kts_student_marks', JSON.stringify(studentMarks));
       await saveSettingToDb('kts_student_marks', studentMarks);
-      alert('Marks saved successfully!');
+      await alert('Marks saved successfully!', 'Saved');
     } catch (err) {
       console.error('Error saving marks:', err);
-      alert('Failed to save marks.');
+      await alert('Failed to save marks.', 'Error');
     } finally {
       setSavingMarks(false);
     }
@@ -871,7 +873,7 @@ export function Examinations() {
     saveSettingToDb('examinations_exams', updatedExams);
   };
 
-  const handleAddInvigilation = () => {
+  const handleAddInvigilation = async () => {
     if (!allotStaffId) return;
     const selectedStaff = staffList.find((s) => s.id === allotStaffId);
     if (!selectedStaff) return;
@@ -888,7 +890,7 @@ export function Examinations() {
     );
 
     if (roomConflict) {
-      alert(`Room Conflict: Room ${allotRoom} is already booked for "${roomConflict.examName}" (${roomConflict.subject}) on ${formatDate(targetDate)} at ${allotTimeSlot}.`);
+      await alert(`Room Conflict: Room ${allotRoom} is already booked for "${roomConflict.examName}" (${roomConflict.subject}) on ${formatDate(targetDate)} at ${allotTimeSlot}.`, "Room Conflict");
       return;
     }
 
@@ -901,7 +903,7 @@ export function Examinations() {
     );
 
     if (staffConflict) {
-      alert(`Staff Conflict: ${selectedStaff.name} is already assigned to "${staffConflict.examName}" in ${staffConflict.room} on ${formatDate(targetDate)} at ${allotTimeSlot}.`);
+      await alert(`Staff Conflict: ${selectedStaff.name} is already assigned to "${staffConflict.examName}" in ${staffConflict.room} on ${formatDate(targetDate)} at ${allotTimeSlot}.`, "Staff Conflict");
       return;
     }
 

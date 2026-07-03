@@ -6,6 +6,7 @@ import { Badge } from '../components/Badge';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
+import { useDialog } from '../context/DialogContext';
 
 interface HomeworkEntry {
   id?: string;
@@ -24,6 +25,7 @@ const DEFAULT_CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', 
 
 /* ── Admin View ── */
 function AdminHomeworkView() {
+  const { confirm } = useDialog();
   const [entries, setEntries] = useState<HomeworkEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -76,7 +78,7 @@ function AdminHomeworkView() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this homework assignment?')) return;
+    if (!await confirm('Delete this homework assignment?', 'Delete Homework', true)) return;
     try {
       await api.deleteResource('homework', id);
       loadEntries();

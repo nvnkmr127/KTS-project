@@ -171,17 +171,22 @@ function AppShell() {
   );
 }
 
+import { DialogProvider } from './context/DialogContext';
+
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppProvider>
-          <Routes>
-            <Route path="/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
-            <Route path="*" element={<AppShell />} />
-          </Routes>
-        </AppProvider>
-      </AuthProvider>
+      <DialogProvider>
+        <AuthProvider>
+          <AppProvider>
+            <Routes>
+              <Route path="/login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
+              <Route path="*" element={<AppShell />} />
+            </Routes>
+          </AppProvider>
+        </AuthProvider>
+      </DialogProvider>
     </BrowserRouter>
   );
 }
+

@@ -8,6 +8,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
+import { useDialog } from '../context/DialogContext';
 
 interface Expense {
   id: string;
@@ -37,6 +38,7 @@ const monthlyData = [
 const tooltipStyle = { backgroundColor: 'var(--surf)', border: '0.5px solid var(--b2)', borderRadius: 8, fontSize: 11, color: 'var(--tx)' };
 
 export function Expenses() {
+  const { confirm } = useDialog();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [catFilter, setCatFilter] = useState('All');
@@ -135,7 +137,7 @@ export function Expenses() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this expense?')) return;
+    if (!await confirm('Are you sure you want to delete this expense?', 'Delete Expense', true)) return;
     
     // Optimistic local state update
     setExpenses((prev) => prev.filter((e) => e.id !== id));

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User } from '../types';
 import { api, ApiError } from '../services/api';
+import { useDialog } from './DialogContext';
 
 interface AuthContextValue {
   user: User | null;
@@ -11,6 +12,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { alert } = useDialog();
+
   const [user, setUser] = useState<User | null>(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
@@ -78,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.getMe();
         if (res.user && res.user.status && res.user.status.toLowerCase() === 'inactive') {
           logout();
-          alert('Account is inactive, contact admin.');
+          alert('Account is inactive, contact admin.', 'Account Inactive');
         }
       } catch (e) {
         // Only logout for a confirmed 403 "account inactive" response from the server.
@@ -86,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // logging the user out for a wifi blip is very bad UX.
         if (e instanceof ApiError && e.status === 403) {
           logout();
-          alert((e as Error).message || 'Account is inactive, contact admin.');
+          alert((e as Error).message || 'Account is inactive, contact admin.', 'Account Inactive');
         } else if (e instanceof ApiError && e.status === 401) {
           // 401 is already handled by kts:unauthorized event in api.ts — skip duplicate action
           console.warn('Session expired (handled by kts:unauthorized)');
@@ -116,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const expectedKey = `kts_force_logout_${user.email?.toLowerCase()}`;
         if (e.key === expectedKey && e.newValue) {
           logout();
-          alert('You have been logged out by an administrator.');
+          alert('You have been logged out by an administrator.', 'Session Ended');
           return;
         }
       }

@@ -5,6 +5,7 @@ import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { STAFF, StaffMember } from './StaffManagement';
 import { api } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 
 interface StaffAccessInfo {
   staffId: string;
@@ -14,6 +15,7 @@ interface StaffAccessInfo {
 }
 
 export function StaffAccess() {
+  const { alert, confirm } = useDialog();
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [accessRecords, setAccessRecords] = useState<Record<string, StaffAccessInfo>>(() => {
     const saved = localStorage.getItem('kts_staff_access');
@@ -102,9 +104,9 @@ export function StaffAccess() {
         [staffId]: { ...prev[staffId], isActive: false },
       }));
 
-      alert(`Force logout triggered for ${record.email}. They will be logged out within 15 seconds.`);
+      await alert(`Force logout triggered for ${record.email}. They will be logged out within 15 seconds.`, "Force Logout");
     } catch (err) {
-      alert('Failed to force logout: ' + ((err as Error).message || err));
+      await alert('Failed to force logout: ' + ((err as Error).message || err), "Error");
     }
   };
 
@@ -144,7 +146,7 @@ export function StaffAccess() {
         },
       }));
     } catch (err) {
-      alert('Failed to update status on server: ' + ((err as Error).message || err));
+      await alert('Failed to update status on server: ' + ((err as Error).message || err), "Error");
     }
   };
 
@@ -192,7 +194,7 @@ export function StaffAccess() {
       setModalOpen(false);
       setModalStaff(null);
     } catch (err) {
-      alert('Failed to save credentials to server: ' + ((err as Error).message || err));
+      await alert('Failed to save credentials to server: ' + ((err as Error).message || err), "Error");
     }
   };
 
@@ -201,7 +203,7 @@ export function StaffAccess() {
     const record = accessRecords[staffId];
     if (!record) return;
 
-    if (window.confirm('Are you sure you want to remove login access for this staff member? This will also force logout any active session.')) {
+    if (await confirm('Are you sure you want to remove login access for this staff member? This will also force logout any active session.', 'Remove Access', true)) {
       try {
         // Force logout before deleting so any active session is killed
         if (record.email) {
@@ -226,7 +228,7 @@ export function StaffAccess() {
           return next;
         });
       } catch (err) {
-        alert('Failed to delete credentials on server: ' + ((err as Error).message || err));
+        await alert('Failed to delete credentials on server: ' + ((err as Error).message || err), "Error");
       }
     }
   };

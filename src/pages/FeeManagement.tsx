@@ -8,6 +8,7 @@ import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { TabBar } from '../components/ui';
 import { api } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 import { useApp } from '../context/AppContext';
 
 interface StudentFeeDisplay {
@@ -37,9 +38,11 @@ const statusBadge = (s: 'Paid' | 'Partial' | 'Unpaid') => {
 };
 
 export function FeeManagement() {
+  const { alert, confirm } = useDialog();
   const { selectedAcademicYearId } = useApp();
   const [tab, setTab] = useState(0);
   const [students, setStudents] = useState<StudentFeeDisplay[]>([]);
+  const [classes, setClasses] = useState<string[]>(['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('All');
   const [feeCategoryFilter, setFeeCategoryFilter] = useState('All');
@@ -61,7 +64,7 @@ export function FeeManagement() {
 
   const handleBulkDeleteFees = async () => {
     if (selectedIds.length === 0) return;
-    if (window.confirm(`Are you sure you want to delete ALL allocated fees for the ${selectedIds.length} selected students? This will wipe out their fee records.`)) {
+    if (await confirm(`Are you sure you want to delete ALL allocated fees for the ${selectedIds.length} selected students? This will wipe out their fee records.`, 'Bulk Delete', true)) {
       setLoading(true);
       try {
         await Promise.all(selectedIds.map(async (studentId) => {
@@ -71,7 +74,7 @@ export function FeeManagement() {
         }));
         setSelectedIds([]);
         await loadFeesData();
-        alert('Bulk deleted allocations successfully!');
+        await alert('Bulk deleted allocations successfully!', 'Deleted');
       } catch (err) {
         console.error('Failed to bulk delete fees:', err);
       } finally {
@@ -317,10 +320,11 @@ export function FeeManagement() {
   const loadFeesData = async () => {
     setLoading(true);
     try {
-      const [studentsData, categoriesData, allStudentFees] = await Promise.all([
+      const [studentsData, categoriesData, allStudentFees, batchesData] = await Promise.all([
         api.getResources('students', { with: 'batch.academicYear', limit: '1000' }),
         api.getResources('fee-categories').catch(() => []),
         api.getResources('student-fees', { limit: '10000' }).catch(() => []),
+        api.getResources('batches').catch(() => []),
       ]);
 
       const studentFeesMap = new Map<string, string[]>();
@@ -382,6 +386,27 @@ export function FeeManagement() {
         setCurrentCategory(categoriesData[0].name);
       } else {
         setCurrentCategory('Tuition Fee - Term 2');
+      }
+      if (Array.isArray(batchesData) && batchesData.length > 0) {
+        const filteredBatches = batchesData.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
+        if (filteredBatches.length > 0) {
+          const names = filteredBatches.map((b: any) => b.name).sort((a: string, b: string) => {
+            const numA = parseInt(a);
+            const numB = parseInt(b);
+            if (!isNaN(numA) && !isNaN(numB)) {
+              if (numA !== numB) return numA - numB;
+              return a.localeCompare(b);
+            }
+            if (!isNaN(numA)) return -1;
+            if (!isNaN(numB)) return 1;
+            return a.localeCompare(b);
+          });
+          setClasses(names);
+        } else {
+          setClasses(['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
+        }
+      } else {
+        setClasses(['1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B', '6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
       }
     } catch (err) {
       console.error('Error loading students fee information:', err);
@@ -1034,7 +1059,7 @@ export function FeeManagement() {
                                   <button
                                     type="button"
                                     onClick={async () => {
-                                      if (window.confirm(`Are you sure you want to delete/reverse the payment of ₹${Number(fee.paid_amount).toLocaleString()} for ${feeName}?`)) {
+                                      if (await confirm(`Are you sure you want to delete/reverse the payment of ₹${Number(fee.paid_amount).toLocaleString()} for ${feeName}?`, 'Reverse Payment', true)) {
                                         try {
                                           await api.updateResource('student-fees', fee.id, {
                                             paid_amount: 0,
@@ -1043,7 +1068,7 @@ export function FeeManagement() {
                                           });
                                           loadFeesData();
                                           loadStudentFees(std.studentId);
-                                          alert('Payment deleted successfully!');
+                                          await alert('Payment deleted successfully!', 'Payment Deleted');
                                         } catch (err) {
                                           console.error('Failed to delete payment:', err);
                                         }
@@ -1486,7 +1511,7 @@ export function FeeManagement() {
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Class (For Bulk Assignment)</label>
                   <select name="className" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
-                    {['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A'].map((cls) => (
+                    {classes.map((cls) => (
                       <option key={cls} value={cls}>Class {cls}</option>
                     ))}
                   </select>
@@ -2120,17 +2145,17 @@ export function FeeManagement() {
                               }
                             }
 
-                            alert(`Successfully assigned fees for ${count} students!`);
+                            await alert(`Successfully assigned fees for ${count} students!`, "Import Success");
                             setShowImportModal(false);
                             loadFeesData();
                           } catch (err) {
                             console.error(err);
-                            alert('Failed to parse Excel file rows');
+                            await alert('Failed to parse Excel file rows', "Parse Error");
                           }
                         };
                         reader.readAsBinaryString(file);
                       } catch (err) {
-                        alert('Error reading Excel file');
+                        await alert('Error reading Excel file', "Read Error");
                       } finally {
                         setImportLoading(false);
                       }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from './Card';
 import { Badge } from './Badge';
 import { api } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 import { 
   Globe, Plus, Trash2, CheckCircle2, Shield, 
   AlertCircle, RefreshCw, X, Loader2, Save,
@@ -54,6 +55,7 @@ const formatDateTime = (dateStr?: string) => {
 };
 
 export function WebhookManagement() {
+  const { confirm } = useDialog();
   const [view, setView] = useState<'list' | 'configure' | 'logs'>('list');
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loadingWebhooks, setLoadingWebhooks] = useState(false);
@@ -273,7 +275,7 @@ export function WebhookManagement() {
 
   // Delete webhook
   const handleDeleteWebhook = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this webhook configuration? This will also delete all recent activity logs for this webhook.')) return;
+    if (!await confirm('Are you sure you want to delete this webhook configuration? This will also delete all recent activity logs for this webhook.', 'Delete Webhook', true)) return;
     try {
       await api.deleteResource('webhooks', id);
       showSuccess('Webhook deleted successfully.');
@@ -293,7 +295,7 @@ export function WebhookManagement() {
 
   // Regenerate secret key
   const handleRegenerateSecret = async (webhookId: string) => {
-    if (!window.confirm('Are you sure you want to regenerate the signing secret? This will invalidate the existing secret, and any external service verifying signatures with it will fail until updated.')) return;
+    if (!await confirm('Are you sure you want to regenerate the signing secret? This will invalidate the existing secret, and any external service verifying signatures with it will fail until updated.', 'Regenerate Secret', true)) return;
     try {
       const res = await api.regenerateWebhookSecret(webhookId);
       if (res && res.success && res.signing_secret) {

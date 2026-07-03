@@ -7,6 +7,7 @@ import { Avatar } from '../components/ui';
 import { STAFF, StaffMember } from './StaffManagement';
 
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Leave' | 'Half Day';
@@ -83,6 +84,7 @@ const formatDateDDMMYYYY = (isoDate: string) => {
 type ConnectionStatus = 'unknown' | 'connected' | 'disconnected' | 'testing';
 
 export function StaffAttendance() {
+  const { confirm } = useDialog();
   const { leaveRequests } = useApp();
   const [date, setDate] = useState<string>(() => {
     return new Date().toISOString().slice(0, 10);
@@ -740,8 +742,8 @@ export function StaffAttendance() {
   };
 
   // Reset local simulation punches for the selected date
-  const clearSimulatedPunches = () => {
-    if (window.confirm('Clear all local simulated punches for this date?')) {
+  const clearSimulatedPunches = async () => {
+    if (await confirm('Clear all local simulated punches for this date?', 'Clear Punches', true)) {
       setLocalPunches((prev) => prev.filter((p) => !p.timestamp.startsWith(date)));
     }
   };

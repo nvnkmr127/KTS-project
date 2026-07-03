@@ -3,6 +3,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { api, clearApiCache } from '../services/api';
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { 
   Calendar, Plus, Trash2, Edit2, CheckCircle2, Shield, 
   AlertCircle, RefreshCw, RotateCcw, X, Loader2, Save,
@@ -26,6 +27,7 @@ interface SettingsProps {
 }
 
 export function Settings({ initialTab = 0 }: SettingsProps) {
+  const { alert, confirm } = useDialog();
   const { setSelectedAcademicYearId } = useApp();
   const [tab, setTab] = useState(initialTab);
   const [ays, setAys] = useState<AcademicYear[]>([]);
@@ -325,20 +327,20 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
 
   // Reset Sync Cursor
   const handleResetCursor = async () => {
-    if (!window.confirm('Are you sure you want to reset the incremental sync cursor? This will re-fetch all records starting from the beginning of the current month.')) {
+    if (!await confirm('Are you sure you want to reset the incremental sync cursor? This will re-fetch all records starting from the beginning of the current month.', 'Reset Sync Cursor', true)) {
       return;
     }
     setResettingCursor(true);
     try {
       const res = await api.biometricResetCursor();
       if (res?.success) {
-        alert('Sync cursor reset successfully!');
+        await alert('Sync cursor reset successfully!', 'Success');
         loadBiometricSettings();
       } else {
-        alert('Failed to reset sync cursor.');
+        await alert('Failed to reset sync cursor.', 'Error');
       }
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      await alert('Error: ' + err.message, 'Error');
     } finally {
       setResettingCursor(false);
     }
@@ -366,7 +368,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   }
 
   const handleClearActivityLogs = async () => {
-    if (!window.confirm('Are you sure you want to permanently clear all activity logs? This cannot be undone.')) {
+    if (!await confirm('Are you sure you want to permanently clear all activity logs? This cannot be undone.', 'Clear Activity Logs', true)) {
       return;
     }
     setClearingLogs(true);
@@ -381,18 +383,18 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         api.getActivityUsers().then(setActivityUsers).catch(() => {});
         api.getActivitySummary().then(r => setActivitySummary(r.data ?? r ?? [])).catch(() => {});
       } else {
-        alert(res.error || 'Failed to clear activity logs.');
+        await alert(res.error || 'Failed to clear activity logs.', 'Error');
       }
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed to clear activity logs.');
+      await alert(err.message || 'Failed to clear activity logs.', 'Error');
     } finally {
       setClearingLogs(false);
     }
   };
 
   const handleDeleteActivityLog = async (id: string | number) => {
-    if (!window.confirm('Are you sure you want to delete this activity log? It will be moved to the Recycle Bin.')) {
+    if (!await confirm('Are you sure you want to delete this activity log? It will be moved to the Recycle Bin.', 'Delete Activity Log', true)) {
       return;
     }
     setDeletingLogId(id);
@@ -402,11 +404,11 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         setActivityLogs(prev => prev.filter(log => log.id !== id));
         setActivityTotal(prev => prev - 1);
       } else {
-        alert(res.error || 'Failed to delete activity log.');
+        await alert(res.error || 'Failed to delete activity log.', 'Error');
       }
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Failed to delete activity log.');
+      await alert(err.message || 'Failed to delete activity log.', 'Error');
     } finally {
       setDeletingLogId(null);
     }
@@ -517,7 +519,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
 
   // Delete Academic Year
   const handleDeleteAy = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this academic year? This will delete associated classes and students.')) return;
+    if (!await confirm('Are you sure you want to delete this academic year? This will delete associated classes and students.', 'Delete Academic Year', true)) return;
     setLoadingAys(true);
     try {
       await api.deleteResource('academic-years', id);
@@ -612,7 +614,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
 
   // Clear Database for Client Handover
   const handleClearDbData = async () => {
-    if (!window.confirm('WARNING: This will delete all mock students, fees, attendance, timetables, and logs. It will restore the database to a clean, empty state with only default admin accounts. Do you want to proceed?')) {
+    if (!await confirm('WARNING: This will delete all mock students, fees, attendance, timetables, and logs. It will restore the database to a clean, empty state with only default admin accounts. Do you want to proceed?', 'Reset Database', true)) {
       return;
     }
     setClearingDb(true);

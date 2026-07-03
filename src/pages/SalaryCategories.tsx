@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 import { Plus, Trash2, Edit2, Tag, Users, Wallet, Loader2 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/ui';
@@ -15,6 +16,7 @@ interface SalaryComponent {
 }
 
 export function SalaryCategories() {
+  const { alert, confirm } = useDialog();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [faculty, setFaculty] = useState<any[]>([]);
@@ -182,14 +184,14 @@ export function SalaryCategories() {
   };
 
   // Add Component
-  const handleAddComponent = (e: React.FormEvent) => {
+  const handleAddComponent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!compName.trim()) return;
     
     const monthSuffix = compMonth === 'All' ? '' : `_${compMonth.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
     const id = `${compName.toLowerCase().replace(/[^a-z0-9]/g, '_')}${monthSuffix}`;
     if (components.some((c) => c.id === id)) {
-      alert('Component already exists for this period!');
+      await alert('Component already exists for this period!', 'Duplicate Component');
       return;
     }
 
@@ -210,12 +212,12 @@ export function SalaryCategories() {
   };
 
   // Delete Component
-  const handleDeleteComponent = (id: string) => {
+  const handleDeleteComponent = async (id: string) => {
     if (id === 'basic') {
-      alert('Basic Salary component cannot be deleted.');
+      await alert('Basic Salary component cannot be deleted.', 'Cannot Delete');
       return;
     }
-    if (window.confirm('Are you sure you want to delete this salary component? It will be removed from all staff assignments.')) {
+    if (await confirm('Are you sure you want to delete this salary component? It will be removed from all staff assignments.', 'Delete Component', true)) {
       const updated = components.filter((c) => c.id !== id);
       saveComponents(updated);
 

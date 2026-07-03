@@ -12,6 +12,7 @@ import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar, ProgressBar } from '../components/ui';
 import { api, clearApiCache } from '../services/api';
+import { useDialog } from '../context/DialogContext';
 
 const monthlyData = [
   { month: 'Jan', pct: 90 },
@@ -65,6 +66,7 @@ interface AttendanceRecord {
 }
 
 export function Attendance() {
+  const { alert, confirm } = useDialog();
   const [view, setView] = useState<'cards' | 'class-details' | 'student-details'>('cards');
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(false);
@@ -164,7 +166,7 @@ export function Attendance() {
       if (response.success && response.data) {
         setStudentsList(response.data.students || []);
       }
-      alert(`Bulk marked ${status} successfully!`);
+      await alert(`Bulk marked ${status} successfully!`, 'Success');
     } catch (err) {
       console.error(err);
     } finally {
@@ -174,7 +176,7 @@ export function Attendance() {
 
   const handleBulkDeleteAttendance = async () => {
     if (selectedStudentIds.length === 0 || !selectedBatch) return;
-    if (window.confirm(`Are you sure you want to delete all attendance records on ${selectedDate} for the ${selectedStudentIds.length} selected students?`)) {
+    if (await confirm(`Are you sure you want to delete all attendance records on ${selectedDate} for the ${selectedStudentIds.length} selected students?`, 'Delete Attendance', true)) {
       setLoading(true);
       try {
         const local = localStorage.getItem('kts_student_attendance_records');
@@ -194,7 +196,7 @@ export function Attendance() {
         if (response.success && response.data) {
           setStudentsList(response.data.students || []);
         }
-        alert('Deleted records successfully!');
+        await alert('Deleted records successfully!', 'Deleted');
       } catch (err) {
         console.error(err);
       } finally {
@@ -278,15 +280,15 @@ export function Attendance() {
           if (response.success && response.data) {
             setStudentsList(response.data.students || []);
           }
-          alert(`Successfully imported attendance for ${count} students!`);
+          await alert(`Successfully imported attendance for ${count} students!`, "Import Success");
         } catch (err) {
           console.error(err);
-          alert('Failed to parse spreadsheet file rows');
+          await alert('Failed to parse spreadsheet file rows', "Parse Error");
         }
       };
       reader.readAsBinaryString(file);
     } catch (err) {
-      alert('Error reading spreadsheet file');
+      await alert('Error reading spreadsheet file', "Read Error");
     } finally {
       setExcelImportLoading(false);
     }
