@@ -11,6 +11,7 @@ import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
 import type { PageId } from '../types';
+import { api } from '../services/api';
 
 interface DashboardProps {
   onNavigate: (page: PageId) => void;
@@ -75,153 +76,30 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     localStorage.setItem('kts_dashboard_activities', JSON.stringify(activities));
   }, [activities]);
 
-  // Compute dynamic dashboard metrics and chart data based on date ranges
-  const data = useMemo(() => {
-    if (rangeType === 'today') {
-      return {
-        totalStudents: { value: 284, trend: { direction: 'up' as const, label: '+12' }, sub: 'this term' },
-        attendance: { value: 91, sub: '258 present · 26 absent', trend: null },
-        feeCollected: { value: '₹4.2L', sub: '₹1.1L pending', trend: { direction: 'down' as const, label: '₹1.1L' } },
-        buses: { value: '3/4', sub: 'GPS live' },
-        weeklyAttendance: [
-          { day: 'Mon', pct: 93 },
-          { day: 'Tue', pct: 89 },
-          { day: 'Wed', pct: 95 },
-          { day: 'Thu', pct: 88 },
-          { day: 'Fri', pct: 91 },
-        ],
-        feeStatus: [
-          { name: 'Collected', value: 79 },
-          { name: 'Pending', value: 21 },
-        ],
-        feeStatusPercentages: { collected: 79, pending: 21 },
-        feeTrend: [
-          { month: 'Jan', collected: 72, target: 100 },
-          { month: 'Feb', collected: 88, target: 100 },
-          { month: 'Mar', collected: 95, target: 100 },
-          { month: 'Apr', collected: 110, target: 110 },
-          { month: 'May', collected: 130, target: 130 },
-        ]
-      };
-    } else if (rangeType === 'yesterday') {
-      return {
-        totalStudents: { value: 284, trend: { direction: 'up' as const, label: '+12' }, sub: 'this term' },
-        attendance: { value: 94, sub: '267 present · 17 absent', trend: null },
-        feeCollected: { value: '₹0.8L', sub: '₹0.2L pending', trend: { direction: 'up' as const, label: '₹0.1L' } },
-        buses: { value: '4/4', sub: 'GPS logs' },
-        weeklyAttendance: [
-          { day: 'Mon', pct: 92 },
-          { day: 'Tue', pct: 94 },
-          { day: 'Wed', pct: 93 },
-          { day: 'Thu', pct: 91 },
-          { day: 'Fri', pct: 89 },
-        ],
-        feeStatus: [
-          { name: 'Collected', value: 80 },
-          { name: 'Pending', value: 20 },
-        ],
-        feeStatusPercentages: { collected: 80, pending: 20 },
-        feeTrend: [
-          { month: 'Jan', collected: 70, target: 100 },
-          { month: 'Feb', collected: 85, target: 100 },
-          { month: 'Mar', collected: 90, target: 100 },
-          { month: 'Apr', collected: 105, target: 110 },
-          { month: 'May', collected: 125, target: 130 },
-        ]
-      };
-    } else if (rangeType === 'week') {
-      return {
-        totalStudents: { value: 284, trend: { direction: 'up' as const, label: '+12' }, sub: 'this term' },
-        attendance: { value: 91.2, sub: 'Avg: 259 present · 25 absent', trend: null },
-        feeCollected: { value: '₹12.5L', sub: '₹3.4L pending', trend: { direction: 'up' as const, label: '₹3.2L' } },
-        buses: { value: '3.8/4', sub: 'Weekly average' },
-        weeklyAttendance: [
-          { day: 'Mon', pct: 93 },
-          { day: 'Tue', pct: 89 },
-          { day: 'Wed', pct: 95 },
-          { day: 'Thu', pct: 88 },
-          { day: 'Fri', pct: 91 },
-        ],
-        feeStatus: [
-          { name: 'Collected', value: 78 },
-          { name: 'Pending', value: 22 },
-        ],
-        feeStatusPercentages: { collected: 78, pending: 22 },
-        feeTrend: [
-          { month: 'Jan', collected: 72, target: 100 },
-          { month: 'Feb', collected: 88, target: 100 },
-          { month: 'Mar', collected: 95, target: 100 },
-          { month: 'Apr', collected: 110, target: 110 },
-          { month: 'May', collected: 130, target: 130 },
-        ]
-      };
-    } else if (rangeType === 'month') {
-      return {
-        totalStudents: { value: 282, trend: { direction: 'up' as const, label: '+10' }, sub: 'active this month' },
-        attendance: { value: 92.5, sub: 'Avg: 261 present · 21 absent', trend: null },
-        feeCollected: { value: '₹45.2L', sub: '₹8.5L pending', trend: { direction: 'up' as const, label: '₹8.2L' } },
-        buses: { value: '4/4', sub: 'Stable routes' },
-        weeklyAttendance: [
-          { day: 'Wk 1', pct: 91 },
-          { day: 'Wk 2', pct: 93 },
-          { day: 'Wk 3', pct: 94 },
-          { day: 'Wk 4', pct: 92 },
-        ],
-        feeStatus: [
-          { name: 'Collected', value: 84 },
-          { name: 'Pending', value: 16 },
-        ],
-        feeStatusPercentages: { collected: 84, pending: 16 },
-        feeTrend: [
-          { month: 'Jan', collected: 72, target: 100 },
-          { month: 'Feb', collected: 88, target: 100 },
-          { month: 'Mar', collected: 95, target: 100 },
-          { month: 'Apr', collected: 110, target: 110 },
-          { month: 'May', collected: 130, target: 130 },
-          { month: 'Jun', collected: 145, target: 140 },
-        ]
-      };
-    } else {
-      // Custom Range calculation
-      const days = getDaysDiff(customStartDate, customEndDate);
-      const randFactor = (days % 5) * 0.4;
-      const attVal = Math.min(99, Math.max(70, Number((91.5 + randFactor).toFixed(1))));
-      const presentVal = Math.round(284 * (attVal / 100));
-      const absentVal = 284 - presentVal;
+  const [data, setData] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
-      const feeVal = (days * 0.9).toFixed(1);
-      const pendingVal = (days * 0.25).toFixed(1);
-      const pctCollected = Math.round((Number(feeVal) / (Number(feeVal) + Number(pendingVal))) * 100) || 80;
+  useEffect(() => {
+    localStorage.setItem('kts_dashboard_activities', JSON.stringify(activities));
+  }, [activities]);
 
-      let customWeekly = [
-        { day: 'Wk 1', pct: 92 },
-        { day: 'Wk 2', pct: 90 },
-        { day: 'Wk 3', pct: 94 },
-      ];
-      if (days <= 7) {
-        customWeekly = [
-          { day: 'Start', pct: 90 },
-          { day: 'Mid', pct: 93 },
-          { day: 'End', pct: 91 },
-        ];
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoadingStats(true);
+      try {
+        let endpoint = `/dashboard/stats?range=${rangeType}`;
+        if (rangeType === 'custom') {
+          endpoint += `&start=${customStartDate}&end=${customEndDate}`;
+        }
+        const res = await api.request(endpoint);
+        setData(res);
+      } catch (err) {
+        console.error('Failed to fetch dashboard stats', err);
+      } finally {
+        setLoadingStats(false);
       }
-
-      return {
-        totalStudents: { value: 284, trend: { direction: 'up' as const, label: '+12' }, sub: 'active in range' },
-        attendance: { value: attVal, sub: `${presentVal} present · ${absentVal} absent (avg)`, trend: null },
-        feeCollected: { value: `₹${feeVal}L`, sub: `₹${pendingVal}L pending`, trend: { direction: 'up' as const, label: `₹${(days * 0.7).toFixed(1)}L` } },
-        buses: { value: '3.9/4', sub: 'Average tracker' },
-        weeklyAttendance: customWeekly,
-        feeStatus: [
-          { name: 'Collected', value: pctCollected },
-          { name: 'Pending', value: 100 - pctCollected },
-        ],
-        feeStatusPercentages: { collected: pctCollected, pending: 100 - pctCollected },
-        feeTrend: [
-          { month: 'Range', collected: Number(feeVal), target: Number(feeVal) + Number(pendingVal) }
-        ]
-      };
-    }
+    };
+    fetchStats();
   }, [rangeType, customStartDate, customEndDate]);
 
   // Activity feed action handlers
@@ -347,44 +225,52 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-        <KPICard
-          label="Total Students"
-          value={<>{data.totalStudents.value}</>}
-          icon={<Users size={15} />}
-          iconBg="var(--blue-bg)"
-          iconColor="var(--blue-tx)"
-          trend={data.totalStudents.trend}
-          sub={data.totalStudents.sub}
-          onClick={() => onNavigate('students')}
-        />
-        <KPICard
-          label="Attendance Rate"
-          value={<>{data.attendance.value}<span className="text-[13px] font-normal text-[var(--tx3)]">%</span></>}
-          sub={data.attendance.sub}
-          icon={<CalendarCheck size={15} />}
-          iconBg="var(--teal-bg)"
-          iconColor="var(--teal-tx)"
-          onClick={() => onNavigate('attendance')}
-        />
-        <KPICard
-          label="Fee Collected"
-          value={<>{data.feeCollected.value}</>}
-          icon={<DollarSign size={15} />}
-          iconBg="var(--amber-bg)"
-          iconColor="var(--amber-tx)"
-          trend={data.feeCollected.trend}
-          sub={data.feeCollected.sub}
-          onClick={() => onNavigate('fee')}
-        />
-        <KPICard
-          label="Buses on Route"
-          value={<>{data.buses.value}</>}
-          sub={<Badge variant="teal">{data.buses.sub}</Badge>}
-          icon={<Bus size={15} />}
-          iconBg="var(--teal-bg)"
-          iconColor="var(--teal-tx)"
-          onClick={() => onNavigate('bus')}
-        />
+          {loadingStats ? (
+            <div className="col-span-1 lg:col-span-4 p-6 flex justify-center items-center">
+              Loading metrics...
+            </div>
+          ) : data ? (
+            <>
+              <KPICard
+                label="Total Students"
+                value={<>{data.totalStudents.value}</>}
+                icon={<Users size={15} />}
+                iconBg="var(--blue-bg)"
+                iconColor="var(--blue-tx)"
+                trend={data.totalStudents.trend}
+                sub={data.totalStudents.sub}
+                onClick={() => onNavigate('students')}
+              />
+              <KPICard
+                label="Attendance Rate"
+                value={<>{data.attendance.value}<span className="text-[13px] font-normal text-[var(--tx3)]">%</span></>}
+                sub={data.attendance.sub}
+                icon={<CalendarCheck size={15} />}
+                iconBg="var(--teal-bg)"
+                iconColor="var(--teal-tx)"
+                onClick={() => onNavigate('attendance')}
+              />
+              <KPICard
+                label="Fee Collected"
+                value={<>{data.feeCollected.value}</>}
+                icon={<DollarSign size={15} />}
+                iconBg="var(--amber-bg)"
+                iconColor="var(--amber-tx)"
+                trend={data.feeCollected.trend}
+                sub={data.feeCollected.sub}
+                onClick={() => onNavigate('fee')}
+              />
+              <KPICard
+                label="Buses on Route"
+                value={<>{data.buses.value}</>}
+                sub={<Badge variant="teal">{data.buses.sub}</Badge>}
+                icon={<Bus size={15} />}
+                iconBg="var(--teal-bg)"
+                iconColor="var(--teal-tx)"
+                onClick={() => onNavigate('bus')}
+              />
+            </>
+          ) : null}
       </div>
 
       {/* Row: Weekly attendance + Fee donut */}
@@ -403,51 +289,57 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             }
           />
           <div className="h-[148px]">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <BarChart data={data.weeklyAttendance} barSize={28} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="var(--b)" />
-                <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
-                <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, 'Attendance']} cursor={{ fill: 'var(--surf2)' }} />
-                <Bar dataKey="pct" radius={[4, 4, 0, 0]} shape={<CustomBar />} />
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              </BarChart>
-            </ResponsiveContainer>
+            {loadingStats ? (
+              <div className="h-full flex items-center justify-center">Loading...</div>
+            ) : data ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <BarChart data={data.weeklyAttendance} barSize={28} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="var(--b)" />
+                  <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, 'Attendance']} cursor={{ fill: 'var(--surf2)' }} />
+                  <Bar dataKey="pct" radius={[4, 4, 0, 0]} shape={<CustomBar />} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : null}
           </div>
         </Card>
 
         <Card>
           <CardHeader title="Fee Status" icon={<DollarSign size={14} />} />
           <div className="h-[110px]">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <PieChart>
-                <Pie
-                  data={data.feeStatus}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={36}
-                  outerRadius={52}
-                  paddingAngle={3}
-                  dataKey="value"
-                  startAngle={90}
-                  endAngle={-270}
-                >
-                  <Cell fill="var(--teal)" />
-                  <Cell fill="var(--red)" />
-                </Pie>
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`]} />
-              </PieChart>
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            </ResponsiveContainer>
+            {loadingStats ? (
+              <div className="h-full flex items-center justify-center">Loading...</div>
+            ) : data ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <PieChart>
+                  <Pie
+                    data={data.feeStatus}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={36}
+                    outerRadius={52}
+                    paddingAngle={3}
+                    dataKey="value"
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    <Cell fill="var(--teal)" />
+                    <Cell fill="var(--red)" />
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`]} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : null}
           </div>
           <div className="flex justify-center gap-4 mt-1 text-[11px]">
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-sm" style={{ background: 'var(--teal)' }} />
-              <span className="text-[var(--tx2)] font-medium">Collected {data.feeStatusPercentages.collected}%</span>
+              <span className="text-[var(--tx2)] font-medium">Collected {data?.feeStatusPercentages.collected}%</span>
             </span>
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-sm" style={{ background: 'var(--red)' }} />
-              <span className="text-[var(--tx2)] font-medium">Pending {data.feeStatusPercentages.pending}%</span>
+              <span className="text-[var(--tx2)] font-medium">Pending {data?.feeStatusPercentages.pending}%</span>
             </span>
           </div>
         </Card>
@@ -458,17 +350,20 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         <Card>
           <CardHeader title="Fee Trend — Term 2" icon={<TrendingUp size={14} />} />
           <div className="h-[130px]">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <LineChart data={data.feeTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="var(--b)" />
-                <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v}k`} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: any) => [`₹${v}k`, name === 'collected' ? 'Collected' : 'Target']} />
-                <Line type="monotone" dataKey="collected" stroke="var(--teal)" strokeWidth={2} dot={{ r: 3, fill: 'var(--teal)' }} />
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                <Line type="monotone" dataKey="target" stroke="var(--amber)" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            {loadingStats ? (
+              <div className="h-full flex items-center justify-center">Loading...</div>
+            ) : data ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <LineChart data={data.feeTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="var(--b)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v}k`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: any) => [`₹${v}k`, name === 'collected' ? 'Collected' : 'Target']} />
+                  <Line type="monotone" dataKey="collected" stroke="var(--teal)" strokeWidth={2} dot={{ r: 3, fill: 'var(--teal)' }} />
+                  <Line type="monotone" dataKey="target" stroke="var(--amber)" strokeWidth={1.5} strokeDasharray="4 3" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : null}
           </div>
         </Card>
 
@@ -498,7 +393,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             }
           />
           <div className="space-y-0">
-            {activities.length === 0 ? (
+            {loadingStats ? (
+              <div className="py-10 text-center">Loading...</div>
+            ) : activities.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-9 text-center">
                 <CheckCircle className="text-[var(--teal)] mb-2 animate-bounce" size={24} />
                 <div className="text-[12px] font-bold text-[var(--tx)]">All Caught Up!</div>

@@ -19,8 +19,6 @@ return new class extends Migration
                 $table->index('academic_year');
             });
 
-            echo "Added academic_year column to student_fees table\n";
-
             // If academic_year_id exists, populate academic_year from academic_years table
             if (Schema::hasColumn('student_fees', 'academic_year_id') && Schema::hasTable('academic_years')) {
                 DB::statement('
@@ -29,11 +27,7 @@ return new class extends Migration
                     SET sf.academic_year = ay.name
                     WHERE sf.academic_year_id IS NOT NULL
                 ');
-
-                echo "Populated academic_year column with data from academic_years table\n";
             }
-        } else {
-            echo "academic_year column already exists in student_fees table\n";
         }
 
         // Also add to payments table if missing
@@ -43,8 +37,6 @@ return new class extends Migration
                 $table->index('academic_year');
             });
 
-            echo "Added academic_year column to payments table\n";
-
             // Populate from academic_years table if academic_year_id exists
             if (Schema::hasColumn('payments', 'academic_year_id') && Schema::hasTable('academic_years')) {
                 DB::statement('
@@ -53,8 +45,6 @@ return new class extends Migration
                     SET p.academic_year = ay.name
                     WHERE p.academic_year_id IS NOT NULL
                 ');
-
-                echo "Populated payments.academic_year column\n";
             }
         }
     }

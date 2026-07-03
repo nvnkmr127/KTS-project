@@ -231,6 +231,8 @@ export function Expenses() {
   const totalApproved = filtered.filter((e) => e.status === 'Approved').reduce((s, e) => s + e.amount, 0);
   const totalPending = filtered.filter((e) => e.status === 'Pending').reduce((s, e) => s + e.amount, 0);
   const totalExpensesSum = filtered.reduce((s, e) => s + e.amount, 0);
+  
+  const annualBudget = 2500000; // Can be fetched from settings in the future
 
   const categoryTotals = filtered.reduce((acc, e) => ({ ...acc, [e.category]: (acc[e.category] ?? 0) + e.amount }), {} as Record<string, number>);
   const categoryData = Object.entries(categoryTotals).map(([name, value]) => ({ name, value }));
@@ -290,7 +292,7 @@ export function Expenses() {
         />
         <KPICard 
           label="Annual Budget" 
-          value="₹25L" 
+          value={`₹${(annualBudget / 100000).toFixed(0)}L`} 
           sub={`₹${(totalExpensesSum / 100000).toFixed(2)}L spent`} 
           hoverValue={`Exact Spent: ₹${totalExpensesSum.toLocaleString()}`}
           icon={<TrendingDown size={15} />} 

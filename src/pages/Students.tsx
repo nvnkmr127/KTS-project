@@ -561,9 +561,9 @@ export function Students() {
 
   const filtered = students.filter((s) => {
     const matchSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.roll.toLowerCase().includes(search.toLowerCase()) ||
-      s.parent.toLowerCase().includes(search.toLowerCase());
+      (s.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (s.roll || '').toLowerCase().includes(search.toLowerCase()) ||
+      (s.parent || '').toLowerCase().includes(search.toLowerCase());
     const matchClass = classFilter === 'All' || s.class === classFilter;
     const matchStatus = statusFilter === 'All' || s.status === statusFilter;
     const matchAy = ayFilter === 'All' || String(s.academicYearId) === ayFilter;
@@ -593,6 +593,10 @@ export function Students() {
   const activeCount = students.filter((s) => s.status === 'Active').length;
   const maleCount = students.filter((s) => s.gender === 'Male').length;
   const femaleCount = students.filter((s) => s.gender === 'Female').length;
+  
+  const threeMonthsAgo = new Date();
+  threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+  const newAdmissionsCount = students.filter(s => s.admissionDate && new Date(s.admissionDate) >= threeMonthsAgo).length;
 
   // ─── In-screen student detail view (FeeManagement style) ─────────────────
   const renderStudentDetail = () => {
@@ -886,7 +890,7 @@ export function Students() {
         <KPICard label="Total Students" value={students.length} sub="This academic year" icon={<GraduationCap size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
         <KPICard label="Active Students" value={activeCount} sub="Currently enrolled" icon={<UserCheck size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
         <KPICard label="Boys / Girls" value={<>{maleCount}<span className="text-[13px] font-normal text-[var(--tx3)]">/{femaleCount}</span></>} sub="Gender distribution" icon={<GraduationCap size={15} />} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
-        <KPICard label="New Admissions" value={students.length} sub="This term" icon={<Plus size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" trend={{ direction: 'up', label: '+12' }} />
+        <KPICard label="New Admissions" value={newAdmissionsCount} sub="This term" icon={<Plus size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" trend={{ direction: 'up', label: `+${newAdmissionsCount}` }} />
       </div>
 
       <Card>
@@ -935,7 +939,6 @@ export function Students() {
             {['All', 'Active', 'Transferred', 'Left'].map((s) => <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>)}
           </select>
         </div>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
         {/* Bulk Actions */}
         {selectedIds.length > 0 && (

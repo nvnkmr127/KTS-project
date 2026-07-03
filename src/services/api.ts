@@ -191,6 +191,7 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
 
 
 export const api = {
+  request,
   async getMe() {
     return request('/me');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

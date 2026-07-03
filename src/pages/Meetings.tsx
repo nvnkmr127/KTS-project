@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Plus, X, Calendar, Clock, Users, CheckCircle, Bell } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 
 interface Meeting {
-  id: string;
+  id: string | number;
   title: string;
   class: string;
   date: string;
@@ -31,7 +31,7 @@ export function Meetings() {
 
   const upcoming = MEETINGS.filter((m) => m.status === 'Scheduled');
   const completed = MEETINGS.filter((m) => m.status === 'Completed');
-  const totalInvited = MEETINGS.reduce((s, m) => s + m.invitedCount, 0);
+  const totalInvited = MEETINGS.reduce((s, m) => s + (m.invitedCount || 0), 0);
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">

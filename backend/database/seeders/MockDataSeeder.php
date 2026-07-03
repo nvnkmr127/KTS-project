@@ -307,7 +307,7 @@ class MockDataSeeder extends Seeder
                     Attendance::create([
                         'student_id' => $student->id,
                         'batch_id' => $batch->id,
-                        'faculty_id' => $batch->class_teacher_id,
+                        'faculty_id' => $batch->class_teacher_id ?? $teachers[0]->id,
                         'attendance_date' => $date->toDateString(),
                         'status' => $status,
                         'academic_year_id' => $academicYear->id,

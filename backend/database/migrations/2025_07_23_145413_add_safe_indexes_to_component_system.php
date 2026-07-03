@@ -112,12 +112,11 @@ return new class extends Migration
                 Schema::table($table, function (Blueprint $table) use ($indexName, $columns) {
                     $table->index($columns, $indexName);
                 });
-                echo "✅ Created index: {$table}.{$indexName}\n";
             } catch (\Exception $e) {
-                echo "⚠️  Skipped index {$table}.{$indexName}: ".$e->getMessage()."\n";
+                // Index creation failed
             }
         } else {
-            echo "ℹ️  Index already exists: {$table}.{$indexName}\n";
+            // Index already exists
         }
     }
 

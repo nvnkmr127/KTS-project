@@ -446,7 +446,7 @@ export function Faculty() {
             const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const staff = currentStaffList.find((s: any) => s.name.toLowerCase() === f.name.toLowerCase());
-            return sum + (staff?.salary || 45000);
+            return sum + (staff?.salary || 0);
           }, 0)) / 100000).toFixed(1)}L`}
           sub="Due end of month"
           icon={<Wallet size={15} />}

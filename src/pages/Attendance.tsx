@@ -433,7 +433,7 @@ export function Attendance() {
           if (hasRealData && totalStudents > 0) {
             percentage = Math.round((presentStudents / totalStudents) * 100);
           } else {
-            percentage = 90 + (Number(cId) % 3) * 3;
+            percentage = 0;
           }
 
           const color = percentage >= 90 ? 'var(--teal)' : percentage >= 75 ? 'var(--blue)' : 'var(--amber)';
@@ -657,38 +657,66 @@ export function Attendance() {
     "July", "August", "September", "October", "November", "December"
   ];
 
+  const totalSchoolStudents = students.length;
+  let totalPresent = 0;
+  let totalAbsent = 0;
+
+  students.forEach(student => {
+    const studentAtt = todayAttendance.filter(
+      (att: any) => String(att.student_id) === String(student.id)
+    );
+    if (studentAtt.length > 0) {
+      const hasPresent = studentAtt.some(att => ['present', 'late'].includes(att.status));
+      if (hasPresent) {
+        totalPresent++;
+      } else {
+        const hasAbsent = studentAtt.some(att => att.status === 'absent');
+        if (hasAbsent) {
+          totalAbsent++;
+        }
+      }
+    }
+  });
+
+  const presentPercentage = totalSchoolStudents > 0 
+    ? Math.round((totalPresent / totalSchoolStudents) * 100) 
+    : 0;
+    
+  const currentMonthName = monthNames[new Date().getMonth()];
+  const currentYear = new Date().getFullYear();
+
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)] pb-10">
       {/* Top Cards Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
         <KPICard
           label="Present Today"
-          value="258"
-          sub="Out of 284"
+          value={totalPresent}
+          sub={`Out of ${totalSchoolStudents}`}
           icon={<CheckCircle size={15} />}
           iconBg="var(--teal-bg)"
           iconColor="var(--teal-tx)"
         />
         <KPICard
           label="Absent Today"
-          value="26"
+          value={totalAbsent}
           sub="Alerts sent via WA+SMS"
           icon={<XCircle size={15} />}
           iconBg="var(--red-bg)"
           iconColor="var(--red-tx)"
         />
         <KPICard
-          label="Monthly Avg"
-          value={<>92<span className="text-[13px] font-normal text-[var(--tx3)]">%</span></>}
-          sub="May 2026"
+          label="Today's Avg"
+          value={<>{presentPercentage}<span className="text-[13px] font-normal text-[var(--tx3)]">%</span></>}
+          sub={`${currentMonthName} ${currentYear}`}
           icon={<BarChart2 size={15} />}
           iconBg="var(--blue-bg)"
           iconColor="var(--blue-tx)"
         />
         <KPICard
           label="Low Attendance"
-          value="8"
-          sub="Below 75% this month"
+          value="-"
+          sub="Requires monthly data"
           icon={<AlertTriangle size={15} />}
           iconBg="var(--amber-bg)"
           iconColor="var(--amber-tx)"

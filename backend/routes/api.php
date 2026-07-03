@@ -349,6 +349,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
     // Global search endpoint
     Route::get('/search', [GlobalSearchController::class, 'search']);
 
+    // Dashboard Stats
+    Route::get('/dashboard/stats', [\App\Http\Controllers\Api\DashboardStatsController::class, 'getStats']);
+
     // Course-related endpoints
     Route::get('/courses/{course}/terms', function (App\Models\Course $course) {
         return response()->json($course->terms);

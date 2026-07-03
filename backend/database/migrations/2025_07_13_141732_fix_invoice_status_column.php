@@ -17,7 +17,6 @@ return new class extends Migration
 
         if (! empty($columns)) {
             $currentType = $columns[0]->Type;
-            echo "Current status column type: {$currentType}\n";
         }
 
         // Update any existing 'partial' values to 'partially_paid'
@@ -34,8 +33,6 @@ return new class extends Migration
                 ->default('unpaid')
                 ->after('due_amount');
         });
-
-        echo "Status column recreated with proper ENUM values.\n";
     }
 
     /**
