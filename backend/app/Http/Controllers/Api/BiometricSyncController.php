@@ -213,14 +213,19 @@ class BiometricSyncController extends Controller
             foreach ($punchRecords as $record) {
                 try {
                     $empCode      = $record['Empcode'] ?? null;
-                    $punchDateStr = $record['PunchDate'] ?? null;
+                    $punchDateStr = isset($record['PunchDate']) ? trim($record['PunchDate']) : null;
                     if (!$empCode || !$punchDateStr) continue;
 
-                    // DownloadPunchData already returns a combined "dd/MM/yyyy HH:mm:ss" value.
-                    // Replace slashes with dashes so Carbon parses it as day-month-year (Indian
-                    // format). Do NOT append a separate PunchTime — that field does not exist and
-                    // appending it corrupted the datetime, silently dropping every raw punch.
-                    $carbonDate = Carbon::parse(str_replace('/', '-', trim($punchDateStr)));
+                    // DownloadPunchData usually returns a combined "dd/MM/yyyy HH:mm:ss" value.
+                    // Only append a separate PunchTime when PunchDate has no time of its own —
+                    // the old code appended it unconditionally, corrupting the already-complete
+                    // datetime and silently dropping every raw punch (scan_datetime -> 00:00:00
+                    // or a parse failure). Replace slashes with dashes so Carbon reads it as
+                    // day-month-year (Indian format), not month-day-year.
+                    if (!preg_match('/\d{1,2}:\d{2}/', $punchDateStr) && !empty($record['PunchTime'])) {
+                        $punchDateStr .= ' ' . $record['PunchTime'];
+                    }
+                    $carbonDate = Carbon::parse(str_replace('/', '-', $punchDateStr));
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
                         [
