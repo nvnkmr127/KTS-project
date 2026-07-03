@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { School, Eye, EyeOff, ShieldCheck, GraduationCap, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 type PortalTab = 'admin' | 'teacher';
@@ -54,7 +54,7 @@ export function Login() {
             </div>
             <div>
               <div className="text-white font-bold text-lg leading-none">Krishnaveni</div>
-              <div className="text-white/60 text-xs mt-0.5">Talent School, Chevella</div>
+              <div className="text-white/60 text-xs mt-0.5">Talent Chevella</div>
             </div>
           </div>
 
@@ -158,6 +158,7 @@ export function Login() {
                 placeholder={DEMO[portal].email}
                 required
                 className="w-full bg-[var(--surf)] border border-[var(--b)] rounded-xl px-3.5 py-2.5 text-[13px] text-[var(--tx)] placeholder:text-[var(--tx3)] focus:outline-none focus:border-[var(--blue)] focus:ring-1 focus:ring-[var(--blue)]/20 transition-colors"
+                autoComplete="username"
               />
             </div>
 
@@ -171,6 +172,7 @@ export function Login() {
                   placeholder="Enter password"
                   required
                   className="w-full bg-[var(--surf)] border border-[var(--b)] rounded-xl px-3.5 py-2.5 text-[13px] text-[var(--tx)] placeholder:text-[var(--tx3)] focus:outline-none focus:border-[var(--blue)] focus:ring-1 focus:ring-[var(--blue)]/20 transition-colors pr-10"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { PAGE_TO_PATH } from '../routes';
 
 interface NavItem {
   icon: React.ReactNode;
@@ -133,13 +135,15 @@ const TEACHER_SECTIONS: NavSection[] = [
 ];
 
 interface SidebarProps {
-  current: PageId;
-  onNavigate: (page: PageId) => void;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function Sidebar({ current, onNavigate, isOpen, onClose }: SidebarProps) {
+export function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
+  const onNavigate = (page: PageId) => navigate(PAGE_TO_PATH[page] || "/" + page);
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
   const sections = isAdmin ? ADMIN_SECTIONS : TEACHER_SECTIONS;
@@ -193,7 +197,7 @@ export function Sidebar({ current, onNavigate, isOpen, onClose }: SidebarProps) 
                 {section.label}
               </div>
               {section.items.map((item) => {
-                const isActive = item.page === current;
+                const isActive = (PAGE_TO_PATH[item.page] || "/" + item.page) === currentPath;
                 return (
                   <button
                     key={item.label}
@@ -223,7 +227,7 @@ export function Sidebar({ current, onNavigate, isOpen, onClose }: SidebarProps) 
                 onNavigate('settings');
                 onClose();
               }}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-[12px] rounded-lg transition-colors cursor-pointer text-left ${current === 'settings'
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-[12px] rounded-lg transition-colors cursor-pointer text-left ${currentPath === PAGE_TO_PATH["settings"]
                   ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] font-semibold'
                   : 'text-[var(--tx2)] hover:bg-[var(--surf2)] hover:text-[var(--tx)]'
                 }`}

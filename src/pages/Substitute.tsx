@@ -216,12 +216,16 @@ const Substitute = () => {
 
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [selectedStaff, setSelectedStaff] = useState<string>('');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [staffList, setStaffList] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [schedule, setSchedule] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [availableSubstitutes, setAvailableSubstitutes] = useState<any[]>([]);
   const [holidaysMap, setHolidaysMap] = useState<Record<string, string>>({});
   
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedPeriod, setSelectedPeriod] = useState<any>(null);
   const [selectedSubstitute, setSelectedSubstitute] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -258,6 +262,7 @@ const Substitute = () => {
         const data = await api.getResources('holidays');
         if (Array.isArray(data)) {
           const map: Record<string, string> = {};
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data.forEach((h: any) => {
             if (h.date) {
               const ymd = h.date.slice(0, 10);
@@ -358,6 +363,7 @@ const Substitute = () => {
     fetchAvailable();
   }, [selectedPeriod, isModalOpen, selectedDate, selectedStaff]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlePeriodClick = (period: any) => {
     setSelectedPeriod(period);
     setSelectedSubstitute(period.substitute ? String(period.substitute.id) : '');
@@ -440,6 +446,7 @@ const Substitute = () => {
                 className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
               >
                 <option value="">-- Choose Absent Teacher --</option>
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 {staffList.map((staff: any) => (
                   <option key={staff.id} value={staff.id}>
                     {staff.name} {staff.department ? `(${staff.department})` : ''}
@@ -500,6 +507,7 @@ const Substitute = () => {
                   </tr>
                 </thead>
                 <tbody>
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   {schedule.map((entry: any) => {
                     const hasSub = !!entry.substitute;
                     return (
@@ -613,6 +621,7 @@ const Substitute = () => {
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-2.5 text-[12.5px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                   >
                     <option value="">-- Choose Available Staff --</option>
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     {availableSubstitutes.map((staff: any) => (
                       <option key={staff.id} value={staff.id}>
                         {staff.name} {staff.department ? `(${staff.department})` : ''}

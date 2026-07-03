@@ -93,7 +93,7 @@ export function TeacherDashboard() {
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
       {/* Welcome */}
-      <div className="bg-gradient-to-r from-[var(--blue)] to-[#1a7bc4] rounded-2xl p-4 mb-3 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[var(--blue)] to-[var(--blue)] rounded-2xl p-4 mb-3 text-white relative overflow-hidden">
         <div className="absolute right-4 top-4 opacity-10">
           <BookOpen size={64} />
         </div>

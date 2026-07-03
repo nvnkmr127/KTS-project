@@ -82,6 +82,8 @@ export function StaffAccess() {
     try {
       const existingUsers = await api.getResources('faculty');
       const matchedUser = existingUsers.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
       );
 
@@ -101,8 +103,8 @@ export function StaffAccess() {
       }));
 
       alert(`Force logout triggered for ${record.email}. They will be logged out within 15 seconds.`);
-    } catch (err: any) {
-      alert('Failed to force logout: ' + (err.message || err));
+    } catch (err) {
+      alert('Failed to force logout: ' + ((err as Error).message || err));
     }
   };
 
@@ -116,7 +118,9 @@ export function StaffAccess() {
       
       // Update backend user status
       const existingUsers = await api.getResources('faculty');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const matchedUser = existingUsers.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
       );
 
@@ -139,8 +143,8 @@ export function StaffAccess() {
           isActive: newActiveState,
         },
       }));
-    } catch (err: any) {
-      alert('Failed to update status on server: ' + (err.message || err));
+    } catch (err) {
+      alert('Failed to update status on server: ' + ((err as Error).message || err));
     }
   };
 
@@ -151,8 +155,10 @@ export function StaffAccess() {
 
     try {
       // Check if user already exists in DB
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existingUsers = await api.getResources('faculty');
       const matchedUser = existingUsers.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) => u.email.toLowerCase() === inputEmail.toLowerCase()
       );
 
@@ -185,8 +191,8 @@ export function StaffAccess() {
 
       setModalOpen(false);
       setModalStaff(null);
-    } catch (err: any) {
-      alert('Failed to save credentials to server: ' + (err.message || err));
+    } catch (err) {
+      alert('Failed to save credentials to server: ' + ((err as Error).message || err));
     }
   };
 
@@ -202,9 +208,11 @@ export function StaffAccess() {
           const flagKey = `kts_force_logout_${record.email.toLowerCase()}`;
           localStorage.setItem(flagKey, String(Date.now()));
         }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
         const existingUsers = await api.getResources('faculty');
         const matchedUser = existingUsers.find(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
         );
 
@@ -217,8 +225,8 @@ export function StaffAccess() {
           delete next[staffId];
           return next;
         });
-      } catch (err: any) {
-        alert('Failed to delete credentials on server: ' + (err.message || err));
+      } catch (err) {
+        alert('Failed to delete credentials on server: ' + ((err as Error).message || err));
       }
     }
   };

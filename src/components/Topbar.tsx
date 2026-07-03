@@ -46,12 +46,11 @@ interface TopbarProps {
   dark: boolean;
   onToggleDark: () => void;
   onMenuClick: () => void;
-  onNavigate?: (page: PageId) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
-export function Topbar({ current, dark, onToggleDark, onMenuClick, onNavigate, searchQuery, onSearchChange }: TopbarProps) {
+export function Topbar({ current, dark, onToggleDark, onMenuClick, searchQuery, onSearchChange }: TopbarProps) {
   const { user } = useAuth();
   const { notifications, markNotificationsRead, academicYears, selectedAcademicYearId, setSelectedAcademicYearId } = useApp();
   const [showNotifs, setShowNotifs] = useState(false);

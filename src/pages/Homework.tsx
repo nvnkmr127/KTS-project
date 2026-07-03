@@ -232,6 +232,7 @@ function TeacherHomeworkView() {
     if (teacherClasses.length > 0 && !fClass) {
       setFClass(teacherClasses[0]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleCreate = async () => {

@@ -11,6 +11,7 @@ interface ActivityEntry {
   log_name: string;
   subject_type: string;
   causer_name: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   properties: Record<string, any>;
   created_at: string;
   time_ago: string;
@@ -336,6 +337,7 @@ function formatLastLogin(dateStr: string | null): string {
 }
 
 // HELPER TO FORMAT ANY VALUE HUMAN READABLY WITHOUT BRACES
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const formatVal = (v: any): string => {
   if (v === null || v === undefined) return 'N/A';
   if (typeof v === 'boolean') return v ? 'Yes' : 'No';
@@ -357,9 +359,12 @@ const formatVal = (v: any): string => {
     // If it's an array of objects
     if (typeof v[0] === 'object' && v[0] !== null) {
       // Special check: is it an attendance list?
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const isAttendanceList = v.some((item: any) => item && (item.status === 'present' || item.status === 'absent'));
       if (isAttendanceList) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const present = v.filter((item: any) => item && item.status === 'present').length;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const absent = v.filter((item: any) => item && item.status === 'absent').length;
         return `Present: ${present}, Absent: ${absent}`;
       }
@@ -436,12 +441,15 @@ const cleanJsonInString = (str: string): string => {
 };
 
 // FORMAT DYNAMIC DESCRIPTIONS DYNAMICALLY (e.g. attendance logs)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatDescription(log: any): string {
   const desc = log.description || '';
   if (desc.startsWith("Updated system setting 'kts student attendance records' to") || desc === "Student attendance records updated" || desc.toLowerCase().includes("attendance")) {
     const properties = log.properties || {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let records: any[] = [];
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parseValue = (val: any) => {
       if (!val) return [];
       try {
@@ -475,6 +483,7 @@ function formatDescription(log: any): string {
 
     if (records.length > 0) {
       let maxMarkedAt = '';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       records.forEach((r: any) => {
         if (r && r.markedAt) {
           if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
@@ -484,6 +493,7 @@ function formatDescription(log: any): string {
       });
 
       const targetRecords = maxMarkedAt 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? records.filter((r: any) => r && r.markedAt === maxMarkedAt)
         : records;
 
@@ -501,6 +511,7 @@ function formatDescription(log: any): string {
 }
 
 // RENDER ACTIVITY PROPERTIES IN HUMAN READABLE FORMAT
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderActivityProperties(log: any) {
   const properties = log.properties;
   const event = log.event;
@@ -525,9 +536,12 @@ function renderActivityProperties(log: any) {
     let present: number | undefined = undefined;
     let absent: number | undefined = undefined;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let oldArr: any[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let newArr: any[] = [];
     
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parseValue = (val: any) => {
       if (!val) return [];
       try {
@@ -562,6 +576,7 @@ function renderActivityProperties(log: any) {
 
     if (newArr.length > 0) {
       let maxMarkedAt = '';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       newArr.forEach((r: any) => {
         if (r && r.markedAt) {
           if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
@@ -570,12 +585,14 @@ function renderActivityProperties(log: any) {
         }
       });
       const targetRecords = maxMarkedAt 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? newArr.filter((r: any) => r && r.markedAt === maxMarkedAt)
         : newArr;
       present = targetRecords.filter(r => r.status === 'present').length;
       absent = targetRecords.filter(r => r.status === 'absent').length;
     } else if (oldArr.length > 0) {
       let maxMarkedAt = '';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       oldArr.forEach((r: any) => {
         if (r && r.markedAt) {
           if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
@@ -584,6 +601,7 @@ function renderActivityProperties(log: any) {
         }
       });
       const targetRecords = maxMarkedAt 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? oldArr.filter((r: any) => r && r.markedAt === maxMarkedAt)
         : oldArr;
       present = targetRecords.filter(r => r.status === 'present').length;

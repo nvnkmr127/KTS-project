@@ -61,9 +61,9 @@ export function FeeCategories() {
       });
       setShowAddModal(false);
       loadCategories();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating fee category:', err);
-      setErrorMsg(err.message || 'Failed to create fee category.');
+      setErrorMsg((err as Error).message || 'Failed to create fee category.');
     } finally {
       setSaving(false);
     }

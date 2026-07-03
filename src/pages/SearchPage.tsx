@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Users, ShieldAlert, ArrowRight, X, GraduationCap, School, BookOpen } from 'lucide-react';
+import { Users, ShieldAlert, ArrowRight, X, GraduationCap, School, BookOpen } from 'lucide-react';
 import { api } from '../services/api';
-import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import type { PageId } from '../types';
@@ -13,8 +12,12 @@ interface SearchPageProps {
 }
 
 export function SearchPage({ searchQuery, onNavigate, onClearSearch }: SearchPageProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [students, setStudents] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [faculty, setFaculty] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 

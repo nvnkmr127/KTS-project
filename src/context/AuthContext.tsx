@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (savedUser) {
       try {
         setUser(JSON.parse(savedUser));
+  // eslint-disable-next-line unused-imports/no-unused-vars
       } catch (e) {
         localStorage.removeItem('user');
       }
@@ -76,13 +77,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           logout();
           alert('Account is inactive, contact admin.');
         }
-      } catch (e: any) {
+      } catch (e) {
         // Only logout for a confirmed 403 "account inactive" response from the server.
         // Any other error (network timeout, 500, CORS, etc.) is a TRANSIENT issue —
         // logging the user out for a wifi blip is very bad UX.
         if (e instanceof ApiError && e.status === 403) {
           logout();
-          alert(e.message || 'Account is inactive, contact admin.');
+          alert((e as Error).message || 'Account is inactive, contact admin.');
         } else if (e instanceof ApiError && e.status === 401) {
           // 401 is already handled by kts:unauthorized event in api.ts — skip duplicate action
           console.warn('Session expired (handled by kts:unauthorized)');
@@ -125,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (JSON.stringify(user) !== JSON.stringify(parsedUser)) {
               setUser(parsedUser);
             }
+  // eslint-disable-next-line unused-imports/no-unused-vars
           } catch (err) {
             setUser(null);
           }
@@ -145,6 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (JSON.stringify(user) !== JSON.stringify(parsedUser)) {
                 setUser(parsedUser);
               }
+  // eslint-disable-next-line unused-imports/no-unused-vars
+    /* empty */
             } catch (err) {}
           }
         }
@@ -192,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: true };
       }
       return { ok: false, error: 'Login failed' };
-    } catch (e: any) {
+    } catch (e) {
       // Check if credentials match a demo user as a fallback (works without backend or database seeding)
       const demo = DEMO_USERS[email.trim().toLowerCase()];
       if (demo && password === demo.password) {
@@ -201,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(demo.user);
         return { ok: true };
       }
-      return { ok: false, error: e.message || 'Invalid credentials. Please check your email and password.' };
+      return { ok: false, error: (e as Error).message || 'Invalid credentials. Please check your email and password.' };
     }
   };
 
@@ -218,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

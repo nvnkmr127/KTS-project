@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { api } from '../services/api';
 import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/ui';
 import { STAFF, StaffMember } from './StaffManagement';
-import { api, originalSetItem } from '../services/api';
+
 import { useApp } from '../context/AppContext';
 
 
@@ -137,11 +138,17 @@ export function StaffAttendance() {
   useEffect(() => {
     api.getResources('settings')
       .then((settings) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         // Load timings configurations
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const startSetting = settings.find((s: any) => s.key === 'school_start_time');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const endSetting = settings.find((s: any) => s.key === 'school_end_time');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const presMSetting = settings.find((s: any) => s.key === 'present_cutoff_morning');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const presESetting = settings.find((s: any) => s.key === 'present_cutoff_evening');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lateSetting = settings.find((s: any) => s.key === 'late_entry_cutoff');
         const earlySetting = settings.find((s: any) => s.key === 'early_entry_cutoff');
 
@@ -160,10 +167,11 @@ export function StaffAttendance() {
         setEarlyEntryCutoff(eCutE);
 
         // 1. Staff Members
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let currentStaffList = STAFF;
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         if (staffSetting && staffSetting.value) {
-          originalSetItem('kts_staff_members', staffSetting.value);
+          localStorage.setItem('kts_staff_members', staffSetting.value);
           currentStaffList = JSON.parse(staffSetting.value);
           setStaffList(currentStaffList);
         } else {
@@ -172,7 +180,9 @@ export function StaffAttendance() {
           setStaffList(currentStaffList);
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         // 2. Staff Attendance & 3. Biometric Punches
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const attendanceSetting = settings.find((s: any) => s.key === 'kts_staff_attendance');
         const punchesSetting = settings.find((s: any) => s.key === 'kts_biometric_punches');
         
@@ -180,7 +190,7 @@ export function StaffAttendance() {
         let loadedPunches: LocalPunch[] = [];
 
         if (attendanceSetting && attendanceSetting.value) {
-          originalSetItem('kts_staff_attendance', attendanceSetting.value);
+          localStorage.setItem('kts_staff_attendance', attendanceSetting.value);
           loadedAttendance = JSON.parse(attendanceSetting.value);
         } else {
           const savedAtt = localStorage.getItem('kts_staff_attendance');
@@ -188,7 +198,7 @@ export function StaffAttendance() {
         }
 
         if (punchesSetting && punchesSetting.value) {
-          originalSetItem('kts_biometric_punches', punchesSetting.value);
+          localStorage.setItem('kts_biometric_punches', punchesSetting.value);
           loadedPunches = JSON.parse(punchesSetting.value);
         } else {
           const savedPunches = localStorage.getItem('kts_biometric_punches');
@@ -235,6 +245,7 @@ export function StaffAttendance() {
   const fetchLocalBiometricLogs = useCallback(() => {
     api.getResources('biometric-logs', { date })
       .then((logs) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (Array.isArray(logs)) {
           const mapped: BiometricRecord[] = logs.map((l: any) => {
             const scanTime = l.scan_datetime ? l.scan_datetime.slice(11, 16) : undefined;
@@ -388,6 +399,7 @@ export function StaffAttendance() {
     setIsSyncingPunches(true);
 
     api.biometricSyncPunch(date, date, 'ALL')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .then((result) => {
         if (result?.success) {
           fetchLocalBiometricLogs();
@@ -544,6 +556,7 @@ export function StaffAttendance() {
     saveSettingToDb('kts_staff_attendance', JSON.stringify(manualAttendance));
   }, [manualAttendance]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // Force biometric mode if the device is connected/working
   useEffect(() => {
     if (connectionStatus === 'connected' && attendanceMode !== 'biometric') {

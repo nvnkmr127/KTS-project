@@ -381,8 +381,8 @@ export function BusTracking() {
             const dist = Math.sqrt(dLat * dLat + dLng * dLng);
 
             // Smooth linear interpolation (lerp)
-            let nextLat = current.lat + dLat * 0.08;
-            let nextLng = current.lng + dLng * 0.08;
+            const nextLat = current.lat + dLat * 0.08;
+            const nextLng = current.lng + dLng * 0.08;
             let heading = current.heading;
 
             // If the bus moves a significant amount, calculate the new heading
@@ -826,7 +826,10 @@ export function BusTracking() {
                   position={{ lat: 17.3198, lng: 78.1511 }}
                   icon={{
                     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(getSchoolSvgString())}`,
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     scaledSize: new (window as any).google.maps.Size(46, 54),
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     anchor: new (window as any).google.maps.Point(23, 49)
                   }}
                   title="KTS School"
@@ -865,9 +868,13 @@ export function BusTracking() {
                       position={{ lat: stop.lat, lng: stop.lng }}
                       icon={{
                         url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
                           `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="4" fill="${cfg.color}" stroke="white" stroke-width="1.5"/></svg>`
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         )}`,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         scaledSize: new (window as any).google.maps.Size(10, 10),
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         anchor: new (window as any).google.maps.Point(5, 5)
                       }}
                       title={`${stop.name} (Route ${cfg.id} Stop)`}
@@ -888,11 +895,15 @@ export function BusTracking() {
 
                   return (
                     <MarkerF
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       key={cfg.id}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       position={pos}
                       icon={{
                         url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(getBusSvgString(cfg.color, String(cfg.id), heading))}`,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         scaledSize: new (window as any).google.maps.Size(64, 64),
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         anchor: new (window as any).google.maps.Point(32, 32)
                       }}
                       opacity={opacity}

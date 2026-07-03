@@ -43,8 +43,15 @@ export function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-      <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden relative">
+      <div 
+        className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden relative"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-dialog-title"
+        aria-describedby="confirm-dialog-description"
+      >
         <button
+          aria-label="Close dialog"
           onClick={onCancel}
           disabled={loading}
           className="absolute right-4 top-4 p-1.5 rounded-lg hover:bg-[var(--surf2)] text-[var(--tx3)] hover:text-[var(--tx)] transition-colors cursor-pointer disabled:opacity-50"
@@ -62,8 +69,8 @@ export function ConfirmDialog({
           >
             <AlertCircle size={24} />
           </div>
-          <h3 className="text-base font-bold text-[var(--tx)] mb-2">{title}</h3>
-          <p className="text-xs text-[var(--tx3)] mb-6 leading-relaxed">{message}</p>
+          <h3 id="confirm-dialog-title" className="text-base font-bold text-[var(--tx)] mb-2">{title}</h3>
+          <p id="confirm-dialog-description" className="text-xs text-[var(--tx3)] mb-6 leading-relaxed">{message}</p>
           <div className="flex gap-3">
             <button
               type="button"
