@@ -64,7 +64,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     const saved = localStorage.getItem('kts_dashboard_activities');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error('Failed to parse saved activities:', e);
       }

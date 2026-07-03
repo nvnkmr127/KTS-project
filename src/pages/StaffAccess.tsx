@@ -17,7 +17,7 @@ export function StaffAccess() {
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [accessRecords, setAccessRecords] = useState<Record<string, StaffAccessInfo>>(() => {
     const saved = localStorage.getItem('kts_staff_access');
-    return saved ? JSON.parse(saved) : {};
+    return (saved && JSON.parse(saved)) || {};
   });
 
   const [selectedCategory, setSelectedCategory] = useState<string>('');

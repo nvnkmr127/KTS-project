@@ -59,7 +59,7 @@ export function StaffManagement() {
   const { leaveRequests } = useApp();
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('kts_staff_members');
-    return saved ? JSON.parse(saved) : STAFF;
+    return (saved && JSON.parse(saved)) || STAFF;
   });
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export function StaffManagement() {
           setStaffList(JSON.parse(staffSetting.value));
         } else {
           const saved = localStorage.getItem('kts_staff_members');
-          const current = saved ? JSON.parse(saved) : STAFF;
+          const current = (saved && JSON.parse(saved)) || STAFF;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           saveSettingToDb('kts_staff_members', JSON.stringify(current));
         }
@@ -173,19 +173,19 @@ export function StaffManagement() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const saved = localStorage.getItem('kts_staff_attendance');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return saved ? JSON.parse(saved) : {};
+    return (saved && JSON.parse(saved)) || {};
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [biometricPunches, setBiometricPunches] = useState<any[]>(() => {
     const saved = localStorage.getItem('kts_biometric_punches');
-    return saved ? JSON.parse(saved) : [];
+    return (saved && JSON.parse(saved)) || [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   });
 
   // Dynamic base64 uploaded documents mapping
   const [uploadedDocs, setUploadedDocs] = useState<Record<string, Record<string, { name: string; type: string; data: string }>>>(() => {
     const saved = localStorage.getItem('kts_staff_uploaded_docs');
-    return saved ? JSON.parse(saved) : {};
+    return (saved && JSON.parse(saved)) || {};
   });
 
   // Helper to convert File to base64

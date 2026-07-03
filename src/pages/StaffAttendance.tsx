@@ -90,19 +90,19 @@ export function StaffAttendance() {
 
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('kts_staff_members');
-    return saved ? JSON.parse(saved) : STAFF;
+    return (saved && JSON.parse(saved)) || STAFF;
   });
 
   // Manual attendance overrides
   const [manualAttendance, setManualAttendance] = useState<Record<string, Record<string, AttendanceStatus>>>(() => {
     const saved = localStorage.getItem('kts_staff_attendance');
-    return saved ? JSON.parse(saved) : {};
+    return (saved && JSON.parse(saved)) || {};
   });
 
   // Local simulated biometric punches (fallback)
   const [localPunches, setLocalPunches] = useState<LocalPunch[]>(() => {
     const saved = localStorage.getItem('kts_biometric_punches');
-    return saved ? JSON.parse(saved) : [];
+    return (saved && JSON.parse(saved)) || [];
   });
 
   // Real biometric records pulled from e-TimeOffice API (via backend proxy)
@@ -176,7 +176,7 @@ export function StaffAttendance() {
           setStaffList(currentStaffList);
         } else {
           const saved = localStorage.getItem('kts_staff_members');
-          currentStaffList = saved ? JSON.parse(saved) : STAFF;
+          currentStaffList = (saved && JSON.parse(saved)) || STAFF;
           setStaffList(currentStaffList);
         }
 

@@ -260,7 +260,7 @@ export function Leave() {
   // Holidays state
   const [holidays, setHolidays] = useState<Holiday[]>(() => {
     const saved = localStorage.getItem('kts_holidays');
-    return saved ? JSON.parse(saved) : [];
+    return (saved && JSON.parse(saved)) || [];
   });
 
   // Admin Holiday Calendar designer states

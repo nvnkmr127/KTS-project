@@ -498,12 +498,12 @@ export function Examinations() {
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [schedules, setSchedules] = useState<Record<string, Record<string, ClassExamSchedule>>>(() => {
     const saved = localStorage.getItem('examinations_schedules');
-    return saved ? JSON.parse(saved) : INITIAL_SCHEDULES_BY_EXAM;
+    return (saved && JSON.parse(saved)) || INITIAL_SCHEDULES_BY_EXAM;
   });
 
   const [exams, setExams] = useState<Exam[]>(() => {
     const saved = localStorage.getItem('examinations_exams');
-    return saved ? JSON.parse(saved) : EXAMS;
+    return (saved && JSON.parse(saved)) || EXAMS;
   });
 
   const [examSearch, setExamSearch] = useState('');
@@ -628,7 +628,7 @@ export function Examinations() {
   const [invigilations, setInvigilations] = useState<Invigilation[]>(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const saved = localStorage.getItem('kts_exam_invigilations');
-    return saved ? JSON.parse(saved) : [];
+    return (saved && JSON.parse(saved)) || [];
   });
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);

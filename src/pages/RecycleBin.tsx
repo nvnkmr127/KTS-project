@@ -133,7 +133,7 @@ export function RecycleBin() {
     setLoadingStaff(true);
     try {
       const saved = localStorage.getItem('kts_staff_members');
-      const all = saved ? JSON.parse(saved) : [];
+      const all = (saved && JSON.parse(saved)) || [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resigned = all.filter((s: any) => s.status === 'Resigned');
       setDeletedStaff(resigned);
@@ -180,7 +180,7 @@ export function RecycleBin() {
         }
         const saved = localStorage.getItem('kts_alumni_records');
         if (saved) {
-           const all = JSON.parse(saved);
+           const all = (saved && JSON.parse(saved)) || [];
            // eslint-disable-next-line @typescript-eslint/no-explicit-any
            const updated = all.map((a: any) => String(a.id) === id ? { ...a, status: 'Unverified' } : a);
            localStorage.setItem('kts_alumni_records', JSON.stringify(updated));
@@ -209,7 +209,7 @@ export function RecycleBin() {
         }
         const saved = localStorage.getItem('kts_alumni_records');
         if (saved) {
-           const all = JSON.parse(saved);
+           const all = (saved && JSON.parse(saved)) || [];
            // eslint-disable-next-line @typescript-eslint/no-explicit-any
            const updated = all.filter((a: any) => String(a.id) !== id);
            localStorage.setItem('kts_alumni_records', JSON.stringify(updated));
@@ -233,7 +233,7 @@ export function RecycleBin() {
     setProcessing(true);
     try {
       const saved = localStorage.getItem('kts_staff_members');
-      const all = saved ? JSON.parse(saved) : [];
+      const all = (saved && JSON.parse(saved)) || [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updated = all.map((s: any) =>
         s.id === id ? { ...s, status: 'Active' } : s
@@ -255,7 +255,7 @@ export function RecycleBin() {
     setProcessing(true);
     try {
       const saved = localStorage.getItem('kts_staff_members');
-      const all = saved ? JSON.parse(saved) : [];
+      const all = (saved && JSON.parse(saved)) || [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updated = all.filter((s: any) => s.id !== id);
       localStorage.setItem('kts_staff_members', JSON.stringify(updated));

@@ -137,7 +137,7 @@ export function Salary() {
   );
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(() => {
     const saved = localStorage.getItem('kts_staff_members');
-    return saved ? JSON.parse(saved) : STAFF;
+    return (saved && JSON.parse(saved)) || STAFF;
   });
 
   useEffect(() => {
