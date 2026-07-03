@@ -169,14 +169,15 @@ export function StaffAttendance() {
         // 1. Staff Members
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let currentStaffList = STAFF;
+        const savedStaff = localStorage.getItem('kts_staff_members');
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
-        if (staffSetting && staffSetting.value) {
+        
+        if ((!savedStaff || savedStaff === '[]') && staffSetting && staffSetting.value) {
           localStorage.setItem('kts_staff_members', staffSetting.value);
           currentStaffList = JSON.parse(staffSetting.value);
           setStaffList(currentStaffList);
         } else {
-          const saved = localStorage.getItem('kts_staff_members');
-          currentStaffList = (saved && JSON.parse(saved)) || STAFF;
+          currentStaffList = (savedStaff && JSON.parse(savedStaff)) || STAFF;
           setStaffList(currentStaffList);
         }
 
@@ -212,13 +213,15 @@ export function StaffAttendance() {
         console.error('Error syncing data from DB in StaffAttendance:', err);
         // Fallback to localStorage if API fails
         const savedStaff = localStorage.getItem('kts_staff_members');
-        setStaffList(savedStaff ? JSON.parse(savedStaff) : STAFF);
+        setStaffList((savedStaff && JSON.parse(savedStaff)) || STAFF);
         
         const savedAtt = localStorage.getItem('kts_staff_attendance');
-        if (savedAtt) setManualAttendance(JSON.parse(savedAtt));
+        const parsedAtt = savedAtt && JSON.parse(savedAtt);
+        if (parsedAtt) setManualAttendance(parsedAtt);
         
         const savedPunches = localStorage.getItem('kts_biometric_punches');
-        if (savedPunches) setLocalPunches(JSON.parse(savedPunches));
+        const parsedPunches = savedPunches && JSON.parse(savedPunches);
+        if (parsedPunches) setLocalPunches(parsedPunches);
       });
   }, []);
 
@@ -248,7 +251,13 @@ export function StaffAttendance() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (Array.isArray(logs)) {
           const mapped: BiometricRecord[] = logs.map((l: any) => {
-            const scanTime = l.scan_datetime ? l.scan_datetime.slice(11, 16) : undefined;
+            let scanTime: string | undefined;
+            if (l.scan_datetime) {
+              // The backend might append 'Z' (UTC) but the time is actually local time stored in DB.
+              // To avoid browser timezone shifting, we extract the time string directly without parsing as Date.
+              const timeStr = l.scan_datetime.includes('T') ? l.scan_datetime.split('T')[1] : l.scan_datetime.split(' ')[1];
+              scanTime = timeStr ? timeStr.slice(0, 5) : l.scan_datetime.slice(11, 16);
+            }
             const scanType = String(l.scan_type || '').toLowerCase();
             return {
               Empcode: l.employee_code || l.Empcode || '',
@@ -446,7 +455,7 @@ export function StaffAttendance() {
 
     const timerId = setInterval(() => {
       fetchLocalBiometricLogsRef.current();
-    }, 1000);
+    }, 15000);
 
     return () => clearInterval(timerId);
   }, []);
@@ -459,7 +468,7 @@ export function StaffAttendance() {
 
       // School timings: 8:00 AM to 6:00 PM (8 to 18)
       if (currentHour >= 8 && currentHour < 18) {
-        return 1000; // 1 second
+        return 5 * 60 * 1000; // 5 minutes
       } else {
         return 2 * 60 * 60 * 1000; // 2 hours
       }
@@ -669,29 +678,33 @@ export function StaffAttendance() {
     // Biometric Mode
     // Calculate check-in and check-out based on windows
     const punchesList = getPunchesForStaffOnDate(staff);
-    const checkInPunches = punchesList.filter((p) => {
-      const timePart = p.timestamp.split(' ')[1] || '';
-      return timePart >= (schoolStartTime + ':00') && timePart <= (lateEntryCutoff + ':00');
-    });
-    let hasCheckIn = checkInPunches.length > 0;
+    const todayPunches = punchesList.filter((p) => p.timestamp.startsWith(date));
+    // Sort punches by time
+    todayPunches.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
-    const checkOutPunches = punchesList.filter((p) => {
-      const timePart = p.timestamp.split(' ')[1] || '';
-      return timePart >= (earlyEntryCutoff + ':00') && timePart <= (schoolEndTime + ':00');
-    });
-    let hasCheckOut = checkOutPunches.length > 0;
+    let hasCheckIn = false;
+    let hasCheckOut = false;
 
-    // Fallbacks if no punches in windows
-    if (!hasCheckIn || !hasCheckOut) {
-      const todayPunches = punchesList.filter((p) => p.timestamp.startsWith(date));
-      if (todayPunches.length > 0) {
-        if (!hasCheckIn) {
-          const earliest = todayPunches[0].timestamp.split(' ')[1]?.substring(0, 5);
-          if (earliest && earliest >= schoolStartTime && earliest <= lateEntryCutoff) hasCheckIn = true;
-        }
-        if (!hasCheckOut && todayPunches.length > 1) {
-          const latest = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1]?.substring(0, 5);
-          if (latest && latest >= earlyEntryCutoff && latest <= schoolEndTime) hasCheckOut = true;
+    if (todayPunches.length > 0) {
+      const firstPunchTime = todayPunches[0].timestamp.split(' ')[1] || '';
+      const lastPunchTime = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1] || '';
+
+      // Check-in: first punch must be before or during the late entry window
+      if (firstPunchTime <= (lateEntryCutoff + ':59')) {
+        hasCheckIn = true;
+      }
+      // Check-out: last punch must be after the early checkout window starts
+      if (lastPunchTime >= (earlyEntryCutoff + ':00')) {
+        hasCheckOut = true;
+      }
+
+      // If they punched but didn't meet strict criteria, give half day at least, unless they have both
+      if (!hasCheckIn && !hasCheckOut) {
+        if (todayPunches.length >= 2) {
+          hasCheckIn = true;
+          hasCheckOut = true;
+        } else {
+          hasCheckIn = true; // Half Day
         }
       }
     }
@@ -716,11 +729,14 @@ export function StaffAttendance() {
   // Add a test simulated biometric punch
   const addSimulatedPunch = (staffId: string) => {
     const now = new Date();
-    const timeStr = now.toTimeString().split(' ')[0];
+    const defaultTime = now.toTimeString().split(' ')[0].substring(0, 5);
+    const timeStr = window.prompt("Enter punch time (HH:MM) in 24hr format:", defaultTime);
+    if (!timeStr) return; // User cancelled
+
     const newPunch: LocalPunch = {
       id: 'punch-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       staffId,
-      timestamp: `${date} ${timeStr}`,
+      timestamp: `${date} ${timeStr}:00`,
     };
     setLocalPunches((prev) => [...prev, newPunch]);
   };

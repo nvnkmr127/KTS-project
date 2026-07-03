@@ -11,7 +11,17 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (e) {
+        localStorage.removeItem('user');
+      }
+    }
+    return null;
+  });
 
   useEffect(() => {
     async function refreshUser() {
@@ -37,15 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-  // eslint-disable-next-line unused-imports/no-unused-vars
-      } catch (e) {
-        localStorage.removeItem('user');
-      }
-    }
+    // User is already initialized synchronously in useState
+
     refreshUser();
   }, []);
 

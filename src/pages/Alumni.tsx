@@ -477,7 +477,7 @@ export function Alumni() {
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class</label>
                   <select value={fClass} onChange={e => setFClass(e.target.value)} className={fieldCls()}>
-                    {['6','7','8','9','10'].map(c => <option key={c}>{c}</option>)}
+                    {['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(c => <option key={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>

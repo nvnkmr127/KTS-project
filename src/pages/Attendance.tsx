@@ -131,7 +131,7 @@ export function Attendance() {
     try {
       const local = localStorage.getItem('kts_student_attendance_records');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let records = local ? JSON.parse(local) as any[] : [];
+      let records = (local && JSON.parse(local)) as any[] || [];
 
       selectedStudentIds.forEach((studentId) => {
         // Mark both morning and lunch period
@@ -180,7 +180,7 @@ export function Attendance() {
         const local = localStorage.getItem('kts_student_attendance_records');
         if (local) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const records = JSON.parse(local) as any[];
+          const records = (local && JSON.parse(local) as any[]) || [];
           const filteredRecords = records.filter(r =>
             !(selectedStudentIds.includes(String(r.studentId)) && r.date === selectedDate)
           );
@@ -236,7 +236,7 @@ export function Attendance() {
 
           const local = localStorage.getItem('kts_student_attendance_records');
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let records = local ? JSON.parse(local) as any[] : [];
+          let records = (local && JSON.parse(local)) as any[] || [];
 
           let count = 0;
           data.forEach(row => {
@@ -338,7 +338,7 @@ export function Attendance() {
         };
 
         const uniqueBatchesMap: Record<string, Batch> = {};
-        const defaultClasses = ['6', '7', '8', '9', '10'];
+        const defaultClasses = ['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (batchesData || []).forEach((b: any) => {
@@ -516,18 +516,22 @@ export function Attendance() {
         .then((res: any) => {
           if (Array.isArray(res) && res.length > 0 && res[0].value) {
             try {
-              const parsed = JSON.parse(res[0].value);
+              const parsed = (res[0].value && JSON.parse(res[0].value)) || [];
               setAttendanceRecords(parsed);
               localStorage.setItem('kts_student_attendance_records', JSON.stringify(parsed));
             } catch (e) {
               console.error('Error parsing kts_student_attendance_records:', e);
               const local = localStorage.getItem('kts_student_attendance_records');
-              if (local) setAttendanceRecords(JSON.parse(local));
+              if (local) {
+                const parsedLocal = JSON.parse(local);
+                if (parsedLocal) setAttendanceRecords(parsedLocal);
+              }
             }
           } else {
             const local = localStorage.getItem('kts_student_attendance_records');
             if (local) {
-              setAttendanceRecords(JSON.parse(local));
+              const parsedLocal = local && JSON.parse(local);
+              if (parsedLocal) setAttendanceRecords(parsedLocal);
             }
           }
         })
@@ -535,7 +539,10 @@ export function Attendance() {
         .catch((err: any) => {
           console.error('Error loading attendance settings:', err);
           const local = localStorage.getItem('kts_student_attendance_records');
-          if (local) setAttendanceRecords(JSON.parse(local));
+          if (local) {
+            const parsedLocal = JSON.parse(local);
+            if (parsedLocal) setAttendanceRecords(parsedLocal);
+          }
         })
         .finally(() => {
           setLoadingAttendance(false);

@@ -10,6 +10,9 @@ import {
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { Chart } from '../components/Chart';
+import { Link } from 'react-router-dom';
+import { PAGE_TO_PATH } from '../routes';
 import type { PageId } from '../types';
 import { api } from '../services/api';
 
@@ -182,45 +185,45 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <TrendingUp size={12} className="text-[var(--blue)]" /> Quick Controls
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          <button
-            onClick={() => onNavigate('attendance')}
+          <Link
+            to={PAGE_TO_PATH['attendance']}
             className="flex items-center justify-center sm:justify-start gap-2.5 p-2.5 bg-[var(--teal-bg)] hover:bg-[var(--teal)] text-[var(--teal-tx)] hover:text-white rounded-xl border border-[var(--teal)]/10 font-semibold text-[12px] cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 active:scale-[0.98] group"
           >
             <span className="p-1.5 rounded-lg bg-white/60 dark:bg-black/20 text-[var(--teal-tx)] group-hover:bg-white/20 group-hover:text-white transition-all">
               <CalendarCheck size={13} />
             </span>
             <span>Mark Attendance</span>
-          </button>
+          </Link>
 
-          <button
-            onClick={() => onNavigate('fee')}
+          <Link
+            to={PAGE_TO_PATH['fee']}
             className="flex items-center justify-center sm:justify-start gap-2.5 p-2.5 bg-[var(--amber-bg)] hover:bg-[var(--amber)] text-[var(--amber-tx)] hover:text-white rounded-xl border border-[var(--amber)]/10 font-semibold text-[12px] cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 active:scale-[0.98] group"
           >
             <span className="p-1.5 rounded-lg bg-white/60 dark:bg-black/20 text-[var(--amber-tx)] group-hover:bg-white/20 group-hover:text-white transition-all">
               <DollarSign size={13} />
             </span>
             <span>Collect Fee</span>
-          </button>
+          </Link>
 
-          <button
-            onClick={() => onNavigate('expenses')}
+          <Link
+            to={PAGE_TO_PATH['expenses']}
             className="flex items-center justify-center sm:justify-start gap-2.5 p-2.5 bg-[var(--red-bg)] hover:bg-[var(--red)] text-[var(--red-tx)] hover:text-white rounded-xl border border-[var(--red)]/10 font-semibold text-[12px] cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 active:scale-[0.98] group"
           >
             <span className="p-1.5 rounded-lg bg-white/60 dark:bg-black/20 text-[var(--red-tx)] group-hover:bg-white/20 group-hover:text-white transition-all">
               <ShoppingCart size={13} />
             </span>
             <span>Record Expense</span>
-          </button>
+          </Link>
 
-          <button
-            onClick={() => onNavigate('students')}
+          <Link
+            to={PAGE_TO_PATH['students']}
             className="flex items-center justify-center sm:justify-start gap-2.5 p-2.5 bg-[var(--blue-bg)] hover:bg-[var(--blue)] text-[var(--blue-tx)] hover:text-white rounded-xl border border-[var(--blue)]/10 font-semibold text-[12px] cursor-pointer transition-all duration-200 transform hover:-translate-y-0.5 active:scale-[0.98] group"
           >
             <span className="p-1.5 rounded-lg bg-white/60 dark:bg-black/20 text-[var(--blue-tx)] group-hover:bg-white/20 group-hover:text-white transition-all">
               <Plus size={13} />
             </span>
             <span>Add Student</span>
-          </button>
+          </Link>
         </div>
       </div>
 

@@ -1292,7 +1292,7 @@ export function FeeManagement() {
                 className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx)] w-full sm:w-32 cursor-pointer outline-none"
               >
                 <option value="All">All classes</option>
-                {['6', '7', '8', '9', '10'].map((c) => (
+                {['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((c) => (
                   <option key={c} value={c}>{`Class ${c}`}</option>
                 ))}
               </select>

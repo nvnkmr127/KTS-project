@@ -130,7 +130,7 @@ function AppShell() {
               <Route path={PAGE_TO_PATH['alumni']} element={<Alumni />} />
               
               {/* Admin Routes */}
-              <Route path={PAGE_TO_PATH['dashboard']} element={<ProtectedRoute requireAdmin><Dashboard onNavigate={() => {}} /></ProtectedRoute>} />
+              <Route path={PAGE_TO_PATH['dashboard']} element={<ProtectedRoute requireAdmin><Dashboard onNavigate={(page) => navigate(PAGE_TO_PATH[page as PageId] || `/${page}`)} /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['fee']} element={<ProtectedRoute requireAdmin><FeeManagement /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['fee-categories']} element={<ProtectedRoute requireAdmin><FeeCategories /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['staff']} element={<ProtectedRoute requireAdmin><StaffManagement /></ProtectedRoute>} />

@@ -145,7 +145,8 @@ export function MySalary() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
-        if (staffSetting && staffSetting.value) {
+        const savedStaff = localStorage.getItem('kts_staff_members');
+        if ((!savedStaff || savedStaff === '[]') && staffSetting && staffSetting.value) {
           localStorage.setItem('kts_staff_members', staffSetting.value);
         }
       } catch (err) {

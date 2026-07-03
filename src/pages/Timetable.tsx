@@ -75,31 +75,24 @@ export function Timetable() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch { /* empty */ }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let activeTeachers: any[] = [];
         try {
-          const facultyData = await api.getResources('faculty');
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          activeTeachers = (facultyData || []).filter((t: any) => {
-            if ((t.status || '').toLowerCase() === 'inactive') return false;
-            if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
-            return true;
-          });
+          const s = localStorage.getItem('kts_staff_members');
+          if (s) activeTeachers = JSON.parse(s)
+            .filter((x: any) => x?.id && x.name && x.status !== 'Resigned')
+            .map((x: any) => ({ id: String(x.id), name: x.name }));
         } catch { /* empty */ }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (activeTeachers.length === 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           try {
-            const s = localStorage.getItem('kts_staff_members');
-            if (s) activeTeachers = JSON.parse(s)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .filter((x: any) => x?.id && x.name && x.status !== 'Resigned')
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .map((x: any) => ({ id: String(x.id), name: x.name }));
+            const facultyData = await api.getResources('faculty');
+            activeTeachers = (facultyData || []).filter((t: any) => {
+              if ((t.status || '').toLowerCase() === 'inactive') return false;
+              if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
+              return true;
+            });
           } catch { /* empty */ }
         }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
         if (activeTeachers.length === 0) {
           activeTeachers = STAFF.filter(s => s.status !== 'Resigned')

@@ -168,7 +168,7 @@ export function WhatsApp() {
               </div>
               <div className="text-[11.5px] text-[var(--tx3)] mb-3">Select Recipients</div>
               <div className="grid grid-cols-2 gap-2">
-                {['All Parents', 'Class 6 Parents', 'Class 7 Parents', 'Class 8 Parents', 'Class 9 Parents', 'Class 10 Parents'].map((g) => (
+                {['All Parents', 'LKG Parents', 'UKG Parents', 'Class 1 Parents', 'Class 2 Parents', 'Class 3 Parents', 'Class 4 Parents', 'Class 5 Parents', 'Class 6 Parents', 'Class 7 Parents', 'Class 8 Parents', 'Class 9 Parents', 'Class 10 Parents'].map((g) => (
                   <label key={g} className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" className="rounded" defaultChecked={g === 'All Parents'} />
                     <span className="text-[12px] text-[var(--tx2)]">{g}</span>

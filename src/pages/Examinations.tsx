@@ -799,7 +799,7 @@ export function Examinations() {
     const loadClasses = async () => {
       try {
         const batchesData = await api.getResources('batches');
-        const defaultClasses = ['6', '7', '8', '9', '10'];
+        const defaultClasses = ['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
         const foundClasses = new Set<string>();
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

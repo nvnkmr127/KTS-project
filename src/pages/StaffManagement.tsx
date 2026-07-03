@@ -65,17 +65,20 @@ export function StaffManagement() {
   useEffect(() => {
     async function syncFromDb() {
       try {
-        const settings = await api.getResources('settings');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
-        if (staffSetting && staffSetting.value) {
-          localStorage.setItem('kts_staff_members', staffSetting.value);
-          setStaffList(JSON.parse(staffSetting.value));
-        } else {
-          const saved = localStorage.getItem('kts_staff_members');
-          const current = (saved && JSON.parse(saved)) || STAFF;
+        const saved = localStorage.getItem('kts_staff_members');
+        // Only fetch from backend if local storage is empty
+        if (!saved || saved === '[]') {
+          const settings = await api.getResources('settings');
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          saveSettingToDb('kts_staff_members', JSON.stringify(current));
+          const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
+          if (staffSetting && staffSetting.value) {
+            localStorage.setItem('kts_staff_members', staffSetting.value);
+            setStaffList(JSON.parse(staffSetting.value));
+          } else {
+            const current = STAFF;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            saveSettingToDb('kts_staff_members', JSON.stringify(current));
+          }
         }
       } catch (err) {
         console.error('Error syncing staff list from DB in StaffManagement:', err);

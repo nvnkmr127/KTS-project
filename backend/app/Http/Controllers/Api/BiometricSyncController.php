@@ -216,7 +216,8 @@ class BiometricSyncController extends Controller
                     $punchDateStr = $record['PunchDate'] ?? null;
                     if (!$empCode || !$punchDateStr) continue;
 
-                    $carbonDate = Carbon::parse(str_replace('/', '-', $punchDateStr));
+                    $punchTimeStr = $record['PunchTime'] ?? '00:00:00';
+                    $carbonDate = Carbon::parse(str_replace('/', '-', $punchDateStr) . ' ' . $punchTimeStr);
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
                         [

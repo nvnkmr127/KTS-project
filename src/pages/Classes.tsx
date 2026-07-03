@@ -87,33 +87,37 @@ export function Classes() {
                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                .forEach((x: any) => resignedNames.add(x.name.toLowerCase().trim()));
     } catch { /* empty */ }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let activeTeachers: any[] = [];
+    let activeTeachers: { id: string; name: string; status: string; department: string }[] = [];
+
+    // Try fetching from backend first
     try {
       const facultyData = await api.getResources('faculty');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      activeTeachers = (facultyData || []).filter((t: any) => {
-        if ((t.status || '').toLowerCase() === 'inactive') return false;
-        if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
-        return true;
-      });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch { /* empty */ }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (facultyData && facultyData.length > 0) {
+        activeTeachers = facultyData.filter((t: any) => {
+          if ((t.status || '').toLowerCase() === 'inactive') return false;
+          if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
+          return true;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch faculty for classes:', err);
+    }
 
+    // Fallback to local storage if backend fails or returns empty
     if (activeTeachers.length === 0) {
       try {
         const s = localStorage.getItem('kts_staff_members');
-        if (s) activeTeachers = JSON.parse(s)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .filter((x: any) => x?.id && x.name && x.status !== 'Resigned')
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .map((x: any) => ({ id: x.id, name: x.name, status: x.status, department: x.department || '' }));
+        if (s) {
+          const arr = JSON.parse(s);
+          activeTeachers = arr.filter((x: any) => x.status !== 'Resigned').map((x: any) => ({
+            id: x.id, name: x.name, status: x.status, department: x.department || ''
+          }));
+        }
       } catch { /* empty */ }
     }
 
+    // Final fallback to mock data
     if (activeTeachers.length === 0) {
       activeTeachers = STAFF.filter(s => s.status !== 'Resigned')
         .map(s => ({ id: s.id, name: s.name, status: s.status, department: s.department || '' }));
@@ -133,7 +137,7 @@ export function Classes() {
       const batchesData = allBatches.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
 
       const classGroups: Record<string, SectionData[]> = {};
-      const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+      const defaultClasses = ['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       batchesData.forEach((b: any) => {

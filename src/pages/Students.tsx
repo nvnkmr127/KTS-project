@@ -192,11 +192,11 @@ export function Students() {
   const getClassesFromBatches = (batches: any[]): string[] => {
     if (!batches || batches.length === 0) {
       // Fallback safety classes if fail to load
-      return ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+      return ['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // Priority: Union of default classes (1-10) and any custom classes from database batches
-    const classSet = new Set<string>(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+    const classSet = new Set<string>(['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     batches.forEach((b: any) => {
       const match = b.name?.match(/^(.+?)([A-Z])$/);
@@ -933,7 +933,7 @@ export function Students() {
             ))}
           </select>
           <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-            {['All', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((c) => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
+            {['All', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((c) => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
           </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
             {['All', 'Active', 'Transferred', 'Left'].map((s) => <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>)}
@@ -2201,7 +2201,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                               onChange={(e) => updateStudentField(s.id, 'class', e.target.value)}
                               className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded px-1.5 py-1 text-[11.5px] outline-none cursor-pointer"
                             >
-                              {['6','7','8','9','10'].map(c => (
+                              {['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(c => (
                                 <option key={c} value={c}>Class {c}</option>
                               ))}
                             </select>
