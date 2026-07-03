@@ -686,8 +686,13 @@ export function StaffAttendance() {
     let hasCheckOut = false;
 
     if (todayPunches.length > 0) {
-      const firstPunchTime = todayPunches[0].timestamp.split(' ')[1] || '';
-      const lastPunchTime = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1] || '';
+      const extractTime = (ts: string) => {
+        if (!ts) return '';
+        const timePart = ts.includes('T') ? ts.split('T')[1] : ts.split(' ')[1];
+        return timePart ? timePart.substring(0, 5) : '';
+      };
+      const firstPunchTime = extractTime(todayPunches[0].timestamp);
+      const lastPunchTime = extractTime(todayPunches[todayPunches.length - 1].timestamp);
 
       // Check-in: first punch must be before or during the late entry window
       if (firstPunchTime <= (lateEntryCutoff + ':59')) {
@@ -990,13 +995,19 @@ export function StaffAttendance() {
                 if (todayPunches.length > 0) {
                   todayPunches.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
                   
+                  const extractTime = (ts: string) => {
+                    if (!ts) return null;
+                    const timePart = ts.includes('T') ? ts.split('T')[1] : ts.split(' ')[1];
+                    return timePart ? timePart.substring(0, 5) : null;
+                  };
+
                   // First punch is check-in
-                  const earliest = todayPunches[0].timestamp.split(' ')[1]?.substring(0, 5) || null;
+                  const earliest = extractTime(todayPunches[0].timestamp);
                   inTime = earliest;
 
                   // Last punch (if different and more than one punch) is check-out
                   if (todayPunches.length > 1) {
-                    const latest = todayPunches[todayPunches.length - 1].timestamp.split(' ')[1]?.substring(0, 5) || null;
+                    const latest = extractTime(todayPunches[todayPunches.length - 1].timestamp);
                     if (latest !== earliest) {
                       outTime = latest;
                     }
