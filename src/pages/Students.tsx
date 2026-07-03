@@ -1549,9 +1549,12 @@ const cleanDate = (val: any): string => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cleanClass = (val: any): string => {
   if (!val) return '8';
-  const match = String(val).match(/\d+/);
-  return match ? match[0] : '8';
+  let str = String(val).trim().toUpperCase();
+  // Remove "CLASS" prefix if present
+  str = str.replace(/^CLASS\s*/i, '');
+  return str || '8';
 };
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cleanSection = (val: any): string => {

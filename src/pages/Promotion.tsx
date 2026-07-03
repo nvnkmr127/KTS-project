@@ -141,16 +141,36 @@ export function Promotion() {
     if (sourceBatch && targetBatches.length > 0) {
       const selectedSourceBatch = batches.find(b => b.id === sourceBatch);
       if (selectedSourceBatch) {
-        const match = selectedSourceBatch.name.match(/^(\d+)([A-Z])$/i);
+        const match = selectedSourceBatch.name.match(/^(.+?)([A-Z])$/i);
         if (match) {
-          const currentClass = parseInt(match[1]);
+          const currentClassStr = match[1].toUpperCase();
           const currentSection = match[2];
-          const nextClassStr = String(currentClass + 1);
-          const nextBatchName = `${nextClassStr}${currentSection}`;
-          const matchingTarget = targetBatches.find(b => b.name.toLowerCase() === nextBatchName.toLowerCase());
-          if (matchingTarget) {
-            setTargetBatch(matchingTarget.id);
-            return;
+          
+          const CLASS_TRANSITIONS: Record<string, string> = {
+            'NURSERY': 'PP1',
+            'PP1': 'PP2',
+            'PP2': 'LKG',
+            'LKG': 'UKG',
+            'UKG': '1'
+          };
+          
+          let nextClassStr = '';
+          if (CLASS_TRANSITIONS[currentClassStr]) {
+            nextClassStr = CLASS_TRANSITIONS[currentClassStr];
+          } else {
+            const currentClass = parseInt(currentClassStr, 10);
+            if (!isNaN(currentClass)) {
+              nextClassStr = String(currentClass + 1);
+            }
+          }
+          
+          if (nextClassStr) {
+            const nextBatchName = `${nextClassStr}${currentSection}`;
+            const matchingTarget = targetBatches.find(b => b.name.toLowerCase() === nextBatchName.toLowerCase());
+            if (matchingTarget) {
+              setTargetBatch(matchingTarget.id);
+              return;
+            }
           }
         }
       }

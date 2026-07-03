@@ -66,16 +66,16 @@ class GenericApiController extends Controller
     {
         $batchName = strtoupper(trim($batchName));
         
-        // Match standard format "8A" or "10B"
-        if (preg_match('/^(\d+)\s*([A-Z])$/i', $batchName, $matches)) {
+        // Match format "LKG SECTION C" or "LKG SEC C" or "6 SECTION C"
+        if (preg_match('/^([A-Z0-9-]+)\s*(?:SECTION|SEC)\s*([A-Z])$/i', $batchName, $matches)) {
             return [
                 'class' => $matches[1],
                 'section' => $matches[2],
             ];
         }
-        
-        // Match format "6SECTION C" or "6 SECTION C"
-        if (preg_match('/^(\d+)\s*(?:SECTION|SEC)\s*([A-Z])/i', $batchName, $matches)) {
+
+        // Match standard format "8A", "LKGA", "PP1A", "LKG A"
+        if (preg_match('/^([A-Z0-9-]+)\s*([A-Z])$/i', $batchName, $matches)) {
             return [
                 'class' => $matches[1],
                 'section' => $matches[2],
@@ -88,6 +88,7 @@ class GenericApiController extends Controller
             'section' => 'A',
         ];
     }
+
 
     /**
      * List resources.

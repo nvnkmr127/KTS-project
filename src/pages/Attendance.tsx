@@ -322,6 +322,19 @@ export function Attendance() {
         const parseBatchName = (name: string) => {
           const str = name.toUpperCase().trim();
 
+          // Match format "LKG SECTION C" or "LKG SEC C"
+          const sectionWordMatch = str.match(/^(.*?)\s*(?:SECTION|SEC)\s*([A-Z])$/i);
+          if (sectionWordMatch) {
+            return { classId: sectionWordMatch[1].trim(), sectionLetter: sectionWordMatch[2] };
+          }
+
+          // Match standard format "8A", "LKGA", "PP1A", "LKG A"
+          const standardMatch = str.match(/^([A-Z0-9-]+)\s*([A-Z])$/i);
+          if (standardMatch) {
+            return { classId: standardMatch[1], sectionLetter: standardMatch[2] };
+          }
+
+          // Fallback to number extraction or default to '8'
           const classMatch = str.match(/^(\d+)/) || str.match(/CLASS\s*(\d+)/i);
           const classId = classMatch ? classMatch[1] : '8';
 
@@ -370,14 +383,33 @@ export function Attendance() {
           }
         });
 
-        const sortedBatches = Object.values(uniqueBatchesMap).sort((a, b) => {
-          const matchA = a.name.match(/^(\d+)/);
-          const matchB = b.name.match(/^(\d+)/);
-          const classA = matchA ? parseInt(matchA[1]) : 0;
-          const classB = matchB ? parseInt(matchB[1]) : 0;
+        const getClassWeight = (batchName: string): number => {
+          const str = batchName.toUpperCase().trim();
+          const parsed = parseBatchName(str);
+          const cls = parsed.classId;
+          const weights: Record<string, number> = {
+            'NURSERY': 1,
+            'PP1': 2,
+            'PP2': 3,
+            'LKG': 4,
+            'UKG': 5
+          };
+          if (weights[cls] !== undefined) {
+            return weights[cls];
+          }
+          const num = parseInt(cls, 10);
+          if (!isNaN(num)) {
+            return num + 10;
+          }
+          return 999;
+        };
 
-          if (classA !== classB) {
-            return classA - classB;
+        const sortedBatches = Object.values(uniqueBatchesMap).sort((a, b) => {
+          const weightA = getClassWeight(a.name);
+          const weightB = getClassWeight(b.name);
+
+          if (weightA !== weightB) {
+            return weightA - weightB;
           }
           return a.name.localeCompare(b.name);
         });
