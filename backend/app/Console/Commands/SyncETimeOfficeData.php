@@ -43,10 +43,10 @@ class SyncETimeOfficeData extends Command
         // Check if API is configured
         if (! $this->checkApiConfiguration()) {
             $this->error('❌ eTimeOffice API is not properly configured!');
-            $this->warn('Please configure the following settings:');
-            $this->warn('- etimeoffice_corporate_id');
-            $this->warn('- etimeoffice_username');
-            $this->warn('- etimeoffice_password');
+            $this->warn('Please configure the following environment variables in .env:');
+            $this->warn('- ETIMEOFFICE_CORPORATE_ID');
+            $this->warn('- ETIMEOFFICE_USERNAME');
+            $this->warn('- ETIMEOFFICE_PASSWORD');
 
             return 1;
         }
@@ -79,15 +79,15 @@ class SyncETimeOfficeData extends Command
                 return $this->syncIncremental($isTestMode);
 
             case 'today':
-                return $this->syncDateRange(today(), today(), $empcode, $isTestMode);
+                return $this->syncDateRange(today()->startOfDay(), today()->endOfDay(), $empcode, $isTestMode);
 
             case 'yesterday':
-                return $this->syncDateRange(yesterday(), yesterday(), $empcode, $isTestMode);
+                return $this->syncDateRange(yesterday()->startOfDay(), yesterday()->endOfDay(), $empcode, $isTestMode);
 
             case 'range':
                 return $this->syncDateRange(
-                    Carbon::parse($this->option('from')),
-                    Carbon::parse($this->option('to')),
+                    Carbon::parse($this->option('from'))->startOfDay(),
+                    Carbon::parse($this->option('to'))->endOfDay(),
                     $empcode,
                     $isTestMode
                 );
@@ -251,9 +251,9 @@ class SyncETimeOfficeData extends Command
      */
     private function checkApiConfiguration(): bool
     {
-        $corporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value');
-        $username = Setting::where('key', 'etimeoffice_username')->value('value');
-        $password = Setting::where('key', 'etimeoffice_password')->value('value');
+        $corporateId = env('ETIMEOFFICE_CORPORATE_ID');
+        $username = env('ETIMEOFFICE_USERNAME');
+        $password = env('ETIMEOFFICE_PASSWORD');
 
         return ! empty($corporateId) && ! empty($username) && ! empty($password);
     }

@@ -342,7 +342,8 @@ export function StaffAttendance() {
                 (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
               );
 
-              const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesBiometricCode;
+              const matchesIdNumerically = !isNaN(Number(empCode)) && !isNaN(Number(staff.id)) && Number(empCode) === Number(staff.id);
+              const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically || matchesBiometricCode;
               const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
 
               let dateMatch = false;
@@ -363,9 +364,21 @@ export function StaffAttendance() {
               if (rec.INTime && rec.INTime !== '--:--') {
                 staffPunches.push({ id: `bio-in-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
               }
-              // We intentionally do not push OUTTime from the summary API here because 
-              // eTimeOffice dynamically returns the present time if the employee hasn't checked out.
-              // Checkout time will be calculated from the raw punches (syncBiometricPunches) instead.
+              // Push OUTTime if it's not a running clock placeholder
+              if (rec.OUTTime && rec.OUTTime !== '--:--') {
+                const isToday = date === new Date().toISOString().slice(0, 10);
+                let isPresentTimePlaceholder = false;
+                if (isToday) {
+                  const [outH, outM] = rec.OUTTime.split(':').map(Number);
+                  const now = new Date();
+                  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                  const outMinutes = outH * 60 + outM;
+                  isPresentTimePlaceholder = Math.abs(currentMinutes - outMinutes) <= 2;
+                }
+                if (!isPresentTimePlaceholder) {
+                  staffPunches.push({ id: `bio-out-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
+                }
+              }
               if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
                 staffPunches.push({ id: `bio-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: rec.PunchDate });
               }
@@ -457,22 +470,22 @@ export function StaffAttendance() {
 
     const timerId = setInterval(() => {
       fetchLocalBiometricLogsRef.current();
-    }, 15000);
+    }, 1000);
 
     return () => clearInterval(timerId);
   }, []);
 
-  // Live auto-sync interval for raw punches (every 1 second during school hours)
+  // Live auto-sync interval for raw punches (every 10 seconds during active hours)
   useEffect(() => {
     const getIntervalDuration = () => {
       const now = new Date();
       const currentHour = now.getHours();
 
-      // School timings: 8:00 AM to 6:00 PM (8 to 18)
-      if (currentHour >= 8 && currentHour < 18) {
-        return 5 * 60 * 1000; // 5 minutes
+      // Active hours: 7:00 AM to 10:00 PM (7 to 22)
+      if (currentHour >= 7 && currentHour < 22) {
+        return 10000; // 10 seconds
       } else {
-        return 2 * 60 * 60 * 1000; // 2 hours
+        return 15 * 60 * 1000; // 15 minutes
       }
     };
 
@@ -504,17 +517,17 @@ export function StaffAttendance() {
     };
   }, []);
 
-  // Live auto-sync interval for In/Out summaries (every 15 seconds during school hours)
+  // Live auto-sync interval for In/Out summaries (every 10 seconds during active hours)
   useEffect(() => {
     const getIntervalDuration = () => {
       const now = new Date();
       const currentHour = now.getHours();
 
-      // School timings: 8:00 AM to 6:00 PM (8 to 18)
-      if (currentHour >= 8 && currentHour < 18) {
-        return 15000; // 15 seconds
+      // Active hours: 7:00 AM to 10:00 PM (7 to 22)
+      if (currentHour >= 7 && currentHour < 22) {
+        return 10000; // 10 seconds
       } else {
-        return 2 * 60 * 60 * 1000; // 2 hours
+        return 15 * 60 * 1000; // 15 minutes
       }
     };
 
@@ -545,6 +558,17 @@ export function StaffAttendance() {
       clearInterval(watchTimer);
     };
   }, []);
+
+  // Trigger sync immediately when window/tab receives focus
+  useEffect(() => {
+    const handleFocus = () => {
+      syncBiometricPunches(true);
+      syncBiometric(true);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [syncBiometric, syncBiometricPunches]);
 
   const saveSettingToDb = (key: string, value: string) => {
     api.getResources('settings')
@@ -598,7 +622,8 @@ export function StaffAttendance() {
         (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
       );
 
-      const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesBiometricCode;
+      const matchesIdNumerically = !isNaN(Number(empCode)) && !isNaN(Number(staff.id)) && Number(empCode) === Number(staff.id);
+      const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically || matchesBiometricCode;
       const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
 
       let dateMatch = false;
@@ -642,7 +667,21 @@ export function StaffAttendance() {
       if (rec.INTime && rec.INTime !== '--:--') {
         apiCount.push({ id: `bio-in-${rec.Empcode}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
       }
-      // Intentional skip of OUTTime to avoid present time bug
+      // Push OUTTime if it's not a running clock placeholder
+      if (rec.OUTTime && rec.OUTTime !== '--:--') {
+        const isToday = date === new Date().toISOString().slice(0, 10);
+        let isPresentTimePlaceholder = false;
+        if (isToday) {
+          const [outH, outM] = rec.OUTTime.split(':').map(Number);
+          const now = new Date();
+          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const outMinutes = outH * 60 + outM;
+          isPresentTimePlaceholder = Math.abs(currentMinutes - outMinutes) <= 2;
+        }
+        if (!isPresentTimePlaceholder) {
+          apiCount.push({ id: `bio-out-${rec.Empcode}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
+        }
+      }
       if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
         apiCount.push({ id: `bio-${rec.Empcode}`, staffId: staff.id, timestamp: rec.PunchDate });
       }
@@ -1017,7 +1056,20 @@ export function StaffAttendance() {
                   if (bioRecord?.INTime && bioRecord.INTime !== '--:--') {
                     inTime = bioRecord.INTime;
                   }
-                  // Removed bioRecord?.OUTTime fallback to avoid taking present time
+                  if (bioRecord?.OUTTime && bioRecord.OUTTime !== '--:--') {
+                    const isToday = date === new Date().toISOString().slice(0, 10);
+                    let isPresentTimePlaceholder = false;
+                    if (isToday) {
+                      const [outH, outM] = bioRecord.OUTTime.split(':').map(Number);
+                      const now = new Date();
+                      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                      const outMinutes = outH * 60 + outM;
+                      isPresentTimePlaceholder = Math.abs(currentMinutes - outMinutes) <= 2;
+                    }
+                    if (!isPresentTimePlaceholder) {
+                      outTime = bioRecord.OUTTime;
+                    }
+                  }
                 }
 
                 // Determine Lateness (if first punch is after Present Cutoff Morning)
@@ -1092,14 +1144,16 @@ export function StaffAttendance() {
                                 Late
                               </span>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => addSimulatedPunch(s.id)}
-                              className="p-1 border border-[var(--b)] bg-[var(--surf2)] hover:border-[var(--blue)] hover:bg-[var(--blue-bg)] hover:text-[var(--blue-tx)] rounded text-[9.5px] font-semibold cursor-pointer transition-colors"
-                              title="Simulate Check-In/Punch"
-                            >
-                              + Sim
-                            </button>
+                            {connectionStatus !== 'connected' && (
+                              <button
+                                type="button"
+                                onClick={() => addSimulatedPunch(s.id)}
+                                className="p-1 border border-[var(--b)] bg-[var(--surf2)] hover:border-[var(--blue)] hover:bg-[var(--blue-bg)] hover:text-[var(--blue-tx)] rounded text-[9.5px] font-semibold cursor-pointer transition-colors"
+                                title="Simulate Check-In/Punch"
+                              >
+                                + Sim
+                              </button>
+                            )}
                           </>
                         ) : (
                           <span className="font-medium text-[var(--tx2)]">
@@ -1181,13 +1235,18 @@ export function StaffAttendance() {
                             <button
                               key={opt.value}
                               type="button"
+                              disabled={attendanceMode === 'biometric'}
                               onClick={() => setManualStatus(s.id, opt.value as AttendanceStatus)}
-                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer ${
+                              className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all ${
+                                attendanceMode === 'biometric'
+                                  ? 'opacity-40 cursor-not-allowed'
+                                  : 'cursor-pointer'
+                              } ${
                                 status === opt.value
                                   ? opt.active
-                                  : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${opt.bg}`
+                                  : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${attendanceMode === 'biometric' ? '' : opt.bg}`
                               }`}
-                              title={`Set to ${opt.value}`}
+                              title={attendanceMode === 'biometric' ? "Manual overrides are disabled in Biometric Mode" : `Set to ${opt.value}`}
                             >
                               {opt.value}
                             </button>

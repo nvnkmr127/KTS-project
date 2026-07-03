@@ -98,16 +98,16 @@ class ETimeOfficeAutoSync extends Command
 
             // Also check for required credentials
             $missing = [];
-            if (! \App\Models\Setting::where('key', 'etimeoffice_api_url')->value('value')) {
+            if (! (env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api')) {
                 $missing[] = 'API URL';
             }
-            if (! \App\Models\Setting::where('key', 'etimeoffice_corporate_id')->value('value')) {
+            if (! env('ETIMEOFFICE_CORPORATE_ID')) {
                 $missing[] = 'Corporate ID';
             }
-            if (! \App\Models\Setting::where('key', 'etimeoffice_username')->value('value')) {
+            if (! env('ETIMEOFFICE_USERNAME')) {
                 $missing[] = 'Username';
             }
-            if (! \App\Models\Setting::where('key', 'etimeoffice_password')->value('value')) {
+            if (! env('ETIMEOFFICE_PASSWORD')) {
                 $missing[] = 'Password';
             }
 

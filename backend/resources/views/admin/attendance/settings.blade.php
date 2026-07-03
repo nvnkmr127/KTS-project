@@ -138,47 +138,10 @@
                             </div>
 
                             <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="etimeoffice_api_url" class="form-label">
-                                            <i class="fas fa-link mr-1"></i> API URL
-                                        </label>
-                                        <input type="url" class="form-control form-control-sm" id="etimeoffice_api_url" 
-                                               name="etimeoffice_api_url" placeholder="https://api.etimeoffice.com/api">
-                                        <small class="form-text text-muted">ETimeOffice API base URL</small>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="etimeoffice_corporate_id" class="form-label">
-                                            <i class="fas fa-building mr-1"></i> Corporate ID
-                                        </label>
-                                        <input type="text" class="form-control form-control-sm" id="etimeoffice_corporate_id" 
-                                               name="etimeoffice_corporate_id" placeholder="Your corporate ID">
-                                        <small class="form-text text-muted">Provided by ETimeOffice</small>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="etimeoffice_username" class="form-label">
-                                            <i class="fas fa-user mr-1"></i> API Username
-                                        </label>
-                                        <input type="text" class="form-control form-control-sm" id="etimeoffice_username" 
-                                               name="etimeoffice_username" placeholder="API username">
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="form-group">
-                                        <label for="etimeoffice_password" class="form-label">
-                                            <i class="fas fa-lock mr-1"></i> API Password
-                                        </label>
-                                        <input type="password" class="form-control form-control-sm" id="etimeoffice_password" 
-                                               name="etimeoffice_password" placeholder="API password">
+                                <div class="col-md-12 mb-3">
+                                    <div class="alert alert-warning">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        <strong>Environment Credentials:</strong> The API credentials (Corporate ID, Username, Password, API URL) are managed securely inside the server's environment configuration (<code>.env</code>) and cannot be edited from this interface.
                                     </div>
                                 </div>
                             </div>

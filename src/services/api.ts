@@ -670,10 +670,10 @@ export const api = {
     return request('/biometric/status');
   },
 
-  async biometricTestConnection(credentials: { corporate_id: string; username: string; password?: string }) {
+  async biometricTestConnection(credentials?: { corporate_id?: string; username?: string; password?: string }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const params = new URLSearchParams(credentials as any).toString();
-    return request(`/biometric/test-connection?${params}`);
+    const params = credentials ? new URLSearchParams(credentials as any).toString() : '';
+    return request(params ? `/biometric/test-connection?${params}` : '/biometric/test-connection');
   },
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

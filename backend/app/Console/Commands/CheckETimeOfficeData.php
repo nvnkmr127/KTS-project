@@ -73,9 +73,9 @@ class CheckETimeOfficeData extends Command
         $this->info($enabled ? '✅ ETimeOffice Integration: ENABLED' : '❌ ETimeOffice Integration: DISABLED');
 
         // Check configuration
-        $apiUrl = Setting::where('key', 'etimeoffice_api_url')->value('value');
-        $corporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value');
-        $username = Setting::where('key', 'etimeoffice_username')->value('value');
+        $apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
+        $corporateId = env('ETIMEOFFICE_CORPORATE_ID');
+        $username = env('ETIMEOFFICE_USERNAME');
 
         $this->info($apiUrl ? '✅ API URL: Configured' : '❌ API URL: Not configured');
         $this->info($corporateId ? '✅ Corporate ID: Configured' : '❌ Corporate ID: Not configured');
@@ -207,10 +207,10 @@ class CheckETimeOfficeData extends Command
         $this->info('');
 
         // Get ETimeOffice configuration
-        $apiUrl = Setting::where('key', 'etimeoffice_api_url')->value('value');
-        $corporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value');
-        $username = Setting::where('key', 'etimeoffice_username')->value('value');
-        $password = Setting::where('key', 'etimeoffice_password')->value('value');
+        $apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
+        $corporateId = env('ETIMEOFFICE_CORPORATE_ID');
+        $username = env('ETIMEOFFICE_USERNAME');
+        $password = env('ETIMEOFFICE_PASSWORD');
 
         if (! $apiUrl || ! $corporateId || ! $username || ! $password) {
             $this->error('❌ ETimeOffice configuration is incomplete');

@@ -55,16 +55,11 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   const [settingsSuccess, setSettingsSuccess] = useState('');
 
   // Biometric integration states
-  const [bioCorporateId, setBioCorporateId] = useState('');
-  const [bioUsername, setBioUsername] = useState('');
-  const [bioPassword, setBioPassword] = useState('');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [bioStatus, setBioStatus] = useState<any>(null);
   const [loadingBioStatus, setLoadingBioStatus] = useState(false);
   const [isTestingBio, setIsTestingBio] = useState(false);
   const [testBioResult, setTestBioResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [savingBio, setSavingBio] = useState(false);
-  const [bioSuccess, setBioSuccess] = useState('');
   const [bioError, setBioError] = useState('');
   const [resettingCursor, setResettingCursor] = useState(false);
 
@@ -186,8 +181,6 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     try {
       const res = await api.biometricStatus();
       setBioStatus(res);
-      if (res?.corporate_id) setBioCorporateId(res.corporate_id);
-      if (res?.username) setBioUsername(res.username);
 
       // Load school timings configurations from settings
       const settings = await api.getResources('settings');
@@ -269,19 +262,11 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
 
   // Test Biometric Connection
   const handleTestBiometric = async () => {
-    if (!bioCorporateId || !bioUsername) {
-      setBioError('Please enter Corporate ID and Username to test connection.');
-      return;
-    }
     setIsTestingBio(true);
     setTestBioResult(null);
     setBioError('');
     try {
-      const res = await api.biometricTestConnection({
-        corporate_id: bioCorporateId,
-        username: bioUsername,
-        password: bioPassword
-      });
+      const res = await api.biometricTestConnection();
       if (res?.connected) {
         setTestBioResult({ success: true, message: res.message || 'Successfully connected to e-TimeOffice API!' });
       } else {
@@ -292,36 +277,6 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
       setTestBioResult({ success: false, message: err.message || 'Connection error.' });
     } finally {
       setIsTestingBio(false);
-    }
-  };
-
-  // Save Biometric Credentials
-  const handleSaveBiometric = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!bioCorporateId || !bioUsername) {
-      setBioError('Corporate ID and Username are required.');
-      return;
-    }
-    setSavingBio(true);
-    setBioSuccess('');
-    setBioError('');
-    try {
-      const res = await api.biometricSaveCredentials({
-        corporate_id: bioCorporateId,
-        username: bioUsername,
-        password: bioPassword
-      });
-      if (res?.success) {
-        setBioSuccess('Biometric credentials saved successfully!');
-        loadBiometricSettings();
-      } else {
-        setBioError(res?.message || 'Failed to save biometric credentials.');
-      }
-    } catch (err: any) {
-      console.error(err);
-      setBioError(err.message || 'Failed to save biometric credentials.');
-    } finally {
-      setSavingBio(false);
     }
   };
 
@@ -1256,109 +1211,6 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
               <div className="flex items-center justify-between mb-4 border-b border-[var(--b)] pb-3">
                 <div>
                   <h3 className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
-                    <Fingerprint size={14} className="text-[var(--blue-tx)]" /> Biometric Sync Configuration
-                  </h3>
-                  <p className="text-[11px] text-[var(--tx3)] mt-0.5">
-                    Configure connection credentials to pull daily punch records directly from the external e-TimeOffice server.
-                  </p>
-                </div>
-              </div>
-
-              {loadingBioStatus ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 size={20} className="animate-spin text-[var(--blue)]" />
-                </div>
-              ) : (
-                <form onSubmit={handleSaveBiometric} className="space-y-4">
-                  {bioSuccess && (
-                    <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15 rounded-xl text-[11.5px] flex items-center gap-2">
-                      <CheckCircle2 size={13} className="shrink-0" />
-                      <span>{bioSuccess}</span>
-                    </div>
-                  )}
-
-                  {bioError && (
-                    <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/15 rounded-xl text-[11.5px] flex items-center gap-2">
-                      <AlertCircle size={13} className="shrink-0" />
-                      <span>{bioError}</span>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Corporate ID *</label>
-                      <input 
-                        value={bioCorporateId}
-                        onChange={(e) => setBioCorporateId(e.target.value)}
-                        required 
-                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
-                        placeholder="e.g. KTSNIZAM"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">API Username *</label>
-                      <input 
-                        value={bioUsername}
-                        onChange={(e) => setBioUsername(e.target.value)}
-                        required 
-                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
-                        placeholder="Username"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">API Password *</label>
-                      <input 
-                        type="password"
-                        value={bioPassword}
-                        onChange={(e) => setBioPassword(e.target.value)}
-                        required={!bioStatus?.configured}
-                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
-                        placeholder={bioStatus?.configured ? "•••••••• (Saved)" : "Password"}
-                      />
-                    </div>
-                  </div>
-
-                  {testBioResult && (
-                    <div className={`p-3 border rounded-xl text-[11.5px] flex items-center gap-2 ${
-                      testBioResult.success 
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/15'
-                        : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/15'
-                    }`}>
-                      {testBioResult.success ? <CheckCircle2 size={13} className="shrink-0" /> : <AlertCircle size={13} className="shrink-0" />}
-                      <span>{testBioResult.message}</span>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2.5 pt-2 border-t border-[var(--b)]">
-                    <button
-                      type="submit"
-                      disabled={savingBio}
-                      className="px-4 py-2 bg-[var(--blue)] hover:opacity-90 disabled:opacity-50 text-white text-[11.5px] font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      {savingBio && <Loader2 size={12} className="animate-spin" />}
-                      <Save size={12} />
-                      Save Credentials
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleTestBiometric}
-                      disabled={isTestingBio}
-                      className="px-4 py-2 bg-[var(--surf3)] hover:bg-[var(--surf)] border border-[var(--b)] hover:border-[var(--blue)] disabled:opacity-50 text-[11.5px] font-semibold text-[var(--tx2)] rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
-                    >
-                      {isTestingBio && <Loader2 size={12} className="animate-spin" />}
-                      <RefreshCw size={12} />
-                      Test Connection
-                    </button>
-                  </div>
-                </form>
-              )}
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-4 border-b border-[var(--b)] pb-3">
-                <div>
-                  <h3 className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
                     <Clock size={14} className="text-[var(--blue-tx)]" /> Biometric School Timings & Attendance Cutoffs
                   </h3>
                   <p className="text-[11px] text-[var(--tx3)] mt-0.5">
@@ -1469,50 +1321,86 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
               </form>
             </Card>
 
-            {bioStatus?.configured && (
+            {bioStatus && (
               <Card>
                 <div className="flex items-center justify-between mb-3 border-b border-[var(--b)] pb-2.5">
                   <h4 className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-1.5">
                     <Key size={13} className="text-[var(--blue-tx)]" /> System Sync Status
                   </h4>
                 </div>
-                <div className="space-y-2.5 text-[11.5px]">
-                  <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
-                    <span className="text-[var(--tx3)]">Last Successful Sync:</span>
-                    <span className="font-semibold text-[var(--tx)]">
-                      {bioStatus.last_sync ? new Date(bioStatus.last_sync).toLocaleString() : 'Never'}
-                    </span>
+                {loadingBioStatus ? (
+                  <div className="flex justify-center py-6">
+                    <Loader2 size={16} className="animate-spin text-[var(--blue)]" />
                   </div>
-                  <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
-                    <span className="text-[var(--tx3)]">Last Sync Cursor (MaxRecord):</span>
-                    <span className="font-mono text-[var(--tx2)] font-semibold">
-                      {bioStatus.last_record || 'None (Month beginning)'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
-                    <span className="text-[var(--tx3)]">Synced Today:</span>
-                    <span className="font-semibold text-[var(--teal-tx)]">{bioStatus.today_records} logs</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-[var(--tx3)]">Synced This Week:</span>
-                    <span className="font-semibold text-[var(--blue-tx)]">{bioStatus.week_records} logs</span>
-                  </div>
-
-                  <div className="pt-2 border-t border-[var(--b)] flex justify-between items-center">
-                    <div>
-                      <div className="font-semibold text-[11px] text-[var(--tx)]">Incremental Cursor Reset</div>
-                      <p className="text-[10px] text-[var(--tx3)]">Force full sync of the current month on next pull.</p>
+                ) : (
+                  <div className="space-y-2.5 text-[11.5px]">
+                    <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
+                      <span className="text-[var(--tx3)]">Last Successful Sync:</span>
+                      <span className="font-semibold text-[var(--tx)]">
+                        {bioStatus.last_sync ? new Date(bioStatus.last_sync).toLocaleString() : 'Never'}
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleResetCursor}
-                      disabled={resettingCursor}
-                      className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/15 rounded-lg text-[10.5px] font-semibold cursor-pointer disabled:opacity-50 transition-all"
-                    >
-                      Reset Cursor
-                    </button>
+                    <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
+                      <span className="text-[var(--tx3)]">Last Sync Cursor:</span>
+                      <span className="font-mono text-[var(--tx2)] font-semibold">
+                        {bioStatus.last_record || 'None'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-[var(--b)]/50">
+                      <span className="text-[var(--tx3)]">Synced Today:</span>
+                      <span className="font-semibold text-[var(--teal-tx)]">{bioStatus.today_records} logs</span>
+                    </div>
+                    <div className="flex justify-between py-1">
+                      <span className="text-[var(--tx3)]">Synced This Week:</span>
+                      <span className="font-semibold text-[var(--blue-tx)]">{bioStatus.week_records} logs</span>
+                    </div>
+
+                    <div className="pt-2.5 border-t border-[var(--b)]/50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-[11px] text-[var(--tx)]">API Connection Test</div>
+                          <p className="text-[10px] text-[var(--tx3)]">Verify connectivity with env credentials.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleTestBiometric}
+                          disabled={isTestingBio}
+                          className="px-2.5 py-1.5 bg-[var(--surf3)] hover:bg-[var(--surf)] border border-[var(--b)] hover:border-[var(--blue)] disabled:opacity-50 text-[10.5px] font-semibold text-[var(--tx2)] rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          {isTestingBio && <Loader2 size={10} className="animate-spin" />}
+                          <RefreshCw size={10} />
+                          Test
+                        </button>
+                      </div>
+
+                      {testBioResult && (
+                        <div className={`mt-2 p-2 border rounded-lg text-[10px] flex items-center gap-1.5 ${
+                          testBioResult.success 
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/15'
+                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/15'
+                        }`}>
+                          {testBioResult.success ? <CheckCircle2 size={11} className="shrink-0" /> : <AlertCircle size={11} className="shrink-0" />}
+                          <span>{testBioResult.message}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2.5 border-t border-[var(--b)]/50 flex justify-between items-center">
+                      <div>
+                        <div className="font-semibold text-[11px] text-[var(--tx)]">Cursor Reset</div>
+                        <p className="text-[10px] text-[var(--tx3)]">Force full sync of the current month.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleResetCursor}
+                        disabled={resettingCursor}
+                        className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/15 rounded-lg text-[10.5px] font-semibold cursor-pointer disabled:opacity-50 transition-all"
+                      >
+                        Reset
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </Card>
             )}
           </div>

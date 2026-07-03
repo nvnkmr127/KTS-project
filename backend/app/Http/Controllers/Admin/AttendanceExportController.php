@@ -4360,6 +4360,18 @@ class AttendanceExportController extends Controller
     private function getSetting($key, $default = null)
     {
         try {
+            if ($key === 'etimeoffice_api_url') {
+                return env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
+            }
+            if ($key === 'etimeoffice_corporate_id') {
+                return env('ETIMEOFFICE_CORPORATE_ID') ?: '';
+            }
+            if ($key === 'etimeoffice_username') {
+                return env('ETIMEOFFICE_USERNAME') ?: '';
+            }
+            if ($key === 'etimeoffice_password') {
+                return env('ETIMEOFFICE_PASSWORD') ?: '';
+            }
             return \App\Models\Setting::where('key', $key)->value('value') ?? $default;
         } catch (\Exception $e) {
             Log::error("Error getting setting {$key}: ".$e->getMessage());

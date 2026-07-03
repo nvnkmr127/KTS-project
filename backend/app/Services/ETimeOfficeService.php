@@ -33,18 +33,10 @@ class ETimeOfficeService
     private function loadConfiguration(): void
     {
         try {
-            // Check if settings table exists before querying
-            if (! \Illuminate\Support\Facades\Schema::hasTable('settings')) {
-                $this->setDefaultConfiguration();
-
-                return;
-            }
-
-            $this->apiUrl = Setting::where('key', 'etimeoffice_api_url')->value('value') ?: env('ETIMEOFFICE_API_URL', 'https://api.etimeoffice.com/api');
-            $this->corporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value') ?: env('ETIMEOFFICE_CORPORATE_ID', '');
-            $this->username = Setting::where('key', 'etimeoffice_username')->value('value') ?: env('ETIMEOFFICE_USERNAME', '');
-            $this->password = Setting::where('key', 'etimeoffice_password')->value('value') ?: env('ETIMEOFFICE_PASSWORD', '');
-
+            $this->apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
+            $this->corporateId = env('ETIMEOFFICE_CORPORATE_ID') ?: '';
+            $this->username = env('ETIMEOFFICE_USERNAME') ?: '';
+            $this->password = env('ETIMEOFFICE_PASSWORD') ?: '';
 
             // Create Basic Auth token (base64 encoded)
             $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");
@@ -86,7 +78,7 @@ class ETimeOfficeService
         try {
             $response = $this->makeApiCall('DownloadPunchData', [
                 'Empcode' => 'ALL',
-                'FromDate' => now()->format('d/m/Y_H:i'),
+                'FromDate' => now()->subHours(24)->format('d/m/Y_H:i'),
                 'ToDate' => now()->format('d/m/Y_H:i'),
             ]);
 
@@ -353,7 +345,7 @@ class ETimeOfficeService
                     Attendance::create([
                         'student_id' => $student->id,
                         'batch_id' => $student->batch_id,
-                        'faculty_id' => 1,
+                        'faculty_id' => $this->getDefaultFacultyId(),
                         'attendance_date' => $attendanceDate,
                         'status' => 'present',
                         'marked_at' => $carbonDate,
@@ -486,7 +478,15 @@ class ETimeOfficeService
     public function getSyncStats(): array
     {
         $lastSyncRecord = Setting::where('key', 'etimeoffice_last_sync_record')->value('value');
-        $lastSyncTime = Setting::where('key', 'etimeoffice_last_sync_time')->value('value');
+        $sync1 = Setting::where('key', 'etimeoffice_last_sync')->value('value');
+        $sync2 = Setting::where('key', 'etimeoffice_last_sync_time')->value('value');
+
+        $lastSyncTime = null;
+        if ($sync1 && $sync2) {
+            $lastSyncTime = Carbon::parse($sync1)->gt(Carbon::parse($sync2)) ? $sync1 : $sync2;
+        } else {
+            $lastSyncTime = $sync1 ?: $sync2;
+        }
 
         return [
             'last_sync_record' => $lastSyncRecord,
@@ -804,5 +804,23 @@ class ETimeOfficeService
             'success' => false,
             'error' => $lastError ?? 'Unknown error after '.$maxRetries.' attempts',
         ];
+    }
+
+    /**
+     * Get default faculty ID for attendance records
+     */
+    private function getDefaultFacultyId(): int
+    {
+        try {
+            $faculty = \App\Models\User::role(['admin', 'faculty'])->first();
+            if ($faculty) {
+                return $faculty->id;
+            }
+        } catch (\Exception $e) {
+            // Fallback if role is not configured or fails
+        }
+
+        $firstUser = \App\Models\User::first();
+        return $firstUser ? $firstUser->id : 1; // Fallback to 1 if no users exist
     }
 }
