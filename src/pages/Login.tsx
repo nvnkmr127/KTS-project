@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Eye, EyeOff, ShieldCheck, GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 type PortalTab = 'admin' | 'teacher';
 
@@ -10,8 +11,16 @@ const DEMO = {
 };
 
 export function Login() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
+  const navigate = useNavigate();
   const [portal, setPortal] = useState<PortalTab>('admin');
+
+  useEffect(() => {
+    if (user) {
+      navigate('/', { replace: true });
+    }
+  }, [user, navigate]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -24,7 +33,11 @@ export function Login() {
     setLoading(true);
     await new Promise((r) => setTimeout(r, 600));
     const result = await login(email, password);
-    if (!result.ok) setError(result.error ?? 'Login failed');
+    if (!result.ok) {
+      setError(result.error ?? 'Login failed');
+    } else {
+      navigate('/', { replace: true });
+    }
     setLoading(false);
   };
 
