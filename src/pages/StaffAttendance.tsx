@@ -361,9 +361,9 @@ export function StaffAttendance() {
               if (rec.INTime && rec.INTime !== '--:--') {
                 staffPunches.push({ id: `bio-in-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
               }
-              if (rec.OUTTime && rec.OUTTime !== '--:--') {
-                staffPunches.push({ id: `bio-out-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
-              }
+              // We intentionally do not push OUTTime from the summary API here because 
+              // eTimeOffice dynamically returns the present time if the employee hasn't checked out.
+              // Checkout time will be calculated from the raw punches (syncBiometricPunches) instead.
               if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
                 staffPunches.push({ id: `bio-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: rec.PunchDate });
               }
@@ -640,9 +640,7 @@ export function StaffAttendance() {
       if (rec.INTime && rec.INTime !== '--:--') {
         apiCount.push({ id: `bio-in-${rec.Empcode}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
       }
-      if (rec.OUTTime && rec.OUTTime !== '--:--') {
-        apiCount.push({ id: `bio-out-${rec.Empcode}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
-      }
+      // Intentional skip of OUTTime to avoid present time bug
       if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
         apiCount.push({ id: `bio-${rec.Empcode}`, staffId: staff.id, timestamp: rec.PunchDate });
       }
@@ -1006,9 +1004,7 @@ export function StaffAttendance() {
                   if (bioRecord?.INTime && bioRecord.INTime !== '--:--') {
                     inTime = bioRecord.INTime;
                   }
-                  if (bioRecord?.OUTTime && bioRecord.OUTTime !== '--:--') {
-                    outTime = bioRecord.OUTTime;
-                  }
+                  // Removed bioRecord?.OUTTime fallback to avoid taking present time
                 }
 
                 // Determine Lateness (if first punch is after Present Cutoff Morning)
