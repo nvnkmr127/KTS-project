@@ -1392,7 +1392,7 @@ export function Students() {
                               <Badge variant="teal">Paid</Badge>
                             )}
                           </div>
-                          <div className="text-[8px] text-[var(--tx3)]">Due: {fee.due_date}</div>
+                          <div className="text-[8px] text-[var(--tx3)]">Due: {formatDate(fee.due_date)}</div>
                         </div>
                       </div>
                     );

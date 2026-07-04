@@ -1342,7 +1342,7 @@ export function FeeManagement() {
                                 <Badge variant="teal">Paid</Badge>
                               )}
                             </div>
-                            <div className="text-[9.5px] text-[var(--tx3)]">Due Date: {fee.due_date}</div>
+                            <div className="text-[9.5px] text-[var(--tx3)]">Due Date: {formatDate(fee.due_date)}</div>
                           </div>
                         </div>
                       );
@@ -2045,7 +2045,7 @@ export function FeeManagement() {
                           <div key={fee.id} className="flex items-center justify-between p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg text-[11px]">
                             <div>
                               <div className="font-semibold text-[var(--tx)]">{feeName}</div>
-                              <div className="text-[9.5px] text-[var(--tx3)] mt-0.5">Due: {fee.due_date}</div>
+                              <div className="text-[9.5px] text-[var(--tx3)] mt-0.5">Due: {formatDate(fee.due_date)}</div>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-[var(--tx2)]">₹{Number(fee.amount).toLocaleString()}</span>
