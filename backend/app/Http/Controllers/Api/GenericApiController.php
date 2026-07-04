@@ -16,6 +16,10 @@ class GenericApiController extends Controller
     {
         $table = (new $modelClass)->getTable();
         
+        if (config('app.env') === 'local') {
+            \Cache::forget('schema_columns_' . $table);
+        }
+
         return \Cache::remember('schema_columns_' . $table, 86400, function () use ($table) {
             return Schema::getColumnListing($table);
         });

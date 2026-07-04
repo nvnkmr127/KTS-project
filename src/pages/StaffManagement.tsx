@@ -559,7 +559,6 @@ export function StaffManagement() {
     const fd = new FormData(e.currentTarget);
     const nameVal = fd.get('name') as string;
     const designationVal = fd.get('designation') as string;
-    const departmentVal = (fd.get('department') as string) || 'Mathematics';
     const subjectVal = (fd.get('subject') as string) || '';
     const phoneVal = fd.get('phone') as string;
     const emailVal = (fd.get('email') as string) || '';
@@ -569,6 +568,18 @@ export function StaffManagement() {
     const biometricCodeVal = (fd.get('biometric_employee_code') as string) || '';
 
     const categoryVal = selectedCategory === 'manual_entry' ? customCategory.trim() : selectedCategory;
+    let departmentVal = (fd.get('department') as string) || '';
+    if (!departmentVal) {
+      if (categoryVal === 'Driver' || categoryVal === 'Cleaner') {
+        departmentVal = 'Transport';
+      } else if (categoryVal === 'Watchman') {
+        departmentVal = 'Security';
+      } else if (categoryVal === 'House Keeping') {
+        departmentVal = 'Housekeeping';
+      } else {
+        departmentVal = 'Support Staff';
+      }
+    }
     const documentsVal = [
       ...getDocsForCategory(categoryVal || 'Teaching'),
       ...customDocs
@@ -682,6 +693,8 @@ export function StaffManagement() {
   };
 
   const allCategories = Array.from(new Set(staffList.map(s => s.category || 'Teaching')));
+  const standardDepts = ['Mathematics', 'Science', 'English', 'Languages', 'Social Sciences', 'Sports', 'Admin', 'Office', 'Transport', 'Security', 'Housekeeping'];
+  const allDepartments = Array.from(new Set([...standardDepts, ...staffList.map(s => s.department).filter(Boolean)]));
 
   const getDocsForCategory = (cat: string) => {
     const common = ['Aadhar Card'];
@@ -760,6 +773,7 @@ export function StaffManagement() {
               statusFilter={statusFilter}
               setStatusFilter={setStatusFilter}
               allCategories={allCategories}
+              allDepartments={allDepartments}
             />
 
             {selectedIds.length > 0 && (

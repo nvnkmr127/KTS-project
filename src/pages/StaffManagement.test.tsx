@@ -4,7 +4,14 @@ import { StaffManagement } from './StaffManagement';
 
 // Mock dependencies
 vi.mock('../context/AppContext', () => ({
-  useApp: () => ({ user: { role: 'admin' } })
+  useApp: () => ({ user: { role: 'admin' }, leaveRequests: [] })
+}));
+
+vi.mock('../context/DialogContext', () => ({
+  useDialog: () => ({
+    alert: vi.fn(),
+    confirm: vi.fn(),
+  }),
 }));
 
 vi.mock('../services/api', () => ({

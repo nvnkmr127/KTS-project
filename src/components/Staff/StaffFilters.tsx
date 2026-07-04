@@ -10,9 +10,21 @@ interface StaffFiltersProps {
   statusFilter: string;
   setStatusFilter: (val: string) => void;
   allCategories: string[];
+  allDepartments?: string[];
 }
 
-export function StaffFilters({ search, setSearch, deptFilter, setDeptFilter, catFilter, setCatFilter, statusFilter, setStatusFilter, allCategories }: StaffFiltersProps) {
+export function StaffFilters({
+  search,
+  setSearch,
+  deptFilter,
+  setDeptFilter,
+  catFilter,
+  setCatFilter,
+  statusFilter,
+  setStatusFilter,
+  allCategories,
+  allDepartments = ['Mathematics', 'Science', 'English', 'Languages', 'Social Sciences', 'Sports']
+}: StaffFiltersProps) {
   return (
     <>
             <div className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -22,7 +34,7 @@ export function StaffFilters({ search, setSearch, deptFilter, setDeptFilter, cat
               </div>
               <select value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
                 <option value="All">All Departments</option>
-                {['Mathematics', 'Science', 'English', 'Languages', 'Social Sciences', 'Sports'].map((d) => <option key={d}>{d}</option>)}
+                {allDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
               </select>
               <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
                 <option value="All">All Categories</option>

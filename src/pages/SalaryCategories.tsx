@@ -158,7 +158,7 @@ export function SalaryCategories() {
         id: s.id,
         name: s.name,
         subject: s.subject || s.designation || 'Staff',
-        joinDate: s.joinDate,
+        joinDate: s.join_date || s.joinDate,
         salary: s.salary,
       }));
       setFaculty(mappedStaff);

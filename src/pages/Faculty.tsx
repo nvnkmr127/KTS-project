@@ -161,8 +161,23 @@ export function Faculty() {
       let mappedApi: FacultyMember[] = [];
       try {
         const users = await api.getResources('faculty');
+        
+        // Filter out non-teaching staff (drivers, cleaners, watchmen, etc.)
+        const teachingUsers = (users || []).filter((u: any) => {
+          const cat = (u.category || 'Teaching').toString().trim().toLowerCase();
+          const desig = (u.designation || '').toString().trim().toLowerCase();
+          if (cat === 'non-teaching' || cat.includes('non-teach')) {
+            return false;
+          }
+          const nonTeachingCategories = ['driver', 'cleaner', 'watchman', 'house keeping', 'housekeeping'];
+          if (nonTeachingCategories.includes(cat)) {
+            return false;
+          }
+          return cat === 'teaching' || cat.includes('teach') || desig.includes('teacher');
+        });
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        mappedApi = users.map((u: any) => {
+        mappedApi = teachingUsers.map((u: any) => {
           const initials = collectInitials(u.name);
           return {
             id: String(u.id),
@@ -303,8 +318,8 @@ export function Faculty() {
           subject: subject,
           phone: phone,
           email: email,
-          joinDate: joinDate,
-          attendance: 100,
+          join_date: joinDate,
+          attendance_percentage: 100,
           status: 'Active',
           salary: salary,
           qualifications: qualifications,
@@ -323,7 +338,7 @@ export function Faculty() {
             designation: designation,
             department: department,
             subject: subject,
-            joinDate: joinDate,
+            join_date: joinDate,
             salary: salary,
             qualifications: qualifications,
             documents: documentsVal,
@@ -338,8 +353,8 @@ export function Faculty() {
             subject: subject,
             phone: phone,
             email: email,
-            joinDate: joinDate,
-            attendance: selected.att,
+            join_date: joinDate,
+            attendance_percentage: selected.att,
             status: selected.present ? 'Active' : 'On Leave',
             salary: salary,
             qualifications: qualifications,
@@ -659,7 +674,7 @@ export function Faculty() {
                     <input
                       name="joinDate"
                       type="date"
-                      defaultValue={selectedStaff?.joinDate || new Date().toISOString().slice(0, 10)}
+                      defaultValue={selectedStaff?.join_date || selectedStaff?.joinDate || new Date().toISOString().slice(0, 10)}
                       className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
                     />
                   </div>

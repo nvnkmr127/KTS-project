@@ -22,14 +22,25 @@ class SubstituteController extends Controller
     {
         $staff = User::whereHas('roles', function ($q) {
             $q->whereIn('name', ['faculty', 'teacher', 'admin']);
-        })->where('status', 'active')->get(['id', 'name', 'email', 'department']);
+        })
+        ->where('status', 'active')
+        ->where(function ($q) {
+            $q->whereNull('category')
+              ->orWhereNotIn('category', ['Driver', 'Cleaner', 'Watchman', 'House Keeping', 'Non-Teaching']);
+        })
+        ->get(['id', 'name', 'email', 'department']);
 
         // Fallback if roles aren't explicitly assigned (just get all active users except super-admin)
         if ($staff->isEmpty()) {
             $staff = User::where('status', 'active')
                 ->whereDoesntHave('roles', function($q) {
                     $q->where('name', 'super-admin');
-                })->get(['id', 'name', 'email', 'department']);
+                })
+                ->where(function ($q) {
+                    $q->whereNull('category')
+                      ->orWhereNotIn('category', ['Driver', 'Cleaner', 'Watchman', 'House Keeping', 'Non-Teaching']);
+                })
+                ->get(['id', 'name', 'email', 'department']);
         }
 
         return response()->json($staff);
@@ -122,6 +133,10 @@ class SubstituteController extends Controller
         })
         ->where('status', 'active')
         ->whereNotIn('id', $allBusyIds)
+        ->where(function ($q) {
+            $q->whereNull('category')
+              ->orWhereNotIn('category', ['Driver', 'Cleaner', 'Watchman', 'House Keeping', 'Non-Teaching']);
+        })
         ->get(['id', 'name', 'email', 'department']);
 
         if ($availableStaff->isEmpty()) {
@@ -130,6 +145,10 @@ class SubstituteController extends Controller
                     $q->where('name', 'super-admin');
                 })
                 ->whereNotIn('id', $allBusyIds)
+                ->where(function ($q) {
+                    $q->whereNull('category')
+                      ->orWhereNotIn('category', ['Driver', 'Cleaner', 'Watchman', 'House Keeping', 'Non-Teaching']);
+                })
                 ->get(['id', 'name', 'email', 'department']);
         }
 

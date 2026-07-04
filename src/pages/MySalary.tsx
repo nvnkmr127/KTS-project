@@ -98,7 +98,7 @@ export function MySalary() {
     const ym = getYearMonth(monthStr);
     if (!ym) return 0;
     const { year, month } = ym;
-    const { unpaidDaysInTargetMonth } = calculateLeaveAccrual(leavesList, String(s.id), s.joinDate, year, month);
+    const { unpaidDaysInTargetMonth } = calculateLeaveAccrual(leavesList, String(s.id), s.join_date || s.joinDate, year, month);
     if (unpaidDaysInTargetMonth <= 0) return 0;
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const baseSalary = Number(s.salary) || 25000;

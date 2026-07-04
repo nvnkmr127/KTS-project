@@ -79,7 +79,15 @@ export function Timetable() {
         try {
           const s = localStorage.getItem('kts_staff_members');
           if (s) activeTeachers = JSON.parse(s)
-            .filter((x: any) => x?.id && x.name && x.status !== 'Resigned')
+            .filter((x: any) => {
+              if (!x?.id || !x.name || x.status === 'Resigned') return false;
+              const cat = (x.category || 'Teaching').toString().trim().toLowerCase();
+              const desig = (x.designation || '').toString().trim().toLowerCase();
+              if (cat === 'non-teaching' || cat.includes('non-teach')) return false;
+              const nonTeachingCategories = ['driver', 'cleaner', 'watchman', 'house keeping', 'housekeeping'];
+              if (nonTeachingCategories.includes(cat)) return false;
+              return cat === 'teaching' || cat.includes('teach') || desig.includes('teacher');
+            })
             .map((x: any) => ({ id: String(x.id), name: x.name }));
         } catch { /* empty */ }
 
@@ -89,7 +97,12 @@ export function Timetable() {
             activeTeachers = (facultyData || []).filter((t: any) => {
               if ((t.status || '').toLowerCase() === 'inactive') return false;
               if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
-              return true;
+              const cat = (t.category || 'Teaching').toString().trim().toLowerCase();
+              const desig = (t.designation || '').toString().trim().toLowerCase();
+              if (cat === 'non-teaching' || cat.includes('non-teach')) return false;
+              const nonTeachingCategories = ['driver', 'cleaner', 'watchman', 'house keeping', 'housekeeping'];
+              if (nonTeachingCategories.includes(cat)) return false;
+              return cat === 'teaching' || cat.includes('teach') || desig.includes('teacher');
             });
           } catch { /* empty */ }
         }
