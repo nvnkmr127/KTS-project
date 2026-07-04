@@ -1,7 +1,186 @@
+import { config } from '../config';
+
 /**
  * Safely wraps localStorage to prevent direct access, catch JSON parsing errors,
  * and provide a uniform interface for the application.
+ * Also globally monkey-patches Storage.prototype to synchronize non-excluded keys
+ * with the backend settings database.
  */
+
+const EXCLUDED_KEYS = ['token', 'user', 'kts_alumni_records'];
+
+const originalSetItem = Storage.prototype.setItem;
+const originalRemoveItem = Storage.prototype.removeItem;
+
+// Store settings cache of { [key]: id }
+const settingsCache: Record<string, string> = {};
+
+/**
+ * Populates the local settings DB ID cache
+ */
+export function updateSettingsCache(settings: any[]) {
+  if (Array.isArray(settings)) {
+    settings.forEach(s => {
+      if (s.key && s.id) {
+        settingsCache[s.key] = String(s.id);
+      }
+    });
+  }
+}
+
+/**
+ * Background DB synchronization helper for setting key/value pairs
+ */
+async function syncSettingToDb(key: string, value: string) {
+  const token = localStorage.getItem('token');
+  if (!token || token === 'demo-token') return;
+
+  try {
+    let settingId = settingsCache[key];
+
+    // If ID is not cached, lookup in DB first
+    if (!settingId) {
+      const getRes = await fetch(`${config.apiUrl}/resources/settings?key=${encodeURIComponent(key)}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (getRes.ok) {
+        const data = await getRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          settingId = String(data[0].id);
+          settingsCache[key] = settingId;
+        }
+      }
+    }
+
+    if (settingId) {
+      await fetch(`${config.apiUrl}/resources/settings/${settingId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ key, value })
+      });
+    } else {
+      const createRes = await fetch(`${config.apiUrl}/resources/settings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          key,
+          value,
+          group: 'general',
+          type: 'json',
+          is_public: false,
+          is_encrypted: false
+        })
+      });
+      if (createRes.ok) {
+        const data = await createRes.json();
+        if (data && data.id) {
+          settingsCache[key] = String(data.id);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`Failed to sync setting ${key} to DB:`, err);
+  }
+}
+
+/**
+ * Background DB synchronization helper for removing key/value pairs
+ */
+async function deleteSettingFromDb(key: string) {
+  const token = localStorage.getItem('token');
+  if (!token || token === 'demo-token') return;
+
+  try {
+    let settingId = settingsCache[key];
+
+    if (!settingId) {
+      const getRes = await fetch(`${config.apiUrl}/resources/settings?key=${encodeURIComponent(key)}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (getRes.ok) {
+        const data = await getRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          settingId = String(data[0].id);
+          settingsCache[key] = settingId;
+        }
+      }
+    }
+
+    if (settingId) {
+      await fetch(`${config.apiUrl}/resources/settings/${settingId}`, {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      delete settingsCache[key];
+    }
+  } catch (err) {
+    console.warn(`Failed to delete setting ${key} from DB:`, err);
+  }
+}
+
+// Monkey-patch Storage.prototype.setItem
+Storage.prototype.setItem = function (key: string, value: string): void {
+  originalSetItem.call(this, key, value);
+
+  if (EXCLUDED_KEYS.includes(key) || key.startsWith('kts_force_logout_')) {
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+  if (!token || token === 'demo-token') {
+    return;
+  }
+
+  syncSettingToDb(key, value);
+};
+
+// Monkey-patch Storage.prototype.removeItem
+Storage.prototype.removeItem = function (key: string): void {
+  originalRemoveItem.call(this, key);
+
+  if (EXCLUDED_KEYS.includes(key) || key.startsWith('kts_force_logout_')) {
+    return;
+  }
+
+  const token = localStorage.getItem('token');
+  if (!token || token === 'demo-token') {
+    return;
+  }
+
+  deleteSettingFromDb(key);
+};
+
+// Expose original methods to bypass sync
+Object.defineProperty(Storage.prototype, 'originalSetItem', {
+  value: originalSetItem,
+  writable: false,
+  configurable: false,
+  enumerable: false
+});
+
+Object.defineProperty(Storage.prototype, 'originalRemoveItem', {
+  value: originalRemoveItem,
+  writable: false,
+  configurable: false,
+  enumerable: false
+});
 
 export const storage = {
   getItem<T>(key: string): T | null {
@@ -12,8 +191,6 @@ export const storage = {
         return JSON.parse(item) as T;
       } catch {
         // If it's not valid JSON, return as string (e.g. for simple tokens)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return item as any as T;
       }
     } catch (e) {
@@ -21,9 +198,7 @@ export const storage = {
       return null;
     }
   },
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setItem(key: string, value: any): void {
     try {
       const valueToStore = typeof value === 'string' ? value : JSON.stringify(value);

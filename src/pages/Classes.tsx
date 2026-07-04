@@ -298,11 +298,29 @@ export function Classes() {
     }
 
     try {
+      // Resolve academic year and course dynamically to avoid hardcoded IDs
+      let resolvedAcademicYearId: number | null = null;
+      let resolvedCourseId: number | null = null;
+      try {
+        const years = await api.getResources('academic-years');
+        if (Array.isArray(years) && years.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const current = years.find((y: any) => y.is_current) || years[0];
+          resolvedAcademicYearId = Number(current.id);
+        }
+      } catch { /* use null fallback */ }
+      try {
+        const courses = await api.getResources('courses');
+        if (Array.isArray(courses) && courses.length > 0) {
+          resolvedCourseId = Number(courses[0].id);
+        }
+      } catch { /* use null fallback */ }
+
       await api.createResource('batches', {
         name: `${classNum}${sectionLetter}`,
         class_teacher_id: teacherIdVal ? Number(teacherIdVal) : null,
-        course_id: 1,
-        academic_year_id: 1,
+        course_id: resolvedCourseId || 1,
+        academic_year_id: resolvedAcademicYearId || 1,
         start_date: '2026-06-01',
         end_date: '2027-05-31',
         status: 'active',

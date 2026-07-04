@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
+import { updateSettingsCache } from '../utils/storage';
+import { PageLoader } from '../components/PageLoader';
 
 
 export interface LeaveRequest {
@@ -185,6 +187,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedAcademicYearId, setSelectedAcademicYearIdState] = useState<string>(() => {
     return localStorage.getItem('selected_academic_year_id') || '';
   });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const setSelectedAcademicYearId = (id: string) => {
     setSelectedAcademicYearIdState(id);
@@ -199,10 +202,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setNotifications([]);
       setTimetable(buildDefaultTimetable());
       setAcademicYears([]);
+      setSettingsLoaded(true);
       return;
     }
 
+    setSettingsLoaded(false);
+
     async function loadInitialData() {
+      try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       // Load Academic Years
       try {
@@ -277,12 +284,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const allSettings = await api.getResources('settings');
         if (Array.isArray(allSettings)) {
+          updateSettingsCache(allSettings);
           const keysToExclude = ['token', 'user'];
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           allSettings.forEach((setting: any) => {
             if (setting.key && !keysToExclude.includes(setting.key) && setting.value !== undefined) {
-              // Write directly using localStorage.setItem to bypass monkey-patch background writes
-              localStorage.setItem(setting.key, setting.value);
+              // Write directly using localStorage.originalSetItem to bypass monkey-patch background writes
+              (localStorage as any).originalSetItem(setting.key, setting.value);
               
               // Explicitly load period timings state if present
               if (setting.key === 'timetable_period_timings') {
@@ -359,31 +367,169 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error('Error loading timetable in AppContext:', tErr);
       }
 
-      // Delay pre-fetching of non-critical tab resources by 1.5 seconds
-      setTimeout(() => {
-        api.getResources('students', { with: 'batch.academicYear', limit: '1000' }).catch(() => {});
-        api.getResources('batches').catch(() => {});
-        api.getResources('holidays').catch(() => {});
-        api.getSubstituteStaff().catch(() => {});
-        api.getResources('daily-diaries').catch(() => {});
-        api.getResources('fee-categories').catch(() => {});
-        api.getResources('student-fees', { limit: '10000' }).catch(() => {});
-        api.getResources('faculty').catch(() => {});
-        api.getResources('expenses').catch(() => {});
-        api.getResources('settings').catch(() => {});
-        api.getResources('settings', { key: 'kts_student_attendance_records' }).catch(() => {});
-        api.getResources('settings', { key: 'kts_holidays' }).catch(() => {});
-        api.getResources('settings', { key: 'examinations_exams' }).catch(() => {});
-        api.getResources('settings', { key: 'kts_student_marks' }).catch(() => {});
-        api.getResources('settings', { key: 'examinations_schedules' }).catch(() => {});
-        api.getResources('payslips').catch(() => {});
-        api.getResources('biometric-logs').catch(() => {});
-        api.getResources('homework').catch(() => {});
-        api.getResources('alumni').catch(() => {});
-      }, 1500);
+        // Delay pre-fetching of non-critical tab resources by 1.5 seconds
+        setTimeout(() => {
+          api.getResources('students', { with: 'batch.academicYear', limit: '1000' }).catch(() => {});
+          api.getResources('batches').catch(() => {});
+          api.getResources('holidays').catch(() => {});
+          api.getSubstituteStaff().catch(() => {});
+          api.getResources('daily-diaries').catch(() => {});
+          api.getResources('fee-categories').catch(() => {});
+          api.getResources('student-fees', { limit: '10000' }).catch(() => {});
+          api.getResources('faculty').catch(() => {});
+          api.getResources('expenses').catch(() => {});
+          api.getResources('settings').catch(() => {});
+          api.getResources('settings', { key: 'kts_student_attendance_records' }).catch(() => {});
+          api.getResources('settings', { key: 'kts_holidays' }).catch(() => {});
+          api.getResources('settings', { key: 'examinations_exams' }).catch(() => {});
+          api.getResources('settings', { key: 'kts_student_marks' }).catch(() => {});
+          api.getResources('settings', { key: 'examinations_schedules' }).catch(() => {});
+          api.getResources('payslips').catch(() => {});
+          api.getResources('biometric-logs').catch(() => {});
+          api.getResources('homework').catch(() => {});
+          api.getResources('alumni').catch(() => {});
+        }, 1500);
+      } catch (err) {
+        console.error('Failed to load initial settings in AppContext:', err);
+      } finally {
+        setSettingsLoaded(true);
+      }
     }
     loadInitialData();
   }, [user]);
+
+  // Periodic polling and focus refetching to ensure multi-device and tab synchronization
+  useEffect(() => {
+    if (!user || !settingsLoaded) return;
+
+    let isFetching = false;
+    const refetch = async () => {
+      if (isFetching) return;
+      isFetching = true;
+      try {
+        // Sync settings
+        const allSettings = await api.getResources('settings');
+        if (Array.isArray(allSettings)) {
+          updateSettingsCache(allSettings);
+          const keysToExclude = ['token', 'user'];
+          allSettings.forEach((setting: any) => {
+            if (setting.key && !keysToExclude.includes(setting.key) && setting.value !== undefined) {
+              const localVal = localStorage.getItem(setting.key);
+              if (localVal !== setting.value) {
+                // Write directly to local storage to bypass the monkey-patch save call
+                (localStorage as any).originalSetItem(setting.key, setting.value);
+                
+                // Dispatch a StorageEvent in the current window so local page listeners update state immediately
+                const event = new StorageEvent('storage', {
+                  key: setting.key,
+                  newValue: setting.value,
+                  storageArea: localStorage,
+                });
+                window.dispatchEvent(event);
+
+                // If timetable period timings change, update state directly
+                if (setting.key === 'timetable_period_timings') {
+                  try {
+                    const parsed = JSON.parse(setting.value);
+                    setPeriodTimings(prev => {
+                      const hasChanged = JSON.stringify(prev) !== JSON.stringify(parsed);
+                      return hasChanged ? parsed : prev;
+                    });
+                  } catch (e) {
+                    console.error('Failed to parse timetable_period_timings from background sync:', e);
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        // Sync timetable
+        const timetableRes = await api.getResources('timetable');
+        if (Array.isArray(timetableRes)) {
+          const loadedTimetable = buildDefaultTimetable();
+          timetableRes.forEach((slot: any) => {
+            const cls = slot.batch?.name;
+            const day = slot.day_of_week;
+            const p = Number(slot.time_slot_id) - 1; // 0-indexed
+            if (cls && day && p >= 0) {
+              if (!loadedTimetable[cls]) {
+                loadedTimetable[cls] = {};
+              }
+              if (!loadedTimetable[cls][day]) {
+                loadedTimetable[cls][day] = {};
+                for (let i = 0; i < 12; i++) {
+                  loadedTimetable[cls][day][i] = null;
+                }
+              }
+
+              loadedTimetable[cls][day][p] = {
+                subject: slot.subject,
+                teacher: slot.teacher,
+                teacherId: String(slot.teacherId),
+                room: slot.room,
+              };
+            }
+          });
+          setTimetable(prev => {
+            const hasChanged = JSON.stringify(prev) !== JSON.stringify(loadedTimetable);
+            return hasChanged ? loadedTimetable : prev;
+          });
+        }
+
+        // Sync leaves
+        const leavesData = await api.getResources('leaves');
+        if (Array.isArray(leavesData)) {
+          const mapped = leavesData.map((l: any) => ({
+            id: String(l.id),
+            staffId: String(l.user_id),
+            staffName: l.staff_name || 'Unknown',
+            init: l.initials || 'LD',
+            type: l.leave_type,
+            from: l.start_date,
+            to: l.end_date,
+            days: Number(l.days),
+            reason: l.reason,
+            status: l.status,
+            appliedOn: l.created_at ? l.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+            adminNotes: l.admin_notes || undefined,
+          }));
+          setLeaveRequests(prev => {
+            const hasChanged = JSON.stringify(prev) !== JSON.stringify(mapped);
+            return hasChanged ? mapped : prev;
+          });
+        }
+      } catch (err) {
+        console.warn('Background sync failed:', err);
+      } finally {
+        isFetching = false;
+      }
+    };
+
+    // Refetch on window focus
+    const handleFocus = () => {
+      refetch();
+    };
+
+    // Refetch on visibility change (tab switch back)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refetch();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Poll every 5 seconds for other devices/users
+    const intervalId = setInterval(refetch, 5000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, [user, settingsLoaded]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -546,7 +692,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       hasUnsavedChanges,
       setHasUnsavedChanges,
     }}>
-      {children}
+      {settingsLoaded ? children : <PageLoader />}
     </AppContext.Provider>
   );
 }

@@ -138,7 +138,7 @@ export function AllotAttendance() {
           try {
             const parsed = JSON.parse(settingsRes[0].value);
             setAttendanceRecords(parsed);
-            localStorage.setItem('kts_student_attendance_records', JSON.stringify(parsed));
+            (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
           } catch (e) {
             console.error('Error parsing kts_student_attendance_records:', e);
           }
@@ -156,6 +156,22 @@ export function AllotAttendance() {
     }
     loadData();
   }, []);
+
+  // Listen to cross-tab updates to kts_student_attendance_records
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'kts_student_attendance_records' && e.newValue) {
+        try {
+          setAttendanceRecords(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error('Error parsing kts_student_attendance_records in storage event:', err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
 
   // Load substitute assignments for the selected date
   useEffect(() => {

@@ -121,7 +121,7 @@ export function MySalary() {
         
         const compSetting = settings.find((s: any) => s.key === 'salary_components');
         if (compSetting && compSetting.value) {
-          localStorage.setItem('salary_components', compSetting.value);
+          (localStorage as any).originalSetItem('salary_components', compSetting.value);
           setComponents(JSON.parse(compSetting.value));
         } else {
           const savedComps = localStorage.getItem('salary_components');
@@ -140,7 +140,7 @@ export function MySalary() {
 
         const salariesSetting = settings.find((s: any) => s.key === 'staff_salaries');
         if (salariesSetting && salariesSetting.value) {
-          localStorage.setItem('staff_salaries', salariesSetting.value);
+          (localStorage as any).originalSetItem('staff_salaries', salariesSetting.value);
           setStaffSalaries(JSON.parse(salariesSetting.value));
         } else {
           const savedSalaries = localStorage.getItem('staff_salaries');
@@ -151,7 +151,7 @@ export function MySalary() {
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         const savedStaff = localStorage.getItem('kts_staff_members');
         if ((!savedStaff || savedStaff === '[]') && staffSetting && staffSetting.value) {
-          localStorage.setItem('kts_staff_members', staffSetting.value);
+          (localStorage as any).originalSetItem('kts_staff_members', staffSetting.value);
         }
       } catch (err) {
         console.error('Error syncing settings from DB:', err);

@@ -57,6 +57,9 @@ class GenericApiController extends Controller
             'payments' => \App\Models\Payment::class,
             'component-payment-items' => \App\Models\ComponentPaymentItem::class,
             'student-concessions' => \App\Models\StudentConcession::class,
+            'exams' => \App\Models\Exam::class,
+            'marks' => \App\Models\Mark::class,
+            'exam-schedules' => \App\Models\ExamSchedule::class,
         ];
 
         return $map[strtolower($resource)] ?? null;
@@ -104,6 +107,37 @@ class GenericApiController extends Controller
         }
 
         $query = $modelClass::query();
+
+        // Intercept settings request to dynamically map from individual tables
+        if ($resource === 'settings') {
+            $key = $request->query('key');
+            if ($key) {
+                $constructedValue = $this->constructSettingFromTables($key);
+                if ($constructedValue !== null) {
+                    $setting = \App\Models\Setting::where('key', $key)->first();
+                    if (!$setting) {
+                        $setting = \App\Models\Setting::create([
+                            'key' => $key,
+                            'group' => 'general',
+                            'type' => 'json',
+                            'value' => $constructedValue,
+                        ]);
+                    } else {
+                        $setting->value = $constructedValue;
+                    }
+                    return response()->json([$setting]);
+                }
+            } else {
+                $settings = $query->get();
+                foreach ($settings as $setting) {
+                    $constructedValue = $this->constructSettingFromTables($setting->key);
+                    if ($constructedValue !== null) {
+                        $setting->value = $constructedValue;
+                    }
+                }
+                return response()->json($settings);
+            }
+        }
 
         // Custom auth check for activity-logs
         if ($resource === 'activity-logs') {
@@ -478,6 +512,13 @@ class GenericApiController extends Controller
             $item->section = $parsed['section'];
         }
 
+        if ($resource === 'settings') {
+            $constructedValue = $this->constructSettingFromTables($item->key);
+            if ($constructedValue !== null) {
+                $item->value = $constructedValue;
+            }
+        }
+
         return response()->json($item);
     }
 
@@ -497,9 +538,21 @@ class GenericApiController extends Controller
         if ($resource === 'settings') {
             $key = $data['key'] ?? null;
             if ($key) {
+                if (in_array($key, ['kts_student_attendance_records', 'kts_holidays', 'examinations_exams', 'kts_student_marks', 'examinations_schedules'])) {
+                    $this->syncSettingToTables($key, $data['value'] ?? '');
+                    
+                    // Return a virtual setting object to satisfy the frontend client
+                    $item = new \App\Models\Setting();
+                    $item->id = 999999;
+                    $item->key = $key;
+                    $item->value = $data['value'] ?? '';
+                    return response()->json($item, 201);
+                }
+
                 $columns = $this->getTableColumns($modelClass);
                 $data = array_intersect_key($data, array_flip($columns));
                 $item = $modelClass::updateOrCreate(['key' => $key], $data);
+                $this->syncSettingToTables($key, $item->value);
                 return response()->json($item, 201);
             }
         }
@@ -685,11 +738,32 @@ class GenericApiController extends Controller
         // Custom bulk save / creation for Timetable
         if ($resource === 'timetable' && $request->has('batch_name')) {
             $batchName = $request->input('batch_name');
+
+            $academicYear = \App\Models\AcademicYear::where('is_current', true)->first() 
+                ?? \App\Models\AcademicYear::first();
+            if (!$academicYear) {
+                $academicYear = \App\Models\AcademicYear::create([
+                    'name' => '2026-2027',
+                    'start_date' => '2026-06-01',
+                    'end_date' => '2027-05-31',
+                    'is_current' => true,
+                ]);
+            }
+
+            $course = \App\Models\Course::first();
+            if (!$course) {
+                $course = \App\Models\Course::create([
+                    'name' => 'Default Course',
+                    'code' => 'DFT',
+                    'duration_in_years' => 1.0,
+                ]);
+            }
+
             $batch = \App\Models\Batch::firstOrCreate(
                 ['name' => $batchName],
                 [
-                    'course_id' => 1,
-                    'academic_year_id' => 1,
+                    'course_id' => $course->id,
+                    'academic_year_id' => $academicYear->id,
                     'start_date' => '2026-06-01',
                     'end_date' => '2027-05-31',
                     'status' => 'active',
@@ -719,18 +793,31 @@ class GenericApiController extends Controller
                     ]
                 );
                 
+                $userId = intval($slot['teacherId']);
+                if ($userId > 0) {
+                    \DB::table('users')->insertOrIgnore([
+                        'id' => $userId,
+                        'name' => $slot['teacher'] ?? ('Teacher ' . $userId),
+                        'email' => 'teacher_' . $userId . '@krishnaveni.edu',
+                        'role' => 'staff',
+                        'password' => bcrypt('password'),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+                
                 // Store day_of_week directly (e.g., 'Monday', 'Tuesday')
                 $dayOfWeek = $slot['day'] ?? $slot['date'] ?? 'Monday';
                 
                 \App\Models\Timetable::create([
                     'batch_id' => $batch->id,
                     'subject_id' => $subject->id,
-                    'user_id' => intval($slot['teacherId']),
+                    'user_id' => $userId,
                     'classroom_id' => $classroom->id,
                     'time_slot_id' => $timeSlot->id,
                     'day_of_week' => $dayOfWeek,
                     'schedule_date' => '2026-06-01', // Keep for compatibility
-                    'academic_year_id' => 1,
+                    'academic_year_id' => $academicYear->id,
                 ]);
             }
             return response()->json(['success' => true], 201);
@@ -1077,7 +1164,18 @@ class GenericApiController extends Controller
         $data = array_intersect_key($data, array_flip($columns));
 
         $oldStatus = $item->status;
+
+        if ($resource === 'settings' && in_array($item->key, ['kts_student_attendance_records', 'kts_holidays', 'examinations_exams', 'kts_student_marks', 'examinations_schedules'])) {
+            $this->syncSettingToTables($item->key, $data['value'] ?? '');
+            $item->value = $data['value'] ?? '';
+            return response()->json($item);
+        }
+
         $item->update($data);
+
+        if ($resource === 'settings') {
+            $this->syncSettingToTables($item->key, $item->value);
+        }
 
         // Notification for leave status change
         if ($resource === 'leaves' && isset($data['status']) && $data['status'] !== $oldStatus) {
@@ -1147,5 +1245,283 @@ class GenericApiController extends Controller
         $item->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Intercept and synchronize specific JSON setting keys to their respected individual database tables.
+     */
+    private function syncSettingToTables($key, $valueStr)
+    {
+        try {
+            $data = json_decode($valueStr, true);
+            if (!is_array($data)) return;
+
+            // ── 1. HOLIDAYS Sync ───────────────────────────────────────────
+            if ($key === 'kts_holidays') {
+                \App\Models\Holiday::query()->delete();
+                foreach ($data as $item) {
+                    if (isset($item['name']) && isset($item['date'])) {
+                        \App\Models\Holiday::create([
+                            'name' => $item['name'],
+                            'date' => $item['date'],
+                        ]);
+                    }
+                }
+            }
+
+            // ── 2. ATTENDANCE Sync ─────────────────────────────────────────
+            if ($key === 'kts_student_attendance_records') {
+                \App\Models\Attendance::query()->delete();
+                
+                $academicYear = \App\Models\AcademicYear::where('is_current', true)->first() 
+                    ?? \App\Models\AcademicYear::first();
+                $academicYearId = $academicYear ? $academicYear->id : null;
+
+                $batchesCache = \App\Models\Batch::pluck('id', 'name')->toArray();
+                $studentsCache = \App\Models\Student::pluck('id', 'name')->toArray();
+
+                foreach ($data as $item) {
+                    if (!isset($item['studentName']) || !isset($item['date'])) continue;
+
+                    $studentId = null;
+                    if (isset($item['studentId']) && is_numeric($item['studentId'])) {
+                        $studentId = intval($item['studentId']);
+                    }
+                    if (!$studentId || !\App\Models\Student::where('id', $studentId)->exists()) {
+                        $studentId = $studentsCache[$item['studentName']] ?? null;
+                    }
+                    if (!$studentId) {
+                        $firstStudent = \App\Models\Student::first();
+                        $studentId = $firstStudent ? $firstStudent->id : 1;
+                    }
+
+                    $batchId = null;
+                    if (isset($item['className'])) {
+                        $batchId = $batchesCache[$item['className']] ?? null;
+                        if (!$batchId) {
+                            $batch = \App\Models\Batch::create([
+                                'name' => $item['className'],
+                                'course_id' => 1,
+                                'academic_year_id' => $academicYearId ?? 1,
+                                'start_date' => '2026-06-01',
+                                'end_date' => '2027-05-31',
+                            ]);
+                            $batchId = $batch->id;
+                            $batchesCache[$item['className']] = $batchId;
+                        }
+                    }
+                    if (!$batchId) {
+                        $firstBatch = \App\Models\Batch::first();
+                        $batchId = $firstBatch ? $firstBatch->id : 1;
+                    }
+
+                    $status = in_array(strtolower($item['status'] ?? ''), ['present', 'absent', 'late', 'excused']) 
+                        ? strtolower($item['status']) 
+                        : 'present';
+                    $markedBy = isset($item['markedById']) && is_numeric($item['markedById']) 
+                        ? intval($item['markedById']) 
+                        : 1;
+
+                    \App\Models\Attendance::create([
+                        'student_id' => $studentId,
+                        'batch_id' => $batchId,
+                        'status' => $status,
+                        'attendance_date' => $item['date'],
+                        'marked_by' => $markedBy,
+                        'marked_at' => $item['markedAt'] ?? now(),
+                        'academic_year_id' => $academicYearId,
+                    ]);
+                }
+            }
+
+            // ── 3. EXAMS & SCHEDULES Sync ──────────────────────────────────
+            if ($key === 'examinations_exams') {
+                \App\Models\Exam::query()->delete();
+                foreach ($data as $item) {
+                    if (isset($item['name'])) {
+                        \App\Models\Exam::create([
+                            'id' => intval($item['id']),
+                            'name' => $item['name'],
+                            'subject' => $item['subject'] ?? null,
+                            'class' => $item['class'] ?? null,
+                            'exam_date' => $item['date'] ?? null,
+                            'max_marks' => intval($item['maxMarks'] ?? 100),
+                            'status' => $item['status'] ?? 'Upcoming',
+                        ]);
+                    }
+                }
+            }
+
+            if ($key === 'kts_student_marks') {
+                \App\Models\Mark::query()->delete();
+                foreach ($data as $examId => $results) {
+                    if (!is_array($results)) continue;
+                    foreach ($results as $item) {
+                        if (isset($item['name'])) {
+                            \App\Models\Mark::create([
+                                'exam_id' => intval($examId),
+                                'student_name' => $item['name'],
+                                'roll' => $item['roll'] ?? null,
+                                'maths' => intval($item['maths'] ?? 0),
+                                'science' => intval($item['science'] ?? 0),
+                                'english' => intval($item['english'] ?? 0),
+                                'telugu' => intval($item['telugu'] ?? 0),
+                                'social' => intval($item['social'] ?? 0),
+                                'total' => intval($item['total'] ?? 0),
+                                'percentage' => doubleval($item['percentage'] ?? 0),
+                                'grade' => $item['grade'] ?? null,
+                                'rank' => intval($item['rank'] ?? 0),
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            if ($key === 'examinations_schedules') {
+                \App\Models\ExamSchedule::query()->delete();
+                foreach ($data as $examId => $classes) {
+                    if (!is_array($classes)) continue;
+                    foreach ($classes as $className => $dates) {
+                        if (!is_array($dates)) continue;
+                        foreach ($dates as $dateStr => $entries) {
+                            if (!is_array($entries)) continue;
+                            foreach ($entries as $entry) {
+                                if (isset($entry['subject'])) {
+                                    \App\Models\ExamSchedule::create([
+                                        'exam_id' => intval($examId),
+                                        'class_name' => $className,
+                                        'date_str' => $dateStr,
+                                        'subject' => $entry['subject'],
+                                        'time' => $entry['time'] ?? null,
+                                        'duration' => $entry['duration'] ?? null,
+                                        'max_marks' => intval($entry['maxMarks'] ?? 100),
+                                    ]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Settings sync to tables failed for key ' . $key . ': ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Dynamically construct settings values from the respected database tables.
+     */
+    private function constructSettingFromTables($key)
+    {
+        // ── 1. HOLIDAYS ──────────────────────────────────────────────────
+        if ($key === 'kts_holidays') {
+            $holidays = \App\Models\Holiday::all();
+            $mapped = [];
+            foreach ($holidays as $h) {
+                $mapped[] = [
+                    'date' => $h->date,
+                    'name' => $h->name,
+                    'description' => '',
+                    'color' => 'red',
+                ];
+            }
+            return json_encode($mapped);
+        }
+
+        // ── 2. ATTENDANCE ────────────────────────────────────────────────
+        if ($key === 'kts_student_attendance_records') {
+            $attendances = \App\Models\Attendance::with(['student', 'batch', 'markedBy'])->get();
+            $mapped = [];
+            foreach ($attendances as $a) {
+                $mapped[] = [
+                    'studentId' => (string)($a->student_id ?? ''),
+                    'studentName' => $a->student->name ?? 'Student',
+                    'roll' => $a->student->roll ?? '',
+                    'className' => $a->batch->name ?? '8A',
+                    'date' => $a->attendance_date ? (\Carbon\Carbon::parse($a->attendance_date)->toDateString()) : '',
+                    'session' => 'Morning',
+                    'status' => $a->status ?? 'present',
+                    'markedBy' => $a->markedBy->name ?? 'Teacher',
+                    'markedById' => (string)($a->marked_by ?? '1'),
+                    'markedAt' => $a->marked_at ? \Carbon\Carbon::parse($a->marked_at)->toDateTimeString() : null,
+                ];
+            }
+            return json_encode($mapped);
+        }
+
+        // ── 3. EXAMS ─────────────────────────────────────────────────────
+        if ($key === 'examinations_exams') {
+            $exams = \App\Models\Exam::all();
+            $mapped = [];
+            foreach ($exams as $e) {
+                $mapped[] = [
+                    'id' => (string)$e->id,
+                    'name' => $e->name,
+                    'subject' => $e->subject ?? 'All Subjects',
+                    'class' => $e->class ?? '8A',
+                    'date' => $e->exam_date,
+                    'maxMarks' => $e->max_marks,
+                    'status' => $e->status,
+                ];
+            }
+            return json_encode($mapped);
+        }
+
+        // ── 4. MARKS ─────────────────────────────────────────────────────
+        if ($key === 'kts_student_marks') {
+            $marks = \App\Models\Mark::all();
+            $mapped = [];
+            foreach ($marks as $m) {
+                $examId = (string)$m->exam_id;
+                if (!isset($mapped[$examId])) {
+                    $mapped[$examId] = [];
+                }
+                $mapped[$examId][] = [
+                    'name' => $m->student_name,
+                    'roll' => $m->roll,
+                    'maths' => $m->maths,
+                    'science' => $m->science,
+                    'english' => $m->english,
+                    'telugu' => $m->telugu,
+                    'social' => $m->social,
+                    'total' => $m->total,
+                    'percentage' => doubleval($m->percentage),
+                    'grade' => $m->grade,
+                    'rank' => $m->rank,
+                ];
+            }
+            return json_encode($mapped);
+        }
+
+        // ── 5. EXAM SCHEDULES ────────────────────────────────────────────
+        if ($key === 'examinations_schedules') {
+            $schedules = \App\Models\ExamSchedule::all();
+            $mapped = [];
+            foreach ($schedules as $s) {
+                $examId = (string)$s->exam_id;
+                $className = $s->class_name;
+                $dateStr = $s->date_str;
+
+                if (!isset($mapped[$examId])) {
+                    $mapped[$examId] = [];
+                }
+                if (!isset($mapped[$examId][$className])) {
+                    $mapped[$examId][$className] = [];
+                }
+                if (!isset($mapped[$examId][$className][$dateStr])) {
+                    $mapped[$examId][$className][$dateStr] = [];
+                }
+
+                $mapped[$examId][$className][$dateStr][] = [
+                    'subject' => $s->subject,
+                    'time' => $s->time,
+                    'duration' => $s->duration,
+                    'maxMarks' => $s->max_marks,
+                ];
+            }
+            return json_encode($mapped);
+        }
+
+        return null;
     }
 }

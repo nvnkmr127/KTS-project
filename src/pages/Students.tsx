@@ -328,7 +328,7 @@ export function Students() {
             try {
               const parsed = JSON.parse(res[0].value);
               setAttendanceRecords(parsed);
-              localStorage.setItem('kts_student_attendance_records', JSON.stringify(parsed));
+              (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
             } catch (e) {
               console.error('Error parsing kts_student_attendance_records:', e);
               const local = localStorage.getItem('kts_student_attendance_records');

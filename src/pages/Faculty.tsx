@@ -349,7 +349,7 @@ export function Faculty() {
         }
       }
       localStorage.setItem('kts_staff_members', JSON.stringify(currentStaffList));
-      saveSettingToDb('kts_staff_members', JSON.stringify(currentStaffList));
+      // Note: monkey-patch on localStorage.setItem automatically syncs to DB
 
       // Save credentials to kts_staff_access so it shows up in Staff Access tab
       const savedAccessStr = localStorage.getItem('kts_staff_access');
@@ -389,7 +389,7 @@ export function Faculty() {
           return true;
         });
         localStorage.setItem('kts_staff_members', JSON.stringify(filtered));
-        saveSettingToDb('kts_staff_members', JSON.stringify(filtered));
+        // Note: monkey-patch on localStorage.setItem automatically syncs to DB
       }
     } catch (err) {
       console.error('Error deleting faculty from localStorage:', err);

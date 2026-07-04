@@ -283,7 +283,7 @@ export function Leave() {
         if (Array.isArray(res) && res.length > 0 && res[0].value) {
           const parsed = JSON.parse(res[0].value);
           setHolidays(parsed);
-          localStorage.setItem('kts_holidays', JSON.stringify(parsed));
+          (localStorage as any).originalSetItem('kts_holidays', JSON.stringify(parsed));
         }
       } catch (err) {
         console.error('Error syncing holidays:', err);

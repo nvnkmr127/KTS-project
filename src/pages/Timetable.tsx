@@ -189,6 +189,7 @@ export function Timetable() {
           if (cell) {
             slots.push({
               subject: cell.subject,
+              teacher: cell.teacher,
               teacherId: cell.teacherId,
               room: cell.room,
               period: p,

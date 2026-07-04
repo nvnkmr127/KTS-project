@@ -552,7 +552,7 @@ export function Attendance() {
             try {
               const parsed = (res[0].value && JSON.parse(res[0].value)) || [];
               setAttendanceRecords(parsed);
-              localStorage.setItem('kts_student_attendance_records', JSON.stringify(parsed));
+              (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
             } catch (e) {
               console.error('Error parsing kts_student_attendance_records:', e);
               const local = localStorage.getItem('kts_student_attendance_records');
@@ -585,6 +585,31 @@ export function Attendance() {
       setAttendanceRecords([]);
     }
   }, [selectedStudent, view]);
+
+  // Listen to cross-tab updates to kts_student_attendance_records
+  useEffect(() => {
+    const handleStorageChange = async (e: StorageEvent) => {
+      if (e.key === 'kts_student_attendance_records' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setAttendanceRecords(parsed);
+          
+          // If we are currently viewing class details, reload percentages
+          if (view === 'class-details' && selectedBatch) {
+            const response = await api.getBatchStudentPercentages(selectedBatch.id);
+            if (response.success && response.data) {
+              setStudentsList(response.data.students || []);
+            }
+          }
+        } catch (err) {
+          console.error('Error parsing kts_student_attendance_records in storage event:', err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [view, selectedBatch]);
+
 
   // Reload student attendance when date changes
   useEffect(() => {

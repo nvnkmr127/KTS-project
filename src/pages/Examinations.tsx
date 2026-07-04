@@ -655,7 +655,7 @@ export function Examinations() {
           try {
             currentExams = JSON.parse(examsRes[0].value);
             setExams(currentExams);
-            localStorage.setItem('examinations_exams', JSON.stringify(currentExams));
+            (localStorage as any).originalSetItem('examinations_exams', JSON.stringify(currentExams));
           } catch (e) {
             console.error('Error parsing examinations_exams setting:', e);
           }
@@ -670,7 +670,7 @@ export function Examinations() {
           try {
             currentSchedules = JSON.parse(schedulesRes[0].value);
             setSchedules(currentSchedules);
-            localStorage.setItem('examinations_schedules', JSON.stringify(currentSchedules));
+            (localStorage as any).originalSetItem('examinations_schedules', JSON.stringify(currentSchedules));
           } catch (e) {
             console.error('Error parsing examinations_schedules setting:', e);
           }
@@ -685,7 +685,7 @@ export function Examinations() {
           try {
             currentInvigilations = JSON.parse(invigilationsRes[0].value);
             setInvigilations(currentInvigilations);
-            localStorage.setItem('kts_exam_invigilations', JSON.stringify(currentInvigilations));
+            (localStorage as any).originalSetItem('kts_exam_invigilations', JSON.stringify(currentInvigilations));
           } catch (e) {
             console.error('Error parsing kts_exam_invigilations setting:', e);
           }
@@ -700,7 +700,7 @@ export function Examinations() {
           try {
             const parsed = JSON.parse(marksRes[0].value);
             setStudentMarks(parsed);
-            localStorage.setItem('kts_student_marks', JSON.stringify(parsed));
+            (localStorage as any).originalSetItem('kts_student_marks', JSON.stringify(parsed));
           } catch (e) {
             console.error('Error parsing kts_student_marks setting:', e);
           }
@@ -736,6 +736,29 @@ export function Examinations() {
     loadStudents();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Listen to cross-tab updates to examinations, schedules, marks, and invigilations
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (!e.newValue) return;
+      try {
+        if (e.key === 'examinations_exams') {
+          setExams(JSON.parse(e.newValue));
+        } else if (e.key === 'examinations_schedules') {
+          setSchedules(JSON.parse(e.newValue));
+        } else if (e.key === 'kts_exam_invigilations') {
+          setInvigilations(JSON.parse(e.newValue));
+        } else if (e.key === 'kts_student_marks') {
+          setStudentMarks(JSON.parse(e.newValue));
+        }
+      } catch (err) {
+        console.error('Error parsing storage change in Examinations:', err);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
 
   // Initialize and validate filter selections
   useEffect(() => {

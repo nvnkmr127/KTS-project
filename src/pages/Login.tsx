@@ -29,11 +29,11 @@ export function Login() {
         const logoSet = data.find((s: any) => s.key === 'school_logo');
         if (nameSet?.value) {
           setSchoolName(nameSet.value);
-          localStorage.setItem('school_name', nameSet.value);
+          (localStorage as any).originalSetItem('school_name', nameSet.value);
         }
         if (logoSet?.value) {
           setSchoolLogo(logoSet.value);
-          localStorage.setItem('school_logo', logoSet.value);
+          (localStorage as any).originalSetItem('school_logo', logoSet.value);
         }
       }
     }).catch(err => console.warn('Could not load login settings:', err));

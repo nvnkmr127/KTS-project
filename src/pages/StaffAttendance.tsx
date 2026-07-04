@@ -175,7 +175,7 @@ export function StaffAttendance() {
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         
         if ((!savedStaff || savedStaff === '[]') && staffSetting && staffSetting.value) {
-          localStorage.setItem('kts_staff_members', staffSetting.value);
+          (localStorage as any).originalSetItem('kts_staff_members', staffSetting.value);
           currentStaffList = JSON.parse(staffSetting.value);
           setStaffList(currentStaffList);
         } else {
@@ -193,7 +193,7 @@ export function StaffAttendance() {
         let loadedPunches: LocalPunch[] = [];
 
         if (attendanceSetting && attendanceSetting.value) {
-          localStorage.setItem('kts_staff_attendance', attendanceSetting.value);
+          (localStorage as any).originalSetItem('kts_staff_attendance', attendanceSetting.value);
           loadedAttendance = JSON.parse(attendanceSetting.value);
         } else {
           const savedAtt = localStorage.getItem('kts_staff_attendance');
@@ -201,7 +201,7 @@ export function StaffAttendance() {
         }
 
         if (punchesSetting && punchesSetting.value) {
-          localStorage.setItem('kts_biometric_punches', punchesSetting.value);
+          (localStorage as any).originalSetItem('kts_biometric_punches', punchesSetting.value);
           loadedPunches = JSON.parse(punchesSetting.value);
         } else {
           const savedPunches = localStorage.getItem('kts_biometric_punches');
@@ -226,6 +226,29 @@ export function StaffAttendance() {
         if (parsedPunches) setLocalPunches(parsedPunches);
       });
   }, []);
+
+  // Listen to cross-tab updates to kts_staff_members, kts_staff_attendance, kts_biometric_punches, and kts_staff_attendance_mode
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (!e.newValue) return;
+      try {
+        if (e.key === 'kts_staff_members') {
+          setStaffList(JSON.parse(e.newValue));
+        } else if (e.key === 'kts_staff_attendance') {
+          setManualAttendance(JSON.parse(e.newValue));
+        } else if (e.key === 'kts_biometric_punches') {
+          setLocalPunches(JSON.parse(e.newValue));
+        } else if (e.key === 'kts_staff_attendance_mode') {
+          setAttendanceMode(e.newValue as 'biometric' | 'manual');
+        }
+      } catch (err) {
+        console.error('Error parsing storage change in StaffAttendance:', err);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
 
   // Check biometric status on mount
   useEffect(() => {

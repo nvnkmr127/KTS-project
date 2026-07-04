@@ -74,7 +74,7 @@ export function StaffManagement() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
           if (staffSetting && staffSetting.value) {
-            localStorage.setItem('kts_staff_members', staffSetting.value);
+            (localStorage as any).originalSetItem('kts_staff_members', staffSetting.value);
             setStaffList(JSON.parse(staffSetting.value));
           } else {
             const current = STAFF;
@@ -88,6 +88,22 @@ export function StaffManagement() {
     }
     syncFromDb();
   }, []);
+
+  // Listen to cross-tab updates to kts_staff_members
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'kts_staff_members' && e.newValue) {
+        try {
+          setStaffList(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error('Error parsing kts_staff_members in storage event:', err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
 
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -384,7 +400,7 @@ export function StaffManagement() {
 
   useEffect(() => {
     localStorage.setItem('kts_staff_members', JSON.stringify(staffList));
-    saveSettingToDb('kts_staff_members', JSON.stringify(staffList));
+    // Note: monkey-patch on localStorage.setItem automatically syncs to DB
   }, [staffList]);
 
   useEffect(() => {

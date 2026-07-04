@@ -292,8 +292,7 @@ export const api = {
       const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
       if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        storage.setItem('kts_student_attendance_records', settingsRes[0].value as any as any);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (localStorage as any).originalSetItem('kts_student_attendance_records', settingsRes[0].value);
       }
     } catch (err) {
       console.error('Failed to sync kts_student_attendance_records setting:', err);
@@ -431,8 +430,7 @@ export const api = {
       const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
       if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        storage.setItem('kts_student_attendance_records', settingsRes[0].value as any as any);
+        (localStorage as any).originalSetItem('kts_student_attendance_records', settingsRes[0].value);
       }
     } catch (err) {
       console.error('Failed to sync kts_student_attendance_records setting today:', err);
