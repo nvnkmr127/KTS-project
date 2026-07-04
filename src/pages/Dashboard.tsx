@@ -295,7 +295,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             {loadingStats ? (
               <div className="h-full flex items-center justify-center">Loading...</div>
             ) : data ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <BarChart data={data.weeklyAttendance} barSize={28} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="var(--b)" />
                   <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
@@ -314,7 +314,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             {loadingStats ? (
               <div className="h-full flex items-center justify-center">Loading...</div>
             ) : data ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={data.feeStatus}
@@ -356,7 +356,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             {loadingStats ? (
               <div className="h-full flex items-center justify-center">Loading...</div>
             ) : data ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <LineChart data={data.feeTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="var(--b)" />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />

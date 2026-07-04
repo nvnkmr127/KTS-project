@@ -730,10 +730,18 @@ class GenericApiController extends Controller
             }
             if (isset($data['subject'])) {
                 $subjectName = $data['subject'];
+                $code = strtoupper(substr($subjectName, 0, 3));
+                $originalCode = $code;
+                $counter = 1;
+                while (\App\Models\Subject::where('code', $code)->where('name', '!=', $subjectName)->exists()) {
+                    $code = substr($originalCode, 0, 2) . $counter; // Keep it short, e.g. BU1, BU2
+                    $counter++;
+                }
+                
                 $subjectRecord = \App\Models\Subject::firstOrCreate([
                     'name' => $subjectName,
                 ], [
-                    'code' => strtoupper(substr($subjectName, 0, 3)),
+                    'code' => $code,
                 ]);
                 $request->merge(['subject_id_to_attach' => $subjectRecord->id]);
             }

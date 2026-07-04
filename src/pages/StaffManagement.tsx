@@ -510,10 +510,10 @@ export function StaffManagement() {
   const filtered = staffListWithAttendance.filter((s) => {
     if (s.status === 'Resigned') return false; // Hidden in recycle bin
     const matchSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.designation.toLowerCase().includes(search.toLowerCase()) ||
-      s.department.toLowerCase().includes(search.toLowerCase()) ||
-      s.category.toLowerCase().includes(search.toLowerCase());
+      (s.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (s.designation || '').toLowerCase().includes(search.toLowerCase()) ||
+      (s.department || '').toLowerCase().includes(search.toLowerCase()) ||
+      (s.category || '').toLowerCase().includes(search.toLowerCase());
     const matchDept = deptFilter === 'All' || s.department === deptFilter;
     const matchCat = catFilter === 'All' || s.category === catFilter;
     const matchStatus = statusFilter === 'All' || s.status === statusFilter;
@@ -529,11 +529,11 @@ export function StaffManagement() {
     let valB: any = b[sortField];
 
     if (sortField === 'name') {
-      valA = a.name.toLowerCase();
-      valB = b.name.toLowerCase();
+      valA = (a.name || '').toLowerCase();
+      valB = (b.name || '').toLowerCase();
     } else if (sortField === 'department') {
-      valA = a.department.toLowerCase();
-      valB = b.department.toLowerCase();
+      valA = (a.department || '').toLowerCase();
+      valB = (b.department || '').toLowerCase();
     } else if (sortField === 'join_date') {
       valA = new Date(a.join_date).getTime();
       valB = new Date(b.join_date).getTime();
@@ -541,8 +541,8 @@ export function StaffManagement() {
       valA = a.attendance_percentage;
       valB = b.attendance_percentage;
     } else if (sortField === 'status') {
-      valA = a.status.toLowerCase();
-      valB = b.status.toLowerCase();
+      valA = (a.status || '').toLowerCase();
+      valB = (b.status || '').toLowerCase();
     }
 
     if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
@@ -624,7 +624,7 @@ export function StaffManagement() {
         category: categoryVal || 'Teaching',
         subject: subjectVal,
         phone: phoneVal,
-        email: emailVal || `${nameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}@krishnaveni.edu`,
+        email: emailVal || `${(nameVal || '').toLowerCase().replace(/[^a-z0-9]/g, '')}@krishnaveni.edu`,
         join_date: joinDateVal || new Date().toISOString().slice(0, 10),
         attendance_percentage: 100,
         status: 'Active',

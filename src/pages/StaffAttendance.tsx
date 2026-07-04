@@ -139,7 +139,7 @@ export function StaffAttendance() {
   // Load staff members, attendance, and biometric punches from DB settings / localStorage
   useEffect(() => {
     api.getResources('settings')
-      .then((settings) => {
+      .then(async (settings) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         // Load timings configurations
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -169,18 +169,20 @@ export function StaffAttendance() {
         setEarlyEntryCutoff(eCutE);
 
         // 1. Staff Members
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let currentStaffList = STAFF;
-        const savedStaff = localStorage.getItem('kts_staff_members');
-        const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
-        
-        if ((!savedStaff || savedStaff === '[]') && staffSetting && staffSetting.value) {
-          (localStorage as any).originalSetItem('kts_staff_members', staffSetting.value);
-          currentStaffList = JSON.parse(staffSetting.value);
+        try {
+          const facultyList = await api.getResources('faculty');
+          let currentStaffList = STAFF;
+          if (facultyList && facultyList.length > 0) {
+            currentStaffList = facultyList.map((s: any) => ({
+              ...s,
+              documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
+              status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
+              salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
+            }));
+          }
           setStaffList(currentStaffList);
-        } else {
-          currentStaffList = (savedStaff && JSON.parse(savedStaff)) || STAFF;
-          setStaffList(currentStaffList);
+        } catch (e) {
+          console.error('Failed to fetch faculty list in StaffAttendance', e);
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -214,8 +216,7 @@ export function StaffAttendance() {
       .catch((err) => {
         console.error('Error syncing data from DB in StaffAttendance:', err);
         // Fallback to localStorage if API fails
-        const savedStaff = localStorage.getItem('kts_staff_members');
-        setStaffList((savedStaff && JSON.parse(savedStaff)) || STAFF);
+        // Not falling back to localStorage for staff members since we use the database API now
         
         const savedAtt = localStorage.getItem('kts_staff_attendance');
         const parsedAtt = savedAtt && JSON.parse(savedAtt);
@@ -232,9 +233,8 @@ export function StaffAttendance() {
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.newValue) return;
       try {
-        if (e.key === 'kts_staff_members') {
-          setStaffList(JSON.parse(e.newValue));
-        } else if (e.key === 'kts_staff_attendance') {
+        // Staff members are now loaded from the database directly
+        if (e.key === 'kts_staff_attendance') {
           setManualAttendance(JSON.parse(e.newValue));
         } else if (e.key === 'kts_biometric_punches') {
           setLocalPunches(JSON.parse(e.newValue));
@@ -454,7 +454,11 @@ export function StaffAttendance() {
         }
       })
       .catch((err) => {
-        console.error('Error syncing biometric raw punches:', err);
+        if (err?.message && err.message.includes('Biometric credentials not configured')) {
+          // Silently ignore to avoid console spam
+        } else {
+          console.error('Error syncing biometric raw punches:', err);
+        }
       })
       .finally(() => {
         syncPunchesInProgress.current = false;
