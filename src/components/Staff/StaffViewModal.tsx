@@ -132,13 +132,13 @@ export function StaffViewModal({
                         { label: 'Biometric Employee Code', value: modal.staff.biometric_employee_code || 'Not Mapped' },
                         { label: 'Subject / Assigned Route', value: modal.staff.subject ?? 'N/A' },
                         { label: 'Join Date', value: (() => {
-                          const parts = (modal.staff.joinDate || '').split('-');
+                          const parts = (modal.staff.join_date || '').split('-');
                           if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-                          return modal.staff.joinDate;
+                          return modal.staff.join_date;
                         })() },
                         { label: 'Phone', value: modal.staff.phone },
                         { label: 'Email', value: modal.staff.email },
-                        { label: 'Attendance Average', value: `${modal.staff.attendance}%` },
+                        { label: 'Attendance Average', value: `${modal.staff.attendance_percentage}%` },
                         { label: 'Monthly Salary', value: `₹${modal.staff.salary?.toLocaleString()}` },
                         { label: 'Qualifications', value: modal.staff.qualifications || 'N/A' },
                       ].map((item) => (

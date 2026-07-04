@@ -41,6 +41,13 @@ class User extends Authenticatable
         'department',
         'employee_id',
         'biometric_employee_code',
+        'designation',
+        'category',
+        'join_date',
+        'salary',
+        'qualifications',
+        'documents',
+        'attendance_percentage',
     ];
 
     /**
@@ -63,6 +70,10 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'documents' => 'array',
+            'join_date' => 'date',
+            'salary' => 'decimal:2',
+            'attendance_percentage' => 'integer',
         ];
     }
 

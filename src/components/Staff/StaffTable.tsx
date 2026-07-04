@@ -61,11 +61,11 @@ export function StaffTable({ loading, sortedFiltered, selectedIds, setSelectedId
                       Department {sortField === 'department' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
                     </th>
                     <th className="hidden md:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Contact</th>
-                    <th onClick={() => handleSort('joinDate')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
-                      Join Date {sortField === 'joinDate' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    <th onClick={() => handleSort('join_date')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Join Date {sortField === 'join_date' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
                     </th>
-                    <th onClick={() => handleSort('attendance')} className="hidden lg:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
-                      Attendance {sortField === 'attendance' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    <th onClick={() => handleSort('attendance_percentage')} className="hidden lg:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Attendance {sortField === 'attendance_percentage' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
                     </th>
                     <th onClick={() => handleSort('status')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
                       Status {sortField === 'status' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
@@ -132,16 +132,16 @@ export function StaffTable({ loading, sortedFiltered, selectedIds, setSelectedId
                             <div className="flex items-center gap-1 text-[var(--tx2)]"><Phone size={10} />{s.phone}</div>
                             <div className="flex items-center gap-1 text-[10.5px] text-[var(--tx3)]"><Mail size={9} />{s.email}</div>
                           </td>
-                          <td className="hidden sm:table-cell px-2 py-2.5 text-[var(--tx2)]">
-                            {(() => {
-                              const parts = (s.joinDate || '').split('-');
-                              if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-                              return s.joinDate;
-                            })()}
-                          </td>
-                          <td className="hidden lg:table-cell px-2 py-2.5">
-                            <span className={`font-semibold ${s.attendance >= 90 ? 'text-[var(--teal-tx)]' : 'text-[var(--amber-tx)]'}`}>{s.attendance}%</span>
-                          </td>
+                            <td className="hidden sm:table-cell px-2 py-3 text-[11.5px] text-[var(--tx2)] whitespace-nowrap">
+                              {(() => {
+                                const parts = (s.join_date || '').split('-');
+                                if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                return s.join_date;
+                              })()}
+                            </td>
+                            <td className="hidden lg:table-cell px-2 py-3 text-[11.5px]">
+                              <span className={`font-semibold ${s.attendance_percentage >= 90 ? 'text-[var(--teal-tx)]' : 'text-[var(--amber-tx)]'}`}>{s.attendance_percentage}%</span>
+                            </td>
                           <td className="px-2 py-2.5">
                             {s.status === 'Active' && <Badge variant="teal">Active</Badge>}
                             {s.status === 'On Leave' && <Badge variant="amber">On Leave</Badge>}

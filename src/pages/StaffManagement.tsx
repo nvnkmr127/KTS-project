@@ -24,8 +24,8 @@ export interface StaffMember {
   subject?: string;
   phone: string;
   email: string;
-  joinDate: string;
-  attendance: number;
+  join_date: string;
+  attendance_percentage: number;
   status: 'Active' | 'On Leave' | 'Resigned';
   salary: number;
   qualifications: string;
@@ -35,12 +35,12 @@ export interface StaffMember {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const STAFF: StaffMember[] = [
-  { id: '3', name: 'Mrs. Lakshmi Devi', designation: 'Senior Teacher', department: 'Mathematics', category: 'Teaching', subject: 'Maths', phone: '9876501234', email: 'teacher@krishnaveni.edu', joinDate: '2015-06-01', attendance: 96, status: 'Active', salary: 35000, qualifications: 'M.Sc Mathematics, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-  { id: '4', name: 'Mr. R. K. Prasad', designation: 'Teacher', department: 'Science', category: 'Teaching', subject: 'Physics, Chemistry', phone: '9876502345', email: 'prasad@krishnaveni.edu', joinDate: '2017-06-01', attendance: 92, status: 'Active', salary: 40000, qualifications: 'M.Sc Physics, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-  { id: '5', name: 'Ms. S. Anitha', designation: 'Teacher', department: 'English', category: 'Teaching', subject: 'English', phone: '9876503456', email: 'anitha@krishnaveni.edu', joinDate: '2018-06-01', attendance: 88, status: 'Active', salary: 30000, qualifications: 'MA English, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-  { id: '6', name: 'Mr. V. Suresh', designation: 'Teacher', department: 'Social Sciences', category: 'Teaching', subject: 'History, Geography', phone: '9876505678', email: 'suresh@krishnaveni.edu', joinDate: '2019-06-01', attendance: 90, status: 'Active', salary: 32500, qualifications: 'MA B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-  { id: '7', name: 'Madhuteja Javvaji', designation: 'Teacher', department: 'English', category: 'Teaching', subject: 'Academics', phone: '9876507890', email: 'javvajimadhuteja2000@gmail.com', joinDate: '2021-06-01', attendance: 95, status: 'Active', salary: 30000, qualifications: 'B.Sc', documents: ['Aadhar Card', 'Degree Certificate'] },
-  { id: '8', name: 'pavan kumar', designation: 'Teacher', department: 'Mathematics', category: 'Teaching', subject: 'Maths', phone: '9876506789', email: 'pavan@gmail.com', joinDate: '2020-06-01', attendance: 98, status: 'Active', salary: 45000, qualifications: 'B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '3', name: 'Mrs. Lakshmi Devi', designation: 'Senior Teacher', department: 'Mathematics', category: 'Teaching', subject: 'Maths', phone: '9876501234', email: 'teacher@krishnaveni.edu', join_date: '2015-06-01', attendance_percentage: 96, status: 'Active', salary: 35000, qualifications: 'M.Sc Mathematics, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '4', name: 'Mr. R. K. Prasad', designation: 'Teacher', department: 'Science', category: 'Teaching', subject: 'Physics, Chemistry', phone: '9876502345', email: 'prasad@krishnaveni.edu', join_date: '2017-06-01', attendance_percentage: 92, status: 'Active', salary: 40000, qualifications: 'M.Sc Physics, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '5', name: 'Ms. S. Anitha', designation: 'Teacher', department: 'English', category: 'Teaching', subject: 'English', phone: '9876503456', email: 'anitha@krishnaveni.edu', join_date: '2018-06-01', attendance_percentage: 88, status: 'Active', salary: 30000, qualifications: 'MA English, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '6', name: 'Mr. V. Suresh', designation: 'Teacher', department: 'Social Sciences', category: 'Teaching', subject: 'History, Geography', phone: '9876505678', email: 'suresh@krishnaveni.edu', join_date: '2019-06-01', attendance_percentage: 90, status: 'Active', salary: 32500, qualifications: 'MA B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
+  { id: '7', name: 'Madhuteja Javvaji', designation: 'Teacher', department: 'English', category: 'Teaching', subject: 'Academics', phone: '9876507890', email: 'javvajimadhuteja2000@gmail.com', join_date: '2021-06-01', attendance_percentage: 95, status: 'Active', salary: 30000, qualifications: 'B.Sc', documents: ['Aadhar Card', 'Degree Certificate'] },
+  { id: '8', name: 'pavan kumar', designation: 'Teacher', department: 'Mathematics', category: 'Teaching', subject: 'Maths', phone: '9876506789', email: 'pavan@gmail.com', join_date: '2020-06-01', attendance_percentage: 98, status: 'Active', salary: 45000, qualifications: 'B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
 ];
 
   // eslint-disable-next-line unused-imports/no-unused-vars
@@ -67,42 +67,27 @@ export function StaffManagement() {
   useEffect(() => {
     async function syncFromDb() {
       try {
-        const saved = localStorage.getItem('kts_staff_members');
-        // Only fetch from backend if local storage is empty
-        if (!saved || saved === '[]') {
-          const settings = await api.getResources('settings');
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
-          if (staffSetting && staffSetting.value) {
-            (localStorage as any).originalSetItem('kts_staff_members', staffSetting.value);
-            setStaffList(JSON.parse(staffSetting.value));
-          } else {
-            const current = STAFF;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            saveSettingToDb('kts_staff_members', JSON.stringify(current));
-          }
+        const staffData = await api.getResources('faculty');
+        if (staffData && staffData.length > 0) {
+          // Normalize documents array and status capitalization
+          const normalizedStaff = staffData.map((s: any) => ({
+            ...s,
+            documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
+            status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
+            salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
+          }));
+          setStaffList(normalizedStaff);
+        } else {
+          setStaffList([]);
         }
       } catch (err) {
-        console.error('Error syncing staff list from DB in StaffManagement:', err);
+        console.error('Error fetching staff list from DB in StaffManagement:', err);
       }
     }
     syncFromDb();
   }, []);
 
-  // Listen to cross-tab updates to kts_staff_members
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'kts_staff_members' && e.newValue) {
-        try {
-          setStaffList(JSON.parse(e.newValue));
-        } catch (err) {
-          console.error('Error parsing kts_staff_members in storage event:', err);
-        }
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+
 
 
   const [search, setSearch] = useState('');
@@ -111,7 +96,7 @@ export function StaffManagement() {
   const [modal, setModal] = useState<ModalState>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [sortField, setSortField] = useState<'name' | 'department' | 'joinDate' | 'attendance' | 'status' | ''>('');
+  const [sortField, setSortField] = useState<'name' | 'department' | 'join_date' | 'attendance_percentage' | 'status' | ''>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -121,7 +106,7 @@ export function StaffManagement() {
   // eslint-disable-next-line unused-imports/no-unused-vars
   const [error] = useState<string | null>(null);
 
-  const handleSort = (field: 'name' | 'department' | 'joinDate' | 'attendance' | 'status') => {
+  const handleSort = (field: 'name' | 'department' | 'join_date' | 'attendance_percentage' | 'status') => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
@@ -144,17 +129,29 @@ export function StaffManagement() {
     setBulkDeleteConfirmOpen(true);
   };
 
-  const executeBulkDelete = () => {
-    setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: 'Resigned' } : s));
-    setSelectedIds([]);
-    setBulkDeleteConfirmOpen(false);
+  const executeBulkDelete = async () => {
+    try {
+      // In a real app, you'd have a bulk delete endpoint or map promises.
+      // For now, we update local state assuming it works, or map API calls:
+      await Promise.all(selectedIds.map(id => api.deleteResource('faculty', id)));
+      setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: 'Resigned' } : s));
+      setSelectedIds([]);
+      setBulkDeleteConfirmOpen(false);
+    } catch (err) {
+      console.error('Bulk delete failed', err);
+    }
   };
 
-  const executeBulkStatusChange = () => {
+  const executeBulkStatusChange = async () => {
     if (!bulkStatusConfirmOpen) return;
-    setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: bulkStatusConfirmOpen } : s));
-    setSelectedIds([]);
-    setBulkStatusConfirmOpen(null);
+    try {
+      await Promise.all(selectedIds.map(id => api.updateResource('faculty', id, { status: bulkStatusConfirmOpen })));
+      setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: bulkStatusConfirmOpen } : s));
+      setSelectedIds([]);
+      setBulkStatusConfirmOpen(null);
+    } catch (err) {
+      console.error('Bulk status update failed', err);
+    }
   };
 
   const exportToExcel = () => {
@@ -167,9 +164,9 @@ export function StaffManagement() {
       'Phone': s.phone,
       'Email': s.email,
       'Join Date': (() => {
-        const parts = (s.joinDate || '').split('-');
+        const parts = (s.join_date || '').split('-');
         if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        return s.joinDate;
+        return s.join_date;
       })(),
       'Salary': s.salary,
       'Qualifications': s.qualifications,
@@ -382,26 +379,7 @@ export function StaffManagement() {
   };
 
 
-  const saveSettingToDb = async (key: string, value: string) => {
-    try {
-      const settings = await api.getResources('settings');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const existing = settings.find((s: any) => s.key === key);
-      if (existing) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await api.updateResource('settings', existing.id, { key, value });
-      } else {
-        await api.createResource('settings', { key, value, group: 'general', type: 'json', is_public: false, is_encrypted: false });
-      }
-    } catch (err) {
-      console.error(`Error saving setting ${key} to DB:`, err);
-    }
-  };
 
-  useEffect(() => {
-    localStorage.setItem('kts_staff_members', JSON.stringify(staffList));
-    // Note: monkey-patch on localStorage.setItem automatically syncs to DB
-  }, [staffList]);
 
   useEffect(() => {
     if (modal && modal.staff) {
@@ -438,7 +416,7 @@ export function StaffManagement() {
     });
 
     // Filter out dates before the employee's join date or in the future
-    const joinTime = new Date(staff.joinDate).getTime();
+    const joinTime = new Date(staff.join_date || new Date()).getTime();
     const dates = Array.from(recordedDates).filter(d => {
       const dateTime = new Date(d).getTime();
       return !isNaN(dateTime) && dateTime >= joinTime && d <= new Date().toISOString().slice(0, 10);
@@ -446,7 +424,7 @@ export function StaffManagement() {
 
     if (dates.length === 0) {
       // If no attendance records exist in the system yet, fall back to the mock/default percentage
-      return staff.attendance || 100;
+      return staff.attendance_percentage || 100;
     }
 
     let presentDays = 0;
@@ -520,13 +498,13 @@ export function StaffManagement() {
       }
     });
 
-    if (totalDays === 0) return staff.attendance || 100;
+    if (totalDays === 0) return staff.attendance_percentage || 100;
     return Math.round((presentDays / totalDays) * 100);
   };
 
   const staffListWithAttendance = staffList.map(s => ({
     ...s,
-    attendance: getStaffAttendancePercentage(s)
+    attendance_percentage: getStaffAttendancePercentage(s)
   }));
 
   const filtered = staffListWithAttendance.filter((s) => {
@@ -556,12 +534,12 @@ export function StaffManagement() {
     } else if (sortField === 'department') {
       valA = a.department.toLowerCase();
       valB = b.department.toLowerCase();
-    } else if (sortField === 'joinDate') {
-      valA = new Date(a.joinDate).getTime();
-      valB = new Date(b.joinDate).getTime();
-    } else if (sortField === 'attendance') {
-      valA = a.attendance;
-      valB = b.attendance;
+    } else if (sortField === 'join_date') {
+      valA = new Date(a.join_date).getTime();
+      valB = new Date(b.join_date).getTime();
+    } else if (sortField === 'attendance_percentage') {
+      valA = a.attendance_percentage;
+      valB = b.attendance_percentage;
     } else if (sortField === 'status') {
       valA = a.status.toLowerCase();
       valB = b.status.toLowerCase();
@@ -628,8 +606,7 @@ export function StaffManagement() {
     }
 
     if (modal?.type === 'add') {
-      const newStaff: StaffMember = {
-        id: staffId,
+      const newStaff = {
         name: nameVal,
         designation: designationVal,
         department: departmentVal,
@@ -637,18 +614,29 @@ export function StaffManagement() {
         subject: subjectVal,
         phone: phoneVal,
         email: emailVal || `${nameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}@krishnaveni.edu`,
-        joinDate: joinDateVal || new Date().toISOString().slice(0, 10),
-        attendance: 100,
+        join_date: joinDateVal || new Date().toISOString().slice(0, 10),
+        attendance_percentage: 100,
         status: 'Active',
         salary: salaryVal,
         qualifications: qualificationsVal,
         documents: documentsVal,
         biometric_employee_code: biometricCodeVal,
       };
-      setStaffList(prev => [newStaff, ...prev]);
+      
+      try {
+        const res = await api.createResource('faculty', newStaff);
+        setStaffList(prev => [{
+          ...res,
+          documents: typeof res.documents === 'string' ? JSON.parse(res.documents) : (res.documents || []),
+          status: res.status ? res.status.charAt(0).toUpperCase() + res.status.slice(1) : 'Active',
+          salary: typeof res.salary === 'string' ? parseFloat(res.salary) : res.salary
+        }, ...prev]);
+      } catch (err) {
+        console.error('Failed to create staff', err);
+      }
+      
     } else if (modal?.type === 'edit' && modal.staff) {
-      setStaffList(prev => prev.map(s => s.id === staffId ? {
-        ...s,
+      const updatedStaff = {
         name: nameVal,
         designation: designationVal,
         department: departmentVal,
@@ -656,12 +644,24 @@ export function StaffManagement() {
         subject: subjectVal,
         phone: phoneVal,
         email: emailVal,
-        joinDate: joinDateVal,
+        join_date: joinDateVal,
         salary: salaryVal,
         qualifications: qualificationsVal,
         documents: documentsVal,
         biometric_employee_code: biometricCodeVal,
-      } : s));
+      };
+
+      try {
+        const res = await api.updateResource('faculty', staffId, updatedStaff);
+        setStaffList(prev => prev.map(s => s.id === staffId ? {
+          ...res,
+          documents: typeof res.documents === 'string' ? JSON.parse(res.documents) : (res.documents || []),
+          status: res.status ? res.status.charAt(0).toUpperCase() + res.status.slice(1) : 'Active',
+          salary: typeof res.salary === 'string' ? parseFloat(res.salary) : res.salary
+        } : s));
+      } catch (err) {
+        console.error('Failed to update staff', err);
+      }
     }
     setModal(null);
   };
@@ -670,10 +670,15 @@ export function StaffManagement() {
     setDeleteConfirmId(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!deleteConfirmId) return;
-    setStaffList(prev => prev.map(s => s.id === deleteConfirmId ? { ...s, status: 'Resigned' as const } : s));
-    setDeleteConfirmId(null);
+    try {
+      await api.deleteResource('faculty', deleteConfirmId);
+      setStaffList(prev => prev.map(s => s.id === deleteConfirmId ? { ...s, status: 'Resigned' as const } : s));
+      setDeleteConfirmId(null);
+    } catch (err) {
+      console.error('Failed to delete staff', err);
+    }
   };
 
   const allCategories = Array.from(new Set(staffList.map(s => s.category || 'Teaching')));

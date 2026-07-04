@@ -18,7 +18,7 @@ const STAFF_SYNONYMS: Record<string, string[]> = {
   subject: ['subject', 'subjects', 'subject(s)', 'specialization'],
   phone: ['mobile number', 'mobile', 'phone', 'phone number', 'contact', 'mobile_no', 'phone_no'],
   email: ['email', 'email address', 'email_address', 'mail'],
-  joinDate: ['join date', 'joining date', 'join_date', 'date of joining', 'doj'],
+  join_date: ['join date', 'joining date', 'join_date', 'date of joining', 'doj'],
   salary: ['salary', 'monthly salary', 'monthly_salary', 'pay', 'basic salary'],
   qualifications: ['qualifications', 'qualification', 'degree', 'education']
 };
@@ -78,7 +78,7 @@ const validateStaff = (s: StaffMember) => {
   if (!s.designation.trim()) errors.push('Designation is required');
   if (!s.department.trim()) errors.push('Department is required');
   if (!s.phone.trim()) errors.push('Phone number is required');
-  if (!s.joinDate || !/^\d{4}-\d{2}-\d{2}$/.test(s.joinDate)) errors.push('Valid Join Date required (YYYY-MM-DD)');
+  if (!s.join_date || !/^\d{4}-\d{2}-\d{2}$/.test(s.join_date)) errors.push('Valid Join Date required (YYYY-MM-DD)');
   if (isNaN(s.salary) || s.salary <= 0) errors.push('Salary must be a positive number');
   return errors;
 };
@@ -278,7 +278,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
           const rawSubject = colMap.subject !== undefined ? row[colMap.subject] : '';
           const rawPhone = colMap.phone !== undefined ? row[colMap.phone] : '';
           const rawEmail = colMap.email !== undefined ? row[colMap.email] : '';
-          const rawJoinDate = colMap.joinDate !== undefined ? row[colMap.joinDate] : '';
+          const rawJoinDate = colMap.join_date !== undefined ? row[colMap.join_date] : '';
           const rawSalary = colMap.salary !== undefined ? row[colMap.salary] : 0;
           const rawQualifications = colMap.qualifications !== undefined ? row[colMap.qualifications] : '';
 
@@ -292,8 +292,8 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
             subject: rawSubject ? String(rawSubject).trim() : '',
             phone: rawPhone ? String(rawPhone).trim() : 'N/A',
             email: rawEmail ? String(rawEmail).trim() : `${nameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}@krishnaveni.edu`,
-            joinDate: cleanDate(rawJoinDate) || new Date().toISOString().slice(0, 10),
-            attendance: 100,
+            join_date: cleanDate(rawJoinDate) || new Date().toISOString().slice(0, 10),
+            attendance_percentage: 100,
             status: 'Active',
             salary: parseFloat(String(rawSalary)) || 35000,
             qualifications: rawQualifications ? String(rawQualifications).trim() : 'B.Ed',
@@ -352,8 +352,8 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
       subject: '',
       phone: '',
       email: '',
-      joinDate: new Date().toISOString().slice(0, 10),
-      attendance: 100,
+      join_date: new Date().toISOString().slice(0, 10),
+      attendance_percentage: 100,
       status: 'Active',
       salary: 35000,
       qualifications: 'B.Ed',
@@ -657,12 +657,14 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
                             />
                           </td>
                           <td className="px-1 py-1.5">
-                            <input
-                              type="date"
-                              value={s.joinDate}
-                              onChange={(e) => updateStaffField(s.id, 'joinDate', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.joinDate ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-1 py-1 text-[11px] outline-none`}
-                            />
+                            <div className="flex flex-col min-w-[120px]">
+                              <input 
+                                type="date"
+                                value={s.join_date}
+                                onChange={(e) => updateStaffField(s.id, 'join_date', e.target.value)}
+                                className={`w-full bg-[var(--surf2)] border ${!s.join_date ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-1 py-1 text-[11px] outline-none`} 
+                              />
+                            </div>
                           </td>
                           <td className="px-1 py-1.5">
                             <input
