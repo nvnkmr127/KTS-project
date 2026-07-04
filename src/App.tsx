@@ -44,6 +44,7 @@ const RecycleBin = lazy(() => import('./pages/RecycleBin').then(m => ({ default:
 const BackupManagement = lazy(() => import('./pages/BackupManagement').then(m => ({ default: m.BackupManagement })));
 const Alumni = lazy(() => import('./pages/Alumni').then(m => ({ default: m.Alumni })));
 const Substitute = lazy(() => import('./pages/Substitute'));
+const RolesPermissions = lazy(() => import('./pages/RolesPermissions').then(m => ({ default: m.RolesPermissions })));
 
 function ProtectedRoute({ children, requireAdmin = false }: { children: JSX.Element; requireAdmin?: boolean }) {
   const { user } = useAuth();
@@ -146,6 +147,7 @@ function AppShell() {
               <Route path={PAGE_TO_PATH['webhook']} element={<ProtectedRoute requireAdmin><Settings initialTab={3} /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['recycle-bin']} element={<ProtectedRoute requireAdmin><RecycleBin /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['backups']} element={<ProtectedRoute requireAdmin><BackupManagement /></ProtectedRoute>} />
+              <Route path={PAGE_TO_PATH['roles-permissions']} element={<ProtectedRoute requireAdmin><RolesPermissions /></ProtectedRoute>} />
 
               {/* Teacher Routes */}
               <Route path={PAGE_TO_PATH['teacher-dashboard']} element={<TeacherDashboard />} />

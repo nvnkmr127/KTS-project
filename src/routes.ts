@@ -36,4 +36,5 @@ export const PAGE_TO_PATH = {
   webhook: '/webhook',
   'recycle-bin': '/recycle-bin',
   backups: '/admin/backups',
+  'roles-permissions': '/roles-permissions',
 };

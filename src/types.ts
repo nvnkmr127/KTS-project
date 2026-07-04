@@ -22,6 +22,9 @@ export interface User {
   designation?: string;
   subject?: string;
   classes?: string[];
+  roles?: string[];
+  permissions?: string[];
+  status?: string;
 }
 
 export interface Student {

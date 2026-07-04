@@ -702,6 +702,46 @@ export const api = {
     });
   },
 
+  // --- Roles & Permissions ---
+  async getRoles() {
+    return request('/roles');
+  },
+
+  async createRole(data: { name: string; permissions?: string[] }) {
+    clearApiCache('roles');
+    return request('/roles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateRole(id: string | number, data: { name: string; permissions?: string[] }) {
+    clearApiCache('roles');
+    return request(`/roles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteRole(id: string | number) {
+    clearApiCache('roles');
+    return request(`/roles/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
+  async syncRolePermissions(id: string | number, permissions: string[]) {
+    clearApiCache('roles');
+    return request(`/roles/${id}/permissions`, {
+      method: 'POST',
+      body: JSON.stringify({ permissions }),
+    });
+  },
+
+  async getPermissions() {
+    return request('/permissions');
+  },
+
   // --- Backup & System Health ---
   async getBackups() {
     return request('/backups');

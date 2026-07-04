@@ -38,8 +38,9 @@ const PAGE_TITLES: Record<PageId, string> = {
   alumni: '',
   'recycle-bin': '',
   substitute: 'Substitute Assignment',
-  webhook: 'Webhook Management',
-  backups: 'Backup Management'
+  webhook: 'Webhooks',
+  backups: 'Backup Management',
+  'roles-permissions': 'Roles & Permissions',
 };
 
 interface TopbarProps {

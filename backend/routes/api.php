@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\CollegeAdminDashboardController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\PermissionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -350,6 +352,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
     // Global search endpoint
     Route::get('/search', [GlobalSearchController::class, 'search']);
 
+    // Roles and Permissions Management
+    Route::apiResource('roles', RoleController::class);
+    Route::post('/roles/{role}/permissions', [RoleController::class, 'syncPermissions']);
+    Route::get('/permissions', [PermissionController::class, 'index']);
+
     // Backup & System Health (API)
     Route::prefix('backups')->name('api.backups.')->group(function () {
         Route::get('/', [BackupController::class, 'index'])->name('index');
@@ -387,7 +394,18 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
 
     // User profile endpoint
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        $user = $request->user();
+        if ($user) {
+            $roles = $user->getRoleNames();
+            $permissions = $user->getAllPermissions()->pluck('name');
+            
+            $userData = $user->toArray();
+            $userData['roles'] = $roles;
+            $userData['permissions'] = $permissions;
+            
+            return response()->json($userData);
+        }
+        return response()->json(['error' => 'Unauthenticated'], 401);
     });
 
     Route::post('/logout', function (Request $request) {

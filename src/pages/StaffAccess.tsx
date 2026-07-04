@@ -30,6 +30,24 @@ export function StaffAccess() {
   const [modalStaff, setModalStaff] = useState<StaffMember | null>(null);
   const [inputEmail, setInputEmail] = useState('');
   const [inputPassword, setInputPassword] = useState('');
+  const [inputRole, setInputRole] = useState('faculty');
+  const [roles, setRoles] = useState<{id: number, name: string}[]>([]);
+
+  // Load roles
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const data = await api.getRoles();
+        if (data && data.length > 0) {
+          setRoles(data);
+          setInputRole(data[0].name);
+        }
+      } catch (err) {
+        console.error('Failed to load roles:', err);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   // Load staff list
   useEffect(() => {
@@ -82,7 +100,7 @@ export function StaffAccess() {
     if (!record || !record.email) return;
 
     try {
-      const existingUsers = await api.getResources('faculty');
+      const existingUsers = await api.getResources('users');
       const matchedUser = existingUsers.find(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -119,7 +137,7 @@ export function StaffAccess() {
       const newActiveState = !record.isActive;
       
       // Update backend user status
-      const existingUsers = await api.getResources('faculty');
+      const existingUsers = await api.getResources('users');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const matchedUser = existingUsers.find(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -158,7 +176,7 @@ export function StaffAccess() {
     try {
       // Check if user already exists in DB
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const existingUsers = await api.getResources('faculty');
+      const existingUsers = await api.getResources('users');
       const matchedUser = existingUsers.find(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) => u.email.toLowerCase() === inputEmail.toLowerCase()
@@ -171,6 +189,7 @@ export function StaffAccess() {
         status: 'active',
         department: modalStaff.department || modalStaff.designation || 'Teaching',
         phone: modalStaff.phone || '9999999999',
+        role: inputRole,
       };
 
       if (matchedUser) {
@@ -212,7 +231,7 @@ export function StaffAccess() {
         }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-        const existingUsers = await api.getResources('faculty');
+        const existingUsers = await api.getResources('users');
         const matchedUser = existingUsers.find(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
@@ -234,11 +253,32 @@ export function StaffAccess() {
   };
 
   // Open modal
-  const openAccessModal = (staff: StaffMember) => {
+  const openAccessModal = async (staff: StaffMember) => {
     const info = getAccessInfo(staff.id);
+    const emailToUse = info.email || staff.email || '';
     setModalStaff(staff);
-    setInputEmail(info.email || staff.email || '');
+    setInputEmail(emailToUse);
     setInputPassword('');
+    
+    try {
+      if (emailToUse) {
+        const existingUsers = await api.getResources('users');
+        const matchedUser = existingUsers.find(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (u: any) => u.email.toLowerCase() === emailToUse.toLowerCase()
+        );
+        if (matchedUser && matchedUser.role) {
+          setInputRole(matchedUser.role);
+        } else if (roles.length > 0) {
+          setInputRole(roles[0].name);
+        }
+      } else if (roles.length > 0) {
+        setInputRole(roles[0].name);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    
     setModalOpen(true);
   };
 
@@ -492,6 +532,22 @@ export function StaffAccess() {
                   placeholder="••••••••"
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-[var(--tx2)] mb-1.5">Role *</label>
+                <select
+                  value={inputRole}
+                  onChange={(e) => setInputRole(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] cursor-pointer"
+                >
+                  {roles.map(r => (
+                    <option key={r.name} value={r.name}>
+                      {r.name.charAt(0).toUpperCase() + r.name.slice(1).replace(/-/g, ' ')}
+                    </option>
+                  ))}
+                  {roles.length === 0 && <option value="faculty">Faculty</option>}
+                </select>
               </div>
             </div>
 

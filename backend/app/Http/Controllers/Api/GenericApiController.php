@@ -235,7 +235,9 @@ class GenericApiController extends Controller
         } elseif ($resource === 'students') {
             $query->with(['batch.academicYear', 'studentFees']);
         } elseif ($resource === 'faculty') {
-            $query->with(['subjects', 'assignedBatches']);
+            $query->with(['subjects', 'assignedBatches', 'roles']);
+        } elseif ($resource === 'users') {
+            $query->with(['roles']);
         }
 
         $limit = $request->get('limit', 1000);
@@ -267,6 +269,7 @@ class GenericApiController extends Controller
                 $sub = $item->subjects->first();
                 $item->subject = $sub ? $sub->name : 'Academics';
                 $item->classes = $item->assignedBatches->pluck('name')->toArray();
+                $item->role = $item->roles->first() ? $item->roles->first()->name : 'faculty';
                 return $item;
             });
         } elseif ($resource === 'batches') {
@@ -814,9 +817,13 @@ class GenericApiController extends Controller
 
         $item = $modelClass::create($data);
 
-        // Assign 'faculty' role if created via faculty endpoint
-        if ($resource === 'faculty') {
-            $item->assignRole('faculty');
+        // Assign role if provided, otherwise default to faculty if created via faculty endpoint
+        if ($resource === 'faculty' || $resource === 'users') {
+            if ($request->has('role') && !empty($request->input('role'))) {
+                $item->syncRoles([$request->input('role')]);
+            } else if ($resource === 'faculty') {
+                $item->assignRole('faculty');
+            }
         }
 
         // Attach subject pivot
@@ -1106,6 +1113,11 @@ class GenericApiController extends Controller
         // Attach subject pivot
         if (($resource === 'faculty' || $resource === 'users') && $request->has('subject_id_to_attach')) {
             $item->subjects()->sync([$request->input('subject_id_to_attach')]);
+        }
+
+        // Update role if provided
+        if (($resource === 'faculty' || $resource === 'users') && $request->has('role') && !empty($request->input('role'))) {
+            $item->syncRoles([$request->input('role')]);
         }
 
         return response()->json($item);
