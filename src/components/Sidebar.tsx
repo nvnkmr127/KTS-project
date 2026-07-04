@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
   Bus, BarChart2, Settings, School, MessageCircle,
-  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity, Trash2, Globe, Database
+  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity, Trash2, Globe, Database, Shield
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,7 @@ interface NavItem {
   icon: React.ReactNode;
   label: string;
   page: PageId;
+  permission?: string;
 }
 
 interface NavSection {
@@ -26,68 +27,69 @@ const ADMIN_SECTIONS: NavSection[] = [
   {
     label: 'Overview',
     items: [
-      { icon: <LayoutDashboard size={14} />, label: 'Dashboard', page: 'dashboard' },
+      { icon: <LayoutDashboard size={14} />, label: 'Dashboard', page: 'dashboard', permission: 'access dashboard' },
     ],
   },
   {
     label: 'Academics',
     items: [
-      { icon: <Users size={14} />, label: 'Students', page: 'students' },
-      { icon: <CalendarCheck size={14} />, label: 'Attendance', page: 'attendance' },
-      { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary' },
-      { icon: <ClipboardList size={14} />, label: 'Examinations', page: 'exams' },
-      { icon: <Grid3X3 size={14} />, label: 'Timetable', page: 'timetable' },
-      { icon: <School size={14} />, label: 'Classes', page: 'classes' },
-      { icon: <GraduationCap size={14} />, label: 'Promotion', page: 'promotion' },
-      { icon: <Users size={14} />, label: 'Alumni', page: 'alumni' },
+      { icon: <Users size={14} />, label: 'Students', page: 'students', permission: 'view students' },
+      { icon: <CalendarCheck size={14} />, label: 'Attendance', page: 'attendance', permission: 'view attendance' },
+      { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary', permission: 'view events' },
+      { icon: <ClipboardList size={14} />, label: 'Examinations', page: 'exams', permission: 'view students' },
+      { icon: <Grid3X3 size={14} />, label: 'Timetable', page: 'timetable', permission: 'view timetable' },
+      { icon: <School size={14} />, label: 'Classes', page: 'classes', permission: 'view batches' },
+      { icon: <GraduationCap size={14} />, label: 'Promotion', page: 'promotion', permission: 'manage students' },
+      { icon: <Users size={14} />, label: 'Alumni', page: 'alumni', permission: 'view students' },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { icon: <Tags size={14} />, label: 'Fee Categories', page: 'fee-categories' },
-      { icon: <DollarSign size={14} />, label: 'Fee Management', page: 'fee' },
-      { icon: <Tags size={14} />, label: 'Salary Categories', page: 'salary-categories' },
-      { icon: <Wallet size={14} />, label: 'Salary', page: 'salary' },
-      { icon: <ShoppingCart size={14} />, label: 'Expenses', page: 'expenses' },
+      { icon: <Tags size={14} />, label: 'Fee Categories', page: 'fee-categories', permission: 'view fee structures' },
+      { icon: <DollarSign size={14} />, label: 'Fee Management', page: 'fee', permission: 'view financials' },
+      { icon: <Tags size={14} />, label: 'Salary Categories', page: 'salary-categories', permission: 'view financials' },
+      { icon: <Wallet size={14} />, label: 'Salary', page: 'salary', permission: 'view financials' },
+      { icon: <ShoppingCart size={14} />, label: 'Expenses', page: 'expenses', permission: 'view financials' },
     ],
   },
   {
     label: 'Staff',
     items: [
-      { icon: <BadgeIcon size={14} />, label: 'Staff Management', page: 'staff' },
-      { icon: <CalendarCheck size={14} />, label: 'Staff Attendance', page: 'staff-attendance' },
-      { icon: <Clock size={14} />, label: 'Faculty', page: 'faculty' },
-      { icon: <Calendar size={14} />, label: 'Leave & Holiday Calendar', page: 'leave' },
-      { icon: <Users size={14} />, label: 'Substitute', page: 'substitute' },
-      { icon: <Lock size={14} />, label: 'Staff Access', page: 'staff-access' },
+      { icon: <BadgeIcon size={14} />, label: 'Staff Management', page: 'staff', permission: 'view users' },
+      { icon: <CalendarCheck size={14} />, label: 'Staff Attendance', page: 'staff-attendance', permission: 'view attendance' },
+      { icon: <Clock size={14} />, label: 'Faculty', page: 'faculty', permission: 'view users' },
+      { icon: <Calendar size={14} />, label: 'Leave & Holiday Calendar', page: 'leave', permission: 'view leaves' },
+      { icon: <Users size={14} />, label: 'Substitute', page: 'substitute', permission: 'view users' },
+      { icon: <Lock size={14} />, label: 'Staff Access', page: 'staff-access', permission: 'manage users' },
     ],
   },
   {
     label: 'Communication',
     items: [
-      { icon: <MessageCircle size={14} />, label: 'WhatsApp Center', page: 'whatsapp' },
-      { icon: <Users size={14} />, label: 'Parent Meetings', page: 'meetings' },
+      { icon: <MessageCircle size={14} />, label: 'WhatsApp Center', page: 'whatsapp', permission: 'view settings' },
+      { icon: <Users size={14} />, label: 'Parent Meetings', page: 'meetings', permission: 'view events' },
     ],
   },
   {
     label: 'Transport',
     items: [
-      { icon: <Bus size={14} />, label: 'Bus Tracking', page: 'bus' },
+      { icon: <Bus size={14} />, label: 'Bus Tracking', page: 'bus', permission: 'view assets' },
     ],
   },
   {
     label: 'Analytics',
     items: [
-      { icon: <BarChart2 size={14} />, label: 'Reports', page: 'reports' },
-      { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs' },
+      { icon: <BarChart2 size={14} />, label: 'Reports', page: 'reports', permission: 'view analytics' },
+      { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs', permission: 'view analytics' },
     ],
   },
   {
     label: 'System',
     items: [
-      { icon: <Globe size={14} />, label: 'Webhooks', page: 'webhook' },
-      { icon: <Trash2 size={14} />, label: 'Recycle Bin', page: 'recycle-bin' },
+      { icon: <Globe size={14} />, label: 'Webhooks', page: 'webhook', permission: 'view system settings' },
+      { icon: <Shield size={14} />, label: 'Roles & Permissions', page: 'roles-permissions', permission: 'view roles' },
+      { icon: <Trash2 size={14} />, label: 'Recycle Bin', page: 'recycle-bin', permission: 'view system settings' },
     ],
   },
 ];
@@ -96,41 +98,41 @@ const TEACHER_SECTIONS: NavSection[] = [
   {
     label: 'Overview',
     items: [
-      { icon: <LayoutDashboard size={14} />, label: 'My Dashboard', page: 'teacher-dashboard' },
+      { icon: <LayoutDashboard size={14} />, label: 'My Dashboard', page: 'teacher-dashboard', permission: 'access dashboard' },
     ],
   },
   {
     label: 'Teaching',
     items: [
-      { icon: <CalendarCheck size={14} />, label: 'Attendance', page: 'attendance' },
-      { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary' },
-      { icon: <ClipboardList size={14} />, label: 'Homework', page: 'homework' },
-      { icon: <CalendarCheck size={14} />, label: 'Allot Attendance', page: 'allot-attendance' },
+      { icon: <CalendarCheck size={14} />, label: 'Attendance', page: 'attendance', permission: 'take attendance' },
+      { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary', permission: 'view events' },
+      { icon: <ClipboardList size={14} />, label: 'Homework', page: 'homework', permission: 'view students' },
+      { icon: <CalendarCheck size={14} />, label: 'Allot Attendance', page: 'allot-attendance', permission: 'manage attendance' },
     ],
   },
   {
     label: 'Academics',
     items: [
-      { icon: <GraduationCap size={14} />, label: 'Examinations', page: 'exams' },
-      { icon: <BarChart2 size={14} />, label: 'Performance', page: 'performance' },
+      { icon: <GraduationCap size={14} />, label: 'Examinations', page: 'exams', permission: 'view students' },
+      { icon: <BarChart2 size={14} />, label: 'Performance', page: 'performance', permission: 'view students' },
     ],
   },
   {
     label: 'Leave',
     items: [
-      { icon: <Calendar size={14} />, label: 'Leave & Holiday Calendar', page: 'leave' },
+      { icon: <Calendar size={14} />, label: 'Leave & Holiday Calendar', page: 'leave', permission: 'view leaves' },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { icon: <Wallet size={14} />, label: 'My Salary', page: 'my-salary' },
+      { icon: <Wallet size={14} />, label: 'My Salary', page: 'my-salary', permission: 'view financials' },
     ],
   },
   {
     label: 'Analytics',
     items: [
-      { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs' },
+      { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs', permission: 'view analytics' },
     ],
   },
 ];
@@ -147,7 +149,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const onNavigate = (page: PageId) => navigate(PAGE_TO_PATH[page] || "/" + page);
   const { user, logout } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const sections = isAdmin ? ADMIN_SECTIONS : TEACHER_SECTIONS;
+  const roles = user?.roles || [];
+  
+  const rawSections = isAdmin ? ADMIN_SECTIONS : TEACHER_SECTIONS;
+  const sections = rawSections.map(section => {
+    return {
+      ...section,
+      items: section.items.filter(item => {
+        // Bypass permission checks for admins
+        if (roles.includes('super-admin') || roles.includes('admin') || isAdmin) {
+          return true;
+        }
+
+        const hasNoPermissionsArray = !user?.permissions || user.permissions.length === 0;
+
+        // Verify permissions for teachers
+        if (item.permission && !user?.permissions?.includes(item.permission)) {
+          if (user?.role === 'teacher' && hasNoPermissionsArray) return true;
+          return false;
+        }
+
+        return true;
+      })
+    };
+  }).filter(section => section.items.length > 0);
 
   const [schoolName, setSchoolName] = useState(() => localStorage.getItem('school_name') || 'Krishnaveni Talent School');
   const [schoolLogo, setSchoolLogo] = useState(() => localStorage.getItem('school_logo') || '/KTHS_Logo.png');
