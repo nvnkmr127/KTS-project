@@ -168,7 +168,7 @@ export function Classes() {
       const batchesData = allBatches.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
 
       const classGroups: Record<string, SectionData[]> = {};
-      const defaultClasses = ['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+      const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       batchesData.forEach((b: any) => {
