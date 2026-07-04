@@ -446,13 +446,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         // Sync timetable
         const timetableRes = await api.getResources('timetable');
-        if (Array.isArray(timetableRes)) {
-          const loadedTimetable = buildDefaultTimetable();
+        if (Array.isArray(timetableRes) && timetableRes.length > 0) {
+          const dayMap: Record<string, string> = {
+            '2026-06-01': 'Monday',
+            '2026-06-02': 'Tuesday',
+            '2026-06-03': 'Wednesday',
+            '2026-06-04': 'Thursday',
+            '2026-06-05': 'Friday',
+            '2026-06-06': 'Saturday',
+          };
+
+          const loadedTimetable: SchoolTimetable = {};
+          const classes = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const cls of classes) {
+            loadedTimetable[cls] = {};
+            for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
+              loadedTimetable[cls][day] = {};
+              for (let p = 0; p < 12; p++) {
+                loadedTimetable[cls][day][p] = null;
+              }
+            }
+          }
+
           timetableRes.forEach((slot: any) => {
-            const cls = slot.batch?.name;
-            const day = slot.day_of_week;
-            const p = Number(slot.time_slot_id) - 1; // 0-indexed
-            if (cls && day && p >= 0) {
+            const rawCls = slot.batch_name;
+            if (!rawCls) return;
+
+            const cls = rawCls.trim();
+            const day = slot.day || dayMap[slot.date];
+            const p = slot.period;
+            if (day && p !== undefined && p >= 0 && p < 12) {
+              // Dynamically initialize class and day structures if not present
               if (!loadedTimetable[cls]) {
                 loadedTimetable[cls] = {};
               }
