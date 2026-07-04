@@ -701,5 +701,36 @@ export const api = {
       method: 'POST'
     });
   },
+
+  // --- Backup & System Health ---
+  async getBackups() {
+    return request('/backups');
+  },
+
+  async updateBackupSettings(data: any) {
+    return request('/backups/settings', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async triggerManualBackup(type: string = 'code') {
+    return request('/backups/manual', {
+      method: 'POST',
+      body: JSON.stringify({ type }) // usually it accepts 'type' like 'code' or 'database'
+    });
+  },
+
+  async deleteBackup(id: string) {
+    return request(`/backups/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async authorizeGoogleDrive() {
+    return request('/backups/gdrive/authorize', {
+      method: 'POST'
+    });
+  }
 };
 

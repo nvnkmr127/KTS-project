@@ -68,8 +68,24 @@ class BackupController extends Controller
     public function index()
     {
         try {
-            $spatieBackups = $this->backupService->getLocalBackups() ?? [];
-            $settingsBackups = $this->backupService->getGoogleDriveBackups() ?? [];
+            $spatieBackupsRaw = $this->backupService->getLocalBackups() ?? [];
+            $spatieBackups = array_map(function ($backup) {
+                return [
+                    'file_name' => $backup['filename'],
+                    'file_size' => round($backup['size'] / 1024 / 1024, 2) . ' MB',
+                    'last_modified' => $backup['created_at']->format('Y-m-d H:i:s'),
+                    'download_url' => '/api/v1/backups/download/' . $backup['filename']
+                ];
+            }, $spatieBackupsRaw);
+
+            $settingsBackupsRaw = $this->backupService->getGoogleDriveBackups() ?? [];
+            $settingsBackups = array_map(function ($backup) {
+                return [
+                    'file_name' => $backup['filename'] ?? $backup['name'] ?? '',
+                    'file_size' => isset($backup['size']) ? round($backup['size'] / 1024 / 1024, 2) . ' MB' : 'Unknown',
+                    'last_modified' => isset($backup['created_at']) ? (is_string($backup['created_at']) ? $backup['created_at'] : $backup['created_at']->format('Y-m-d H:i:s')) : 'Unknown',
+                ];
+            }, $settingsBackupsRaw);
 
             // Get backup settings using your existing Setting model methods
             $backupConfig = [
@@ -86,36 +102,20 @@ class BackupController extends Controller
                 'disk_usage' => [
                     'percentage' => $this->calculateDiskUsage(),
                 ],
-                'last_backup' => $this->getLastBackupInfo($spatieBackups, $settingsBackups),
+                'last_backup' => $this->getLastBackupInfo($spatieBackupsRaw, $settingsBackupsRaw),
             ];
 
-            return view('admin.backups.index', compact('spatieBackups', 'settingsBackups', 'backupConfig'));
+            return response()->json(compact('spatieBackups', 'settingsBackups', 'backupConfig'));
 
         } catch (\Exception $e) {
             Log::error('Failed to load backup page', [
                 'error' => $e->getMessage(),
             ]);
 
-            // Set default values for error case
-            $spatieBackups = [];
-            $settingsBackups = [];
-            $backupConfig = [
-                'auto_backup' => false,
-                'backup_frequency' => 'daily',
-                'backup_retention_days' => '30',
-                'auto_cleanup' => false,
-                'backup_notifications' => false,
-                'notification_email' => '',
-                'backup_gdrive_enabled' => false,
-                'gdrive_client_id' => '',
-                'gdrive_client_secret' => '',
-                'gdrive_folder_name' => 'College-Backups',
-                'disk_usage' => ['percentage' => 0],
-                'last_backup' => null,
-            ];
-
-            return view('admin.backups.index', compact('spatieBackups', 'settingsBackups', 'backupConfig'))
-                ->with('error', 'Failed to load backup data: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load backup data: '.$e->getMessage()
+            ], 500);
         }
     }
 
@@ -132,16 +132,27 @@ class BackupController extends Controller
                 'auto_cleanup' => 'boolean',
                 'backup_notifications' => 'boolean',
                 'notification_email' => 'nullable|email',
+                'backup_gdrive_enabled' => 'boolean',
+                'gdrive_client_id' => 'nullable|string',
+                'gdrive_client_secret' => 'nullable|string',
             ]);
 
             // Update settings using the Setting model
-            Setting::set('auto_backup', $request->has('auto_backup') ? '1' : '0');
+            Setting::set('auto_backup', $request->boolean('auto_backup') ? '1' : '0');
             Setting::set('backup_frequency', $request->input('backup_frequency'));
             Setting::set('backup_retention_days', $request->input('backup_retention_days'));
-            Setting::set('auto_cleanup', $request->has('auto_cleanup') ? '1' : '0');
-            Setting::set('backup_notifications', $request->has('backup_notifications') ? '1' : '0');
+            Setting::set('auto_cleanup', $request->boolean('auto_cleanup') ? '1' : '0');
+            Setting::set('backup_notifications', $request->boolean('backup_notifications') ? '1' : '0');
+            
+            Setting::set('backup_gdrive_enabled', $request->boolean('backup_gdrive_enabled') ? '1' : '0');
+            if ($request->has('gdrive_client_id')) {
+                Setting::set('gdrive_client_id', $request->input('gdrive_client_id'));
+            }
+            if ($request->has('gdrive_client_secret')) {
+                Setting::set('gdrive_client_secret', $request->input('gdrive_client_secret'));
+            }
 
-            if ($request->input('notification_email')) {
+            if ($request->has('notification_email')) {
                 Setting::set('notification_email', $request->input('notification_email'));
             }
 
@@ -150,11 +161,14 @@ class BackupController extends Controller
                 'settings' => $request->only([
                     'auto_backup', 'backup_frequency', 'backup_retention_days',
                     'auto_cleanup', 'backup_notifications', 'notification_email',
+                    'backup_gdrive_enabled', 'gdrive_client_id'
                 ]),
             ]);
 
-            return redirect()->route('admin.backups.index')
-                ->with('success', 'Backup settings updated successfully!');
+            return response()->json([
+                'success' => true,
+                'message' => 'Backup settings updated successfully!'
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to update backup settings', [
@@ -162,8 +176,10 @@ class BackupController extends Controller
                 'user_id' => auth()->id(),
             ]);
 
-            return redirect()->route('admin.backups.index')
-                ->with('error', 'Failed to update backup settings: '.$e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update backup settings: '.$e->getMessage()
+            ], 500);
         }
     }
 
@@ -377,7 +393,7 @@ class BackupController extends Controller
             try {
                 $client->setClientId($clientId);
                 $client->setClientSecret($clientSecret);
-                $client->setRedirectUri(route('admin.backups.gdrive.callback'));
+                $client->setRedirectUri(route('api.backups.gdrive.callback'));
                 $client->addScope(GoogleDrive::DRIVE_FILE);
                 $client->setAccessType('offline');
                 $client->setPrompt('consent');
@@ -386,7 +402,7 @@ class BackupController extends Controller
                 $authUrl = $client->createAuthUrl();
 
                 Log::info('Authorization URL generated successfully', [
-                    'redirect_uri' => route('admin.backups.gdrive.callback'),
+                    'redirect_uri' => route('api.backups.gdrive.callback'),
                     'auth_url_length' => strlen($authUrl),
                 ]);
 
@@ -435,6 +451,8 @@ class BackupController extends Controller
             'has_error' => $request->has('error'),
         ]);
 
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173') . '/admin/backups';
+
         try {
             // Check for OAuth error first
             if ($request->has('error')) {
@@ -446,8 +464,7 @@ class BackupController extends Controller
                     'description' => $errorDescription,
                 ]);
 
-                return redirect()->route('admin.settings.index', ['tab' => 'backup'])
-                    ->with('error', "OAuth Error: {$error} - {$errorDescription}");
+                return redirect()->away($frontendUrl . '?status=error&message=' . urlencode("OAuth Error: {$error} - {$errorDescription}"));
             }
 
             // Check for authorization code
@@ -456,8 +473,7 @@ class BackupController extends Controller
                     'all_params' => $request->all(),
                 ]);
 
-                return redirect()->route('admin.settings.index', ['tab' => 'backup'])
-                    ->with('error', 'Authorization failed: No authorization code received');
+                return redirect()->away($frontendUrl . '?status=error&message=' . urlencode('Authorization failed: No authorization code received'));
             }
 
             $authCode = $request->get('code');
@@ -477,8 +493,7 @@ class BackupController extends Controller
             ]);
 
             if (! $clientId || ! $clientSecret) {
-                return redirect()->route('admin.settings.index', ['tab' => 'backup'])
-                    ->with('error', 'Google Drive credentials not found in settings');
+                return redirect()->away($frontendUrl . '?status=error&message=' . urlencode('Google Drive credentials not found in settings'));
             }
 
             // Create client for token exchange
@@ -486,7 +501,7 @@ class BackupController extends Controller
             $client->setClientId($clientId);
             $client->setClientSecret($clientSecret);
 
-            $redirectUri = route('admin.backups.gdrive.callback');
+            $redirectUri = route('api.backups.gdrive.callback');
             $client->setRedirectUri($redirectUri);
 
             Log::info('Token exchange setup', [
@@ -529,8 +544,7 @@ class BackupController extends Controller
                     $message = "OAuth Error: {$errorMsg} - {$errorDesc}";
                 }
 
-                return redirect()->route('admin.settings.index', ['tab' => 'backup'])
-                    ->with('error', $message);
+                return redirect()->away($frontendUrl . '?status=error&message=' . urlencode($message));
             }
 
             // Store the access token
@@ -567,16 +581,14 @@ class BackupController extends Controller
                     'user_email' => $userEmail,
                 ]);
 
-                return redirect()->route('admin.settings.index', ['tab' => 'backup'])
-                    ->with('success', 'Google Drive authorization successful! Connected as: '.$userEmail);
+                return redirect()->away($frontendUrl . '?status=success&message=' . urlencode('Google Drive authorization successful! Connected as: '.$userEmail));
 
             } catch (\Exception $testError) {
                 Log::warning('Authorization succeeded but connection test failed', [
                     'error' => $testError->getMessage(),
                 ]);
 
-                return redirect()->route('admin.settings.index', ['tab' => 'backup'])
-                    ->with('warning', 'Authorization completed but connection test failed. Please test manually.');
+                return redirect()->away($frontendUrl . '?status=warning&message=' . urlencode('Authorization completed but connection test failed. Please test manually.'));
             }
 
         } catch (\Exception $e) {
@@ -585,8 +597,7 @@ class BackupController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return redirect()->route('admin.settings.index', ['tab' => 'backup'])
-                ->with('error', 'Authorization failed: '.$e->getMessage());
+            return redirect()->away($frontendUrl . '?status=error&message=' . urlencode('Authorization failed: '.$e->getMessage()));
         }
     }
 

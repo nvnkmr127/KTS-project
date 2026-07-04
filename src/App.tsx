@@ -41,6 +41,7 @@ const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.S
 const SearchPage = lazy(() => import('./pages/SearchPage').then(m => ({ default: m.SearchPage })));
 const TeacherActivityLogs = lazy(() => import('./pages/TeacherActivityLogs').then(m => ({ default: m.TeacherActivityLogs })));
 const RecycleBin = lazy(() => import('./pages/RecycleBin').then(m => ({ default: m.RecycleBin })));
+const BackupManagement = lazy(() => import('./pages/BackupManagement').then(m => ({ default: m.BackupManagement })));
 const Alumni = lazy(() => import('./pages/Alumni').then(m => ({ default: m.Alumni })));
 const Substitute = lazy(() => import('./pages/Substitute'));
 
@@ -144,6 +145,7 @@ function AppShell() {
               <Route path={PAGE_TO_PATH['settings']} element={<ProtectedRoute requireAdmin><Settings initialTab={0} /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['webhook']} element={<ProtectedRoute requireAdmin><Settings initialTab={3} /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['recycle-bin']} element={<ProtectedRoute requireAdmin><RecycleBin /></ProtectedRoute>} />
+              <Route path={PAGE_TO_PATH['backups']} element={<ProtectedRoute requireAdmin><BackupManagement /></ProtectedRoute>} />
 
               {/* Teacher Routes */}
               <Route path={PAGE_TO_PATH['teacher-dashboard']} element={<TeacherDashboard />} />

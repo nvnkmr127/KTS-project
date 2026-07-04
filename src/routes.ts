@@ -35,4 +35,5 @@ export const PAGE_TO_PATH = {
   'my-salary': '/my-salary',
   webhook: '/webhook',
   'recycle-bin': '/recycle-bin',
+  backups: '/admin/backups',
 };

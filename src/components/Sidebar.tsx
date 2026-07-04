@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
   Bus, BarChart2, Settings, School, MessageCircle,
-  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity, Trash2, Globe
+  GraduationCap, ClipboardList, Calendar, ShoppingCart, LogOut, Grid3X3, X, Tags, Lock, Activity, Trash2, Globe, Database
 } from 'lucide-react';
 import type { PageId, Role } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -234,6 +234,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             >
               <Settings size={14} />
               <span>Settings</span>
+            </button>
+          )}
+          {isAdmin && (
+            <button
+              onClick={() => {
+                onNavigate('backups');
+                onClose();
+              }}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-[12px] rounded-lg transition-colors cursor-pointer text-left ${currentPath === PAGE_TO_PATH["backups"]
+                  ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] font-semibold'
+                  : 'text-[var(--tx2)] hover:bg-[var(--surf2)] hover:text-[var(--tx)]'
+                }`}
+            >
+              <Database size={14} />
+              <span>Backups</span>
             </button>
           )}
           <button
