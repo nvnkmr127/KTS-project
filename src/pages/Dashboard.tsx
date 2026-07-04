@@ -10,7 +10,6 @@ import {
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { Chart } from '../components/Chart';
 import { Link } from 'react-router-dom';
 import { PAGE_TO_PATH } from '../routes';
 import type { PageId } from '../types';
@@ -110,19 +109,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const handleMarkSeen = (id: number) => {
     setActivities((prev: any[]) =>
       prev.map((a: { id: number; }) => (a.id === id ? { ...a, seen: true } : a))
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     );
   };
 
   const handleClearActivity = (id: number) => {
     setActivities((prev: any[]) => prev.filter((a: { id: number; }) => a.id !== id));
   };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
   const handleMarkAllSeen = () => {
     setActivities((prev: any[]) => prev.map((a: any) => ({ ...a, seen: true })));
   };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
   const handleClearAll = () => {
     setActivities([]);
@@ -148,8 +147,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 key={r}
                 onClick={() => setRangeType(r)}
                 className={`px-2.5 py-1 text-[11px] font-semibold capitalize rounded-md transition-all cursor-pointer ${rangeType === r
-                    ? 'bg-[var(--blue)] text-white shadow-sm'
-                    : 'text-[var(--tx2)] hover:bg-[var(--surf2)] hover:text-[var(--tx)]'
+                  ? 'bg-[var(--blue)] text-white shadow-sm'
+                  : 'text-[var(--tx2)] hover:bg-[var(--surf2)] hover:text-[var(--tx)]'
                   }`}
               >
                 {r}
@@ -229,52 +228,52 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-          {loadingStats ? (
-            <div className="col-span-1 lg:col-span-4 p-6 flex justify-center items-center">
-              Loading metrics...
-            </div>
-          ) : data ? (
-            <>
-              <KPICard
-                label="Total Students"
-                value={<>{data.totalStudents.value}</>}
-                icon={<Users size={15} />}
-                iconBg="var(--blue-bg)"
-                iconColor="var(--blue-tx)"
-                trend={data.totalStudents.trend}
-                sub={data.totalStudents.sub}
-                onClick={() => onNavigate('students')}
-              />
-              <KPICard
-                label="Attendance Rate"
-                value={<>{data.attendance.value}<span className="text-[13px] font-normal text-[var(--tx3)]">%</span></>}
-                sub={data.attendance.sub}
-                icon={<CalendarCheck size={15} />}
-                iconBg="var(--teal-bg)"
-                iconColor="var(--teal-tx)"
-                onClick={() => onNavigate('attendance')}
-              />
-              <KPICard
-                label="Fee Collected"
-                value={<>{data.feeCollected.value}</>}
-                icon={<DollarSign size={15} />}
-                iconBg="var(--amber-bg)"
-                iconColor="var(--amber-tx)"
-                trend={data.feeCollected.trend}
-                sub={data.feeCollected.sub}
-                onClick={() => onNavigate('fee')}
-              />
-              <KPICard
-                label="Buses on Route"
-                value={<>{data.buses.value}</>}
-                sub={<Badge variant="teal">{data.buses.sub}</Badge>}
-                icon={<Bus size={15} />}
-                iconBg="var(--teal-bg)"
-                iconColor="var(--teal-tx)"
-                onClick={() => onNavigate('bus')}
-              />
-            </>
-          ) : null}
+        {loadingStats ? (
+          <div className="col-span-1 lg:col-span-4 p-6 flex justify-center items-center">
+            Loading metrics...
+          </div>
+        ) : data ? (
+          <>
+            <KPICard
+              label="Total Students"
+              value={<>{data.totalStudents.value}</>}
+              icon={<Users size={15} />}
+              iconBg="var(--blue-bg)"
+              iconColor="var(--blue-tx)"
+              trend={data.totalStudents.trend}
+              sub={data.totalStudents.sub}
+              onClick={() => onNavigate('students')}
+            />
+            <KPICard
+              label="Attendance Rate"
+              value={<>{data.attendance.value}<span className="text-[13px] font-normal text-[var(--tx3)]">%</span></>}
+              sub={data.attendance.sub}
+              icon={<CalendarCheck size={15} />}
+              iconBg="var(--teal-bg)"
+              iconColor="var(--teal-tx)"
+              onClick={() => onNavigate('attendance')}
+            />
+            <KPICard
+              label="Fee Collected"
+              value={<>{data.feeCollected.value}</>}
+              icon={<DollarSign size={15} />}
+              iconBg="var(--amber-bg)"
+              iconColor="var(--amber-tx)"
+              trend={data.feeCollected.trend}
+              sub={data.feeCollected.sub}
+              onClick={() => onNavigate('fee')}
+            />
+            <KPICard
+              label="Buses on Route"
+              value={<>{data.buses.value}</>}
+              sub={<Badge variant="teal">{data.buses.sub}</Badge>}
+              icon={<Bus size={15} />}
+              iconBg="var(--teal-bg)"
+              iconColor="var(--teal-tx)"
+              onClick={() => onNavigate('bus')}
+            />
+          </>
+        ) : null}
       </div>
 
       {/* Row: Weekly attendance + Fee donut */}
