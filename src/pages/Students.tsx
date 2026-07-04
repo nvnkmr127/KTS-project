@@ -5,6 +5,7 @@ import {
   ArrowRightLeft, Users, ChevronLeft, ChevronRight, ArrowLeft, Edit, Printer,
   Clock,
   Percent,
+  History, Filter, ChevronDown, ChevronUp, Banknote, List, User
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
@@ -17,6 +18,7 @@ import { api } from '../services/api';
 import { formatDate } from '../utils/date';
 import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
+import { useAuth } from '../context/AuthContext';
 import { TableSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -51,7 +53,13 @@ type ModalType = 'add' | 'view' | 'edit' | null;
 export function Students() {
   const { alert, confirm } = useDialog();
   const { selectedAcademicYearId, setHasUnsavedChanges } = useApp();
+  const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>([]);
+
+  // Timeline states
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'payment' | 'concession'>('all');
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [expandedActivities, setExpandedActivities] = useState<string[]>([]);
 
   // States for Edit/Print/Delete inside Detailed Fee Breakdown
   const [selectedEditFee, setSelectedEditFee] = useState<any>(null);
@@ -484,7 +492,7 @@ export function Students() {
         const currentConcession = Number(fee.concession_amount) || 0;
         await api.updateResource('student-fees', selectedConcessionFeeId, {
           concession_amount: currentConcession + Number(concessionAmount),
-          concession_reason: concessionReason,
+          concession_reason: JSON.stringify({ text: concessionReason, collectedBy: user?.name || 'Super Admin' }),
         });
         showToast('Concession applied successfully!', true);
         setShowConcessionModal(false);
@@ -510,6 +518,7 @@ export function Students() {
     try {
       let remainingPayment = Number(payAmount);
       const allocated: { name: string; amount: number }[] = [];
+      const txnId = 'RCP' + new Date().getFullYear() + Math.floor(100000 + Math.random() * 900000);
 
       for (const feeId of selectedFeeIds) {
         if (remainingPayment <= 0) break;
@@ -525,7 +534,8 @@ export function Students() {
             await api.updateResource('student-fees', feeId, {
               paid_amount: currentPaid + paymentForThisFee,
               payment_method: paymentMethod,
-              remarks: paymentRemarks,
+              remarks: JSON.stringify({ text: paymentRemarks, collectedBy: user?.name || 'Super Admin' }),
+              transaction_id: txnId,
             });
 
             allocated.push({
@@ -916,6 +926,144 @@ export function Students() {
       return null;
     };
 
+    // Helper functions for timeline formatting
+    const formatTimeAgo = (dateInput: string | Date | null | undefined): string => {
+      if (!dateInput) return 'some time ago';
+      const date = new Date(dateInput);
+      if (isNaN(date.getTime())) return 'some time ago';
+      const now = new Date();
+      const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+      if (seconds < 60) return 'Just now';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+      const days = Math.floor(hours / 24);
+      if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+      const months = Math.floor(days / 30);
+      if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`;
+      const years = Math.floor(months / 12);
+      return `${years} year${years > 1 ? 's' : ''} ago`;
+    };
+
+    const formatDateTime = (dateInput: string | Date | null | undefined): string => {
+      if (!dateInput) return '';
+      const date = new Date(dateInput);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    };
+
+    // Timeline activities processing
+    const activities: any[] = [];
+    const paymentGroups: Record<string, any[]> = {};
+
+    studentFeesList.forEach((fee) => {
+      if (Number(fee.paid_amount) > 0) {
+        let groupKey = '';
+        if (fee.transaction_id) {
+          groupKey = `txn-${fee.transaction_id}`;
+        } else {
+          const dateMs = new Date(fee.paid_date || fee.updated_at || '').getTime();
+          const roundedTime = Math.round(dateMs / 10000) * 10000;
+          groupKey = `legacy-${roundedTime}-${fee.payment_method}-${fee.remarks}`;
+        }
+
+        if (!paymentGroups[groupKey]) {
+          paymentGroups[groupKey] = [];
+        }
+        paymentGroups[groupKey].push(fee);
+      }
+    });
+
+    Object.entries(paymentGroups).forEach(([key, fees]) => {
+      const totalPaidInGroup = fees.reduce((sum, f) => sum + (Number(f.paid_amount) || 0), 0);
+      const firstFee = fees[0];
+      
+      let remarksText = '';
+      let collectedBy = user?.name || 'Admin';
+      try {
+        if (firstFee.remarks) {
+          if (firstFee.remarks.startsWith('{')) {
+            const parsed = JSON.parse(firstFee.remarks);
+            remarksText = parsed.text || '';
+            collectedBy = parsed.collectedBy || user?.name || 'Admin';
+          } else {
+            remarksText = firstFee.remarks;
+          }
+        }
+      } catch (e) {
+        remarksText = firstFee.remarks || '';
+      }
+
+      const receiptNum = firstFee.transaction_id || `RCP${new Date(firstFee.updated_at || Date.now()).getFullYear()}${String(firstFee.id).padStart(6, '0')}`;
+
+      activities.push({
+        id: `pay-${receiptNum}`,
+        type: 'payment',
+        title: 'Payment Received',
+        subtitle: `Payment of ₹${totalPaidInGroup.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} received via ${firstFee.payment_method || 'Cash'}`,
+        amount: totalPaidInGroup,
+        method: firstFee.payment_method || 'Cash',
+        receipt: receiptNum,
+        componentsCount: fees.length,
+        components: fees.map(f => ({
+          name: f.fee_category?.name || f.feeCategory?.name || f.category || 'School Fee',
+          amount: Number(f.paid_amount)
+        })),
+        date: firstFee.paid_date || firstFee.updated_at || new Date().toISOString(),
+        collectedBy,
+        remarks: remarksText
+      });
+    });
+
+    studentFeesList.forEach((fee) => {
+      if (Number(fee.concession_amount) > 0) {
+        let reasonText = '';
+        let approvedBy = 'Super Admin';
+        try {
+          if (fee.concession_reason) {
+            if (fee.concession_reason.startsWith('{')) {
+              const parsed = JSON.parse(fee.concession_reason);
+              reasonText = parsed.text || '';
+              approvedBy = parsed.collectedBy || 'Super Admin';
+            } else {
+              reasonText = fee.concession_reason;
+            }
+          }
+        } catch (e) {
+          reasonText = fee.concession_reason || '';
+        }
+
+        const categoryName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
+
+        activities.push({
+          id: `con-${fee.id}`,
+          type: 'concession',
+          title: 'Concession Applied',
+          subtitle: `Concession of ₹${Number(fee.concession_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} applied for ${categoryName}`,
+          amount: Number(fee.concession_amount),
+          reason: reasonText,
+          categoryName,
+          date: fee.concession_approved_at || fee.updated_at || new Date().toISOString(),
+          collectedBy: approvedBy
+        });
+      }
+    });
+
+    activities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const filteredActivities = activities.filter(act => {
+      if (timelineFilter === 'all') return true;
+      return act.type === timelineFilter;
+    });
+
     return (
       <div className="space-y-3">
         {/* Back header */}
@@ -980,7 +1128,8 @@ export function Students() {
         </Card>
 
         {!showCalendar ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
             {/* Personal Info */}
             <Card className="space-y-4">
               <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
@@ -1154,7 +1303,184 @@ export function Students() {
               )}
             </Card>
           </div>
-        ) : (
+
+          {/* Recent Activity Timeline */}
+          <Card className="p-4 mt-3.5 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-[var(--b)] pb-3 relative">
+              <span className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
+                <History size={14} className="text-[var(--blue-tx)]" /> Recent Activity Timeline
+              </span>
+              <div className="relative">
+                <button
+                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold border border-[var(--blue-tx)]/20 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg hover:opacity-90 transition-all cursor-pointer"
+                >
+                  <Filter size={11} /> Filter <ChevronDown size={11} className={`transition-transform duration-200 ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showFilterDropdown && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowFilterDropdown(false)} />
+                    <div className="absolute right-0 mt-1.5 w-44 bg-[var(--surf)] border border-[var(--b)] rounded-xl shadow-lg z-20 py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                      <button
+                        onClick={() => { setTimelineFilter('all'); setShowFilterDropdown(false); }}
+                        className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'all' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
+                      >
+                        <List size={12} className={timelineFilter === 'all' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> All Activities
+                      </button>
+                      <button
+                        onClick={() => { setTimelineFilter('payment'); setShowFilterDropdown(false); }}
+                        className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'payment' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
+                      >
+                        <Banknote size={12} className={timelineFilter === 'payment' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> Payments Only
+                      </button>
+                      <button
+                        onClick={() => { setTimelineFilter('concession'); setShowFilterDropdown(false); }}
+                        className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'concession' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
+                      >
+                        <Percent size={12} className={timelineFilter === 'concession' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> Concessions Only
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Timeline content */}
+            {filteredActivities.length === 0 ? (
+              <div className="text-center py-8 text-[11.5px] text-[var(--tx3)] italic">
+                No recent activity found.
+              </div>
+            ) : (
+              <div className="relative pl-2.5 space-y-5">
+                {/* Vertical line connector */}
+                <div className="absolute left-[20px] top-4 bottom-4 w-0.5 bg-[var(--b)]" />
+
+                {filteredActivities.map((act) => {
+                  const isExpanded = expandedActivities.includes(act.id);
+                  return (
+                    <div key={act.id} className="flex gap-4 relative">
+                      {/* Event icon dot */}
+                      <div className="relative z-10 flex-shrink-0 mt-1">
+                        {act.type === 'payment' ? (
+                          <div className="w-8 h-8 rounded-full bg-[#10b981] text-white flex items-center justify-center shadow-md shadow-emerald-500/10">
+                            <Banknote size={14} />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center shadow-md shadow-violet-500/10">
+                            <Percent size={14} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card box */}
+                      <div className="flex-1 bg-[var(--surf2)] border border-[var(--b)] border-l-[3px] border-[var(--blue)] rounded-xl p-3.5 space-y-2.5 relative shadow-sm">
+                        {/* Title & DateTime */}
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="text-[13px] font-bold text-[var(--tx)]">{act.title}</div>
+                            <div className="text-[11.5px] text-[var(--tx2)] mt-0.5">{act.subtitle}</div>
+                          </div>
+                          <div className="text-right text-[10px] text-[var(--tx3)] leading-tight">
+                            <div>{formatDateTime(act.date).split(', ')[0]}</div>
+                            <div className="mt-0.5">{formatDateTime(act.date).split(', ')[1]}</div>
+                          </div>
+                        </div>
+
+                        {/* Details Button */}
+                        <div>
+                          <button
+                            onClick={() => {
+                              if (isExpanded) {
+                                setExpandedActivities(expandedActivities.filter(id => id !== act.id));
+                              } else {
+                                setExpandedActivities([...expandedActivities, act.id]);
+                              }
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 text-[10.5px] border border-[var(--b)] bg-[var(--surf)] rounded-lg text-[var(--tx2)] hover:text-[var(--tx)] transition-all cursor-pointer font-medium"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp size={11} /> Details
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown size={11} /> Details
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Expanded Details section */}
+                        {isExpanded && (
+                          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[11px] text-[var(--tx2)] animate-fade-in">
+                            {act.type === 'payment' ? (
+                              <>
+                                <div>
+                                  <span className="font-semibold text-[var(--tx3)]">Amount:</span> ₹{act.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-[var(--tx3)]">Receipt:</span> <span className="font-mono">{act.receipt}</span>
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-[var(--tx3)]">Method:</span> {act.method}
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-[var(--tx3)]">Components:</span> {act.componentsCount} items
+                                </div>
+                                {act.remarks && (
+                                  <div className="sm:col-span-2 mt-1 pt-1.5 border-t border-[var(--b)]/30">
+                                    <span className="font-semibold text-[var(--tx3)]">Remarks:</span> {act.remarks}
+                                  </div>
+                                )}
+                                {act.components && act.components.length > 0 && (
+                                  <div className="sm:col-span-2 mt-1.5 pt-1.5 border-t border-[var(--b)]/30 space-y-1">
+                                    <span className="font-semibold text-[var(--tx3)] text-[10.5px] block mb-1">Payment Breakdown:</span>
+                                    {act.components.map((c: any, i: number) => (
+                                      <div key={i} className="flex justify-between text-[10.5px] pl-1 border-l border-[var(--b)]">
+                                        <span>{c.name}</span>
+                                        <span className="font-medium">₹{c.amount.toLocaleString()}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <div>
+                                  <span className="font-semibold text-[var(--tx3)]">Concession:</span> ₹{act.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-[var(--tx3)]">Category:</span> {act.categoryName}
+                                </div>
+                                {act.reason && (
+                                  <div className="sm:col-span-2 mt-1 pt-1.5 border-t border-[var(--b)]/30">
+                                    <span className="font-semibold text-[var(--tx3)]">Reason:</span> {act.reason}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Footer user & time */}
+                        <div className="flex items-center gap-1.5 text-[10.5px] text-[var(--tx3)] pt-2 border-t border-[var(--b)]/30 mt-2">
+                          <User size={11} className="text-[var(--tx3)]" />
+                          <span>{act.collectedBy}</span>
+                          <span className="mx-1">•</span>
+                          <Clock size={11} className="text-[var(--tx3)]" />
+                          <span>{formatTimeAgo(act.date)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </>
+      ) : (
           // Calendar View
           <Card className="space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3.5 border-b border-[var(--b)]">
