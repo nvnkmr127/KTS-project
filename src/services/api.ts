@@ -708,6 +708,7 @@ export const api = {
   },
 
   async updateBackupSettings(data: any) {
+    clearApiCache('backups');
     return request('/backups/settings', {
       method: 'PUT',
       body: JSON.stringify(data)
@@ -715,16 +716,47 @@ export const api = {
   },
 
   async triggerManualBackup(type: string = 'code') {
+    clearApiCache('backups');
     return request('/backups/manual', {
       method: 'POST',
-      body: JSON.stringify({ type }) // usually it accepts 'type' like 'code' or 'database'
+      body: JSON.stringify({ type }),
     });
   },
 
   async deleteBackup(id: string) {
+    clearApiCache('backups');
     return request(`/backups/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     });
+  },
+
+  async restoreDatabaseBackup(filename: string) {
+    clearApiCache('backups');
+    return request('/backups/restore/database', {
+      method: 'POST',
+      body: JSON.stringify({ filename }),
+    });
+  },
+
+  async downloadBackup(downloadUrl: string) {
+    const token = storage.getItem<string>('token');
+    const response = await fetch(`${config.apiUrl.replace('/api/v1', '')}${downloadUrl}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
+    });
+    
+    if (!response.ok) throw new Error('Download failed');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = downloadUrl.split('/').pop() || 'backup.sql';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   },
 
   async authorizeGoogleDrive() {
@@ -733,4 +765,3 @@ export const api = {
     });
   }
 };
-

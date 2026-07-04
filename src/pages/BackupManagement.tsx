@@ -6,7 +6,7 @@ import { useDialog } from '../context/DialogContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Database, Cloud, Save, Trash2, Settings2, RefreshCw, 
-  AlertCircle, CheckCircle2, Download, CloudOff, Play
+  AlertCircle, CheckCircle2, Download, CloudOff, Play, RotateCcw
 } from 'lucide-react';
 import { config } from '../config';
 
@@ -130,6 +130,26 @@ export function BackupManagement() {
       loadData();
     } catch (err: any) {
       alert('Failed to delete backup: ' + err.message);
+    }
+  };
+
+  const handleDownloadBackup = async (downloadUrl: string) => {
+    try {
+      await api.downloadBackup(downloadUrl);
+    } catch (err: any) {
+      alert('Failed to download backup: ' + err.message);
+    }
+  };
+
+  const handleRestoreBackup = async (fileName: string) => {
+    if (!await confirm(`Are you sure you want to restore the database from ${fileName}? This will overwrite current data and cannot be undone.`)) return;
+    
+    try {
+      const res = await api.restoreDatabaseBackup(fileName);
+      alert(res.message || 'Database restored successfully');
+      loadData();
+    } catch (err: any) {
+      alert('Failed to restore backup: ' + err.message);
     }
   };
 
@@ -321,14 +341,24 @@ export function BackupManagement() {
                 <h3 className="font-bold text-[13px] text-[var(--tx)]">Local Backups</h3>
                 <p className="text-[11px] text-[var(--tx3)]">Backups stored on the server.</p>
               </div>
-              <button
-                onClick={() => handleManualBackup('code')}
-                disabled={triggeringBackup}
-                className="h-8 px-3 bg-[var(--surf2)] hover:bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
-              >
-                {triggeringBackup ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
-                Code Backup
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleManualBackup('database')}
+                  disabled={triggeringBackup}
+                  className="h-8 px-3 bg-[var(--surf2)] hover:bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
+                >
+                  {triggeringBackup ? <RefreshCw size={14} className="animate-spin" /> : <Database size={14} />}
+                  Database Backup
+                </button>
+                <button
+                  onClick={() => handleManualBackup('code')}
+                  disabled={triggeringBackup}
+                  className="h-8 px-3 bg-[var(--surf2)] hover:bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg text-[12px] font-medium transition-colors flex items-center gap-1.5"
+                >
+                  {triggeringBackup ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+                  Code Backup
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -349,17 +379,24 @@ export function BackupManagement() {
                       <td className="py-2.5 text-[var(--tx2)]">{bkp.last_modified}</td>
                       <td className="py-2.5 text-right space-x-2">
                         {bkp.download_url && (
-                          <a 
-                            href={`${config.apiUrl.replace('/api/v1', '')}${bkp.download_url}`} 
-                            target="_blank" 
-                            rel="noreferrer"
+                          <button 
+                            onClick={() => handleDownloadBackup(bkp.download_url!)}
+                            title="Download Backup"
                             className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--blue-bg)] text-[var(--blue-tx)] hover:bg-[var(--blue)] hover:text-white transition-colors"
                           >
                             <Download size={14} />
-                          </a>
+                          </button>
                         )}
                         <button
+                          onClick={() => handleRestoreBackup(bkp.file_name)}
+                          title="Restore Backup"
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--teal-bg)] text-[var(--teal-tx)] hover:bg-[var(--teal)] hover:text-white transition-colors"
+                        >
+                          <RotateCcw size={14} />
+                        </button>
+                        <button
                           onClick={() => handleDeleteBackup(bkp.file_name)}
+                          title="Delete Backup"
                           className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[var(--red-bg)] text-[var(--red-tx)] hover:bg-[var(--red)] hover:text-white transition-colors"
                         >
                           <Trash2 size={14} />
