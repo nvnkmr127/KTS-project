@@ -488,7 +488,6 @@ export function Alumni() {
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Gender</label>
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   <select value={fGender} onChange={e => setFGender(e.target.value as any)} className={fieldCls()}>
                     <option>Male</option><option>Female</option><option>Other</option>
                   </select>
