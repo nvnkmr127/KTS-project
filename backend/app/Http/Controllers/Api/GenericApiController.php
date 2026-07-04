@@ -54,6 +54,9 @@ class GenericApiController extends Controller
             'holidays' => \App\Models\Holiday::class,
             'webhooks' => \App\Models\Webhook::class,
             'webhook-calls' => \App\Models\WebhookCall::class,
+            'payments' => \App\Models\Payment::class,
+            'component-payment-items' => \App\Models\ComponentPaymentItem::class,
+            'student-concessions' => \App\Models\StudentConcession::class,
         ];
 
         return $map[strtolower($resource)] ?? null;

@@ -405,7 +405,7 @@ export function Students() {
     const studentId = overrideStudentId || activeDetailStudent?.id;
     if (studentId) {
       setLoadingStudentFees(true);
-      api.getResources('student-fees', { student_id: studentId })
+      api.getResources('student-fees', { student_id: studentId, with: 'payments,concessions,feeCategory' })
         .then(res => {
           const fees = res || [];
           setStudentFeesList(fees);
@@ -490,6 +490,19 @@ export function Students() {
       const fee = studentFeesList.find((f) => String(f.id) === selectedConcessionFeeId);
       if (fee) {
         const currentConcession = Number(fee.concession_amount) || 0;
+        await api.createResource('student-concessions', {
+          student_id: Number(fee.student_id || activeDetailStudent?.id),
+          student_fee_id: fee.id,
+          fee_category_id: fee.fee_category_id || fee.feeCategory?.id || fee.fee_category?.id,
+          concession_type: 'fixed_amount',
+          concession_amount: Number(concessionAmount),
+          status: 'applied',
+          notes: JSON.stringify({ text: concessionReason, collectedBy: user?.name || 'Super Admin' }),
+          reason: concessionReason,
+          applied_at: new Date().toISOString().slice(0, 10),
+          applied_by: user?.id || 1,
+        });
+
         await api.updateResource('student-fees', selectedConcessionFeeId, {
           concession_amount: currentConcession + Number(concessionAmount),
           concession_reason: JSON.stringify({ text: concessionReason, collectedBy: user?.name || 'Super Admin' }),
@@ -530,6 +543,24 @@ export function Students() {
           if (due > 0) {
             const paymentForThisFee = Math.min(remainingPayment, due);
             const currentPaid = Number(fee.paid_amount) || 0;
+
+            const payment = await api.createResource('payments', {
+              student_id: Number(activeDetailStudent.id),
+              amount: paymentForThisFee,
+              payment_date: new Date().toISOString().slice(0, 10),
+              payment_method: paymentMethod,
+              payment_type: 'component',
+              status: 'completed',
+              transaction_id: txnId,
+              notes: JSON.stringify({ text: paymentRemarks, collectedBy: user?.name || 'Super Admin' }),
+            });
+
+            await api.createResource('component-payment-items', {
+              payment_id: payment.id,
+              student_fee_id: Number(feeId),
+              amount_paid: paymentForThisFee,
+              notes: JSON.stringify({ text: paymentRemarks, collectedBy: user?.name || 'Super Admin' }),
+            });
 
             await api.updateResource('student-fees', feeId, {
               paid_amount: currentPaid + paymentForThisFee,
@@ -946,85 +977,154 @@ export function Students() {
       return `${years} year${years > 1 ? 's' : ''} ago`;
     };
 
-    const formatDateTime = (dateInput: string | Date | null | undefined): string => {
-      if (!dateInput) return '';
+    const formatDateTimeParts = (dateInput: string | Date | null | undefined) => {
+      if (!dateInput) return { date: '', time: '' };
       const date = new Date(dateInput);
-      if (isNaN(date.getTime())) return '';
-      return date.toLocaleString('en-US', {
+      if (isNaN(date.getTime())) return { date: '', time: '' };
+      const dateStr = date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        year: 'numeric',
+        year: 'numeric'
+      });
+      const timeStr = date.toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
       });
+      return { date: dateStr, time: timeStr };
     };
 
     // Timeline activities processing
     const activities: any[] = [];
-    const paymentGroups: Record<string, any[]> = {};
 
     studentFeesList.forEach((fee) => {
-      if (Number(fee.paid_amount) > 0) {
-        let groupKey = '';
-        if (fee.transaction_id) {
-          groupKey = `txn-${fee.transaction_id}`;
-        } else {
-          const dateMs = new Date(fee.paid_date || fee.updated_at || '').getTime();
-          const roundedTime = Math.round(dateMs / 10000) * 10000;
-          groupKey = `legacy-${roundedTime}-${fee.payment_method}-${fee.remarks}`;
-        }
+      const categoryName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
 
-        if (!paymentGroups[groupKey]) {
-          paymentGroups[groupKey] = [];
-        }
-        paymentGroups[groupKey].push(fee);
-      }
-    });
+      // 1. Process payments
+      let totalRelationAmount = 0;
+      if (Array.isArray(fee.payments) && fee.payments.length > 0) {
+        fee.payments.forEach((payment: any) => {
+          const amountPaid = Number(payment.pivot?.amount_paid || payment.amount || 0);
+          if (amountPaid <= 0) return;
+          totalRelationAmount += amountPaid;
 
-    Object.entries(paymentGroups).forEach(([key, fees]) => {
-      const totalPaidInGroup = fees.reduce((sum, f) => sum + (Number(f.paid_amount) || 0), 0);
-      const firstFee = fees[0];
-      
-      let remarksText = '';
-      let collectedBy = user?.name || 'Admin';
-      try {
-        if (firstFee.remarks) {
-          if (firstFee.remarks.startsWith('{')) {
-            const parsed = JSON.parse(firstFee.remarks);
-            remarksText = parsed.text || '';
-            collectedBy = parsed.collectedBy || user?.name || 'Admin';
-          } else {
-            remarksText = firstFee.remarks;
+          let remarksText = '';
+          let collectedBy = user?.name || 'Admin';
+          try {
+            const notesStr = payment.notes || payment.pivot?.notes;
+            if (notesStr) {
+              if (notesStr.startsWith('{')) {
+                const parsed = JSON.parse(notesStr);
+                remarksText = parsed.text || '';
+                collectedBy = parsed.collectedBy || user?.name || 'Admin';
+              } else {
+                remarksText = notesStr;
+              }
+            }
+          } catch (e) {
+            remarksText = payment.notes || payment.pivot?.notes || '';
           }
-        }
-      } catch (e) {
-        remarksText = firstFee.remarks || '';
+
+          const receiptNum = payment.receipt_number || payment.transaction_id || `RCP${new Date(payment.created_at || Date.now()).getFullYear()}${String(payment.id).padStart(6, '0')}`;
+
+          activities.push({
+            id: `pay-${payment.id}-${fee.id}`,
+            type: 'payment',
+            title: 'Payment Received',
+            subtitle: `Payment of ₹${amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} received via ${payment.payment_method || 'Cash'} for ${categoryName}`,
+            amount: amountPaid,
+            method: payment.payment_method || 'Cash',
+            receipt: receiptNum,
+            componentsCount: 1,
+            components: [{
+              name: categoryName,
+              amount: amountPaid
+            }],
+            date: payment.created_at || payment.pivot?.created_at || payment.payment_date || new Date().toISOString(),
+            collectedBy,
+            remarks: remarksText
+          });
+        });
       }
 
-      const receiptNum = firstFee.transaction_id || `RCP${new Date(firstFee.updated_at || Date.now()).getFullYear()}${String(firstFee.id).padStart(6, '0')}`;
+      // Check if there is an untracked legacy difference
+      const paymentDiff = Number(fee.paid_amount) - totalRelationAmount;
+      if (paymentDiff > 0) {
+        let remarksText = '';
+        let collectedBy = user?.name || 'Admin';
+        try {
+          if (fee.remarks) {
+            if (fee.remarks.startsWith('{')) {
+              const parsed = JSON.parse(fee.remarks);
+              remarksText = parsed.text || '';
+              collectedBy = parsed.collectedBy || user?.name || 'Admin';
+            } else {
+              remarksText = fee.remarks;
+            }
+          }
+        } catch (e) {
+          remarksText = fee.remarks || '';
+        }
 
-      activities.push({
-        id: `pay-${receiptNum}`,
-        type: 'payment',
-        title: 'Payment Received',
-        subtitle: `Payment of ₹${totalPaidInGroup.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} received via ${firstFee.payment_method || 'Cash'}`,
-        amount: totalPaidInGroup,
-        method: firstFee.payment_method || 'Cash',
-        receipt: receiptNum,
-        componentsCount: fees.length,
-        components: fees.map(f => ({
-          name: f.fee_category?.name || f.feeCategory?.name || f.category || 'School Fee',
-          amount: Number(f.paid_amount)
-        })),
-        date: firstFee.paid_date || firstFee.updated_at || new Date().toISOString(),
-        collectedBy,
-        remarks: remarksText
-      });
-    });
+        const receiptNum = fee.transaction_id || `RCP${new Date(fee.updated_at || Date.now()).getFullYear()}${String(fee.id).padStart(6, '0')}`;
 
-    studentFeesList.forEach((fee) => {
-      if (Number(fee.concession_amount) > 0) {
+        activities.push({
+          id: `pay-legacy-${fee.id}`,
+          type: 'payment',
+          title: 'Payment Received',
+          subtitle: `Payment of ₹${paymentDiff.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} received via ${fee.payment_method || 'Cash'} for ${categoryName}`,
+          amount: paymentDiff,
+          method: fee.payment_method || 'Cash',
+          receipt: receiptNum,
+          componentsCount: 1,
+          components: [{
+            name: categoryName,
+            amount: paymentDiff
+          }],
+          date: fee.updated_at || fee.paid_date || new Date().toISOString(),
+          collectedBy,
+          remarks: remarksText
+        });
+      }
+
+      // 2. Process concessions
+      let totalConcessionRelationAmount = 0;
+      if (Array.isArray(fee.concessions) && fee.concessions.length > 0) {
+        const activeConcessions = fee.concessions.filter((c: any) => c.status === 'applied' || c.status === 'approved' || c.status === 'active');
+        if (activeConcessions.length > 0) {
+          activeConcessions.forEach((con: any) => {
+            const concessionAmount = Number(con.concession_amount || con.concession_value || 0);
+            if (concessionAmount <= 0) return;
+            totalConcessionRelationAmount += concessionAmount;
+
+            let reasonText = con.notes || con.reason || '';
+            let approvedBy = 'Super Admin';
+            try {
+              if (reasonText.startsWith('{')) {
+                const parsed = JSON.parse(reasonText);
+                reasonText = parsed.text || '';
+                approvedBy = parsed.collectedBy || 'Super Admin';
+              }
+            } catch (e) {}
+
+            activities.push({
+              id: `con-${con.id}`,
+              type: 'concession',
+              title: 'Concession Applied',
+              subtitle: `Concession of ₹${concessionAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} applied for ${categoryName}`,
+              amount: concessionAmount,
+              reason: reasonText,
+              categoryName,
+              date: con.created_at || con.applied_at || con.approved_at || new Date().toISOString(),
+              collectedBy: approvedBy
+            });
+          });
+        }
+      }
+
+      // Check if there is an untracked legacy difference
+      const concessionDiff = Number(fee.concession_amount) - totalConcessionRelationAmount;
+      if (concessionDiff > 0) {
         let reasonText = '';
         let approvedBy = 'Super Admin';
         try {
@@ -1041,17 +1141,15 @@ export function Students() {
           reasonText = fee.concession_reason || '';
         }
 
-        const categoryName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
-
         activities.push({
-          id: `con-${fee.id}`,
+          id: `con-legacy-${fee.id}`,
           type: 'concession',
           title: 'Concession Applied',
-          subtitle: `Concession of ₹${Number(fee.concession_amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} applied for ${categoryName}`,
-          amount: Number(fee.concession_amount),
+          subtitle: `Concession of ₹${concessionDiff.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} applied for ${categoryName}`,
+          amount: concessionDiff,
           reason: reasonText,
           categoryName,
-          date: fee.concession_approved_at || fee.updated_at || new Date().toISOString(),
+          date: fee.updated_at || fee.concession_approved_at || new Date().toISOString(),
           collectedBy: approvedBy
         });
       }
@@ -1382,9 +1480,9 @@ export function Students() {
                             <div className="text-[13px] font-bold text-[var(--tx)]">{act.title}</div>
                             <div className="text-[11.5px] text-[var(--tx2)] mt-0.5">{act.subtitle}</div>
                           </div>
-                          <div className="text-right text-[10px] text-[var(--tx3)] leading-tight">
-                            <div>{formatDateTime(act.date).split(', ')[0]}</div>
-                            <div className="mt-0.5">{formatDateTime(act.date).split(', ')[1]}</div>
+                           <div className="text-right text-[10px] text-[var(--tx3)] leading-tight flex-shrink-0">
+                            <div>{formatDateTimeParts(act.date).date}</div>
+                            <div className="mt-0.5 text-[9px] text-[var(--tx4)] font-medium">{formatDateTimeParts(act.date).time}</div>
                           </div>
                         </div>
 
