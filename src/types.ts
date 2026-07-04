@@ -1,40 +1,6 @@
 export type Role = 'admin' | 'teacher';
 
-export type PageId =
-  | 'dashboard'
-  | 'fee'
-  | 'fee-categories'
-  | 'attendance'
-  | 'diary'
-  | 'bus'
-  | 'faculty'
-  | 'reports'
-  | 'students'
-  | 'staff'
-  | 'staff-attendance'
-  | 'staff-access'
-  | 'classes'
-  | 'salary'
-  | 'salary-categories'
-  | 'expenses'
-  | 'whatsapp'
-  | 'leave'
-  | 'exams'
-  | 'meetings'
-  | 'homework'
-  | 'performance'
-  | 'teacher-dashboard'
-  | 'allot-attendance'
-  | 'promotion'
-  | 'timetable'
-  | 'my-salary'
-  | 'settings'
-  | 'activity-logs'
-  | 'recycle-bin'
-  | 'alumni'
-  | 'search'
-  | 'substitute'
-  | 'webhook';
+export type { PageId } from './routes';
 
 export type ColorVariant =
   | 'blue'
