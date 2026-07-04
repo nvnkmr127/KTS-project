@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import {
   Search, Plus, Upload, UserCheck, GraduationCap,
   Phone, Edit2, Trash2, Eye, X, Loader2, AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText,
-  ArrowRightLeft, Users, ChevronLeft, ChevronRight, ArrowLeft,
+  ArrowRightLeft, Users, ChevronLeft, ChevronRight, ArrowLeft, Edit, Printer,
+  Clock,
+  Percent,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
@@ -14,6 +16,7 @@ import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
 import { useApp } from '../context/AppContext';
+import { useDialog } from '../context/DialogContext';
 import { TableSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -46,8 +49,33 @@ const INITIALS_COLORS: Record<string, { bg: string; color: string }> = {
 type ModalType = 'add' | 'view' | 'edit' | null;
 
 export function Students() {
+  const { alert, confirm } = useDialog();
   const { selectedAcademicYearId, setHasUnsavedChanges } = useApp();
   const [students, setStudents] = useState<Student[]>([]);
+
+  // States for Edit/Print/Delete inside Detailed Fee Breakdown
+  const [selectedEditFee, setSelectedEditFee] = useState<any>(null);
+  const [editPaidAmount, setEditPaidAmount] = useState('');
+  const [savingEditPaid, setSavingEditPaid] = useState(false);
+  const [showEditPaidModal, setShowEditPaidModal] = useState(false);
+
+  // Concession states
+  const [showConcessionModal, setShowConcessionModal] = useState(false);
+  const [selectedConcessionFeeId, setSelectedConcessionFeeId] = useState('');
+  const [concessionAmount, setConcessionAmount] = useState('');
+  const [concessionReason, setConcessionReason] = useState('');
+  const [applyingConcession, setApplyingConcession] = useState(false);
+
+  // Collect Payment states
+  const [collectStudent, setCollectStudent] = useState<any>(null);
+  const [selectedFeeIds, setSelectedFeeIds] = useState<string[]>([]);
+  const [payAmount, setPayAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [paymentRemarks, setPaymentRemarks] = useState('');
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
+  const [paymentSuccessData, setPaymentSuccessData] = useState<any>(null);
+
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -179,6 +207,10 @@ export function Students() {
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
 
+  // Derived concession variables
+  const selectedConcessionFee = studentFeesList.find(f => String(f.id) === selectedConcessionFeeId);
+  const selectedConcessionRemaining = selectedConcessionFee ? (Number(selectedConcessionFee.amount) - Number(selectedConcessionFee.paid_amount) - Number(selectedConcessionFee.concession_amount)) : 0;
+
   useEffect(() => {
     if (modal !== 'view' && !activeDetailStudent) {
       setShowCalendar(false);
@@ -208,7 +240,7 @@ export function Students() {
       if (!isNaN(nA)) return -1;
       if (!isNaN(nB)) return 1;
       return a.localeCompare(b);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     });
   };
 
@@ -249,7 +281,7 @@ export function Students() {
       setModalSelectedClass(cls);
       setModalSelectedSection(getSectionsForClass(batchesList, cls)[0] || 'A');
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [batchesList, modal]);
 
   useEffect(() => {
@@ -275,7 +307,7 @@ export function Students() {
     } else {
       setHasUnsavedChanges(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modal, selected, setHasUnsavedChanges]);
 
   useEffect(() => {
@@ -361,24 +393,279 @@ export function Students() {
     }
   }, [activeDetailStudent, batchesList]);
 
-  useEffect(() => {
-    if (activeDetailStudent) {
+  const reloadStudentFees = (overrideStudentId?: string) => {
+    const studentId = overrideStudentId || activeDetailStudent?.id;
+    if (studentId) {
       setLoadingStudentFees(true);
-      api.getResources('student-fees', { student_id: activeDetailStudent.id })
+      api.getResources('student-fees', { student_id: studentId })
         .then(res => {
-          setStudentFeesList(res || []);
+          const fees = res || [];
+          setStudentFeesList(fees);
+          // Set initial fee selection for collect payment
+          const outstanding = fees.filter((f: any) => (Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)) > 0);
+          setSelectedFeeIds(outstanding.map((f: any) => String(f.id)));
+          const sum = outstanding.reduce((total: number, f: any) => {
+            const rem = Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount);
+            return total + Math.max(0, rem);
+          }, 0);
+          setPayAmount(String(sum));
         })
         .catch(err => {
           console.error('Error fetching student fees:', err);
           setStudentFeesList([]);
+          setSelectedFeeIds([]);
+          setPayAmount('');
         })
         .finally(() => {
           setLoadingStudentFees(false);
         });
+    }
+  };
+
+  const handleCheckboxChange = (feeId: string, checked: boolean) => {
+    let nextIds = [...selectedFeeIds];
+    if (checked) {
+      if (!nextIds.includes(feeId)) nextIds.push(feeId);
+    } else {
+      nextIds = nextIds.filter(id => id !== feeId);
+    }
+    setSelectedFeeIds(nextIds);
+
+    const sum = nextIds.reduce((total, id) => {
+      const fee = studentFeesList.find(f => String(f.id) === id);
+      if (fee) {
+        const rem = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+        return total + Math.max(0, rem);
+      }
+      return total;
+    }, 0);
+    setPayAmount(String(sum));
+  };
+
+  useEffect(() => {
+    if (activeDetailStudent) {
+      reloadStudentFees();
     } else {
       setStudentFeesList([]);
     }
   }, [activeDetailStudent]);
+
+  const handleEditPaidSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedEditFee || editPaidAmount === '') return;
+    setSavingEditPaid(true);
+    try {
+      await api.updateResource('student-fees', selectedEditFee.id, {
+        paid_amount: Number(editPaidAmount),
+      });
+      setShowEditPaidModal(false);
+      setSelectedEditFee(null);
+      setEditPaidAmount('');
+      showToast('Paid amount updated successfully!', true);
+
+      // Reload details
+      reloadStudentFees();
+      loadStudents();
+    } catch (err) {
+      console.error('Error updating paid amount:', err);
+      showToast('Failed to update paid amount.', false);
+    } finally {
+      setSavingEditPaid(false);
+    }
+  };
+
+  const handleApplyConcessionSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedConcessionFeeId || !concessionAmount) return;
+    setApplyingConcession(true);
+    try {
+      const fee = studentFeesList.find((f) => String(f.id) === selectedConcessionFeeId);
+      if (fee) {
+        const currentConcession = Number(fee.concession_amount) || 0;
+        await api.updateResource('student-fees', selectedConcessionFeeId, {
+          concession_amount: currentConcession + Number(concessionAmount),
+          concession_reason: concessionReason,
+        });
+        showToast('Concession applied successfully!', true);
+        setShowConcessionModal(false);
+        setConcessionAmount('');
+        setConcessionReason('');
+
+        // Reload details
+        reloadStudentFees();
+        loadStudents();
+      }
+    } catch (err) {
+      console.error('Error applying concession:', err);
+      showToast('Failed to apply concession.', false);
+    } finally {
+      setApplyingConcession(false);
+    }
+  };
+
+  const handleRecordPayment = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (selectedFeeIds.length === 0 || !payAmount || !activeDetailStudent) return;
+    setProcessingPayment(true);
+    try {
+      let remainingPayment = Number(payAmount);
+      const allocated: { name: string; amount: number }[] = [];
+
+      for (const feeId of selectedFeeIds) {
+        if (remainingPayment <= 0) break;
+
+        const fee = studentFeesList.find((f) => String(f.id) === feeId);
+        if (fee) {
+          const rem = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+          const due = Math.max(0, rem);
+          if (due > 0) {
+            const paymentForThisFee = Math.min(remainingPayment, due);
+            const currentPaid = Number(fee.paid_amount) || 0;
+
+            await api.updateResource('student-fees', feeId, {
+              paid_amount: currentPaid + paymentForThisFee,
+              payment_method: paymentMethod,
+              remarks: paymentRemarks,
+            });
+
+            allocated.push({
+              name: fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee',
+              amount: paymentForThisFee
+            });
+
+            remainingPayment -= paymentForThisFee;
+          }
+        }
+      }
+
+      setPaymentSuccessData({
+        studentName: activeDetailStudent.name,
+        studentClass: `${activeDetailStudent.class}${activeDetailStudent.section}`,
+        allocatedPayments: allocated,
+        totalPaid: Number(payAmount) - remainingPayment,
+      });
+
+      setCollectStudent(null);
+      showToast('Payment recorded successfully!', true);
+
+      // Reload details
+      reloadStudentFees();
+      loadStudents();
+    } catch (err) {
+      console.error('Error recording payment:', err);
+      showToast('Failed to record payment.', false);
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handlePrint = (data: any) => {
+    const schoolName = localStorage.getItem('school_name') || 'Krishnaveni Talent School';
+    const schoolAddress = localStorage.getItem('school_address') || 'Nizamabad, Telangana';
+    const schoolLogo = localStorage.getItem('school_logo') || '/KTHS_Logo.png';
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Fee Receipt - ${data.studentName}</title>
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #1e293b; background: white; }
+              .text-center { text-align: center; }
+              .mb-4 { margin-bottom: 16px; }
+              .pb-4 { padding-bottom: 16px; }
+              .border-b { border-bottom: 1px solid #e2e8f0; }
+              .grid { display: grid; }
+              .grid-cols-2 { grid-template-columns: 1fr 1fr; gap: 16px; }
+              .bg-slate { background: #f8fafc !important; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; }
+              .text-xs { font-size: 11px; color: #64748b; }
+              .text-sm { font-size: 12px; font-weight: 600; color: #1e293b; }
+              .font-bold { font-weight: bold; }
+              .flex { display: flex; justify-content: space-between; align-items: center; }
+              .justify-between { justify-content: space-between; }
+              .space-y-1\\.5 > * + * { margin-top: 6px; }
+              .text-gray { color: #64748b; font-size: 12px; }
+              .text-dark { color: #1e293b; font-size: 12px; font-weight: 500; }
+              .bg-blue { background: #eff6ff !important; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px; }
+              .text-blue-tx { color: #1d4ed8; }
+              .text-teal-tx { color: #0d9488; }
+              .rounded-xl { border-radius: 12px; }
+              .border-t { border-top: 1px solid #e2e8f0; }
+              .pt-2 { padding-top: 8px; }
+              .mt-4 { margin-top: 16px; }
+              .text-lg { font-size: 18px; }
+              .text-md { font-size: 13px; }
+              .text-header-sm { font-size: 11px; color: #64748b; }
+              .text-header-lg { font-size: 14px; font-weight: bold; color: #1e293b; line-height: 1.2; }
+              .font-semibold { font-weight: 600; }
+              .mb-2 { margin-bottom: 8px; }
+            </style>
+          </head>
+          <body>
+            <div style="max-width: 500px; margin: 0 auto;">
+              <div class="text-center mb-4 pb-4 border-b" style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+                <img src="${schoolLogo}" alt="School Logo" style="width: 40px; height: 40px; object-fit: contain;" />
+                <div style="text-align: left;">
+                  <div class="text-header-lg" style="font-size: 14px; font-weight: bold; color: #1e293b; line-height: 1.2;">${schoolName}</div>
+                  <div class="text-xs" style="color: #64748b; font-size: 11px; margin-top: 2px;">${schoolAddress} · Fee Receipt</div>
+                  <div class="text-xs" style="color: #64748b; font-size: 11px;">Receipt No: REC-${Date.now()}</div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 mb-4" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div class="bg-slate">
+                  <div class="text-xs" style="color: #64748b;">Student Name</div>
+                  <div class="text-sm" style="font-weight: 600;">${data.studentName}</div>
+                </div>
+                <div class="bg-slate">
+                  <div class="text-xs" style="color: #64748b;">Class</div>
+                  <div class="text-sm" style="font-weight: 600;">${data.studentClass}</div>
+                </div>
+                <div class="bg-slate">
+                  <div class="text-xs" style="color: #64748b;">Date</div>
+                  <div class="text-sm" style="font-weight: 600;">${new Date().toLocaleDateString()}</div>
+                </div>
+                <div class="bg-slate">
+                  <div class="text-xs" style="color: #64748b;">Payment Method</div>
+                  <div class="text-sm" style="font-weight: 600;">Cash</div>
+                </div>
+              </div>
+
+              <div style="margin-bottom: 16px;">
+                <div class="text-xs" style="font-weight: 600; color: #0d9488; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Paid Items</div>
+                <div class="space-y-1.5" style="display: flex; flex-direction: column; gap: 6px;">
+                  ${data.allocatedPayments.map((p: any) => `
+                    <div class="flex" style="display: flex; justify-content: space-between;">
+                      <span class="text-gray">${p.name}</span>
+                      <span class="text-dark">₹${p.amount.toLocaleString()}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div class="bg-blue flex" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+                <span class="text-md font-bold text-blue-tx" style="font-size: 13px;">Total Paid</span>
+                <span class="text-lg font-bold text-blue-tx" style="font-size: 18px;">₹${data.totalPaid.toLocaleString()}</span>
+              </div>
+
+              <div class="text-center" style="margin-top: 30px; font-size: 11px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 15px;">
+                Thank you for your payment!<br>
+                This is an official computer-generated receipt.
+              </div>
+            </div>
+            <script>
+              window.onload = function() {
+                window.print();
+                window.close();
+              }
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
 
   useEffect(() => {
     if (activeDetailStudent) {
@@ -391,8 +678,8 @@ export function Students() {
         setActiveDetailStudent(null);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }, [students]);
 
   useEffect(() => {
@@ -581,8 +868,8 @@ export function Students() {
       valA = a.section || '';
       valB = b.section || '';
     }
-    return sortOrder === 'asc' 
-      ? String(valA).localeCompare(String(valB)) 
+    return sortOrder === 'asc'
+      ? String(valA).localeCompare(String(valB))
       : String(valB).localeCompare(String(valA));
   });
 
@@ -593,7 +880,7 @@ export function Students() {
   const activeCount = students.filter((s) => s.status === 'Active').length;
   const maleCount = students.filter((s) => s.gender === 'Male').length;
   const femaleCount = students.filter((s) => s.gender === 'Female').length;
-  
+
   const threeMonthsAgo = new Date();
   threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
   const newAdmissionsCount = students.filter(s => s.admissionDate && new Date(s.admissionDate) >= threeMonthsAgo).length;
@@ -613,7 +900,7 @@ export function Students() {
     const startDayOfWeek = firstDayOfMonth.getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const formattedMonthYear = `${monthNames[month]} ${year}`;
 
     const getDayAttendanceInfo = (dateStr: string) => {
@@ -655,17 +942,40 @@ export function Students() {
         </div>
 
         {/* Profile card */}
-        <Card className="p-4 flex flex-col sm:flex-row items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[20px] font-bold text-[var(--blue-tx)] flex-shrink-0">
-            {s.name.slice(0, 2).toUpperCase()}
-          </div>
-          <div className="flex-1 text-center sm:text-left">
-            <div className="text-[16px] font-bold text-[var(--tx)]">{s.name}</div>
-            <div className="text-[11.5px] text-[var(--tx3)] mt-0.5">Roll No: <span className="font-mono">{s.roll}</span></div>
-            <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
-              <Badge variant="blue">Class {s.class} — {s.section}</Badge>
-              <Badge variant={s.status === 'Active' ? 'green' : s.status === 'Left' ? 'red' : 'amber'}>{s.status}</Badge>
+        <Card className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[20px] font-bold text-[var(--blue-tx)] flex-shrink-0">
+              {s.name.slice(0, 2).toUpperCase()}
             </div>
+            <div className="text-center sm:text-left">
+              <div className="text-[16px] font-bold text-[var(--tx)]">{s.name}</div>
+              <div className="text-[11.5px] text-[var(--tx3)] mt-0.5">Roll No: <span className="font-mono">{s.roll}</span></div>
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+                <Badge variant="blue">Class {s.class} — {s.section}</Badge>
+                <Badge variant={s.status === 'Active' ? 'green' : s.status === 'Left' ? 'red' : 'amber'}>{s.status}</Badge>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 justify-center sm:justify-end flex-shrink-0">
+            <button
+              onClick={() => {
+                setSelectedConcessionFeeId('');
+                setConcessionAmount('');
+                setConcessionReason('');
+                setShowConcessionModal(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer font-medium transition-all"
+            >
+              <Percent size={12} className="text-[var(--blue-tx)]" /> Fee Concession
+            </button>
+            {totalDue > 0 && (
+              <button
+                onClick={() => setCollectStudent(s)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 cursor-pointer font-medium transition-all"
+              >
+                <Clock size={12} /> Collect Payment
+              </button>
+            )}
           </div>
         </Card>
 
@@ -699,14 +1009,12 @@ export function Students() {
                     <span className="text-[9px] text-[var(--blue-tx)] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to view calendar →</span>
                   </div>
                   <div className="flex items-center gap-2.5 mt-0.5">
-                    <span className={`text-[13px] font-bold ${
-                      attendancePercentage !== null && attendancePercentage >= 75 ? 'text-[var(--teal-tx)]' : attendancePercentage !== null && attendancePercentage >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
-                    }`}>{attendancePercentage !== null ? `${attendancePercentage}%` : 'Loading...'}</span>
+                    <span className={`text-[13px] font-bold ${attendancePercentage !== null && attendancePercentage >= 75 ? 'text-[var(--teal-tx)]' : attendancePercentage !== null && attendancePercentage >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
+                      }`}>{attendancePercentage !== null ? `${attendancePercentage}%` : 'Loading...'}</span>
                     {attendancePercentage !== null && (
                       <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${
-                          attendancePercentage >= 75 ? 'bg-[var(--teal)]' : attendancePercentage >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
-                        }`} style={{ width: `${attendancePercentage}%` }} />
+                        <div className={`h-full rounded-full ${attendancePercentage >= 75 ? 'bg-[var(--teal)]' : attendancePercentage >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
+                          }`} style={{ width: `${attendancePercentage}%` }} />
                       </div>
                     )}
                   </div>
@@ -774,8 +1082,70 @@ export function Students() {
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          {bal > 0 ? <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge> : <Badge variant="teal">Paid</Badge>}
-                          <div className="text-[8px] text-[var(--tx3)] mt-0.5">Due: {fee.due_date}</div>
+                          <div className="flex items-center gap-1.5 justify-end mb-1">
+                            {Number(fee.paid_amount) > 0 && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedEditFee(fee);
+                                    setEditPaidAmount(String(fee.paid_amount));
+                                    setShowEditPaidModal(true);
+                                  }}
+                                  className="w-7 h-7 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-md transition-colors cursor-pointer"
+                                  title="Edit Paid Amount"
+                                >
+                                  <Edit size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handlePrint({
+                                    studentName: s.name,
+                                    studentClass: `${s.class}${s.section}`,
+                                    allocatedPayments: [{
+                                      name: feeName,
+                                      amount: Number(fee.paid_amount)
+                                    }],
+                                    totalPaid: Number(fee.paid_amount)
+                                  })}
+                                  className="w-7 h-7 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-md transition-colors cursor-pointer"
+                                  title="Print Receipt"
+                                >
+                                  <Printer size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (await confirm(`Are you sure you want to delete/reverse the payment of ₹${Number(fee.paid_amount).toLocaleString()} for ${feeName}?`, 'Reverse Payment', true)) {
+                                      try {
+                                        await api.updateResource('student-fees', fee.id, {
+                                          paid_amount: 0,
+                                          payment_method: null,
+                                          remarks: null,
+                                        });
+                                        reloadStudentFees();
+                                        loadStudents();
+                                        showToast('Payment deleted successfully!', true);
+                                      } catch (err) {
+                                        console.error('Failed to delete payment:', err);
+                                        showToast('Failed to delete payment.', false);
+                                      }
+                                    }
+                                  }}
+                                  className="w-7 h-7 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--red-tx)] rounded-md transition-colors cursor-pointer"
+                                  title="Delete/Reverse Payment"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </>
+                            )}
+                            {bal > 0 ? (
+                              <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
+                            ) : (
+                              <Badge variant="teal">Paid</Badge>
+                            )}
+                          </div>
+                          <div className="text-[8px] text-[var(--tx3)]">Due: {fee.due_date}</div>
                         </div>
                       </div>
                     );
@@ -802,7 +1172,7 @@ export function Students() {
                   {monthNames.map((name, idx) => <option key={name} value={idx}>{name}</option>)}
                 </select>
                 <select value={year} onChange={e => setCurrentMonth(new Date(parseInt(e.target.value), month, 1))} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[11.5px] font-bold text-[var(--tx)] cursor-pointer outline-none">
-                  {[2024,2025,2026,2027,2028,2029,2030].map(y => <option key={y} value={y}>{y}</option>)}
+                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
                 <button onClick={() => setCurrentMonth(new Date(year, month + 1, 1))} className="p-1.5 rounded-lg border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx)] hover:bg-[var(--surf3)] transition-colors cursor-pointer" title="Next Month">
                   <ChevronRight size={13} />
@@ -822,7 +1192,7 @@ export function Students() {
               </div>
             ) : (
               <div className="grid grid-cols-7 gap-1.5">
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                   <div key={d} className="text-center text-[10px] font-bold text-[var(--tx3)] uppercase py-1">{d}</div>
                 ))}
                 {Array.from({ length: startDayOfWeek }).map((_, idx) => (
@@ -830,16 +1200,15 @@ export function Students() {
                 ))}
                 {Array.from({ length: daysInMonth }).map((_, idx) => {
                   const dayNum = idx + 1;
-                  const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(dayNum).padStart(2,'0')}`;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                   const dayRecords = attendanceRecords.filter(r => String(r.studentId) === String(s.id) && r.date === dateStr);
                   const att = getDayAttendanceInfo(dateStr);
                   const tooltipText = att
                     ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
                     : `${dayNum} ${monthNames[month]}: No attendance marked`;
                   return (
-                    <div key={`day-${dayNum}`} title={tooltipText} className={`aspect-square p-2 rounded-xl flex flex-col justify-between border transition-all ${
-                      att ? att.className : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
-                    }`}>
+                    <div key={`day-${dayNum}`} title={tooltipText} className={`aspect-square p-2 rounded-xl flex flex-col justify-between border transition-all ${att ? att.className : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)] hover:bg-[var(--surf3)]'
+                      }`}>
                       <span className="text-[11px] font-bold">{dayNum}</span>
                       {att && <span className="text-[9px] font-bold opacity-90 text-right truncate">{att.status === 'present' ? 'P' : att.status === 'absent' ? 'A' : '1/2'}</span>}
                     </div>
@@ -857,11 +1226,10 @@ export function Students() {
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)] relative">
       {/* Toast notification */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-[100] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-[12px] font-semibold animate-fade-in ${
-          toast.success
-            ? 'bg-[var(--teal-bg)] border-[var(--teal-tx)]/20 text-[var(--teal-tx)]'
-            : 'bg-[var(--red-bg)] border-[var(--red-tx)]/20 text-[var(--red-tx)]'
-        }`}>
+        <div className={`fixed top-4 right-4 z-[100] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-[12px] font-semibold animate-fade-in ${toast.success
+          ? 'bg-[var(--teal-bg)] border-[var(--teal-tx)]/20 text-[var(--teal-tx)]'
+          : 'bg-[var(--red-bg)] border-[var(--red-tx)]/20 text-[var(--red-tx)]'
+          }`}>
           {toast.success ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
           <span>{toast.message}</span>
           {toast.undoAction && (
@@ -885,260 +1253,260 @@ export function Students() {
         <Card>{renderStudentDetail()}</Card>
       ) : (
         <>
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-        <KPICard label="Total Students" value={students.length} sub="This academic year" icon={<GraduationCap size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
-        <KPICard label="Active Students" value={activeCount} sub="Currently enrolled" icon={<UserCheck size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
-        <KPICard label="Boys / Girls" value={<>{maleCount}<span className="text-[13px] font-normal text-[var(--tx3)]">/{femaleCount}</span></>} sub="Gender distribution" icon={<GraduationCap size={15} />} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
-        <KPICard label="New Admissions" value={newAdmissionsCount} sub="This term" icon={<Plus size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" trend={{ direction: 'up', label: `+${newAdmissionsCount}` }} />
-      </div>
-
-      <Card>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-[13px] font-semibold text-[var(--tx)] flex items-center gap-2">
-            Student Directory {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
+          {/* KPIs */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
+            <KPICard label="Total Students" value={students.length} sub="This academic year" icon={<GraduationCap size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
+            <KPICard label="Active Students" value={activeCount} sub="Currently enrolled" icon={<UserCheck size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
+            <KPICard label="Boys / Girls" value={<>{maleCount}<span className="text-[13px] font-normal text-[var(--tx3)]">/{femaleCount}</span></>} sub="Gender distribution" icon={<GraduationCap size={15} />} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
+            <KPICard label="New Admissions" value={newAdmissionsCount} sub="This term" icon={<Plus size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" trend={{ direction: 'up', label: `+${newAdmissionsCount}` }} />
           </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setImportOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
-            >
-              <Upload size={12} /> Import
-            </button>
-            <button
-              onClick={() => { setSelected(null); setModal('add'); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 cursor-pointer"
-            >
-              <Plus size={12} /> Add Student
-            </button>
-          </div>
-        </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2 mb-4">
-          <div className="flex items-center gap-2 flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2">
-            <Search size={13} className="text-[var(--tx3)]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, roll no, parent..."
-              className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none"
-            />
-          </div>
-          <select value={ayFilter} onChange={(e) => setAyFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-            <option value="All">All Academic Years</option>
-            {academicYears.map((ay) => (
-              <option key={ay.id} value={ay.id}>{ay.name}</option>
-            ))}
-          </select>
-          <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-            {['All', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((c) => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
-          </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-            {['All', 'Active', 'Transferred', 'Left'].map((s) => <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>)}
-          </select>
-        </div>
-
-        {/* Bulk Actions */}
-        {selectedIds.length > 0 && (
-          <div className="flex items-center justify-between bg-[var(--blue-bg)] border border-[var(--blue-tx)]/20 rounded-xl p-3.5 mb-4">
-            <div className="text-[12px] font-semibold text-[var(--blue-tx)]">
-              {selectedIds.length} students selected
+          <Card>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-[13px] font-semibold text-[var(--tx)] flex items-center gap-2">
+                Student Directory {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setImportOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+                >
+                  <Upload size={12} /> Import
+                </button>
+                <button
+                  onClick={() => { setSelected(null); setModal('add'); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 cursor-pointer"
+                >
+                  <Plus size={12} /> Add Student
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    handleBulkStatusChange(e.target.value as any);
-                    e.target.value = '';
-                  }
-                }}
-                className="bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
-              >
-                <option value="">-- Bulk Edit Status --</option>
-                <option value="Active">Active</option>
-                <option value="Transferred">Transferred</option>
-                <option value="Left">Left</option>
+
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-4">
+              <div className="flex items-center gap-2 flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2">
+                <Search size={13} className="text-[var(--tx3)]" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name, roll no, parent..."
+                  className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none"
+                />
+              </div>
+              <select value={ayFilter} onChange={(e) => setAyFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                <option value="All">All Academic Years</option>
+                {academicYears.map((ay) => (
+                  <option key={ay.id} value={ay.id}>{ay.name}</option>
+                ))}
               </select>
-              <button
-                onClick={handleBulkDelete}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 rounded-lg cursor-pointer hover:opacity-90 font-semibold"
-              >
-                <Trash2 size={12} /> Bulk Delete
-              </button>
-              <button
-                onClick={() => setSelectedIds([])}
-                className="px-3 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] cursor-pointer"
-              >
-                Clear Selection
-              </button>
+              <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                {['All', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((c) => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
+              </select>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
+                {['All', 'Active', 'Transferred', 'Left'].map((s) => <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>)}
+              </select>
             </div>
-          </div>
-        )}
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[12px] min-w-[700px]">
-            <thead>
-              <tr className="border-b border-[var(--b)]">
-                <th className="px-2 py-2 w-8">
-                  <input
-                    type="checkbox"
-                    checked={paginated.length > 0 && paginated.every(s => selectedIds.includes(s.id))}
+            {/* Bulk Actions */}
+            {selectedIds.length > 0 && (
+              <div className="flex items-center justify-between bg-[var(--blue-bg)] border border-[var(--blue-tx)]/20 rounded-xl p-3.5 mb-4">
+                <div className="text-[12px] font-semibold text-[var(--blue-tx)]">
+                  {selectedIds.length} students selected
+                </div>
+                <div className="flex gap-2">
+                  <select
                     onChange={(e) => {
-                      if (e.target.checked) {
-                        const pageIds = paginated.map(s => s.id);
-                        setSelectedIds(prev => Array.from(new Set([...prev, ...pageIds])));
-                      } else {
-                        const pageIds = paginated.map(s => s.id);
-                        setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)));
+                      if (e.target.value) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        handleBulkStatusChange(e.target.value as any);
+                        e.target.value = '';
                       }
                     }}
-                    className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
-                  />
-                </th>
-                <th onClick={() => handleSort('name')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
-                  Student {sortField === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
-                </th>
-                <th onClick={() => handleSort('roll')} className="hidden md:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
-                  Roll No {sortField === 'roll' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
-                </th>
-                <th onClick={() => handleSort('class')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
-                  Class {sortField === 'class' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
-                </th>
-                <th className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Parent / Guardian</th>
-                <th className="hidden lg:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Phone</th>
-                <th onClick={() => handleSort('feeStatus')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
-                  Fee Status {sortField === 'feeStatus' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
-                </th>
-                <th onClick={() => handleSort('status')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
-                  Status {sortField === 'status' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
-                </th>
-                <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={9} className="px-2 py-4">
-                    <TableSkeleton rows={8} cols={9} />
-                  </td>
-                </tr>
-              ) : paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="px-2 py-4">
-                    <EmptyState
-                      title="No students found"
-                      description={search.trim() ? "We couldn't find any students matching your search criteria. Try refining your filters." : "Add your first student to populate the directory."}
-                      icon={<GraduationCap size={28} />}
-                      actionLabel={search.trim() ? undefined : "Add Student"}
-                      onAction={search.trim() ? undefined : () => { setSelected(null); setModal('add'); }}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                paginated.map((s) => (
-                  <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
-                    <td className="px-2 py-2.5 w-8">
+                    className="bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
+                  >
+                    <option value="">-- Bulk Edit Status --</option>
+                    <option value="Active">Active</option>
+                    <option value="Transferred">Transferred</option>
+                    <option value="Left">Left</option>
+                  </select>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 rounded-lg cursor-pointer hover:opacity-90 font-semibold"
+                  >
+                    <Trash2 size={12} /> Bulk Delete
+                  </button>
+                  <button
+                    onClick={() => setSelectedIds([])}
+                    className="px-3 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg text-[var(--tx)] cursor-pointer"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[12px] min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-[var(--b)]">
+                    <th className="px-2 py-2 w-8">
                       <input
                         type="checkbox"
-                        checked={selectedIds.includes(s.id)}
+                        checked={paginated.length > 0 && paginated.every(s => selectedIds.includes(s.id))}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedIds(prev => [...prev, s.id]);
+                            const pageIds = paginated.map(s => s.id);
+                            setSelectedIds(prev => Array.from(new Set([...prev, ...pageIds])));
                           } else {
-                            setSelectedIds(prev => prev.filter(id => id !== s.id));
+                            const pageIds = paginated.map(s => s.id);
+                            setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)));
                           }
                         }}
                         className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
                       />
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar initials={s.name.slice(0, 2).toUpperCase()} bg={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.bg || 'var(--blue-bg)'} color={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.color || 'var(--blue-tx)'} />
-                        <div>
-                          <div
-                            className="font-semibold text-[var(--blue-tx)] hover:opacity-80 cursor-pointer transition-colors"
-                            onClick={() => { setActiveDetailStudent(s); }}
-                          >
-                            {s.name}
-                          </div>
-                          <div className="text-[10.5px] text-[var(--tx3)]">{s.gender} · DOB {formatDate(s.dob)}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="hidden md:table-cell px-2 py-2.5 font-mono text-[11px] text-[var(--tx2)]">{s.roll}</td>
-                    <td className="px-2 py-2.5 text-[var(--tx2)]">Class {s.class} — {s.section}</td>
-                    <td className="hidden sm:table-cell px-2 py-2.5">
-                      <div className="font-medium text-[var(--tx)]">{s.parent}</div>
-                      <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1"><Phone size={9} />{s.phone}</div>
-                    </td>
-                    <td className="hidden lg:table-cell px-2 py-2.5 text-[var(--tx2)]">{s.phone}</td>
-                    <td className="hidden sm:table-cell px-2 py-2.5">
-                      {s.feeStatus === 'Paid' && <Badge variant="teal">Paid</Badge>}
-                      {s.feeStatus === 'Partial' && <Badge variant="amber">Partial</Badge>}
-                      {s.feeStatus === 'Unpaid' && <Badge variant="red">Unpaid</Badge>}
-                    </td>
-                    <td className="px-2 py-2.5">
-                      {s.status === 'Active' && <Badge variant="green">Active</Badge>}
-                      {s.status === 'Transferred' && <Badge variant="amber">Transferred</Badge>}
-                      {s.status === 'Left' && <Badge variant="red">Left</Badge>}
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => { setActiveDetailStudent(s); }} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] transition-colors cursor-pointer" title="View Details"><Eye size={13} /></button>
-                        <button onClick={() => { setSelected(s); setModal('edit'); }} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] transition-colors cursor-pointer" title="Edit Student"><Edit2 size={13} /></button>
-                        <button 
-                          onClick={() => handleTransferClick(s.id)} 
-                          disabled={transferringId !== null}
-                          className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--purple-tx)] hover:bg-[var(--purple-bg)] transition-colors cursor-pointer disabled:opacity-50"
-                          title="Transfer Student"
-                        >
-                          {transferringId === s.id ? (
-                            <Loader2 size={13} className="animate-spin" />
-                          ) : (
-                            <ArrowRightLeft size={13} />
-                          )}
-                        </button>
-                        <button onClick={() => setDeleteConfirmId(s.id)} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer" title="Delete Student"><Trash2 size={13} /></button>
-                      </div>
-                    </td>
+                    </th>
+                    <th onClick={() => handleSort('name')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Student {sortField === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th onClick={() => handleSort('roll')} className="hidden md:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Roll No {sortField === 'roll' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th onClick={() => handleSort('class')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Class {sortField === 'class' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Parent / Guardian</th>
+                    <th className="hidden lg:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Phone</th>
+                    <th onClick={() => handleSort('feeStatus')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Fee Status {sortField === 'feeStatus' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th onClick={() => handleSort('status')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Status {sortField === 'status' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">Actions</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={9} className="px-2 py-4">
+                        <TableSkeleton rows={8} cols={9} />
+                      </td>
+                    </tr>
+                  ) : paginated.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-2 py-4">
+                        <EmptyState
+                          title="No students found"
+                          description={search.trim() ? "We couldn't find any students matching your search criteria. Try refining your filters." : "Add your first student to populate the directory."}
+                          icon={<GraduationCap size={28} />}
+                          actionLabel={search.trim() ? undefined : "Add Student"}
+                          onAction={search.trim() ? undefined : () => { setSelected(null); setModal('add'); }}
+                        />
+                      </td>
+                    </tr>
+                  ) : (
+                    paginated.map((s) => (
+                      <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
+                        <td className="px-2 py-2.5 w-8">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(s.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds(prev => [...prev, s.id]);
+                              } else {
+                                setSelectedIds(prev => prev.filter(id => id !== s.id));
+                              }
+                            }}
+                            className="rounded border-[var(--b)] text-[var(--blue)] focus:ring-0 cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <Avatar initials={s.name.slice(0, 2).toUpperCase()} bg={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.bg || 'var(--blue-bg)'} color={INITIALS_COLORS[s.gender === 'Male' ? 'M' : 'F']?.color || 'var(--blue-tx)'} />
+                            <div>
+                              <div
+                                className="font-semibold text-[var(--blue-tx)] hover:opacity-80 cursor-pointer transition-colors"
+                                onClick={() => { setActiveDetailStudent(s); }}
+                              >
+                                {s.name}
+                              </div>
+                              <div className="text-[10.5px] text-[var(--tx3)]">{s.gender} · DOB {formatDate(s.dob)}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="hidden md:table-cell px-2 py-2.5 font-mono text-[11px] text-[var(--tx2)]">{s.roll}</td>
+                        <td className="px-2 py-2.5 text-[var(--tx2)]">Class {s.class} — {s.section}</td>
+                        <td className="hidden sm:table-cell px-2 py-2.5">
+                          <div className="font-medium text-[var(--tx)]">{s.parent}</div>
+                          <div className="text-[10.5px] text-[var(--tx3)] flex items-center gap-1"><Phone size={9} />{s.phone}</div>
+                        </td>
+                        <td className="hidden lg:table-cell px-2 py-2.5 text-[var(--tx2)]">{s.phone}</td>
+                        <td className="hidden sm:table-cell px-2 py-2.5">
+                          {s.feeStatus === 'Paid' && <Badge variant="teal">Paid</Badge>}
+                          {s.feeStatus === 'Partial' && <Badge variant="amber">Partial</Badge>}
+                          {s.feeStatus === 'Unpaid' && <Badge variant="red">Unpaid</Badge>}
+                        </td>
+                        <td className="px-2 py-2.5">
+                          {s.status === 'Active' && <Badge variant="green">Active</Badge>}
+                          {s.status === 'Transferred' && <Badge variant="amber">Transferred</Badge>}
+                          {s.status === 'Left' && <Badge variant="red">Left</Badge>}
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => { setActiveDetailStudent(s); }} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] transition-colors cursor-pointer" title="View Details"><Eye size={13} /></button>
+                            <button onClick={() => { setSelected(s); setModal('edit'); }} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--amber-tx)] hover:bg-[var(--amber-bg)] transition-colors cursor-pointer" title="Edit Student"><Edit2 size={13} /></button>
+                            <button
+                              onClick={() => handleTransferClick(s.id)}
+                              disabled={transferringId !== null}
+                              className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--purple-tx)] hover:bg-[var(--purple-bg)] transition-colors cursor-pointer disabled:opacity-50"
+                              title="Transfer Student"
+                            >
+                              {transferringId === s.id ? (
+                                <Loader2 size={13} className="animate-spin" />
+                              ) : (
+                                <ArrowRightLeft size={13} />
+                              )}
+                            </button>
+                            <button onClick={() => setDeleteConfirmId(s.id)} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer" title="Delete Student"><Trash2 size={13} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-        <div className="mt-3 pt-3 border-t border-[var(--b)] flex items-center justify-between text-[11px] text-[var(--tx3)]">
-          <span>
-            Showing {filtered.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} to {Math.min(filtered.length, currentPage * ITEMS_PER_PAGE)} of {filtered.length} students
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-2.5 py-1 border border-[var(--b)] rounded-lg hover:bg-[var(--surf2)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[var(--tx)]"
-            >
-              Previous
-            </button>
-            <span className="px-2.5 py-1 bg-[var(--blue)] text-white rounded-lg font-medium">
-              {currentPage} of {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="px-2.5 py-1 border border-[var(--b)] rounded-lg hover:bg-[var(--surf2)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[var(--tx)]"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </Card>
+            <div className="mt-3 pt-3 border-t border-[var(--b)] flex items-center justify-between text-[11px] text-[var(--tx3)]">
+              <span>
+                Showing {filtered.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0} to {Math.min(filtered.length, currentPage * ITEMS_PER_PAGE)} of {filtered.length} students
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-2.5 py-1 border border-[var(--b)] rounded-lg hover:bg-[var(--surf2)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[var(--tx)]"
+                >
+                  Previous
+                </button>
+                <span className="px-2.5 py-1 bg-[var(--blue)] text-white rounded-lg font-medium">
+                  {currentPage} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-2.5 py-1 border border-[var(--b)] rounded-lg hover:bg-[var(--surf2)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-[var(--tx)]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </Card>
         </>
       )}
 
@@ -1461,15 +1829,15 @@ export function Students() {
               Would you like to assign fees to this student now?
             </p>
             <div className="flex gap-3">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setAdmittedStudentForFee(null)}
                 className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
               >
                 Skip for Now
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => {
                   sessionStorage.setItem('admitted_student', JSON.stringify(admittedStudentForFee));
                   setAdmittedStudentForFee(null);
@@ -1479,6 +1847,377 @@ export function Students() {
                 className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
               >
                 Assign Fees
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditPaidModal && selectedEditFee && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <form onSubmit={handleEditPaidSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Edit Paid Amount</div>
+                <div className="text-[11px] text-[var(--tx3)]">
+                  {selectedEditFee.fee_category?.name || selectedEditFee.feeCategory?.name || selectedEditFee.category || 'School Fee'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditPaidModal(false);
+                  setSelectedEditFee(null);
+                }}
+                className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-[11.5px] bg-[var(--surf2)] p-3 rounded-xl">
+                <div>
+                  <span className="text-[var(--tx3)] block">Assigned Amount:</span>
+                  <span className="font-semibold text-[var(--tx)]">₹{Number(selectedEditFee.amount).toLocaleString()}</span>
+                </div>
+                {Number(selectedEditFee.concession_amount) > 0 && (
+                  <div>
+                    <span className="text-[var(--tx3)] block">Concession:</span>
+                    <span className="font-semibold text-[var(--purple-tx)]">₹{Number(selectedEditFee.concession_amount).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Paid Amount (₹) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  max={Number(selectedEditFee.amount) - (Number(selectedEditFee.concession_amount) || 0)}
+                  value={editPaidAmount}
+                  onChange={(e) => setEditPaidAmount(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-bold text-lg"
+                />
+                <span className="text-[10px] text-[var(--tx3)] mt-1.5 block">
+                  Maximum allowed: ₹{(Number(selectedEditFee.amount) - (Number(selectedEditFee.concession_amount) || 0)).toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditPaidModal(false);
+                  setSelectedEditFee(null);
+                }}
+                className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingEditPaid}
+                className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {savingEditPaid ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Collect Payment Modal */}
+      {collectStudent && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={(e) => { e.preventDefault(); setShowPaymentConfirm(true); }} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Collect Student Fee</div>
+                <div className="text-[12px] text-[var(--tx3)]">{collectStudent.name} (Class {collectStudent.class} — {collectStudent.section})</div>
+              </div>
+              <button type="button" onClick={() => setCollectStudent(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {studentFeesList.length === 0 ? (
+                <div className="text-center py-6 text-[12px] text-[var(--tx3)] flex items-center justify-center gap-2">
+                  <Loader2 size={13} className="animate-spin" /> Loading assigned fee records...
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Fee Dues *</label>
+                    <div className="space-y-2 max-h-[160px] overflow-y-auto bg-[var(--surf2)] border border-[var(--b)] rounded-lg p-3">
+                      {studentFeesList.map((f) => {
+                        const rem = Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount);
+                        const isChecked = selectedFeeIds.includes(String(f.id));
+                        return (
+                          <label key={f.id} className="flex items-center gap-2.5 text-[12px] text-[var(--tx)] cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => handleCheckboxChange(String(f.id), e.target.checked)}
+                              className="accent-[var(--blue)] w-3.5 h-3.5 rounded"
+                            />
+                            <span>
+                              {f.fee_category?.name || f.feeCategory?.name || f.category || 'School Fee'} (Due: ₹{rem.toLocaleString()})
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Amount to Record (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={payAmount}
+                      onChange={(e) => setPayAmount(e.target.value)}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Payment Method *</label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)] font-semibold"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Card">Card</option>
+                      <option value="UPI">UPI</option>
+                      <option value="Net Banking">Net Banking</option>
+                      <option value="Bank Transfer">Bank Transfer</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Note / Remarks</label>
+                    <textarea
+                      value={paymentRemarks}
+                      onChange={(e) => setPaymentRemarks(e.target.value)}
+                      placeholder="Add transaction ID, cheque number or notes..."
+                      rows={2}
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] resize-none"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex gap-2 p-5 pt-0">
+              <button type="button" onClick={() => setCollectStudent(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] cursor-pointer">Cancel</button>
+              <button
+                type="submit"
+                disabled={processingPayment || studentFeesList.length === 0}
+                className="flex-1 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {processingPayment ? 'Recording...' : 'Record Payment'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Confirm Payment Modal */}
+      {showPaymentConfirm && collectStudent && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4 overflow-y-auto">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-950/30 text-[var(--blue-tx)] flex items-center justify-center mx-auto mb-4">
+              <Clock size={24} />
+            </div>
+            <h3 className="text-base font-bold text-[var(--tx)] mb-1">Confirm Payment</h3>
+            <p className="text-xs text-[var(--tx3)] mb-4">
+              Are you sure you want to record a payment of <strong className="text-[var(--teal-tx)]">₹{Number(payAmount).toLocaleString()}</strong> via <strong>{paymentMethod}</strong> for <strong>{collectStudent.name}</strong>?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowPaymentConfirm(false)}
+                className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                disabled={processingPayment}
+                onClick={async () => {
+                  setShowPaymentConfirm(false);
+                  const fakeEvent = { preventDefault: () => { } } as React.FormEvent<HTMLFormElement>;
+                  await handleRecordPayment(fakeEvent);
+                }}
+                className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {processingPayment ? <Loader2 size={12} className="animate-spin" /> : null}
+                Confirm Payment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fee Concession Modal */}
+      {showConcessionModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleApplyConcessionSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[500px] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Fee Concession</div>
+                <div className="text-[11px] text-[var(--tx3)]">Apply concession percentage or custom amount to active dues</div>
+              </div>
+              <button type="button" onClick={() => setShowConcessionModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"><X size={16} /></button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1">Fee Component *</label>
+                <select
+                  value={selectedConcessionFeeId}
+                  onChange={(e) => {
+                    setSelectedConcessionFeeId(e.target.value);
+                    setConcessionAmount('');
+                  }}
+                  required
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                >
+                  <option value="">Select component</option>
+                  {studentFeesList
+                    .filter((f) => (Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount)) > 0)
+                    .map((f) => {
+                      const rem = Number(f.amount) - Number(f.paid_amount) - Number(f.concession_amount);
+                      return (
+                        <option key={f.id} value={f.id}>
+                          {f.fee_category?.name || f.feeCategory?.name || f.category || 'School Fee'} (Remaining: ₹{rem.toLocaleString()})
+                        </option>
+                      );
+                    })
+                  }
+                </select>
+                <span className="text-[10px] text-[var(--tx3)] mt-1 block">Only components with outstanding balance are shown</span>
+              </div>
+
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr] gap-4 items-start">
+                  <div>
+                    <label className="block text-[11.5px] font-bold text-[var(--tx)] mb-1.5">Concession Amount *</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--tx3)] text-[13px] font-medium">₹</span>
+                      <input
+                        type="number"
+                        value={concessionAmount}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          if (val > selectedConcessionRemaining) {
+                            setConcessionAmount(String(selectedConcessionRemaining));
+                          } else {
+                            setConcessionAmount(e.target.value);
+                          }
+                        }}
+                        max={selectedConcessionRemaining}
+                        required
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg pl-7 pr-3 py-2.5 text-[13px] text-[var(--tx)] font-semibold outline-none focus:border-[var(--blue)] transition-colors"
+                        placeholder="6000"
+                      />
+                    </div>
+                    <span className="text-[10px] text-[var(--tx3)] mt-1.5 block font-medium">Maximum: ₹{selectedConcessionRemaining.toLocaleString()}</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11.5px] font-bold text-[var(--tx3)] mb-1.5">Quick Amounts</label>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {[10, 25, 50, 100].map((pct) => {
+                        const amt = Math.round(selectedConcessionRemaining * (pct / 100));
+                        return (
+                          <button
+                            key={pct}
+                            type="button"
+                            onClick={() => setConcessionAmount(String(amt))}
+                            disabled={!selectedConcessionFeeId}
+                            className="w-full px-3 py-2 bg-[var(--surf)] hover:bg-[var(--surf2)] disabled:opacity-40 text-[11px] text-[var(--tx2)] border border-[var(--b)] rounded-xl cursor-pointer transition-colors text-center font-medium shadow-sm flex justify-between items-center"
+                          >
+                            <span>{pct}%</span>
+                            <span className="font-bold text-[var(--tx3)]">(₹{amt.toLocaleString()})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11.5px] font-bold text-[var(--tx)] mb-1.5">Reason for Concession</label>
+                <textarea
+                  value={concessionReason}
+                  onChange={(e) => setConcessionReason(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] resize-none"
+                  rows={3}
+                  placeholder="e.g., Merit scholarship, Financial hardship, Staff discount, Early payment discount"
+                />
+                <span className="text-[10px] text-[var(--tx3)] mt-1 block">Provide a brief explanation for this concession</span>
+              </div>
+
+              <div className="flex gap-2.5 p-3.5 bg-[var(--amber-bg)] border border-[var(--b)] rounded-xl text-[11px] text-[var(--amber-tx)] leading-normal">
+                <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Important:</span> This concession will be applied immediately and cannot be undone from this interface. Please ensure the amount and reason are correct.
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 p-5 pt-0 justify-end border-t border-[var(--b)] mt-4 pt-4 bg-[var(--surf2)]/20">
+              <button
+                type="button"
+                onClick={() => setShowConcessionModal(false)}
+                className="px-4 py-2 border border-[var(--b)] bg-[var(--surf)] rounded-xl text-[12px] font-bold text-[var(--tx2)] hover:bg-[var(--surf2)] hover:text-[var(--tx)] cursor-pointer flex items-center gap-1.5 shadow-sm transition-all"
+              >
+                <X size={13} /> Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={applyingConcession || !selectedConcessionFeeId || !concessionAmount}
+                className="px-4 py-2 bg-[var(--coral-bg)] text-[var(--coral-tx)] border border-[var(--coral-tx)]/25 rounded-xl text-[12px] font-extrabold cursor-pointer disabled:opacity-50 flex items-center gap-1.5 hover:bg-[var(--coral)] hover:text-white transition-all shadow-sm"
+              >
+                <Percent size={13} /> Apply Concession
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Payment Success Dialog */}
+      {paymentSuccessData && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-950/30 text-green-600 dark:text-green-400 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 size={24} />
+            </div>
+            <h3 className="text-base font-bold text-[var(--tx)] mb-1">Payment Recorded!</h3>
+            <p className="text-xs text-[var(--tx3)] mb-4">The payment has been successfully recorded in the system.</p>
+
+            <div className="bg-[var(--surf2)] rounded-xl p-4 mb-6 text-left space-y-2.5 text-[12px]">
+              <div className="flex justify-between"><span className="text-[var(--tx3)]">Student:</span><span className="font-semibold text-[var(--tx)]">{paymentSuccessData.studentName}</span></div>
+              <div className="flex justify-between"><span className="text-[var(--tx3)]">Amount Paid:</span><span className="font-bold text-[var(--teal-tx)]">₹{paymentSuccessData.totalPaid.toLocaleString()}</span></div>
+              <div className="border-t border-[var(--b)] pt-2 mt-1">
+                <span className="text-[10px] text-[var(--tx3)] font-semibold uppercase tracking-wider block mb-1">Allocation</span>
+                {paymentSuccessData.allocatedPayments.map((p: any, idx: number) => (
+                  <div key={idx} className="flex justify-between text-[11px]"><span className="text-[var(--tx2)]">{p.name}</span><span className="font-medium text-[var(--tx)]">₹{p.amount.toLocaleString()}</span></div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentSuccessData(null)}
+                className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePrint(paymentSuccessData)}
+                className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold hover:opacity-90 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Printer size={12} /> Print Receipt
               </button>
             </div>
           </div>
@@ -1648,11 +2387,11 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
           const arrayBuffer = e.target?.result as ArrayBuffer;
           const result = await mammoth.convertToHtml({ arrayBuffer });
           const html = result.value;
-          
+
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, 'text/html');
           const tables = doc.querySelectorAll('table');
-          
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const rowsData: any[][] = [];
           if (tables.length > 0) {
@@ -1678,7 +2417,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             });
             resolve(lines.map((l) => [l]));
           }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err) {
           reject(err);
         }
@@ -1686,7 +2425,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
       reader.onerror = (err) => reject(err);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       reader.readAsArrayBuffer(file);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     });
   };
 
@@ -1700,18 +2439,18 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
           pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
           const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
           const pdf = await loadingTask.promise;
-          
+
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const rowsData: any[][] = [];
           for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
-            
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const items = textContent.items as any[];
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const lineGroups: Record<number, any[]> = {};
-            
+
             items.forEach((item) => {
               const y = Math.round(item.transform[5]);
               if (!lineGroups[y]) {
@@ -1719,12 +2458,12 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
               }
               lineGroups[y].push(item);
             });
-            
+
             const sortedYs = Object.keys(lineGroups)
               .map(Number)
               .sort((a, b) => b - a);
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             sortedYs.forEach((y) => {
               const rowItems = lineGroups[y].sort((a, b) => a.transform[4] - b.transform[4]);
               const rowText = rowItems.map((item) => item.str.trim()).filter(Boolean);
@@ -1777,7 +2516,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
       }
 
       const headers = rawRows[headerIndex].map(h => String(h).toLowerCase().trim());
-      
+
       const colMap: Record<string, number> = {};
       Object.keys(SYNONYMS).forEach(field => {
         const syns = SYNONYMS[field];
@@ -1843,7 +2582,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
     } catch (err) {
       console.error(err);
       setError((err as Error).message || 'Failed to parse file. Please verify format.');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } finally {
       setLoading(false);
     }
@@ -1940,9 +2679,9 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
     'Date of Birth', 'Admission Date', 'Parent Name', 'Mobile Number', 'Address', 'Aadhar Number',
   ];
   const SAMPLE_ROWS = [
-    ['Ravi',   'Teja',  '9',  'B', 'Male',   '2012-05-15', '2026-06-01', 'Nageswara Rao', '9876543210', 'Nizamabad Main Street', '123456789012'],
-    ['Anjali', 'Devi',  '10', 'A', 'Female', '2011-09-22', '2026-06-01', 'Srinivas',      '9848022338', 'Housing Board Colony', '234567890123'],
-    ['Arun',   'Kumar', '8',  'C', 'Male',   '2013-03-10', '2026-06-01', 'Ramesh',        '9700123456', 'Old Town, Nizamabad', '345678901234'],
+    ['Ravi', 'Teja', '9', 'B', 'Male', '2012-05-15', '2026-06-01', 'Nageswara Rao', '9876543210', 'Nizamabad Main Street', '123456789012'],
+    ['Anjali', 'Devi', '10', 'A', 'Female', '2011-09-22', '2026-06-01', 'Srinivas', '9848022338', 'Housing Board Colony', '234567890123'],
+    ['Arun', 'Kumar', '8', 'C', 'Male', '2013-03-10', '2026-06-01', 'Ramesh', '9700123456', 'Old Town, Nizamabad', '345678901234'],
   ];
 
   const downloadTemplate = (format: 'xlsx' | 'csv') => {
@@ -2022,11 +2761,10 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
               onDragOver={handleDrag}
               onDragLeave={handleDrag}
               onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center transition-colors ${
-                dragActive
-                  ? 'border-[var(--blue)] bg-[var(--blue-bg)]/20'
-                  : 'border-[var(--b2)] bg-[var(--surf2)]/40 hover:bg-[var(--surf2)]/70'
-              }`}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center flex flex-col items-center justify-center transition-colors ${dragActive
+                ? 'border-[var(--blue)] bg-[var(--blue-bg)]/20'
+                : 'border-[var(--b2)] bg-[var(--surf2)]/40 hover:bg-[var(--surf2)]/70'
+                }`}
             >
               {loading ? (
                 <div className="py-4">
@@ -2077,25 +2815,24 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                 {/* Column chips */}
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {[
-                    { n: '1', label: 'First Name',      req: true  },
-                    { n: '2', label: 'Last Name',       req: true  },
-                    { n: '3', label: 'Class',           req: true  },
-                    { n: '4', label: 'Section',         req: true  },
-                    { n: '5', label: 'Gender',          req: true  },
-                    { n: '6', label: 'Date of Birth',   req: true  },
-                    { n: '7', label: 'Admission Date',  req: true  },
-                    { n: '8', label: 'Parent Name',     req: true  },
-                    { n: '9', label: 'Mobile Number',   req: true  },
-                    { n: '10', label: 'Address',        req: true  },
-                    { n: '11', label: 'Aadhar Number',  req: false },
+                    { n: '1', label: 'First Name', req: true },
+                    { n: '2', label: 'Last Name', req: true },
+                    { n: '3', label: 'Class', req: true },
+                    { n: '4', label: 'Section', req: true },
+                    { n: '5', label: 'Gender', req: true },
+                    { n: '6', label: 'Date of Birth', req: true },
+                    { n: '7', label: 'Admission Date', req: true },
+                    { n: '8', label: 'Parent Name', req: true },
+                    { n: '9', label: 'Mobile Number', req: true },
+                    { n: '10', label: 'Address', req: true },
+                    { n: '11', label: 'Aadhar Number', req: false },
                   ].map(col => (
                     <div
                       key={col.n}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
-                        col.req
-                          ? 'bg-[var(--blue-bg)] border-[var(--blue-tx)]/20 text-[var(--blue-tx)]'
-                          : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx3)]'
-                      }`}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border ${col.req
+                        ? 'bg-[var(--blue-bg)] border-[var(--blue-tx)]/20 text-[var(--blue-tx)]'
+                        : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx3)]'
+                        }`}
                     >
                       <span className="opacity-60 text-[10px]">{col.n}.</span>
                       {col.label}
@@ -2215,7 +2952,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                               onChange={(e) => updateStudentField(s.id, 'section', e.target.value)}
                               className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded px-1.5 py-1 text-[11.5px] outline-none cursor-pointer"
                             >
-                              {['A','B','C'].map(sec => (
+                              {['A', 'B', 'C'].map(sec => (
                                 <option key={sec} value={sec}>Sec {sec}</option>
                               ))}
                             </select>

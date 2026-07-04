@@ -271,6 +271,10 @@ export function StaffManagement() {
     const win = window.open('', '_blank');
     if (!win) return;
 
+    const schoolName = localStorage.getItem('school_name') || 'Krishnaveni Talent School';
+    const schoolAddress = localStorage.getItem('school_address') || 'Nizamabad, Telangana';
+    const schoolLogo = localStorage.getItem('school_logo') || '/KTHS_Logo.png';
+
     if (docFile && docFile.type.startsWith('image/')) {
       win.document.write(`
         <html>
@@ -299,7 +303,13 @@ export function StaffManagement() {
           </head>
           <body>
             <div class="doc-container">
-              <div class="school-title">Krishnaveni Talent School</div>
+              <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #cbd5e1; padding-bottom: 16px;">
+                <img src="${schoolLogo}" alt="School Logo" style="width: 44px; height: 44px; object-fit: contain;" />
+                <div style="text-align: left;">
+                  <div class="school-title" style="margin: 0; line-height: 1.2;">${schoolName}</div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${schoolAddress}</div>
+                </div>
+              </div>
               <div class="doc-title">${docName} Verification Receipt</div>
               <div class="info-row"><span class="info-label">Staff Name:</span><span class="info-value">${modal?.staff?.name}</span></div>
               <div class="info-row"><span class="info-label">Designation:</span><span class="info-value">${modal?.staff?.designation}</span></div>
@@ -317,6 +327,7 @@ export function StaffManagement() {
   };
 
   const handleDownloadDoc = (docName: string) => {
+    const schoolName = localStorage.getItem('school_name') || 'Krishnaveni Talent School';
     const docFile = uploadedDocs[modal?.staff?.id || '']?.[docName];
     if (docFile) {
       const link = document.createElement('a');
@@ -324,7 +335,7 @@ export function StaffManagement() {
       link.download = docFile.name;
       link.click();
     } else {
-      const content = `KRISHNAVENI TALENT SCHOOL\nDocument Verification Receipt\n\nStaff Member: ${modal?.staff?.name}\nDocument Type: ${docName}\nStatus: Verified & Approved\nDate: ${new Date().toLocaleDateString()}\n`;
+      const content = `${schoolName.toUpperCase()}\nDocument Verification Receipt\n\nStaff Member: ${modal?.staff?.name}\nDocument Type: ${docName}\nStatus: Verified & Approved\nDate: ${new Date().toLocaleDateString()}\n`;
       const blob = new Blob([content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

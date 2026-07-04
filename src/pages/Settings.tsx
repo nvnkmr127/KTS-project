@@ -8,7 +8,7 @@ import {
   Calendar, Plus, Trash2, Edit2, CheckCircle2, Shield, 
   AlertCircle, RefreshCw, RotateCcw, X, Loader2, Save,
   Activity, User, Search, Clock, GitCompare, ArrowRight,
-  ShieldAlert, ChevronDown, ChevronRight, Fingerprint, Key
+  ShieldAlert, ChevronDown, ChevronRight, Fingerprint, Key, Upload
 } from 'lucide-react';
 import { TabBar } from '../components/ui';
 import { WebhookManagement } from '../components/WebhookManagement';
@@ -50,6 +50,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   const [schoolAddress, setSchoolAddress] = useState('');
   const [minAttendance, setMinAttendance] = useState('75');
   const [biometricApiKey, setBiometricApiKey] = useState('');
+  const [schoolLogo, setSchoolLogo] = useState('');
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSuccess, setSettingsSuccess] = useState('');
@@ -147,7 +148,10 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const attSet = data.find((s: any) => s.key === 'minimum_attendance_percentage');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bioSet = data.find((s: any) => s.key === 'biometric_api_key');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const logoSet = data.find((s: any) => s.key === 'school_logo');
 
         if (nameSet) setSchoolName(nameSet.value);
         else setSchoolName('Krishnaveni Talent School');
@@ -166,6 +170,9 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
 
         if (bioSet) setBiometricApiKey(bioSet.value);
         else setBiometricApiKey('');
+
+        if (logoSet) setSchoolLogo(logoSet.value);
+        else setSchoolLogo('/KTHS_Logo.png');
       }
     } catch (err) {
       console.error('Error loading settings:', err);
@@ -489,6 +496,25 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
     }
   };
 
+  // Handle school logo upload
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      alert('File size exceeds 1MB limit. Please upload a smaller image.', 'File Too Large');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (typeof reader.result === 'string') {
+        setSchoolLogo(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Save General School Settings
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -502,7 +528,8 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         { key: 'school_phone', value: schoolPhone },
         { key: 'school_address', value: schoolAddress },
         { key: 'minimum_attendance_percentage', value: minAttendance },
-        { key: 'biometric_api_key', value: biometricApiKey }
+        { key: 'biometric_api_key', value: biometricApiKey },
+        { key: 'school_logo', value: schoolLogo }
       ];
 
       await Promise.all(keys.map(async (item) => {
@@ -519,6 +546,12 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
           });
         }
       }));
+
+      // Update localStorage immediately
+      keys.forEach((item) => {
+        localStorage.setItem(item.key, item.value);
+      });
+      window.dispatchEvent(new CustomEvent('kts:school_profile_updated'));
 
       setSettingsSuccess('Settings saved successfully!');
       setTimeout(() => setSettingsSuccess(''), 4000);
@@ -704,6 +737,40 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
               </div>
             ) : (
               <form onSubmit={handleSaveSettings} className="space-y-4">
+                {/* School Logo upload section */}
+                <div className="border-b border-[var(--b)] pb-4 mb-4">
+                  <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-2">School Logo</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-white border border-[var(--b)] flex items-center justify-center p-1 shadow-sm overflow-hidden flex-shrink-0">
+                      <img src={schoolLogo || '/KTHS_Logo.png'} alt="School Logo" className="w-full h-full object-contain" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <label className="px-3 py-1.5 bg-[var(--surf2)] hover:bg-[var(--surf3)] border border-[var(--b)] rounded-lg text-[11.5px] font-semibold text-[var(--tx)] cursor-pointer transition-colors flex items-center gap-1.5">
+                          <Upload size={12} className="text-[var(--tx2)]" />
+                          Upload Logo
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={handleLogoUpload}
+                          />
+                        </label>
+                        {schoolLogo && schoolLogo !== '/KTHS_Logo.png' && (
+                          <button
+                            type="button"
+                            onClick={() => setSchoolLogo('/KTHS_Logo.png')}
+                            className="px-3 py-1.5 bg-[var(--red-bg)] hover:bg-opacity-80 text-[var(--red-tx)] rounded-lg text-[11.5px] font-semibold cursor-pointer transition-colors"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-[var(--tx3)]">Supported formats: JPG, PNG, JPEG. Max size 1MB.</span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">School Name *</label>
@@ -763,22 +830,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                   />
                 </div>
 
-                <div className="border-t border-[var(--b)] pt-4">
-                  <h4 className="text-[12px] font-bold text-[var(--tx)] mb-2 flex items-center gap-1">
-                    <Shield size={12} className="text-[var(--purple-tx)]" /> API Integrations
-                  </h4>
-                  <div>
-                    <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Biometric Machine API Key (Webhook Security)</label>
-                    <input 
-                      type="password"
-                      value={biometricApiKey}
-                      onChange={(e) => setBiometricApiKey(e.target.value)}
-                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
-                      placeholder="••••••••••••••••••••••••••••••••"
-                    />
-                    <span className="text-[10px] text-[var(--tx3)] mt-1.5 block">Used to verify punch data updates sent from biometric device webhook requests.</span>
-                  </div>
-                </div>
+
 
                 {settingsSuccess && (
                   <div className="p-3 bg-[var(--teal-bg)] border border-[var(--teal-tx)]/15 text-[var(--teal-tx)] rounded-xl text-[11.5px] flex items-center gap-2">

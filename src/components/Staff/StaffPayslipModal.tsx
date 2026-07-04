@@ -11,6 +11,10 @@ interface StaffPayslipModalProps {
 export function StaffPayslipModal({ selectedSlip, onClose }: StaffPayslipModalProps) {
   if (!selectedSlip) return null;
 
+  const schoolName = localStorage.getItem('school_name') || 'Krishnaveni Talent School';
+  const schoolAddress = localStorage.getItem('school_address') || 'Nizamabad, Telangana';
+  const schoolLogo = localStorage.getItem('school_logo') || '/KTHS_Logo.png';
+
   const handlePrintPayslip = () => {
     const printContent = document.getElementById('printable-payslip-ref')?.innerHTML;
     if (!printContent) return;
@@ -90,10 +94,13 @@ export function StaffPayslipModal({ selectedSlip, onClose }: StaffPayslipModalPr
         </div>
 
         <div className="p-5 overflow-y-auto max-h-[60vh]" id="printable-payslip-ref">
-          <div className="text-center mb-4 pb-4 border-b border-[var(--b)]">
-            <div className="text-[14px] font-bold text-[var(--tx)]">Krishnaveni Talent School</div>
-            <div className="text-[11px] text-[var(--tx3)]">Nizamabad, Telangana · Salary Payslip</div>
-            <div className="text-[11px] text-[var(--tx3)]">{selectedSlip.month}</div>
+          <div className="text-center mb-4 pb-4 border-b border-[var(--b)]" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <img src={schoolLogo} alt="School Logo" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+            <div>
+              <div className="text-[14px] font-bold text-[var(--tx)]">{schoolName}</div>
+              <div className="text-[11px] text-[var(--tx3)]">{schoolAddress} · Salary Payslip</div>
+              <div className="text-[11px] text-[var(--tx3)]">{selectedSlip.month}</div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mb-4">

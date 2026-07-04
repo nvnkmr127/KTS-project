@@ -502,6 +502,9 @@ export function FeeManagement() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlePrint = (data: any) => {
+    const schoolName = localStorage.getItem('school_name') || 'Krishnaveni Talent School';
+    const schoolAddress = localStorage.getItem('school_address') || 'Nizamabad, Telangana';
+    const schoolLogo = localStorage.getItem('school_logo') || '/KTHS_Logo.png';
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(`
@@ -542,10 +545,13 @@ export function FeeManagement() {
           </head>
           <body>
             <div style="max-width: 500px; margin: 0 auto;">
-              <div class="text-center mb-4 pb-4 border-b">
-                <div class="text-header-lg">Krishnaveni Talent School</div>
-                <div class="text-xs" style="color: #64748b;">Nizamabad, Telangana · Fee Receipt</div>
-                <div class="text-xs" style="color: #64748b;">Receipt No: REC-${Date.now()}</div>
+              <div class="text-center mb-4 pb-4 border-b" style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+                <img src="${schoolLogo}" alt="School Logo" style="width: 40px; height: 40px; object-fit: contain;" />
+                <div style="text-align: left;">
+                  <div class="text-header-lg" style="font-size: 14px; font-weight: bold; color: #1e293b; line-height: 1.2;">${schoolName}</div>
+                  <div class="text-xs" style="color: #64748b; font-size: 11px; margin-top: 2px;">${schoolAddress} · Fee Receipt</div>
+                  <div class="text-xs" style="color: #64748b; font-size: 11px;">Receipt No: REC-${Date.now()}</div>
+                </div>
               </div>
 
               <div class="grid grid-cols-2 gap-2 mb-4" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">

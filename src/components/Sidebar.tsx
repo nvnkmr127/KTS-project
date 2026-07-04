@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard, Users, CalendarCheck, BookOpen,
   DollarSign, BadgeIcon, Clock, Wallet,
@@ -148,6 +149,22 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const isAdmin = user?.role === 'admin';
   const sections = isAdmin ? ADMIN_SECTIONS : TEACHER_SECTIONS;
 
+  const [schoolName, setSchoolName] = useState(() => localStorage.getItem('school_name') || 'Krishnaveni Talent School');
+  const [schoolLogo, setSchoolLogo] = useState(() => localStorage.getItem('school_logo') || '/KTHS_Logo.png');
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setSchoolName(localStorage.getItem('school_name') || 'Krishnaveni Talent School');
+      setSchoolLogo(localStorage.getItem('school_logo') || '/KTHS_Logo.png');
+    };
+    window.addEventListener('kts:school_profile_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('kts:school_profile_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, []);
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -164,13 +181,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div className="px-3.5 py-3 border-b border-[var(--b)] flex items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 rounded-lg bg-white border border-[var(--b)] flex items-center justify-center p-0.5 flex-shrink-0 shadow-sm">
-              <img src="/KTHS_Logo.png" alt="KTHS Logo" className="w-full h-full object-contain" />
+              <img src={schoolLogo} alt="School Logo" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <div className="text-[12px] font-bold text-[var(--tx)] leading-none">Krishnaveni</div>
-              <div className="text-[10px] text-[var(--tx3)] mt-0.5">Talent School</div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold text-[var(--tx)] leading-tight break-words">{schoolName}</div>
             </div>
           </div>
           <button

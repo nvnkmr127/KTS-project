@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Eye, EyeOff, ShieldCheck, GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../services/api';
 
 type PortalTab = 'admin' | 'teacher';
 
@@ -14,6 +15,29 @@ export function Login() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
   const [portal, setPortal] = useState<PortalTab>('admin');
+
+  const [schoolName, setSchoolName] = useState(() => localStorage.getItem('school_name') || 'Krishnaveni Talent School');
+  const [schoolLogo, setSchoolLogo] = useState(() => localStorage.getItem('school_logo') || '/KTHS_Logo.png');
+
+  useEffect(() => {
+    // Also fetch settings from API just in case cache is empty/invalid
+    api.getResources('settings').then((data) => {
+      if (Array.isArray(data)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const nameSet = data.find((s: any) => s.key === 'school_name');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const logoSet = data.find((s: any) => s.key === 'school_logo');
+        if (nameSet?.value) {
+          setSchoolName(nameSet.value);
+          localStorage.setItem('school_name', nameSet.value);
+        }
+        if (logoSet?.value) {
+          setSchoolLogo(logoSet.value);
+          localStorage.setItem('school_logo', logoSet.value);
+        }
+      }
+    }).catch(err => console.warn('Could not load login settings:', err));
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -62,12 +86,11 @@ export function Login() {
         <div className="relative z-10 flex flex-col h-full p-10">
           {/* Logo */}
           <div className="flex items-center gap-3 mb-auto">
-            <div className="w-12 h-12 rounded-xl bg-white/90 flex items-center justify-center p-1 shadow-sm">
-              <img src="/KTHS_Logo.png" alt="KTHS Logo" className="w-full h-full object-contain" />
+            <div className="w-12 h-12 rounded-xl bg-white/90 flex items-center justify-center p-1 shadow-sm flex-shrink-0">
+              <img src={schoolLogo} alt="School Logo" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <div className="text-white font-bold text-lg leading-none">Krishnaveni</div>
-              <div className="text-white/60 text-xs mt-0.5">Talent Chevella</div>
+            <div className="min-w-0">
+              <div className="text-white font-bold text-lg leading-tight break-words">{schoolName}</div>
             </div>
           </div>
 
@@ -110,11 +133,11 @@ export function Login() {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-[400px]">
           {/* Mobile logo */}
-          <div className="flex items-center gap-2.5 mb-8 lg:hidden">
-            <div className="w-10 h-10 rounded-lg bg-white border border-[var(--b)] flex items-center justify-center p-1 shadow-sm">
-              <img src="/KTHS_Logo.png" alt="KTHS Logo" className="w-full h-full object-contain" />
+          <div className="flex items-center gap-2.5 mb-8 lg:hidden min-w-0">
+            <div className="w-10 h-10 rounded-lg bg-white border border-[var(--b)] flex items-center justify-center p-1 shadow-sm flex-shrink-0">
+              <img src={schoolLogo} alt="School Logo" className="w-full h-full object-contain" />
             </div>
-            <div className="text-[14px] font-bold text-[var(--tx)]">Krishnaveni Talent School</div>
+            <div className="text-[14px] font-bold text-[var(--tx)] leading-tight break-words min-w-0">{schoolName}</div>
           </div>
 
           <div className="mb-7">
