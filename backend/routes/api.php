@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BiometricSyncController;
 use App\Http\Controllers\Api\CollegeAdminDashboardController;
 use App\Http\Controllers\Api\GlobalSearchController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Admin\BackupController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -349,6 +350,33 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
     // Global search endpoint
     Route::get('/search', [GlobalSearchController::class, 'search']);
 
+    // Backup & System Health (API)
+    Route::prefix('backups')->name('api.backups.')->group(function () {
+        Route::get('/', [BackupController::class, 'index'])->name('index');
+        Route::post('/', [BackupController::class, 'store'])->name('store');
+        Route::get('/create', [BackupController::class, 'index'])->name('create');
+        Route::delete('/{id}', [BackupController::class, 'destroy'])->name('destroy');
+        Route::get('/download/{fileName}', [BackupController::class, 'download'])->name('download');
+
+        // Manual Backup / Actions
+        Route::post('/manual', [BackupController::class, 'createManualBackup'])->name('manual');
+        Route::post('/test', [BackupController::class, 'createManualBackup'])->name('test');
+        Route::post('/cleanup', [BackupController::class, 'cleanupBackups'])->name('cleanup');
+        Route::put('/settings', [BackupController::class, 'updateSettings'])->name('settings.update');
+
+        // Restore Routes
+        Route::post('/restore/database', [BackupController::class, 'restoreDatabase'])->name('restore.database');
+        Route::post('/restore/settings', [BackupController::class, 'restoreSettings'])->name('restore.settings');
+
+        // Google Drive
+        Route::post('/gdrive/authorize', [BackupController::class, 'authorizeGoogleDrive'])->name('gdrive.authorize');
+        Route::get('/gdrive/test', [BackupController::class, 'testGoogleDriveConnection'])->name('gdrive.test');
+        Route::get('/gdrive/list', [BackupController::class, 'listGoogleDriveBackups'])->name('gdrive.list');
+    });
+    
+    // Note: gdrive/callback needs to be outside the API prefix or handle redirects correctly,
+    // but typically it's hit by Google so it shouldn't require auth:sanctum. We'll add it below.
+
     // Dashboard Stats
     Route::get('/dashboard/stats', [\App\Http\Controllers\Api\DashboardStatsController::class, 'getStats']);
 
@@ -429,6 +457,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
         Route::get('/stats/monthly', [AttendanceController::class, 'getMonthlyStats'])->name('stats.monthly');
     });
 });
+
+// Google Drive Callback Route (No auth:sanctum required, as Google redirects here)
+Route::get('/v1/backups/gdrive/callback', [BackupController::class, 'handleGoogleDriveCallback'])->name('api.backups.gdrive.callback');
 
 // ── Millitrack GPS Bus Tracking Proxy ────────────────────────────────────
 // Accessible without auth:sanctum middleware to support local demo-token logins.
