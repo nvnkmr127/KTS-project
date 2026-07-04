@@ -18,6 +18,7 @@ interface StudentFeeDisplay {
   name: string;
   init: string;
   cls: string;
+  class: string;
   fee: number;
   paid: number;
   bal: number;
@@ -384,6 +385,7 @@ export function FeeManagement() {
           name: s.name,
           init: initials || 'ST',
           cls: `${s.class || '8'}${s.section || 'A'}`,
+          class: String(s.class || '8'),
           fee: Number(s.fee_total) || 0,
           paid: Number(s.fee_paid) || 0,
           bal: Number(s.fee_balance) || 0,
@@ -786,7 +788,7 @@ export function FeeManagement() {
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.cls.toLowerCase().includes(search.toLowerCase()) ||
       s.assignedCategories?.some(cat => cat.toLowerCase().includes(search.toLowerCase()));
-    const matchClass = classFilter === 'All' || s.cls.startsWith(classFilter);
+    const matchClass = classFilter === 'All' || s.cls === classFilter;
     const matchTab =
       tab === 0 ||
       (tab === 1 && s.status === 'Paid') ||
@@ -1059,7 +1061,7 @@ export function FeeManagement() {
                 reasonText = parsed.text || '';
                 approvedBy = parsed.collectedBy || 'Super Admin';
               }
-            } catch (e) {}
+            } catch (e) { }
 
             activities.push({
               id: `con-${con.id}`,
@@ -1176,360 +1178,360 @@ export function FeeManagement() {
         {!showCalendar ? (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
-            {/* Personal Info */}
-            <Card className="space-y-4">
-              <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
-                <GraduationCap size={13} className="text-[var(--tx3)]" /> Personal &amp; Academic Details
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { label: 'Gender', value: std.gender },
-                  { label: 'Date of Birth', value: formatDate(std.dob) },
-                  { label: 'Admission Date', value: formatDate(std.admissionDate) },
-                  { label: 'Parent / Guardian', value: std.parent },
-                  { label: 'Mobile', value: std.phone },
-                  { label: 'Aadhar Number', value: std.aadhar_number },
-                ].map(item => (
-                  <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
-                    <div className="text-[10px] text-[var(--tx3)] mb-0.5">{item.label}</div>
-                    <div className="text-[12px] font-semibold text-[var(--tx)]">{item.value || 'N/A'}</div>
-                  </div>
-                ))}
-                <div
-                  onClick={() => setShowCalendar(true)}
-                  className="bg-[var(--surf2)] rounded-xl p-3 sm:col-span-2 cursor-pointer hover:bg-[var(--surf3)] border border-transparent hover:border-[var(--blue-tx)]/20 transition-all group"
-                >
-                  <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center justify-between">
-                    <span className="flex items-center gap-1"><Users size={11} /> Overall Attendance</span>
-                    <span className="text-[9px] text-[var(--blue-tx)] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to view calendar →</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 mt-0.5">
-                    <span className={`text-[13px] font-bold ${selectedStudentAttendance !== null && selectedStudentAttendance >= 75 ? 'text-[var(--teal-tx)]' : selectedStudentAttendance !== null && selectedStudentAttendance >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
-                      }`}>{selectedStudentAttendance !== null ? `${selectedStudentAttendance}%` : 'Loading...'}</span>
-                    {selectedStudentAttendance !== null && (
-                      <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${selectedStudentAttendance >= 75 ? 'bg-[var(--teal)]' : selectedStudentAttendance >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
-                          }`} style={{ width: `${selectedStudentAttendance}%` }} />
-                      </div>
-                    )}
-                  </div>
+              {/* Personal Info */}
+              <Card className="space-y-4">
+                <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
+                  <GraduationCap size={13} className="text-[var(--tx3)]" /> Personal &amp; Academic Details
                 </div>
-              </div>
-              <div className="bg-[var(--surf2)] rounded-xl p-3">
-                <div className="text-[10px] text-[var(--tx3)] mb-0.5">Address</div>
-                <div className="text-[12px] font-semibold text-[var(--tx)]">{std.address || 'N/A'}</div>
-              </div>
-            </Card>
-
-            {/* Fee & Concession Summary */}
-            <Card className="space-y-4 lg:h-[400px] lg:flex lg:flex-col">
-              <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5 flex-shrink-0">
-                <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
-              </div>
-
-              {/* Overall totals */}
-              <div className="grid grid-cols-3 gap-2.5 flex-shrink-0">
-                <div className="bg-[var(--surf2)] rounded-xl p-3 text-center">
-                  <div className="text-[10px] text-[var(--tx3)] mb-0.5">Total Fee</div>
-                  <div className="text-[13.5px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
-                </div>
-                <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--teal)]">
-                  <div className="text-[10px] text-[var(--tx3)] mb-0.5">Paid Amount</div>
-                  <div className="text-[13.5px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
-                </div>
-                <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--red)]">
-                  <div className="text-[10px] text-[var(--tx3)] mb-0.5">Amount Due</div>
-                  <div className="text-[13.5px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
-                </div>
-              </div>
-
-              {/* Fee Items Breakdown */}
-              <div className="space-y-2 flex-1 min-h-0 flex flex-col">
-                <div className="text-[11.5px] font-bold text-[var(--tx)] flex-shrink-0">Detailed Fee Breakdown</div>
-                {loadingStudentFees ? (
-                  <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
-                ) : studentFeesList.length === 0 ? (
-                  <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex flex-col items-center justify-center gap-2">
-                    <span>No fee records assigned.</span>
-                    <button
-                      onClick={() => {
-                        setAssignType('student');
-                        setAssignedItems([]);
-                        setCurrentAmount('8500');
-                        setModalStudentId(std.studentId);
-                        setShowAssignModal(true);
-                      }}
-                      className="mt-1 flex items-center gap-1 px-2.5 py-1.5 text-[10.5px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer font-semibold"
-                    >
-                      <Plus size={11} /> Assign Fee
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2 overflow-y-auto pr-1 max-h-[220px] lg:max-h-none lg:flex-1">
-                    {studentFeesList.map((fee) => {
-                      const feeName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
-                      const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
-                      return (
-                        <div key={fee.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
-                          <div>
-                            <div className="text-[12px] font-bold text-[var(--tx)]">{feeName}</div>
-                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[var(--tx3)] mt-1.5">
-                              <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
-                              {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
-                              <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
-                            </div>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <div className="flex items-center gap-2 justify-end mb-1">
-                              {Number(fee.paid_amount) > 0 && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedEditFee(fee);
-                                      setEditPaidAmount(String(fee.paid_amount));
-                                      setShowEditPaidModal(true);
-                                    }}
-                                    className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
-                                    title="Edit Paid Amount"
-                                  >
-                                    <Edit size={12} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handlePrint({
-                                      studentName: std.name,
-                                      studentClass: std.cls,
-                                      allocatedPayments: [{
-                                        name: feeName,
-                                        amount: Number(fee.paid_amount)
-                                      }],
-                                      totalPaid: Number(fee.paid_amount)
-                                    })}
-                                    className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
-                                    title="Print Receipt"
-                                  >
-                                    <Printer size={12} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      if (await confirm(`Are you sure you want to delete/reverse the payment of ₹${Number(fee.paid_amount).toLocaleString()} for ${feeName}?`, 'Reverse Payment', true)) {
-                                        try {
-                                          await api.updateResource('student-fees', fee.id, {
-                                            paid_amount: 0,
-                                            payment_method: null,
-                                            remarks: null,
-                                          });
-                                          loadFeesData();
-                                          loadStudentFees(std.studentId);
-                                          await alert('Payment deleted successfully!', 'Payment Deleted');
-                                        } catch (err) {
-                                          console.error('Failed to delete payment:', err);
-                                        }
-                                      }
-                                    }}
-                                    className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--red-tx)] rounded-lg transition-colors cursor-pointer"
-                                    title="Delete/Reverse Payment"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </>
-                              )}
-                              {bal > 0 ? (
-                                <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
-                              ) : (
-                                <Badge variant="teal">Paid</Badge>
-                              )}
-                            </div>
-                            <div className="text-[9.5px] text-[var(--tx3)]">Due Date: {formatDate(fee.due_date)}</div>
-                          </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { label: 'Gender', value: std.gender },
+                    { label: 'Date of Birth', value: formatDate(std.dob) },
+                    { label: 'Admission Date', value: formatDate(std.admissionDate) },
+                    { label: 'Parent / Guardian', value: std.parent },
+                    { label: 'Mobile', value: std.phone },
+                    { label: 'Aadhar Number', value: std.aadhar_number },
+                  ].map(item => (
+                    <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
+                      <div className="text-[10px] text-[var(--tx3)] mb-0.5">{item.label}</div>
+                      <div className="text-[12px] font-semibold text-[var(--tx)]">{item.value || 'N/A'}</div>
+                    </div>
+                  ))}
+                  <div
+                    onClick={() => setShowCalendar(true)}
+                    className="bg-[var(--surf2)] rounded-xl p-3 sm:col-span-2 cursor-pointer hover:bg-[var(--surf3)] border border-transparent hover:border-[var(--blue-tx)]/20 transition-all group"
+                  >
+                    <div className="text-[10px] text-[var(--tx3)] mb-0.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1"><Users size={11} /> Overall Attendance</span>
+                      <span className="text-[9px] text-[var(--blue-tx)] opacity-0 group-hover:opacity-100 transition-opacity font-semibold">Click to view calendar →</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 mt-0.5">
+                      <span className={`text-[13px] font-bold ${selectedStudentAttendance !== null && selectedStudentAttendance >= 75 ? 'text-[var(--teal-tx)]' : selectedStudentAttendance !== null && selectedStudentAttendance >= 60 ? 'text-[var(--amber-tx)]' : 'text-[var(--red-tx)]'
+                        }`}>{selectedStudentAttendance !== null ? `${selectedStudentAttendance}%` : 'Loading...'}</span>
+                      {selectedStudentAttendance !== null && (
+                        <div className="flex-1 h-2 bg-[var(--surf)] rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${selectedStudentAttendance >= 75 ? 'bg-[var(--teal)]' : selectedStudentAttendance >= 60 ? 'bg-[var(--amber)]' : 'bg-[var(--red)]'
+                            }`} style={{ width: `${selectedStudentAttendance}%` }} />
                         </div>
-                      );
-                    })}
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </Card>
-          </div>
+                </div>
+                <div className="bg-[var(--surf2)] rounded-xl p-3">
+                  <div className="text-[10px] text-[var(--tx3)] mb-0.5">Address</div>
+                  <div className="text-[12px] font-semibold text-[var(--tx)]">{std.address || 'N/A'}</div>
+                </div>
+              </Card>
 
-          {/* Recent Activity Timeline */}
-          <Card className="p-4 mt-3.5 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-[var(--b)] pb-3 relative">
-              <span className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
-                <History size={14} className="text-[var(--blue-tx)]" /> Recent Activity Timeline
-              </span>
-              <div className="relative">
-                <button
-                  onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold border border-[var(--blue-tx)]/20 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg hover:opacity-90 transition-all cursor-pointer"
-                >
-                  <Filter size={11} /> Filter <ChevronDown size={11} className={`transition-transform duration-200 ${showFilterDropdown ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {showFilterDropdown && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setShowFilterDropdown(false)} />
-                    <div className="absolute right-0 mt-1.5 w-44 bg-[var(--surf)] border border-[var(--b)] rounded-xl shadow-lg z-20 py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+              {/* Fee & Concession Summary */}
+              <Card className="space-y-4 lg:h-[400px] lg:flex lg:flex-col">
+                <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5 flex-shrink-0">
+                  <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
+                </div>
+
+                {/* Overall totals */}
+                <div className="grid grid-cols-3 gap-2.5 flex-shrink-0">
+                  <div className="bg-[var(--surf2)] rounded-xl p-3 text-center">
+                    <div className="text-[10px] text-[var(--tx3)] mb-0.5">Total Fee</div>
+                    <div className="text-[13.5px] font-bold text-[var(--tx)]">₹{totalFee.toLocaleString()}</div>
+                  </div>
+                  <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--teal)]">
+                    <div className="text-[10px] text-[var(--tx3)] mb-0.5">Paid Amount</div>
+                    <div className="text-[13.5px] font-bold text-[var(--teal-tx)]">₹{totalPaid.toLocaleString()}</div>
+                  </div>
+                  <div className="bg-[var(--surf2)] rounded-xl p-3 text-center border-l-2 border-[var(--red)]">
+                    <div className="text-[10px] text-[var(--tx3)] mb-0.5">Amount Due</div>
+                    <div className="text-[13.5px] font-bold text-[var(--red-tx)]">₹{totalDue.toLocaleString()}</div>
+                  </div>
+                </div>
+
+                {/* Fee Items Breakdown */}
+                <div className="space-y-2 flex-1 min-h-0 flex flex-col">
+                  <div className="text-[11.5px] font-bold text-[var(--tx)] flex-shrink-0">Detailed Fee Breakdown</div>
+                  {loadingStudentFees ? (
+                    <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex items-center justify-center">Loading breakdown...</div>
+                  ) : studentFeesList.length === 0 ? (
+                    <div className="text-center py-6 text-[11.5px] text-[var(--tx3)] italic flex-1 flex flex-col items-center justify-center gap-2">
+                      <span>No fee records assigned.</span>
                       <button
-                        onClick={() => { setTimelineFilter('all'); setShowFilterDropdown(false); }}
-                        className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'all' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
+                        onClick={() => {
+                          setAssignType('student');
+                          setAssignedItems([]);
+                          setCurrentAmount('8500');
+                          setModalStudentId(std.studentId);
+                          setShowAssignModal(true);
+                        }}
+                        className="mt-1 flex items-center gap-1 px-2.5 py-1.5 text-[10.5px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer font-semibold"
                       >
-                        <List size={12} className={timelineFilter === 'all' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> All Activities
-                      </button>
-                      <button
-                        onClick={() => { setTimelineFilter('payment'); setShowFilterDropdown(false); }}
-                        className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'payment' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
-                      >
-                        <Banknote size={12} className={timelineFilter === 'payment' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> Payments Only
-                      </button>
-                      <button
-                        onClick={() => { setTimelineFilter('concession'); setShowFilterDropdown(false); }}
-                        className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'concession' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
-                      >
-                        <Percent size={12} className={timelineFilter === 'concession' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> Concessions Only
+                        <Plus size={11} /> Assign Fee
                       </button>
                     </div>
-                  </>
-                )}
-              </div>
+                  ) : (
+                    <div className="space-y-2 overflow-y-auto pr-1 max-h-[220px] lg:max-h-none lg:flex-1">
+                      {studentFeesList.map((fee) => {
+                        const feeName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
+                        const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
+                        return (
+                          <div key={fee.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
+                            <div>
+                              <div className="text-[12px] font-bold text-[var(--tx)]">{feeName}</div>
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[var(--tx3)] mt-1.5">
+                                <span>Amount: ₹{Number(fee.amount).toLocaleString()}</span>
+                                {Number(fee.concession_amount) > 0 && <span className="text-[var(--purple-tx)] font-semibold">Concession: -₹{Number(fee.concession_amount).toLocaleString()}</span>}
+                                <span>Paid: ₹{Number(fee.paid_amount).toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div className="flex items-center gap-2 justify-end mb-1">
+                                {Number(fee.paid_amount) > 0 && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedEditFee(fee);
+                                        setEditPaidAmount(String(fee.paid_amount));
+                                        setShowEditPaidModal(true);
+                                      }}
+                                      className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
+                                      title="Edit Paid Amount"
+                                    >
+                                      <Edit size={12} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handlePrint({
+                                        studentName: std.name,
+                                        studentClass: std.cls,
+                                        allocatedPayments: [{
+                                          name: feeName,
+                                          amount: Number(fee.paid_amount)
+                                        }],
+                                        totalPaid: Number(fee.paid_amount)
+                                      })}
+                                      className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
+                                      title="Print Receipt"
+                                    >
+                                      <Printer size={12} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (await confirm(`Are you sure you want to delete/reverse the payment of ₹${Number(fee.paid_amount).toLocaleString()} for ${feeName}?`, 'Reverse Payment', true)) {
+                                          try {
+                                            await api.updateResource('student-fees', fee.id, {
+                                              paid_amount: 0,
+                                              payment_method: null,
+                                              remarks: null,
+                                            });
+                                            loadFeesData();
+                                            loadStudentFees(std.studentId);
+                                            await alert('Payment deleted successfully!', 'Payment Deleted');
+                                          } catch (err) {
+                                            console.error('Failed to delete payment:', err);
+                                          }
+                                        }
+                                      }}
+                                      className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--red-tx)] rounded-lg transition-colors cursor-pointer"
+                                      title="Delete/Reverse Payment"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </>
+                                )}
+                                {bal > 0 ? (
+                                  <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
+                                ) : (
+                                  <Badge variant="teal">Paid</Badge>
+                                )}
+                              </div>
+                              <div className="text-[9.5px] text-[var(--tx3)]">Due Date: {formatDate(fee.due_date)}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </Card>
             </div>
 
-            {/* Timeline content */}
-            {filteredActivities.length === 0 ? (
-              <div className="text-center py-8 text-[11.5px] text-[var(--tx3)] italic">
-                No recent activity found.
-              </div>
-            ) : (
-              <div className="relative pl-2.5 space-y-5">
-                {/* Vertical line connector */}
-                <div className="absolute left-[20px] top-4 bottom-4 w-0.5 bg-[var(--b)]" />
+            {/* Recent Activity Timeline */}
+            <Card className="p-4 mt-3.5 space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-[var(--b)] pb-3 relative">
+                <span className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
+                  <History size={14} className="text-[var(--blue-tx)]" /> Recent Activity Timeline
+                </span>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold border border-[var(--blue-tx)]/20 bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg hover:opacity-90 transition-all cursor-pointer"
+                  >
+                    <Filter size={11} /> Filter <ChevronDown size={11} className={`transition-transform duration-200 ${showFilterDropdown ? 'rotate-180' : ''}`} />
+                  </button>
 
-                {filteredActivities.map((act) => {
-                  const isExpanded = expandedActivities.includes(act.id);
-                  return (
-                    <div key={act.id} className="flex gap-4 relative">
-                      {/* Event icon dot */}
-                      <div className="relative z-10 flex-shrink-0 mt-1">
-                        {act.type === 'payment' ? (
-                          <div className="w-8 h-8 rounded-full bg-[#10b981] text-white flex items-center justify-center shadow-md shadow-emerald-500/10">
-                            <Banknote size={14} />
-                          </div>
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center shadow-md shadow-violet-500/10">
-                            <Percent size={14} />
-                          </div>
-                        )}
+                  {showFilterDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowFilterDropdown(false)} />
+                      <div className="absolute right-0 mt-1.5 w-44 bg-[var(--surf)] border border-[var(--b)] rounded-xl shadow-lg z-20 py-1 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                        <button
+                          onClick={() => { setTimelineFilter('all'); setShowFilterDropdown(false); }}
+                          className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'all' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
+                        >
+                          <List size={12} className={timelineFilter === 'all' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> All Activities
+                        </button>
+                        <button
+                          onClick={() => { setTimelineFilter('payment'); setShowFilterDropdown(false); }}
+                          className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'payment' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
+                        >
+                          <Banknote size={12} className={timelineFilter === 'payment' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> Payments Only
+                        </button>
+                        <button
+                          onClick={() => { setTimelineFilter('concession'); setShowFilterDropdown(false); }}
+                          className={`flex items-center gap-2 w-full px-3.5 py-2 text-left text-[11.5px] hover:bg-[var(--surf2)] transition-colors cursor-pointer ${timelineFilter === 'concession' ? 'text-[var(--blue-tx)] font-semibold bg-[var(--blue-bg)]/20' : 'text-[var(--tx2)]'}`}
+                        >
+                          <Percent size={12} className={timelineFilter === 'concession' ? 'text-[var(--blue-tx)]' : 'text-[var(--tx3)]'} /> Concessions Only
+                        </button>
                       </div>
+                    </>
+                  )}
+                </div>
+              </div>
 
-                      {/* Card box */}
-                      <div className="flex-1 bg-[var(--surf2)] border border-[var(--b)] border-l-[3px] border-[var(--blue)] rounded-xl p-3.5 space-y-2.5 relative shadow-sm">
-                        {/* Title & DateTime */}
-                        <div className="flex justify-between items-start">
+              {/* Timeline content */}
+              {filteredActivities.length === 0 ? (
+                <div className="text-center py-8 text-[11.5px] text-[var(--tx3)] italic">
+                  No recent activity found.
+                </div>
+              ) : (
+                <div className="relative pl-2.5 space-y-5">
+                  {/* Vertical line connector */}
+                  <div className="absolute left-[20px] top-4 bottom-4 w-0.5 bg-[var(--b)]" />
+
+                  {filteredActivities.map((act) => {
+                    const isExpanded = expandedActivities.includes(act.id);
+                    return (
+                      <div key={act.id} className="flex gap-4 relative">
+                        {/* Event icon dot */}
+                        <div className="relative z-10 flex-shrink-0 mt-1">
+                          {act.type === 'payment' ? (
+                            <div className="w-8 h-8 rounded-full bg-[#10b981] text-white flex items-center justify-center shadow-md shadow-emerald-500/10">
+                              <Banknote size={14} />
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center shadow-md shadow-violet-500/10">
+                              <Percent size={14} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card box */}
+                        <div className="flex-1 bg-[var(--surf2)] border border-[var(--b)] border-l-[3px] border-[var(--blue)] rounded-xl p-3.5 space-y-2.5 relative shadow-sm">
+                          {/* Title & DateTime */}
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-[13px] font-bold text-[var(--tx)]">{act.title}</div>
+                              <div className="text-[11.5px] text-[var(--tx2)] mt-0.5">{act.subtitle}</div>
+                            </div>
+                            <div className="text-right text-[10px] text-[var(--tx3)] leading-tight flex-shrink-0">
+                              <div>{formatDateTimeParts(act.date).date}</div>
+                              <div className="mt-0.5 text-[9px] text-[var(--tx4)] font-medium">{formatDateTimeParts(act.date).time}</div>
+                            </div>
+                          </div>
+
+                          {/* Details Button */}
                           <div>
-                            <div className="text-[13px] font-bold text-[var(--tx)]">{act.title}</div>
-                            <div className="text-[11.5px] text-[var(--tx2)] mt-0.5">{act.subtitle}</div>
+                            <button
+                              onClick={() => {
+                                if (isExpanded) {
+                                  setExpandedActivities(expandedActivities.filter(id => id !== act.id));
+                                } else {
+                                  setExpandedActivities([...expandedActivities, act.id]);
+                                }
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1 text-[10.5px] border border-[var(--b)] bg-[var(--surf)] rounded-lg text-[var(--tx2)] hover:text-[var(--tx)] transition-all cursor-pointer font-medium"
+                            >
+                              {isExpanded ? (
+                                <>
+                                  <ChevronUp size={11} /> Details
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown size={11} /> Details
+                                </>
+                              )}
+                            </button>
                           </div>
-                           <div className="text-right text-[10px] text-[var(--tx3)] leading-tight flex-shrink-0">
-                            <div>{formatDateTimeParts(act.date).date}</div>
-                            <div className="mt-0.5 text-[9px] text-[var(--tx4)] font-medium">{formatDateTimeParts(act.date).time}</div>
+
+                          {/* Expanded Details section */}
+                          {isExpanded && (
+                            <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[11px] text-[var(--tx2)] animate-fade-in">
+                              {act.type === 'payment' ? (
+                                <>
+                                  <div>
+                                    <span className="font-semibold text-[var(--tx3)]">Amount:</span> ₹{act.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold text-[var(--tx3)]">Receipt:</span> <span className="font-mono">{act.receipt}</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold text-[var(--tx3)]">Method:</span> {act.method}
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold text-[var(--tx3)]">Components:</span> {act.componentsCount} items
+                                  </div>
+                                  {act.remarks && (
+                                    <div className="sm:col-span-2 mt-1 pt-1.5 border-t border-[var(--b)]/30">
+                                      <span className="font-semibold text-[var(--tx3)]">Remarks:</span> {act.remarks}
+                                    </div>
+                                  )}
+                                  {act.components && act.components.length > 0 && (
+                                    <div className="sm:col-span-2 mt-1.5 pt-1.5 border-t border-[var(--b)]/30 space-y-1">
+                                      <span className="font-semibold text-[var(--tx3)] text-[10.5px] block mb-1">Payment Breakdown:</span>
+                                      {act.components.map((c: any, i: number) => (
+                                        <div key={i} className="flex justify-between text-[10.5px] pl-1 border-l border-[var(--b)]">
+                                          <span>{c.name}</span>
+                                          <span className="font-medium">₹{c.amount.toLocaleString()}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <div>
+                                    <span className="font-semibold text-[var(--tx3)]">Concession:</span> ₹{act.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold text-[var(--tx3)]">Category:</span> {act.categoryName}
+                                  </div>
+                                  {act.reason && (
+                                    <div className="sm:col-span-2 mt-1 pt-1.5 border-t border-[var(--b)]/30">
+                                      <span className="font-semibold text-[var(--tx3)]">Reason:</span> {act.reason}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Footer user & time */}
+                          <div className="flex items-center gap-1.5 text-[10.5px] text-[var(--tx3)] pt-2 border-t border-[var(--b)]/30 mt-2">
+                            <User size={11} className="text-[var(--tx3)]" />
+                            <span>{act.collectedBy}</span>
+                            <span className="mx-1">•</span>
+                            <Clock size={11} className="text-[var(--tx3)]" />
+                            <span>{formatTimeAgo(act.date)}</span>
                           </div>
-                        </div>
-
-                        {/* Details Button */}
-                        <div>
-                          <button
-                            onClick={() => {
-                              if (isExpanded) {
-                                setExpandedActivities(expandedActivities.filter(id => id !== act.id));
-                              } else {
-                                setExpandedActivities([...expandedActivities, act.id]);
-                              }
-                            }}
-                            className="flex items-center gap-1 px-2.5 py-1 text-[10.5px] border border-[var(--b)] bg-[var(--surf)] rounded-lg text-[var(--tx2)] hover:text-[var(--tx)] transition-all cursor-pointer font-medium"
-                          >
-                            {isExpanded ? (
-                              <>
-                                <ChevronUp size={11} /> Details
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown size={11} /> Details
-                              </>
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Expanded Details section */}
-                        {isExpanded && (
-                          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[11px] text-[var(--tx2)] animate-fade-in">
-                            {act.type === 'payment' ? (
-                              <>
-                                <div>
-                                  <span className="font-semibold text-[var(--tx3)]">Amount:</span> ₹{act.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
-                                <div>
-                                  <span className="font-semibold text-[var(--tx3)]">Receipt:</span> <span className="font-mono">{act.receipt}</span>
-                                </div>
-                                <div>
-                                  <span className="font-semibold text-[var(--tx3)]">Method:</span> {act.method}
-                                </div>
-                                <div>
-                                  <span className="font-semibold text-[var(--tx3)]">Components:</span> {act.componentsCount} items
-                                </div>
-                                {act.remarks && (
-                                  <div className="sm:col-span-2 mt-1 pt-1.5 border-t border-[var(--b)]/30">
-                                    <span className="font-semibold text-[var(--tx3)]">Remarks:</span> {act.remarks}
-                                  </div>
-                                )}
-                                {act.components && act.components.length > 0 && (
-                                  <div className="sm:col-span-2 mt-1.5 pt-1.5 border-t border-[var(--b)]/30 space-y-1">
-                                    <span className="font-semibold text-[var(--tx3)] text-[10.5px] block mb-1">Payment Breakdown:</span>
-                                    {act.components.map((c: any, i: number) => (
-                                      <div key={i} className="flex justify-between text-[10.5px] pl-1 border-l border-[var(--b)]">
-                                        <span>{c.name}</span>
-                                        <span className="font-medium">₹{c.amount.toLocaleString()}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <div>
-                                  <span className="font-semibold text-[var(--tx3)]">Concession:</span> ₹{act.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </div>
-                                <div>
-                                  <span className="font-semibold text-[var(--tx3)]">Category:</span> {act.categoryName}
-                                </div>
-                                {act.reason && (
-                                  <div className="sm:col-span-2 mt-1 pt-1.5 border-t border-[var(--b)]/30">
-                                    <span className="font-semibold text-[var(--tx3)]">Reason:</span> {act.reason}
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Footer user & time */}
-                        <div className="flex items-center gap-1.5 text-[10.5px] text-[var(--tx3)] pt-2 border-t border-[var(--b)]/30 mt-2">
-                          <User size={11} className="text-[var(--tx3)]" />
-                          <span>{act.collectedBy}</span>
-                          <span className="mx-1">•</span>
-                          <Clock size={11} className="text-[var(--tx3)]" />
-                          <span>{formatTimeAgo(act.date)}</span>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        </>
-      ) : (
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </>
+        ) : (
           // Calendar View
           <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4.5 space-y-4">
             {/* Calendar Header */}
@@ -1658,6 +1660,24 @@ export function FeeManagement() {
     );
   };
 
+  // Dynamically extract all unique class names (with sections) from classes (batches) and student records
+  const uniqueClassNames = Array.from(
+    new Set([
+      ...classes,
+      ...students.map((s) => s.cls).filter(Boolean)
+    ])
+  ).sort((a: string, b: string) => {
+    const numA = parseInt(a);
+    const numB = parseInt(b);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      if (numA !== numB) return numA - numB;
+      return a.localeCompare(b);
+    }
+    if (!isNaN(numA)) return -1;
+    if (!isNaN(numB)) return 1;
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
       {activeDetailStudent ? (
@@ -1749,7 +1769,7 @@ export function FeeManagement() {
                 className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx)] w-full sm:w-32 cursor-pointer outline-none"
               >
                 <option value="All">All classes</option>
-                {['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((c) => (
+                {uniqueClassNames.map((c) => (
                   <option key={c} value={c}>{`Class ${c}`}</option>
                 ))}
               </select>
@@ -2381,7 +2401,6 @@ export function FeeManagement() {
               <div className="flex justify-between"><span className="text-[var(--tx3)]">Amount Paid:</span><span className="font-bold text-[var(--teal-tx)]">₹{paymentSuccessData.totalPaid.toLocaleString()}</span></div>
               <div className="border-t border-[var(--b)] pt-2 mt-1">
                 <span className="text-[10px] text-[var(--tx3)] font-semibold uppercase tracking-wider block mb-1">Allocation</span>
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 {paymentSuccessData.allocatedPayments.map((p: any, idx: number) => (
                   <div key={idx} className="flex justify-between text-[11px]"><span className="text-[var(--tx2)]">{p.name}</span><span className="font-medium text-[var(--tx)]">₹{p.amount.toLocaleString()}</span></div>
                 ))}

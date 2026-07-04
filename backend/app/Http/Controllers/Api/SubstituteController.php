@@ -195,9 +195,10 @@ class SubstituteController extends Controller
             'user_id' => $request->substitute_user_id,
             'title' => 'Substitute Assignment',
             'message' => $notificationMessage,
-            'type' => 'substitution',
-            'link' => '/dashboard',
-            'is_read' => false,
+            'type' => 'info',
+            'category' => 'academic',
+            'action_url' => '/dashboard',
+            'action_text' => 'View Dashboard',
         ]);
 
         return response()->json([

@@ -892,7 +892,8 @@ export function Students() {
       (s.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (s.roll || '').toLowerCase().includes(search.toLowerCase()) ||
       (s.parent || '').toLowerCase().includes(search.toLowerCase());
-    const matchClass = classFilter === 'All' || s.class === classFilter;
+    const studentFullClass = `${s.class || ''}${s.section || ''}`;
+    const matchClass = classFilter === 'All' || studentFullClass === classFilter || s.class === classFilter;
     const matchStatus = statusFilter === 'All' || s.status === statusFilter;
     const matchAy = ayFilter === 'All' || String(s.academicYearId) === ayFilter;
     return matchSearch && matchClass && matchStatus && matchAy;
@@ -1646,6 +1647,24 @@ export function Students() {
     );
   };
 
+  // Dynamically extract and sort all classes and sections (batch names) from batches list and student records
+  const dynamicClassList = Array.from(
+    new Set([
+      ...batchesList.map((b: any) => b.name),
+      ...students.map((s) => `${s.class || ''}${s.section || ''}`).filter(Boolean)
+    ])
+  ).sort((a: string, b: string) => {
+    const numA = parseInt(a);
+    const numB = parseInt(b);
+    if (!isNaN(numA) && !isNaN(numB)) {
+      if (numA !== numB) return numA - numB;
+      return a.localeCompare(b);
+    }
+    if (!isNaN(numA)) return -1;
+    if (!isNaN(numB)) return 1;
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)] relative">
       {/* Toast notification */}
@@ -1725,7 +1744,10 @@ export function Students() {
                 ))}
               </select>
               <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-                {['All', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((c) => <option key={c} value={c}>{c === 'All' ? 'All Classes' : `Class ${c}`}</option>)}
+                <option value="All">All Classes</option>
+                {dynamicClassList.map((c) => (
+                  <option key={c} value={c}>{`Class ${c}`}</option>
+                ))}
               </select>
               <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
                 {['All', 'Active', 'Transferred', 'Left'].map((s) => <option key={s} value={s}>{s === 'All' ? 'All Status' : s}</option>)}

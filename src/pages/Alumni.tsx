@@ -22,7 +22,7 @@ import {
   mergeAlumni,
 } from '../utils/alumniStore';
 
-interface Alumni extends LocalAlumni {}
+interface Alumni extends LocalAlumni { }
 
 type ModalType = 'add' | 'view' | 'edit' | null;
 
@@ -153,7 +153,7 @@ export function Alumni() {
 
       // Merge backend records with locally-stored ones (from promotion or manual adds)
       const merged = (mergeAlumni(backendAlumni) as Alumni[]).filter(a => a.status !== 'Deleted');
-      
+
       setAlumni(merged);
     } finally {
       setLoading(false);
@@ -483,7 +483,7 @@ export function Alumni() {
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Section</label>
                   <select value={fSection} onChange={e => setFSection(e.target.value)} className={fieldCls()}>
-                    {['A','B','C','D'].map(s => <option key={s}>{s}</option>)}
+                    {['A', 'B', 'C', 'D'].map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
@@ -541,7 +541,6 @@ export function Alumni() {
               {/* Status */}
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Verification Status</label>
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 <select value={fStatus} onChange={e => setFStatus(e.target.value as any)} className={fieldCls()}>
                   <option>Unverified</option><option>Verified</option><option>Inactive</option>
                 </select>
@@ -578,11 +577,10 @@ export function Alumni() {
 
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-[100] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-[12px] font-semibold ${
-          toast.ok
+        <div className={`fixed top-4 right-4 z-[100] flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-xl border text-[12px] font-semibold ${toast.ok
             ? 'bg-[var(--teal-bg)] border-[var(--teal-tx)]/20 text-[var(--teal-tx)]'
             : 'bg-[var(--red-bg)] border-[var(--red-tx)]/20 text-[var(--red-tx)]'
-        }`}>
+          }`}>
           {toast.ok ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
           {toast.msg}
         </div>
@@ -790,11 +788,10 @@ export function Alumni() {
                           <button
                             key={pg}
                             onClick={() => setCurrentPage(pg)}
-                            className={`w-7 h-7 rounded-lg text-[11.5px] font-medium cursor-pointer transition-colors ${
-                              pg === currentPage
+                            className={`w-7 h-7 rounded-lg text-[11.5px] font-medium cursor-pointer transition-colors ${pg === currentPage
                                 ? 'bg-[var(--blue)] text-white'
                                 : 'text-[var(--tx2)] hover:bg-[var(--surf2)]'
-                            }`}
+                              }`}
                           >
                             {pg}
                           </button>

@@ -33,7 +33,8 @@ class SystemNotification extends Model
     public function scopeForUser(Builder $query, int $userId): Builder
     {
         return $query->where(function ($q) use ($userId) {
-            $q->whereJsonContains('sent_to_users', $userId)
+            $q->where('user_id', $userId)
+                ->orWhereJsonContains('sent_to_users', $userId)
                 ->orWhere(function ($subQ) use ($userId) {
                     $userRoles = \App\Models\User::find($userId)?->roles->pluck('name')->toArray() ?? [];
                     foreach ($userRoles as $role) {
@@ -75,13 +76,18 @@ class SystemNotification extends Model
             return true;
         }
 
-        // 2. Check if sent to user directly (Handle string/int mismatch)
+        // 2. Check user_id column
+        if ($this->user_id === $userId) {
+            return true;
+        }
+
+        // 3. Check if sent to user directly (Handle string/int mismatch)
         $targetUsers = $this->sent_to_users ?? [];
         if (in_array($userId, $targetUsers) || in_array((string) $userId, $targetUsers)) {
             return true;
         }
 
-        // 3. Check Roles
+        // 4. Check Roles
         $userRoles = $user?->roles->pluck('name')->toArray() ?? [];
         $notificationRoles = $this->sent_to_roles ?? [];
 

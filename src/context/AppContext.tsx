@@ -485,7 +485,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             staffId: String(l.user_id),
             staffName: l.staff_name || 'Unknown',
             init: l.initials || 'LD',
-            type: l.leave_type,
+            type: (typeof l.leave_type === 'object' && l.leave_type ? l.leave_type.name : l.leave_type) || 'Sick Leave',
             from: l.start_date,
             to: l.end_date,
             days: Number(l.days),

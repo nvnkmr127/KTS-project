@@ -457,14 +457,12 @@ export function AllotAttendance() {
               </div>
 
               {/* Session selector */}
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               <div>
                 <label className="block text-[11px] font-medium text-[var(--tx3)] uppercase mb-1.5 flex items-center gap-1">
                   <Clock size={11} /> Session / Attendance Type
                 </label>
                 <select
                   value={session}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   onChange={(e) => setSession(e.target.value as any)}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >

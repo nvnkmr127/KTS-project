@@ -5,18 +5,18 @@ import { Badge } from '../components/Badge';
 import { Users, Calendar, Clock, AlertCircle, X, Loader2, Check, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Reusable Custom Date Picker Component
-const CustomDatePicker = ({ 
-  value, 
-  onChange, 
-  holidays 
-}: { 
-  value: string; 
-  onChange: (date: string) => void; 
+const CustomDatePicker = ({
+  value,
+  onChange,
+  holidays
+}: {
+  value: string;
+  onChange: (date: string) => void;
   holidays: Record<string, string>;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
-  
+
   // Parse initial date value
   const initialDate = value ? new Date(value + 'T00:00:00') : new Date();
   const [viewDate, setViewDate] = useState(new Date(initialDate.getFullYear(), initialDate.getMonth(), 1));
@@ -142,7 +142,7 @@ const CustomDatePicker = ({
               const dYmd = day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0');
               const isSelected = dYmd === value;
               const isToday = dYmd === todayYmd;
-              
+
               // Disabling Rules:
               // 1. Sunday
               const isSunday = day.getDay() === 0;
@@ -187,7 +187,7 @@ const CustomDatePicker = ({
               );
             })}
           </div>
-          
+
           {/* Calendar Legend */}
           <div className="mt-3.5 pt-2 border-t border-[var(--b)] text-[9px] text-[var(--tx3)] flex flex-wrap gap-2">
             <span className="flex items-center gap-1">
@@ -203,6 +203,25 @@ const CustomDatePicker = ({
       )}
     </div>
   );
+};
+
+// Find next valid date if starting date falls on a Sunday or holiday
+const findNextValidDate = (startDateStr: string, holidays: Record<string, string>) => {
+  const current = new Date(startDateStr + 'T00:00:00');
+
+  for (let i = 0; i < 30; i++) {
+    const ymd = current.getFullYear() + '-' + String(current.getMonth() + 1).padStart(2, '0') + '-' + String(current.getDate()).padStart(2, '0');
+
+    const isSunday = current.getDay() === 0;
+    const isHoliday = !!holidays[ymd];
+
+    if (!isSunday && !isHoliday) {
+      return ymd;
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+  return startDateStr;
 };
 
 const Substitute = () => {
@@ -223,7 +242,7 @@ const Substitute = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [availableSubstitutes, setAvailableSubstitutes] = useState<any[]>([]);
   const [holidaysMap, setHolidaysMap] = useState<Record<string, string>>({});
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedPeriod, setSelectedPeriod] = useState<any>(null);
@@ -276,36 +295,15 @@ const Substitute = () => {
       }
     }
     fetchHolidays();
-  }, []);
-
-  // Find next valid date if starting date falls on a Sunday or holiday
-  const findNextValidDate = (startDateStr: string, holidays: Record<string, string>) => {
-    let current = new Date(startDateStr + 'T00:00:00');
-    
-    for (let i = 0; i < 30; i++) {
-      const ymd = current.getFullYear() + '-' + String(current.getMonth() + 1).padStart(2, '0') + '-' + String(current.getDate()).padStart(2, '0');
-      
-      const isSunday = current.getDay() === 0;
-      const isHoliday = !!holidays[ymd];
-      
-      if (!isSunday && !isHoliday) {
-        return ymd;
-      }
-      
-      current.setDate(current.getDate() + 1);
-    }
-    return startDateStr;
-  };
-
-  // Auto-advance selectedDate if it lands on a Sunday or holiday
+  }, []);  // Auto-advance selectedDate if it lands on a Sunday or holiday
   useEffect(() => {
-    if (Object.keys(holidaysMap).length > 0 || selectedDate) {
+    if (selectedDate) {
       const validDate = findNextValidDate(selectedDate, holidaysMap);
       if (validDate !== selectedDate) {
         setSelectedDate(validDate);
       }
     }
-  }, [holidaysMap]);
+  }, [selectedDate, holidaysMap]);
 
   // Fetch schedule when selectedStaff or selectedDate changes
   useEffect(() => {
@@ -313,7 +311,7 @@ const Substitute = () => {
       setSchedule([]);
       return;
     }
-    
+
     async function fetchSchedule() {
       setLoadingSchedule(true);
       try {
@@ -397,9 +395,9 @@ const Substitute = () => {
       setSelectedPeriod(null);
       setSelectedSubstitute('');
       setNotes('');
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setErrorMsg(err.message || 'Failed to assign substitute.');
+      setErrorMsg((err as Error).message || 'Failed to assign substitute.');
     } finally {
       setAssigning(false);
     }
@@ -446,8 +444,8 @@ const Substitute = () => {
                 className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
               >
                 <option value="">-- Choose Absent Teacher --</option>
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                {staffList.map((staff: any) => (
+
+                {staffList.map((staff) => (
                   <option key={staff.id} value={staff.id}>
                     {staff.name} {staff.department ? `(${staff.department})` : ''}
                   </option>
@@ -461,10 +459,10 @@ const Substitute = () => {
               <Calendar size={11} /> Select Assignment Date
             </label>
             {/* Embedded Custom Calendar Date Picker */}
-            <CustomDatePicker 
-              value={selectedDate} 
-              onChange={setSelectedDate} 
-              holidays={holidaysMap} 
+            <CustomDatePicker
+              value={selectedDate}
+              onChange={setSelectedDate}
+              holidays={holidaysMap}
             />
           </div>
         </div>
@@ -507,8 +505,8 @@ const Substitute = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  {schedule.map((entry: any) => {
+
+                  {schedule.map((entry) => {
                     const hasSub = !!entry.substitute;
                     return (
                       <tr
@@ -531,11 +529,10 @@ const Substitute = () => {
                         <td className="px-3 py-3 text-center">
                           <button
                             onClick={() => handlePeriodClick(entry)}
-                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all flex items-center gap-1 mx-auto ${
-                              hasSub
-                                ? 'bg-[var(--surf2)] text-[var(--tx2)] border border-[var(--b)] hover:bg-[var(--surf3)]'
-                                : 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/10 hover:opacity-90'
-                            }`}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all flex items-center gap-1 mx-auto ${hasSub
+                              ? 'bg-[var(--surf2)] text-[var(--tx2)] border border-[var(--b)] hover:bg-[var(--surf3)]'
+                              : 'bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/10 hover:opacity-90'
+                              }`}
                           >
                             <UserPlus size={11} />
                             {hasSub ? 'Change Staff' : 'Assign Staff'}
@@ -571,7 +568,7 @@ const Substitute = () => {
                 <UserPlus size={16} />
                 <span className="text-[13.5px] font-bold">Assign Substitute Teacher</span>
               </div>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1 hover:bg-white/10 rounded-lg text-white/80 hover:text-white transition-colors cursor-pointer"
               >
@@ -621,8 +618,7 @@ const Substitute = () => {
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-xl px-3 py-2.5 text-[12.5px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                   >
                     <option value="">-- Choose Available Staff --</option>
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    {availableSubstitutes.map((staff: any) => (
+                    {availableSubstitutes.map((staff) => (
                       <option key={staff.id} value={staff.id}>
                         {staff.name} {staff.department ? `(${staff.department})` : ''}
                       </option>
@@ -656,15 +652,15 @@ const Substitute = () => {
 
             {/* Footer */}
             <div className="flex gap-3 p-5 pt-0">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer transition-colors"
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleAssign}
                 disabled={!selectedSubstitute || assigning || loadingAvailable || availableSubstitutes.length === 0}
                 className="flex-1 py-2.5 bg-gradient-to-r from-[var(--purple)] to-[#7c3aed] text-white rounded-xl text-[12px] font-bold hover:opacity-90 disabled:opacity-40 disabled:pointer-events-none cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5"

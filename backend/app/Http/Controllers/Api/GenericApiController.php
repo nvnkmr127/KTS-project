@@ -799,7 +799,6 @@ class GenericApiController extends Controller
                         'id' => $userId,
                         'name' => $slot['teacher'] ?? ('Teacher ' . $userId),
                         'email' => 'teacher_' . $userId . '@krishnaveni.edu',
-                        'role' => 'staff',
                         'password' => bcrypt('password'),
                         'created_at' => now(),
                         'updated_at' => now(),

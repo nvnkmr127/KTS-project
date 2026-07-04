@@ -1192,7 +1192,9 @@ export function Examinations() {
             <div className="flex items-center justify-between mb-3">
               <div className="text-[13px] font-semibold text-[var(--tx)]">Results — {EXAMS[2].name}</div>
               <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
-                {['8A', '8B', '9A', '9B', '10A'].map((c) => <option key={c}>Class {c}</option>)}
+                {activeClassList.map((c) => (
+                  <option key={c} value={c}>Class {c}</option>
+                ))}
               </select>
             </div>
             <div className="overflow-x-auto">
@@ -1223,7 +1225,6 @@ export function Examinations() {
                   ))}
                 </tbody>
               </table>
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             </div>
           </Card>
 
@@ -1236,7 +1237,6 @@ export function Examinations() {
                     <CartesianGrid vertical={false} stroke="var(--b)" />
                     <XAxis dataKey="subject" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
                     <YAxis domain={[60, 100]} tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, 'Average']} cursor={{ fill: 'var(--surf2)' }} />
                     <Bar dataKey="avg" fill="var(--purple)" radius={[4, 4, 0, 0]} />
                   </BarChart>

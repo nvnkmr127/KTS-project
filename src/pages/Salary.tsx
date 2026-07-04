@@ -247,7 +247,7 @@ export function Salary() {
         id: String(l.id),
         staffId: String(l.user_id || ''),
         staffName: l.staff_name || '',
-        type: l.leave_type || '',
+        type: (typeof l.leave_type === 'object' && l.leave_type ? l.leave_type.name : l.leave_type) || 'Sick Leave',
         from: l.start_date || '',
         to: l.end_date || '',
         days: Number(l.days) || 1,
@@ -362,7 +362,7 @@ export function Salary() {
     // Generate CSV content
     const headers = ['Staff Name', 'Designation', 'Month', ...activeComponents.map(c => c.name), 'Net Pay', 'Status'];
     const rows = filtered.map((p) => {
-      const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+      const salaries = (p.userId ? staffSalaries[p.userId] : undefined) || staffSalaries[p.name] || {};
       const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
       
       // Calculate dynamic net pay
@@ -523,7 +523,7 @@ export function Salary() {
       });
 
   const totalGross = filtered.reduce((s, p) => {
-    const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+    const salaries = (p.userId ? staffSalaries[p.userId] : undefined) || staffSalaries[p.name] || {};
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
     const lop = getRowLop(p);
     let earningsSum = 0;
@@ -538,7 +538,7 @@ export function Salary() {
   }, 0);
 
   const totalNet = filtered.reduce((s, p) => {
-    const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+    const salaries = (p.userId ? staffSalaries[p.userId] : undefined) || staffSalaries[p.name] || {};
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
     const lop = getRowLop(p);
     let earningsSum = 0;
@@ -553,7 +553,7 @@ export function Salary() {
   }, 0);
 
   const totalDeductions = filtered.reduce((s, p) => {
-    const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+    const salaries = (p.userId ? staffSalaries[p.userId] : undefined) || staffSalaries[p.name] || {};
     const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : p.basic;
     const lop = getRowLop(p);
     let deductionsSum = 0;
@@ -637,7 +637,7 @@ export function Salary() {
               </thead>
               <tbody>
                 {filtered.map((p) => {
-                  const salaries = staffSalaries[p.name] || (p.userId ? staffSalaries[p.userId] : undefined) || {};
+                  const salaries = (p.userId ? staffSalaries[p.userId] : undefined) || staffSalaries[p.name] || {};
                   const lop = getRowLop(p);
                   
                   // Calculate dynamic net pay
@@ -705,9 +705,7 @@ export function Salary() {
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={trendData} barSize={24} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="var(--b)" />
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 <YAxis tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => `₹${v}L`} />
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`₹${v}L`, 'Payroll']} cursor={{ fill: 'var(--surf2)' }} />
                 <Bar dataKey="amount" fill="var(--blue)" radius={[4, 4, 0, 0]} />
@@ -890,7 +888,7 @@ export function Salary() {
               </div>
 
               {(() => {
-                const salaries = staffSalaries[selectedSlip.name] || (selectedSlip.userId ? staffSalaries[selectedSlip.userId] : undefined) || {};
+                const salaries = (selectedSlip.userId ? staffSalaries[selectedSlip.userId] : undefined) || staffSalaries[selectedSlip.name] || {};
                 let earningsSum = 0;
                 let deductionsSum = 0;
                 const basicAmt = salaries['basic'] !== undefined ? salaries['basic'] : selectedSlip.basic;

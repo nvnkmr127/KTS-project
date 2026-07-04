@@ -19,21 +19,74 @@ interface DiaryEntry {
   parents_count: number;
 }
 
-const DEFAULT_CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
+const DEFAULT_CLASSES = [
+  '1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B',
+  '6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'
+];
 
 function AdminDiaryView() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [selectedClassDetail, setSelectedClassDetail] = useState<string | null>(null);
+  const [classList, setClassList] = useState<string[]>([]);
 
-  const { timetable, periodTimings } = useApp();
+  const { timetable, periodTimings, selectedAcademicYearId } = useApp();
 
   const loadEntries = async () => {
     setLoading(true);
     try {
-      const data = await api.getResources('daily-diaries');
+      const [data, batchesData] = await Promise.all([
+        api.getResources('daily-diaries'),
+        api.getResources('batches').catch(() => [])
+      ]);
       setEntries(data);
+      
+      const filteredBatches = batchesData.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
+
+      const classGroups: Record<string, string[]> = {};
+      const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+
+      filteredBatches.forEach((b: any) => {
+        const batchName = b.name;
+        let classId = '8';
+        let sectionLetter = 'A';
+
+        const match = batchName.match(/^(.+?)([A-Z])$/);
+        if (match) {
+          classId = match[1];
+          sectionLetter = match[2];
+        } else {
+          if (batchName === 'Default Batch') { classId = '8'; sectionLetter = 'A'; }
+        }
+
+        if (!classGroups[classId]) classGroups[classId] = [];
+        classGroups[classId].push(batchName);
+      });
+
+      defaultClasses.forEach((cId) => {
+        if (!classGroups[cId]) {
+          classGroups[cId] = [`${cId}A`, `${cId}B`];
+        }
+      });
+
+      const names: string[] = [];
+      Object.values(classGroups).forEach((group) => {
+        names.push(...group);
+      });
+
+      names.sort((a: string, b: string) => {
+        const numA = parseInt(a);
+        const numB = parseInt(b);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          if (numA !== numB) return numA - numB;
+          return a.localeCompare(b);
+        }
+        if (!isNaN(numA)) return -1;
+        if (!isNaN(numB)) return 1;
+        return a.localeCompare(b);
+      });
+      setClassList(names);
     } catch (err) {
       console.error('Error loading diary entries:', err);
     } finally {
@@ -43,8 +96,9 @@ function AdminDiaryView() {
 
   useEffect(() => {
     loadEntries();
-  }, []);
+  }, [selectedAcademicYearId]);
 
+  const activeClassList = classList.length > 0 ? classList : DEFAULT_CLASSES;
   const activeEntries = entries.filter((e) => e.diary_date === selectedDate);
 
   // Helper to match teacher names loosely
@@ -59,7 +113,7 @@ function AdminDiaryView() {
   const dateObj = new Date(selectedDate);
   const dayName = daysOfWeek[dateObj.getDay()];
 
-  const submissionList = DEFAULT_CLASSES.map((clsName) => {
+  const submissionList = activeClassList.map((clsName) => {
     const classEntries = activeEntries.filter((e) => e.batch_name === clsName);
     const classTimetable = timetable[clsName] ?? {};
     const dayTimetable = classTimetable[dayName] ?? {};

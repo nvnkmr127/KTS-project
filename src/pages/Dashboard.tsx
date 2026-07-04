@@ -407,7 +407,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             ) : (
               activities.map((a: any, i: number) => (
                 <div
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   key={a.id}
                   className={`flex items-center gap-2.5 py-2 border-b border-[var(--b)] last:border-0 transition-all duration-300 group ${a.seen ? 'opacity-55 hover:opacity-85' : ''
                     }`}

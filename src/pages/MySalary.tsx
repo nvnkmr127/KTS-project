@@ -193,7 +193,7 @@ export function MySalary() {
         id: String(l.id),
         staffId: String(l.user_id || ''),
         staffName: l.staff_name || '',
-        type: l.leave_type || '',
+        type: (typeof l.leave_type === 'object' && l.leave_type ? l.leave_type.name : l.leave_type) || 'Sick Leave',
         from: l.start_date || '',
         to: l.end_date || '',
         days: Number(l.days) || 1,
@@ -592,9 +592,7 @@ export function MySalary() {
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <BarChart data={trendData} barSize={20} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="var(--b)" />
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     <XAxis dataKey="month" tick={{ fontSize: 9, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     <YAxis tick={{ fontSize: 9, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => `₹${v/1000}k`} />
                     <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`₹${v.toLocaleString()}`, 'Net Pay']} cursor={{ fill: 'var(--surf2)' }} />
                     <Bar dataKey="amount" fill="var(--teal)" radius={[4, 4, 0, 0]} />
@@ -657,7 +655,7 @@ export function MySalary() {
 
               {(() => {
                 const foundKey = Object.keys(staffSalaries).find(k => isNameMatch(k, selectedSlip.name));
-                const slipSalaries = (foundKey ? staffSalaries[foundKey] : undefined) || (selectedSlip.userId ? staffSalaries[selectedSlip.userId] : undefined) || {};
+                const slipSalaries = (selectedSlip.userId ? staffSalaries[selectedSlip.userId] : undefined) || (foundKey ? staffSalaries[foundKey] : undefined) || {};
                 const lop = getRowLop(selectedSlip);
                 let earningsSum = 0;
                 let deductionsSum = 0;

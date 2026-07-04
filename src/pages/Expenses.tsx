@@ -464,7 +464,6 @@ export function Expenses() {
                       <Cell key={i} fill={getCategoryColor(entry.name, i)} />
                     ))}
                   </Pie>
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`₹${v.toLocaleString()}`]} />
                 </PieChart>
               </ResponsiveContainer>
@@ -489,9 +488,7 @@ export function Expenses() {
                 <BarChart data={monthlyData} barSize={16} margin={{ top: 2, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="var(--b)" />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   <YAxis tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v: any) => `₹${v}L`} />
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`₹${v}L`, 'Expenses']} cursor={{ fill: 'var(--surf2)' }} />
                   <Bar dataKey="amount" fill="var(--coral)" radius={[4, 4, 0, 0]} />
                 </BarChart>
