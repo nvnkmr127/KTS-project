@@ -133,7 +133,7 @@ class BiometricSyncController extends Controller
                 'success' => false,
                 'message' => 'Biometric credentials not configured: ' . implode(', ', $validation['issues']),
                 'data'    => [],
-            ], 422);
+            ], 200);
         }
 
         try {
@@ -206,7 +206,7 @@ class BiometricSyncController extends Controller
                 'success' => false,
                 'message' => 'Biometric credentials not configured.',
                 'data'    => [],
-            ], 422);
+            ], 200);
         }
 
         try {
@@ -298,7 +298,7 @@ class BiometricSyncController extends Controller
                 'success' => false,
                 'message' => 'Biometric credentials not configured.',
                 'data'    => [],
-            ], 422);
+            ], 200);
         }
 
         // Optionally reset cursor
