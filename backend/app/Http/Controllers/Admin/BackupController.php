@@ -195,12 +195,6 @@ class BackupController extends Controller
 
             $type = $request->input('type');
 
-            if ($type === 'database' || $type === 'db' || $type === 'both') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Database backup trigger from the admin panel is disabled. It depends entirely on server-level automation.',
-                ], 400);
-            }
 
 
             switch ($type) {
