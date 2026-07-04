@@ -38,7 +38,7 @@ class DatabaseSeeder extends Seeder
         $mockAdmin = User::firstOrCreate(
             ['email' => 'admin@krishnaveni.edu'],
             [
-                'name' => 'Dr. S. Narasimha Rao',
+                'name' => 'Uday',
                 'password' => Hash::make('admin123'),
             ]
         );
