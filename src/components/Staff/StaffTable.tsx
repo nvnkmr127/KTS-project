@@ -134,7 +134,9 @@ export function StaffTable({ loading, sortedFiltered, selectedIds, setSelectedId
                           </td>
                             <td className="hidden sm:table-cell px-2 py-3 text-[11.5px] text-[var(--tx2)] whitespace-nowrap">
                               {(() => {
-                                const parts = (s.join_date || '').split('-');
+                                if (!s.join_date) return '';
+                                const dateOnly = s.join_date.split('T')[0];
+                                const parts = dateOnly.split('-');
                                 if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
                                 return s.join_date;
                               })()}

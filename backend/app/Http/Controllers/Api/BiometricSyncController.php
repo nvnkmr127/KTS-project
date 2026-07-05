@@ -59,35 +59,10 @@ class BiometricSyncController extends Controller
      */
     public function testConnection(Request $request)
     {
-        // If credentials provided in request, temporarily save them for the test
-        $tempCredentials = false;
-        $corporateId = $request->input('corporate_id');
-        $username = $request->input('username');
-        $password = $request->input('password');
-
-        $hasCorpId = !empty($corporateId) && strpos($corporateId, '***') === false;
-        $hasUsername = !empty($username) && strpos($username, '***') === false;
-        $hasPassword = !empty($password) && strpos($password, '***') === false;
-
-        if ($hasCorpId || $hasUsername || $hasPassword) {
-            $tempCredentials = true;
-            // Temporarily override settings for validation
-            if ($hasCorpId) {
-                Setting::updateOrCreate(['key' => 'etimeoffice_corporate_id'], ['value' => $corporateId]);
-            }
-            if ($hasUsername) {
-                Setting::updateOrCreate(['key' => 'etimeoffice_username'],     ['value' => $username]);
-            }
-            if ($hasPassword) {
-                Setting::updateOrCreate(['key' => 'etimeoffice_password'],     ['value' => $password]);
-            }
-        }
-
         try {
             $result = $this->etimeoffice->testConnection();
 
-            if ($result['success'] && $tempCredentials) {
-                // Credentials worked — keep them saved and record test time
+            if ($result['success']) {
                 Setting::updateOrCreate(['key' => 'etimeoffice_last_test'], ['value' => now()->toISOString()]);
             }
 
@@ -388,21 +363,7 @@ class BiometricSyncController extends Controller
             'password'     => 'required|string|max:200',
         ]);
 
-        $corporateId = $request->input('corporate_id');
-        $username = $request->input('username');
-        $password = $request->input('password');
-
-        if (strpos($corporateId, '***') === false) {
-            Setting::updateOrCreate(['key' => 'etimeoffice_corporate_id'], ['value' => $corporateId, 'group' => 'biometric']);
-        }
-        if (strpos($username, '***') === false) {
-            Setting::updateOrCreate(['key' => 'etimeoffice_username'],     ['value' => $username, 'group' => 'biometric']);
-        }
-        if (strpos($password, '***') === false) {
-            Setting::updateOrCreate(['key' => 'etimeoffice_password'],     ['value' => $password, 'group' => 'biometric']);
-        }
-
-        Log::info('BiometricSyncController: credentials saved via Settings UI');
+        Log::info('BiometricSyncController: saveCredentials called but ignored as credentials are in .env');
 
         return response()->json([
             'success' => true,

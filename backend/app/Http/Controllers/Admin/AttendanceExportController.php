@@ -191,12 +191,6 @@ class AttendanceExportController extends Controller
             // Map the correct field names that match your form
             $settings = [
                 'etimeoffice_enabled' => filter_var($this->getSetting('etimeoffice_enabled', false), FILTER_VALIDATE_BOOLEAN),
-                'etimeoffice_api_url' => $this->getSetting('etimeoffice_api_url', 'https://api.etimeoffice.com/api'),
-
-                // Use the correct field names that match your form
-                'etimeoffice_corporate_id' => $this->getSetting('etimeoffice_corporate_id', ''),
-                'etimeoffice_username' => $this->getSetting('etimeoffice_username', ''),
-                'etimeoffice_password' => $this->getSetting('etimeoffice_password', ''),
 
                 // Keep these as they are
                 'etimeoffice_sync_frequency' => (int) $this->getSetting('etimeoffice_sync_frequency', 15),
@@ -243,10 +237,6 @@ class AttendanceExportController extends Controller
         try {
             // Validate with the correct field names
             $validatedData = $request->validate([
-                'etimeoffice_api_url' => 'nullable|url',
-                'etimeoffice_corporate_id' => 'nullable|string|max:100',  // matches form
-                'etimeoffice_username' => 'nullable|string|max:255',      // matches form
-                'etimeoffice_password' => 'nullable|string|max:255',      // matches form
                 'etimeoffice_sync_frequency' => 'nullable|integer|min:5|max:1440',
             ]);
 
@@ -290,11 +280,11 @@ class AttendanceExportController extends Controller
         $this->authorize('manage attendance settings');
 
         try {
-            // Get values from form OR from saved settings
-            $apiUrl = $request->input('etimeoffice_api_url') ?: $this->getSetting('etimeoffice_api_url', '');
-            $corporateId = $request->input('etimeoffice_corporate_id') ?: $this->getSetting('etimeoffice_corporate_id', '');
-            $username = $request->input('etimeoffice_username') ?: $this->getSetting('etimeoffice_username', '');
-            $password = $request->input('etimeoffice_password') ?: $this->getSetting('etimeoffice_password', '');
+            // Get values from env / configuration ONLY
+            $apiUrl = $this->getSetting('etimeoffice_api_url', '');
+            $corporateId = $this->getSetting('etimeoffice_corporate_id', '');
+            $username = $this->getSetting('etimeoffice_username', '');
+            $password = $this->getSetting('etimeoffice_password', '');
 
             // Validate required fields
             $missingFields = [];

@@ -132,7 +132,9 @@ export function StaffViewModal({
                         { label: 'Biometric Employee Code', value: modal.staff.biometric_employee_code || 'Not Mapped' },
                         { label: 'Subject / Assigned Route', value: modal.staff.subject ?? 'N/A' },
                         { label: 'Join Date', value: (() => {
-                          const parts = (modal.staff.join_date || '').split('-');
+                          if (!modal.staff.join_date) return '';
+                          const dateOnly = modal.staff.join_date.split('T')[0];
+                          const parts = dateOnly.split('-');
                           if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
                           return modal.staff.join_date;
                         })() },

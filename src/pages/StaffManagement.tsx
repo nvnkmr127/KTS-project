@@ -164,7 +164,9 @@ export function StaffManagement() {
       'Phone': s.phone,
       'Email': s.email,
       'Join Date': (() => {
-        const parts = (s.join_date || '').split('-');
+        if (!s.join_date) return '';
+        const dateOnly = s.join_date.split('T')[0];
+        const parts = dateOnly.split('-');
         if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
         return s.join_date;
       })(),
