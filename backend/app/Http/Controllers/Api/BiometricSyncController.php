@@ -508,9 +508,15 @@ class BiometricSyncController extends Controller
                     Log::info('BiometricSync: Successfully created Attendance record', ['attendance_id' => $attendance->id]);
                     $biometricLog->update(['attendance_id' => $attendance->id]);
                 } else {
-                    $staff = \App\Models\User::where('biometric_employee_code', $empCode)
-                        ->orWhere('id', $empCode)
-                        ->first();
+                    $staff = \App\Models\User::whereHas('roles', function ($q) {
+                        $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+                    })->where('biometric_employee_code', $empCode)->first();
+                    
+                    if (!$staff) {
+                        $staff = \App\Models\User::whereHas('roles', function ($q) {
+                            $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+                        })->where('id', $empCode)->first();
+                    }
                         
                     if ($staff) {
                         Log::info('BiometricSync: Staff punch recorded', ['empcode' => $empCode]);

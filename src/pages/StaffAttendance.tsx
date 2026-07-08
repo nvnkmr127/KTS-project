@@ -320,8 +320,8 @@ export function StaffAttendance() {
               Empcode: l.employee_code || l.Empcode || '',
               Name: l.raw_data?.name || l.raw_data?.Name || l.raw_data?.EmpName || '',
               PunchDate: l.scan_datetime,
-              INTime: l.raw_data?.in_time || (scanType === 'in' ? scanTime : undefined),
-              OUTTime: l.raw_data?.out_time || (scanType === 'out' ? scanTime : undefined),
+              INTime: l.raw_data?.in_time || l.raw_data?.INTime || (scanType === 'in' ? scanTime : undefined),
+              OUTTime: l.raw_data?.out_time || l.raw_data?.OUTTime || (scanType === 'out' ? scanTime : undefined),
               WorkTime: l.raw_data?.work_time,
               Status: l.raw_data?.status,
               DateString: l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined,
@@ -539,8 +539,8 @@ export function StaffAttendance() {
                 Empcode: l.employee_code || l.Empcode || '',
                 Name: l.raw_data?.name || l.raw_data?.Name || l.raw_data?.EmpName || '',
                 PunchDate: l.scan_datetime,
-                INTime: l.raw_data?.in_time || (scanType === 'in' ? scanTime : undefined),
-                OUTTime: l.raw_data?.out_time || (scanType === 'out' ? scanTime : undefined),
+                INTime: l.raw_data?.in_time || l.raw_data?.INTime || (scanType === 'in' ? scanTime : undefined),
+                OUTTime: l.raw_data?.out_time || l.raw_data?.OUTTime || (scanType === 'out' ? scanTime : undefined),
                 WorkTime: l.raw_data?.work_time,
                 Status: l.raw_data?.status,
                 DateString: l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined,
@@ -757,6 +757,7 @@ export function StaffAttendance() {
 
   useEffect(() => {
     localStorage.setItem('kts_biometric_punches', JSON.stringify(localPunches));
+    saveSettingToDb('kts_biometric_punches', JSON.stringify(localPunches));
   }, [localPunches]);
 
   useEffect(() => {
@@ -778,8 +779,11 @@ export function StaffAttendance() {
         (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
       );
 
+      const hasBioCode = staff.biometric_employee_code && staff.biometric_employee_code.trim() !== '';
       const matchesIdNumerically = !isNaN(Number(empCode)) && !isNaN(Number(staff.id)) && Number(empCode) === Number(staff.id);
-      const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically || matchesBiometricCode;
+      const matchCode = hasBioCode 
+        ? matchesBiometricCode 
+        : (empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically);
       const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
 
       let dateMatch = false;

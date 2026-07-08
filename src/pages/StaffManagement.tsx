@@ -332,8 +332,8 @@ export function StaffManagement() {
               }
               const scanType = String(l.scan_type || '').toLowerCase();
 
-              const inTime = l.raw_data?.in_time || (scanType === 'in' ? scanTime : undefined);
-              const outTime = l.raw_data?.out_time || (scanType === 'out' ? scanTime : undefined);
+              const inTime = l.raw_data?.in_time || l.raw_data?.INTime || (scanType === 'in' ? scanTime : undefined);
+              const outTime = l.raw_data?.out_time || l.raw_data?.OUTTime || (scanType === 'out' ? scanTime : undefined);
 
               if (inTime && inTime !== '--:--') {
                 mappedPunches.push({
