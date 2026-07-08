@@ -41,6 +41,18 @@ interface StaffViewModalProps {
   payslips: any[];
 }
 
+const formatPunchTime = (timeStr: string) => {
+  if (!timeStr) return '';
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return timeStr;
+  let hrs = parseInt(parts[0], 10);
+  const mins = parts[1];
+  const ampm = hrs >= 12 ? 'PM' : 'AM';
+  hrs = hrs % 12;
+  hrs = hrs ? hrs : 12; // the hour '0' should be '12'
+  return `${String(hrs).padStart(2, '0')}:${mins} ${ampm}`;
+};
+
 export function StaffViewModal({
   modal,
   onClose,
@@ -270,7 +282,7 @@ export function StaffViewModal({
                       leaveCount++;
                     } else {
                       const punches = biometricPunches.filter(
-                        (p) => p.staffId === modal.staff!.id && p.timestamp.startsWith(dateStr)
+                        (p) => String(p.staffId) === String(modal.staff!.id) && p.timestamp.startsWith(dateStr)
                       );
                       if (punches.length === 0) {
                         status = manualStatus === 'Absent' ? 'Absent' : 'Absent';
@@ -370,10 +382,14 @@ export function StaffViewModal({
                               </tr>
                             ) : (
                               paginatedLogs.map((log) => {
-                                const datePunches = biometricPunches.filter(
-                                  (p) => p.staffId === modal.staff!.id && p.timestamp.startsWith(log.dateStr)
-                                );
-                                const times = datePunches.map(p => p.timestamp.split(' ')[1] || '').join(', ');
+                                  const datePunches = biometricPunches.filter(
+                                    (p) => String(p.staffId) === String(modal.staff!.id) && p.timestamp.startsWith(log.dateStr)
+                                  );
+                                  const times = datePunches.map(p => {
+                                    const t = p.timestamp.includes('T') ? p.timestamp.replace('T', ' ') : p.timestamp;
+                                    const timePart = t.split(' ')[1];
+                                    return timePart ? formatPunchTime(timePart.slice(0, 5)) : '';
+                                  }).filter(Boolean).join(', ');
                                 return (
                                   <tr key={log.dateStr} className="border-b border-[var(--b)] last:border-0 hover:bg-[var(--surf2)]/40">
                                     <td className="px-3 py-2 text-[var(--tx)] font-medium">{log.dateStr}</td>
@@ -599,7 +615,7 @@ export function StaffViewModal({
                       leaveCount++;
                     } else {
                       const punches = biometricPunches.filter(
-                        (p) => p.staffId === modal.staff!.id && p.timestamp.startsWith(dateStr)
+                        (p) => String(p.staffId) === String(modal.staff!.id) && p.timestamp.startsWith(dateStr)
                       );
                       if (punches.length === 0) {
                         if (manualStatus === 'Absent') absentCount++;

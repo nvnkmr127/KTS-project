@@ -674,6 +674,12 @@ class GenericApiController extends Controller
                     $data['course_id'] = $newCourse->id;
                 }
             }
+
+            if (isset($data['class_teacher_id']) && $data['class_teacher_id']) {
+                if (!\App\Models\User::where('id', $data['class_teacher_id'])->exists()) {
+                    $data['class_teacher_id'] = null;
+                }
+            }
         }
 
         // Custom validation / default attributes for Expenses
@@ -1153,6 +1159,15 @@ class GenericApiController extends Controller
                     ]);
                 }
                 $data['batch_id'] = $batch->id;
+            }
+        }
+
+        // Custom pre-processing for Batches in update
+        if ($resource === 'batches') {
+            if (isset($data['class_teacher_id']) && $data['class_teacher_id']) {
+                if (!\App\Models\User::where('id', $data['class_teacher_id'])->exists()) {
+                    $data['class_teacher_id'] = null;
+                }
             }
         }
 

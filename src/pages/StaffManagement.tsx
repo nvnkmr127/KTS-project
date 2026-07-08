@@ -34,14 +34,7 @@ export interface StaffMember {
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-export const STAFF: StaffMember[] = [
-  { id: '3', name: 'Mrs. Lakshmi Devi', designation: 'Senior Teacher', department: 'Mathematics', category: 'Teaching', subject: 'Maths', phone: '9876501234', email: 'teacher@krishnaveni.edu', join_date: '2015-06-01', attendance_percentage: 96, status: 'Active', salary: 35000, qualifications: 'M.Sc Mathematics, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-  { id: '4', name: 'Mr. R. K. Prasad', designation: 'Teacher', department: 'Science', category: 'Teaching', subject: 'Physics, Chemistry', phone: '9876502345', email: 'prasad@krishnaveni.edu', join_date: '2017-06-01', attendance_percentage: 92, status: 'Active', salary: 40000, qualifications: 'M.Sc Physics, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-  { id: '5', name: 'Ms. S. Anitha', designation: 'Teacher', department: 'English', category: 'Teaching', subject: 'English', phone: '9876503456', email: 'anitha@krishnaveni.edu', join_date: '2018-06-01', attendance_percentage: 88, status: 'Active', salary: 30000, qualifications: 'MA English, B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-  { id: '6', name: 'Mr. V. Suresh', designation: 'Teacher', department: 'Social Sciences', category: 'Teaching', subject: 'History, Geography', phone: '9876505678', email: 'suresh@krishnaveni.edu', join_date: '2019-06-01', attendance_percentage: 90, status: 'Active', salary: 32500, qualifications: 'MA B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-  { id: '7', name: 'Madhuteja Javvaji', designation: 'Teacher', department: 'English', category: 'Teaching', subject: 'Academics', phone: '9876507890', email: 'javvajimadhuteja2000@gmail.com', join_date: '2021-06-01', attendance_percentage: 95, status: 'Active', salary: 30000, qualifications: 'B.Sc', documents: ['Aadhar Card', 'Degree Certificate'] },
-  { id: '8', name: 'pavan kumar', designation: 'Teacher', department: 'Mathematics', category: 'Teaching', subject: 'Maths', phone: '9876506789', email: 'pavan@gmail.com', join_date: '2020-06-01', attendance_percentage: 98, status: 'Active', salary: 45000, qualifications: 'B.Ed', documents: ['Aadhar Card', 'Degree Certificate', 'Experience Letter'] },
-];
+export const STAFF: StaffMember[] = [];
 
   // eslint-disable-next-line unused-imports/no-unused-vars
 const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
@@ -60,11 +53,37 @@ export function StaffManagement() {
   const { alert, confirm } = useDialog();
   const { leaveRequests } = useApp();
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
-    const saved = localStorage.getItem('kts_staff_members');
-    return (saved && JSON.parse(saved)) || STAFF;
+    try {
+      const saved = localStorage.getItem('kts_staff_members');
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) {
+          return arr.filter((s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com');
+        }
+      }
+    } catch { /* empty */ }
+    return [];
   });
 
   useEffect(() => {
+    // Clean up mock staff members from localStorage if present
+    try {
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      if (savedStaffStr) {
+        const parsed = JSON.parse(savedStaffStr);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(
+            (s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com'
+          );
+          if (filtered.length !== parsed.length) {
+            localStorage.setItem('kts_staff_members', JSON.stringify(filtered));
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     async function syncFromDb() {
       try {
         const staffData = await api.getResources('faculty');
@@ -86,6 +105,10 @@ export function StaffManagement() {
     }
     syncFromDb();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('kts_staff_members', JSON.stringify(staffList));
+  }, [staffList]);
 
 
 
@@ -276,6 +299,86 @@ export function StaffManagement() {
       if (savedPunches) setBiometricPunches(JSON.parse(savedPunches));
     }
   }, [modal]);
+
+  useEffect(() => {
+    if (modal?.type === 'view' && modal.staff) {
+      const currentStaff = modal.staff;
+      const fetchLogs = async () => {
+        const empCode = currentStaff.biometric_employee_code;
+        const staffId = currentStaff.id;
+        
+        let logs: any[] = [];
+        try {
+          if (empCode) {
+            logs = await api.getResources('biometric-logs', { employee_code: String(empCode), limit: '1000' });
+          }
+          if ((!logs || logs.length === 0) && staffId) {
+            logs = await api.getResources('biometric-logs', { employee_code: String(staffId), limit: '1000' });
+          }
+
+          if (Array.isArray(logs)) {
+            const mappedPunches: any[] = [];
+            logs.forEach((l: any) => {
+              let date = '';
+              if (l.scan_datetime) {
+                date = l.scan_datetime.includes('T') ? l.scan_datetime.split('T')[0] : l.scan_datetime.split(' ')[0];
+              }
+              if (!date) return;
+
+              let scanTime: string | undefined;
+              if (l.scan_datetime) {
+                const timeStr = l.scan_datetime.includes('T') ? l.scan_datetime.split('T')[1] : l.scan_datetime.split(' ')[1];
+                scanTime = timeStr ? timeStr.slice(0, 5) : l.scan_datetime.slice(11, 16);
+              }
+              const scanType = String(l.scan_type || '').toLowerCase();
+
+              const inTime = l.raw_data?.in_time || (scanType === 'in' ? scanTime : undefined);
+              const outTime = l.raw_data?.out_time || (scanType === 'out' ? scanTime : undefined);
+
+              if (inTime && inTime !== '--:--') {
+                mappedPunches.push({
+                  id: `bio-in-${l.id}-${date}`,
+                  staffId: currentStaff.id,
+                  timestamp: `${date} ${inTime}:00`
+                });
+              }
+
+              if (outTime && outTime !== '--:--') {
+                mappedPunches.push({
+                  id: `bio-out-${l.id}-${date}`,
+                  staffId: currentStaff.id,
+                  timestamp: `${date} ${outTime}:00`
+                });
+              }
+
+              if (!inTime && !outTime && l.scan_datetime) {
+                const cleanTimestamp = l.scan_datetime.includes('T')
+                  ? l.scan_datetime.replace('T', ' ').split('.')[0].slice(0, 19)
+                  : l.scan_datetime;
+                mappedPunches.push({
+                  id: `bio-${l.id}-${date}`,
+                  staffId: currentStaff.id,
+                  timestamp: cleanTimestamp
+                });
+              }
+            });
+
+            // Filter by date range (attStartDate to attEndDate)
+            const filteredPunches = mappedPunches.filter((p) => {
+              const pDate = p.timestamp.slice(0, 10);
+              return pDate >= attStartDate && pDate <= attEndDate;
+            });
+
+            setBiometricPunches(filteredPunches);
+          }
+        } catch (err) {
+          console.error('Error fetching biometric logs in StaffManagement:', err);
+        }
+      };
+
+      fetchLogs();
+    }
+  }, [modal?.staff, attStartDate, attEndDate]);
 
   // Helper to handle print functionality
   

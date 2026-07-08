@@ -131,7 +131,7 @@ class ETimeOfficeService
                 ];
             }
 
-            $punchData = $response['data']['PunchData'] ?? [];
+            $punchData = $response['data']['PunchData'] ?? $response['data'] ?? [];
 
             // Normalize single associative array to list
             if (!empty($punchData) && !isset($punchData[0])) {
@@ -188,7 +188,7 @@ class ETimeOfficeService
             }
 
             // DownloadInOutPunchData returns 'InOutPunchData' key (not 'PunchData')
-            $inOutData = $response['data']['InOutPunchData'] ?? $response['data']['PunchData'] ?? [];
+            $inOutData = $response['data']['InOutPunchData'] ?? $response['data']['PunchData'] ?? $response['data'] ?? [];
 
             // Normalize single associative array to list
             if (!empty($inOutData) && !isset($inOutData[0])) {
@@ -247,7 +247,7 @@ class ETimeOfficeService
                 ];
             }
 
-            $punchData = $response['data']['PunchData'] ?? [];
+            $punchData = $response['data']['PunchData'] ?? $response['data'] ?? [];
             $maxRecord = $response['data']['MaxRecord'] ?? $lastRecord;
 
             // Update last sync record for next incremental sync

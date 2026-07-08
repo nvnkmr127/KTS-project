@@ -117,7 +117,7 @@ export function Faculty() {
         if (savedStaffStr) {
           const parsed = JSON.parse(savedStaffStr);
           if (Array.isArray(parsed)) {
-            currentStaffList = parsed;
+            currentStaffList = parsed.filter((s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com');
           } else {
             currentStaffList = STAFF;
           }
@@ -133,12 +133,7 @@ export function Faculty() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const teachingStaff = currentStaffList.filter((s: any) => {
         const cat = (s.category || 'Teaching').toString().trim().toLowerCase();
-        const desig = (s.designation || '').toString().trim().toLowerCase();
-        if (cat === 'non-teaching' || cat.includes('non-teach')) {
-          return false;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        }
-        return cat === 'teaching' || cat.includes('teach') || desig.includes('teacher');
+        return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
       });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -162,18 +157,10 @@ export function Faculty() {
       try {
         const users = await api.getResources('faculty');
         
-        // Filter out non-teaching staff (drivers, cleaners, watchmen, etc.)
+        // Filter to only include teaching and non-teaching staff (categories 'Teaching' and 'Non-Teaching')
         const teachingUsers = (users || []).filter((u: any) => {
           const cat = (u.category || 'Teaching').toString().trim().toLowerCase();
-          const desig = (u.designation || '').toString().trim().toLowerCase();
-          if (cat === 'non-teaching' || cat.includes('non-teach')) {
-            return false;
-          }
-          const nonTeachingCategories = ['driver', 'cleaner', 'watchman', 'house keeping', 'housekeeping'];
-          if (nonTeachingCategories.includes(cat)) {
-            return false;
-          }
-          return cat === 'teaching' || cat.includes('teach') || desig.includes('teacher');
+          return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
         });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -211,6 +198,25 @@ export function Faculty() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    try {
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      if (savedStaffStr) {
+        const parsed = JSON.parse(savedStaffStr);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(
+            (s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com'
+          );
+          if (filtered.length !== parsed.length) {
+            localStorage.setItem('kts_staff_members', JSON.stringify(filtered));
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   useEffect(() => {
     loadFaculty();
@@ -270,6 +276,13 @@ export function Faculty() {
     const qualifications = (fd.get('qualifications') as string) || 'B.Ed';
     const password = (fd.get('password') as string) || 'password';
 
+    const documentsVal = [
+      'Aadhar Card',
+      'Degree Certificate',
+      'Experience Letter',
+      ...customDocs
+    ];
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = {
       name: fullName,
@@ -277,8 +290,14 @@ export function Faculty() {
       phone: phone,
       department: department,
       subject: subject,
-      status: 'active',
+      status: 'Active',
       password: password,
+      designation: designation,
+      category: 'Teaching',
+      join_date: joinDate,
+      salary: salary,
+      qualifications: qualifications,
+      documents: documentsVal,
     };
 
     let savedId = 'staff-' + Date.now();
@@ -300,13 +319,6 @@ export function Faculty() {
     try {
       const savedStaffStr = localStorage.getItem('kts_staff_members');
       const currentStaffList: StaffMember[] = savedStaffStr ? JSON.parse(savedStaffStr) : [...STAFF];
-
-      const documentsVal = [
-        'Aadhar Card',
-        'Degree Certificate',
-        'Experience Letter',
-        ...customDocs
-      ];
 
       if (modal === 'add') {
         const newStaff: StaffMember = {

@@ -32,7 +32,7 @@ describe('StaffManagement', () => {
     expect(screen.getByText('Total Staff')).toBeInTheDocument();
     
     // Check for Add Staff button
-    const addButton = screen.getByText('Add Staff');
+    const addButton = screen.getAllByText('Add Staff')[0];
     expect(addButton).toBeInTheDocument();
     
     // Check if it opens the modal

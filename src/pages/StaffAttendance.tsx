@@ -91,8 +91,16 @@ export function StaffAttendance() {
   });
 
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
-    const saved = localStorage.getItem('kts_staff_members');
-    return (saved && JSON.parse(saved)) || STAFF;
+    try {
+      const saved = localStorage.getItem('kts_staff_members');
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) {
+          return arr.filter((s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com');
+        }
+      }
+    } catch { /* empty */ }
+    return [];
   });
 
   // Manual attendance overrides
@@ -138,6 +146,24 @@ export function StaffAttendance() {
 
   // Load staff members, attendance, and biometric punches from DB settings / localStorage
   useEffect(() => {
+    // Clean up mock staff members from localStorage if present
+    try {
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      if (savedStaffStr) {
+        const parsed = JSON.parse(savedStaffStr);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter(
+            (s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com'
+          );
+          if (filtered.length !== parsed.length) {
+            localStorage.setItem('kts_staff_members', JSON.stringify(filtered));
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     api.getResources('settings')
       .then(async (settings) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -260,6 +286,12 @@ export function StaffAttendance() {
             const d = new Date(res.last_sync);
             setLastSyncTime(d.toLocaleString());
           }
+          // Silently sync yesterday's biometric data to ensure it is stored in the database
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().slice(0, 10);
+          api.biometricSyncPunch(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
+          api.biometricSyncInOut(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
         } else {
           setConnectionStatus('disconnected');
         }
@@ -486,10 +518,107 @@ export function StaffAttendance() {
   // Auto-sync when date changes
   useEffect(() => {
     setBiometricRecords([]); // Clear old records
-    syncBiometricPunches(true);
-    syncBiometric(true);
+    
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const isPreviousDate = date < todayStr;
+    
+    if (isPreviousDate) {
+      setIsSyncing(true);
+      setLastSyncMsg('Loading biometric logs from local database...');
+      api.getResources('biometric-logs', { date })
+        .then((logs) => {
+          if (Array.isArray(logs) && logs.length > 0) {
+            const mapped: BiometricRecord[] = logs.map((l: any) => {
+              let scanTime: string | undefined;
+              if (l.scan_datetime) {
+                const timeStr = l.scan_datetime.includes('T') ? l.scan_datetime.split('T')[1] : l.scan_datetime.split(' ')[1];
+                scanTime = timeStr ? timeStr.slice(0, 5) : l.scan_datetime.slice(11, 16);
+              }
+              const scanType = String(l.scan_type || '').toLowerCase();
+              return {
+                Empcode: l.employee_code || l.Empcode || '',
+                Name: l.raw_data?.name || l.raw_data?.Name || l.raw_data?.EmpName || '',
+                PunchDate: l.scan_datetime,
+                INTime: l.raw_data?.in_time || (scanType === 'in' ? scanTime : undefined),
+                OUTTime: l.raw_data?.out_time || (scanType === 'out' ? scanTime : undefined),
+                WorkTime: l.raw_data?.work_time,
+                Status: l.raw_data?.status,
+                DateString: l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined,
+              };
+            });
+            
+            setBiometricRecords(mapped);
+            setConnectionStatus('connected');
+            
+            // Convert biometric records to LocalPunch format for saving
+            const newPunches: LocalPunch[] = [];
+            staffList.forEach((staff) => {
+              const staffBioRecords = mapped.filter((record) => {
+                const empCode = String(record.Empcode || '').toLowerCase().trim();
+                const name    = String(record.Name || '').toLowerCase().trim();
+
+                const matchesBiometricCode = staff.biometric_employee_code && (
+                  empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
+                  (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
+                );
+
+                const matchesIdNumerically = !isNaN(Number(empCode)) && !isNaN(Number(staff.id)) && Number(empCode) === Number(staff.id);
+                const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically || matchesBiometricCode;
+                const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
+
+                let dateMatch = false;
+                if (record.DateString) {
+                  const parsed = parsePunchDate(record.DateString);
+                  dateMatch = parsed === date;
+                } else if (record.PunchDate) {
+                  const parsed = parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10);
+                  dateMatch = parsed === date;
+                }
+
+                return (matchCode || matchName) && dateMatch;
+              });
+
+              staffBioRecords.forEach((rec) => {
+                if (rec.INTime && rec.INTime !== '--:--') {
+                  newPunches.push({ id: `bio-in-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
+                }
+                if (rec.OUTTime && rec.OUTTime !== '--:--') {
+                  newPunches.push({ id: `bio-out-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
+                }
+                if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
+                  newPunches.push({ id: `bio-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: rec.PunchDate });
+                }
+              });
+            });
+
+            // Update localPunches (filter out previous punches for this date)
+            setLocalPunches((prev) => {
+              const otherDatePunches = prev.filter((p) => !p.timestamp.startsWith(date));
+              return [...otherDatePunches, ...newPunches];
+            });
+
+            setLastSyncMsg(`✓ Loaded ${mapped.length} records from database`);
+            setIsSyncing(false);
+          } else {
+            // No data in DB, fall back to API
+            setLastSyncMsg('Local data missing. Syncing from e-TimeOffice API...');
+            syncBiometricPunches(true);
+            syncBiometric(true);
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching logs from DB, falling back to API:', err);
+          setLastSyncMsg('Database fetch failed. Syncing from e-TimeOffice API...');
+          syncBiometricPunches(true);
+          syncBiometric(true);
+        });
+    } else {
+      // For today, sync from API
+      syncBiometricPunches(true);
+      syncBiometric(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date]);
+  }, [date, staffList]);
 
   // Local DB polling interval (every 1 second)
   useEffect(() => {
