@@ -32,9 +32,9 @@ class ETimeOfficeApiPuller
     private function loadConfiguration()
     {
         $this->apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
-        $this->corporateId = env('ETIMEOFFICE_CORPORATE_ID') ?: '';
-        $this->username = env('ETIMEOFFICE_USERNAME') ?: '';
-        $this->password = env('ETIMEOFFICE_PASSWORD') ?: '';
+        $this->corporateId = env('ETIMEOFFICE_CORPORATE_ID') ?: 'support';
+        $this->username = env('ETIMEOFFICE_USERNAME') ?: 'support';
+        $this->password = env('ETIMEOFFICE_PASSWORD') ?: 'support@1';
 
         if ($this->corporateId && $this->username && $this->password) {
             $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");
@@ -52,12 +52,13 @@ class ETimeOfficeApiPuller
 
         $params = [
             'Empcode' => $empcode,
-            'FromDate' => $fromDate->format('d/m/Y_H:i'),
-            'ToDate' => $toDate->format('d/m/Y_H:i'),
+            'FromDate' => $fromDate->format('d/m/Y H:i'),
+            'ToDate' => $toDate->format('d/m/Y H:i'),
         ];
 
-        $url = rtrim($this->apiUrl, '/').'/DownloadPunchData?'.urldecode(http_build_query($params));
-
+        $queryString = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        $queryString = str_replace(['%2F', '%3A', '%20'], ['/', ':', '_'], $queryString);
+        $url = rtrim($this->apiUrl, '/').'/DownloadPunchData?'.$queryString;
         Log::info('ETimeOffice API Request', [
             'url' => $url,
             'from_date' => $fromDate->toISOString(),
@@ -342,7 +343,7 @@ class ETimeOfficeApiPuller
         // ETimeOffice common date formats
         $formats = [
             'd/m/Y H:i:s',    // 24/08/2025 17:30:45
-            'd/m/Y_H:i',      // 24/08/2025_17:30
+            'd/m/Y H:i',      // 24/08/2025_17:30
             'd/m/Y H:i',      // 24/08/2025 17:30
             'Y-m-d H:i:s',    // 2025-08-24 17:30:00
             'd-m-Y H:i:s',    // 24-08-2025 17:30:00

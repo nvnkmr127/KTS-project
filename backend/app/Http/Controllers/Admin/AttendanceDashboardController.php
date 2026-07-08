@@ -580,8 +580,8 @@ class AttendanceDashboardController extends Controller
             $authToken = base64_encode("{$corporateId}:{$username}:{$password}:true");
 
             // Format dates for ETimeOffice API
-            $fromDate = $dateRange['start']->format('d/m/Y_H:i');
-            $toDate = $dateRange['end']->format('d/m/Y_H:i');
+            $fromDate = $dateRange['start']->format('d/m/Y H:i');
+            $toDate = $dateRange['end']->format('d/m/Y H:i');
 
             \Log::channel('attendance-webhook')->info('Fetching data from ETimeOffice API', [
                 'from_date' => $fromDate,
@@ -1340,8 +1340,8 @@ class AttendanceDashboardController extends Controller
                 ])
                 ->get($apiUrl.'/DownloadPunchData', [
                     'Empcode' => 'ALL',
-                    'FromDate' => now()->format('d/m/Y_H:i'),
-                    'ToDate' => now()->format('d/m/Y_H:i'),
+                    'FromDate' => now()->format('d/m/Y H:i'),
+                    'ToDate' => now()->format('d/m/Y H:i'),
                 ]);
 
             if (! $response->successful()) {
@@ -1756,8 +1756,8 @@ class AttendanceDashboardController extends Controller
     {
         try {
             // Format dates for API
-            $fromDate = $startDate->format('d/m/Y_H:i');
-            $toDate = $endDate->format('d/m/Y_H:i');
+            $fromDate = $startDate->format('d/m/Y H:i');
+            $toDate = $endDate->format('d/m/Y H:i');
 
             $response = \Http::timeout(30)
                 ->withHeaders([
@@ -2442,8 +2442,8 @@ class AttendanceDashboardController extends Controller
             // Test with a simple API call to get today's data
             $testParams = [
                 'Empcode' => 'ALL',
-                'FromDate' => now()->format('d/m/Y_H:i'),
-                'ToDate' => now()->format('d/m/Y_H:i'),
+                'FromDate' => now()->format('d/m/Y H:i'),
+                'ToDate' => now()->format('d/m/Y H:i'),
             ];
 
             $queryString = http_build_query($testParams);
@@ -2533,8 +2533,8 @@ class AttendanceDashboardController extends Controller
 
             $baseParams = [
                 'Empcode' => 'ALL',
-                'FromDate' => now()->format('d/m/Y_H:i'),
-                'ToDate' => now()->format('d/m/Y_H:i'),
+                'FromDate' => now()->format('d/m/Y H:i'),
+                'ToDate' => now()->format('d/m/Y H:i'),
             ];
 
             foreach ($endpoints as $endpoint => $method) {
@@ -2693,8 +2693,8 @@ class AttendanceDashboardController extends Controller
                     ])
                     ->get($apiUrl.'/DownloadPunchData', [
                         'Empcode' => 'ALL',
-                        'FromDate' => now()->format('d/m/Y_H:i'),
-                        'ToDate' => now()->format('d/m/Y_H:i'),
+                        'FromDate' => now()->format('d/m/Y H:i'),
+                        'ToDate' => now()->format('d/m/Y H:i'),
                     ]);
 
                 $results[] = [

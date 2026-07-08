@@ -37,8 +37,8 @@ class DebugETimeOfficeResponse extends Command
 
         $params = [
             'Empcode' => 'ALL',
-            'FromDate' => $fromDate->format('d/m/Y_H:i'),
-            'ToDate' => $toDate->format('d/m/Y_H:i'),
+            'FromDate' => $fromDate->format('d/m/Y H:i'),
+            'ToDate' => $toDate->format('d/m/Y H:i'),
         ];
 
         $url = rtrim($apiUrl, '/').'/DownloadPunchData?'.http_build_query($params);

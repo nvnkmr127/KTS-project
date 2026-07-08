@@ -34,9 +34,9 @@ class ETimeOfficeService
     {
         try {
             $this->apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
-            $this->corporateId = env('ETIMEOFFICE_CORPORATE_ID') ?: '';
-            $this->username = env('ETIMEOFFICE_USERNAME') ?: '';
-            $this->password = env('ETIMEOFFICE_PASSWORD') ?: '';
+            $this->corporateId = env('ETIMEOFFICE_CORPORATE_ID') ?: 'support';
+            $this->username = env('ETIMEOFFICE_USERNAME') ?: 'support';
+            $this->password = env('ETIMEOFFICE_PASSWORD') ?: 'support@1';
 
             // Create Basic Auth token (base64 encoded)
             $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");
@@ -52,10 +52,10 @@ class ETimeOfficeService
     private function setDefaultConfiguration(): void
     {
         $this->apiUrl = 'https://api.etimeoffice.com/api';
-        $this->corporateId = '';
-        $this->username = '';
-        $this->password = '';
-        $this->authToken = base64_encode(':::true');
+        $this->corporateId = 'support';
+        $this->username = 'support';
+        $this->password = 'support@1';
+        $this->authToken = base64_encode('support:support:support@1:true');
     }
 
     /**
@@ -78,8 +78,8 @@ class ETimeOfficeService
         try {
             $response = $this->makeApiCall('DownloadPunchData', [
                 'Empcode' => 'ALL',
-                'FromDate' => now()->subHours(24)->format('d/m/Y_H:i'),
-                'ToDate' => now()->format('d/m/Y_H:i'),
+                'FromDate' => now()->subHours(24)->format('d/m/Y H:i'),
+                'ToDate' => now()->format('d/m/Y H:i'),
             ]);
 
             if ($response['success']) {
@@ -112,15 +112,15 @@ class ETimeOfficeService
 
         try {
             Log::info('Fetching eTimeOffice punch data', [
-                'from_date' => $fromDate->format('d/m/Y_H:i'),
-                'to_date' => $toDate->format('d/m/Y_H:i'),
+                'from_date' => $fromDate->format('d/m/Y H:i'),
+                'to_date' => $toDate->format('d/m/Y H:i'),
                 'empcode' => $empcode,
             ]);
 
             $response = $this->makeApiCall('DownloadPunchData', [
                 'Empcode' => $empcode,
-                'FromDate' => $fromDate->format('d/m/Y_H:i'),
-                'ToDate' => $toDate->format('d/m/Y_H:i'),
+                'FromDate' => $fromDate->format('d/m/Y H:i'),
+                'ToDate' => $toDate->format('d/m/Y H:i'),
             ]);
 
             if (! $response['success']) {
@@ -384,7 +384,10 @@ class ETimeOfficeService
 
         try {
             $url = $this->apiUrl.'/'.$endpoint;
-            $queryString = urldecode(http_build_query($params));
+            // The eTimeOffice API returns 500 if slashes or colons are URL encoded.
+            // It expects spaces as %20, but literal slashes and colons.
+            $queryString = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+            $queryString = str_replace(['%2F', '%3A', '%20'], ['/', ':', '_'], $queryString);
             $fullUrl = $url.'?'.$queryString;
 
             Log::info('Making eTimeOffice API call', [

@@ -39,7 +39,7 @@ class BiometricWebhookController extends Controller
 
             // Parse datetime
             try {
-                $carbonDate = Carbon::createFromFormat('d/m/Y_H:i', $punchDateTime);
+                $carbonDate = Carbon::createFromFormat('d/m/Y H:i', $punchDateTime);
             } catch (\Exception $e) {
                 // Try alternative format
                 try {

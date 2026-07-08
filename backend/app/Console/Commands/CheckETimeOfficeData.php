@@ -158,7 +158,7 @@ class CheckETimeOfficeData extends Command
                 'name' => 'Valid ETimeOffice Data',
                 'data' => [
                     'Empcode' => 'TEST123',
-                    'PunchDate' => now()->format('d/m/Y_H:i'),
+                    'PunchDate' => now()->format('d/m/Y H:i'),
                     'Direction' => 'IN',
                     'DeviceId' => 'TEST_DEVICE',
                 ],
@@ -208,9 +208,9 @@ class CheckETimeOfficeData extends Command
 
         // Get ETimeOffice configuration
         $apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
-        $corporateId = env('ETIMEOFFICE_CORPORATE_ID');
-        $username = env('ETIMEOFFICE_USERNAME');
-        $password = env('ETIMEOFFICE_PASSWORD');
+        $corporateId = env('ETIMEOFFICE_CORPORATE_ID') ?: 'support';
+        $username = env('ETIMEOFFICE_USERNAME') ?: 'support';
+        $password = env('ETIMEOFFICE_PASSWORD') ?: 'support@1';
 
         if (! $apiUrl || ! $corporateId || ! $username || ! $password) {
             $this->error('❌ ETimeOffice configuration is incomplete');
@@ -243,16 +243,16 @@ class CheckETimeOfficeData extends Command
             // Test different time ranges to find data
             $timeRanges = [
                 'Last 2 hours' => [
-                    'FromDate' => now()->subHours(2)->format('d/m/Y_H:i'),
-                    'ToDate' => now()->format('d/m/Y_H:i'),
+                    'FromDate' => now()->subHours(2)->format('d/m/Y H:i'),
+                    'ToDate' => now()->format('d/m/Y H:i'),
                 ],
                 'Today' => [
-                    'FromDate' => now()->startOfDay()->format('d/m/Y_H:i'),
-                    'ToDate' => now()->format('d/m/Y_H:i'),
+                    'FromDate' => now()->startOfDay()->format('d/m/Y H:i'),
+                    'ToDate' => now()->format('d/m/Y H:i'),
                 ],
                 'Yesterday' => [
-                    'FromDate' => now()->subDay()->startOfDay()->format('d/m/Y_H:i'),
-                    'ToDate' => now()->subDay()->endOfDay()->format('d/m/Y_H:i'),
+                    'FromDate' => now()->subDay()->startOfDay()->format('d/m/Y H:i'),
+                    'ToDate' => now()->subDay()->endOfDay()->format('d/m/Y H:i'),
                 ],
             ];
 
@@ -265,7 +265,8 @@ class CheckETimeOfficeData extends Command
                     'ToDate' => $dateRange['ToDate'],
                 ];
 
-                $queryString = http_build_query($params);
+                $queryString = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+                $queryString = str_replace(['%2F', '%3A', '%20'], ['/', ':', '_'], $queryString);
                 $testUrl = rtrim($apiUrl, '/').'/DownloadPunchData?'.$queryString;
 
                 if ($this->option('details')) {
