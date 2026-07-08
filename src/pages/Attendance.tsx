@@ -6,7 +6,7 @@ import {
   CheckCircle, XCircle, BarChart2, AlertTriangle, Search, ArrowLeft, Calendar, BookOpen, Clock, Users, ArrowRight, User, ChevronLeft, ChevronRight, Loader2, Trash2
 } from 'lucide-react';
 // @ts-ignore
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -216,6 +216,24 @@ export function Attendance() {
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
+    
+    // Apply bold, yellow background, and borders to the first row (headers)
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
+      if (!ws[cellRef]) continue;
+      ws[cellRef].s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: "FFFF00" } },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
+        }
+      };
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, `Attendance Class ${selectedBatch.name}`);
     XLSX.writeFile(wb, `KTS_Attendance_Class_${selectedBatch.name}.xlsx`);

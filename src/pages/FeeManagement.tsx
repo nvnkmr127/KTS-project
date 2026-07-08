@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, MapPin, Calendar, Phone, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, Edit2, GraduationCap } from 'lucide-react';
 // @ts-ignore
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -99,6 +99,24 @@ export function FeeManagement() {
       'Status': s.status
     }));
     const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Apply bold and yellow background to the first row (headers)
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
+      if (!ws[cellRef]) continue;
+      ws[cellRef].s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: "FFFF00" } },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
+        }
+      };
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Fees');
     XLSX.writeFile(wb, 'KTS_Fees_Report.xlsx');
@@ -913,6 +931,36 @@ export function FeeManagement() {
     ];
     const formattedMonthYear = `${monthNames[month]} ${year}`;
 
+    // Calculate Monthly Attendance Stats based on currentMonth
+    const currentMonthStats = { working: 0, present: 0, half: 0, absent: 0 };
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const info = getDayAttendanceInfo(dateStr);
+      if (info) {
+        currentMonthStats.working++;
+        if (info.status === 'present') currentMonthStats.present++;
+        else if (info.status === 'partial') currentMonthStats.half++;
+        else if (info.status === 'absent') currentMonthStats.absent++;
+      }
+    }
+
+    // Calculate Overall Stats up to present
+    const overallStats = { working: 0, present: 0, half: 0, absent: 0 };
+    const todayStr = new Date().toISOString().split('T')[0];
+    const studentRecords = attendanceRecords.filter(r => String(r.studentId) === String(std.id) && r.date <= todayStr);
+    const uniqueDates = Array.from(new Set(studentRecords.map(r => r.date)));
+    uniqueDates.forEach(dateStr => {
+      const info = getDayAttendanceInfo(dateStr);
+      if (info) {
+        overallStats.working++;
+        if (info.status === 'present') overallStats.present++;
+        else if (info.status === 'partial') overallStats.half++;
+        else if (info.status === 'absent') overallStats.absent++;
+      }
+    });
+
+    const displayStats = showCalendar ? currentMonthStats : overallStats;
+
     // Helper functions for timeline formatting
     const formatTimeAgo = (dateInput: string | Date | null | undefined): string => {
       if (!dateInput) return 'some time ago';
@@ -1161,16 +1209,49 @@ export function FeeManagement() {
         </div>
 
         {/* Profile Card Header */}
-        <Card className="p-4 flex flex-col sm:flex-row items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[20px] font-bold text-[var(--blue-tx)] flex-shrink-0">
-            {std.init}
+        <Card className="p-4 flex flex-col xl:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 xl:w-1/2">
+            <div className="w-16 h-16 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[20px] font-bold text-[var(--blue-tx)] flex-shrink-0">
+              {std.init}
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <div className="text-[16px] font-bold text-[var(--tx)]">{std.name}</div>
+              <div className="text-[11.5px] text-[var(--tx3)] mt-0.5">Admission Number: <span className="font-mono">{std.roll}</span></div>
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+                <Badge variant="blue">Class {std.cls}</Badge>
+                {statusBadge(calculatedStatus)}
+              </div>
+            </div>
           </div>
-          <div className="flex-1 text-center sm:text-left">
-            <div className="text-[16px] font-bold text-[var(--tx)]">{std.name}</div>
-            <div className="text-[11.5px] text-[var(--tx3)] mt-0.5">Admission Number: <span className="font-mono">{std.roll}</span></div>
-            <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
-              <Badge variant="blue">Class {std.cls}</Badge>
-              {statusBadge(calculatedStatus)}
+
+          {/* Attendance Overview Cards */}
+          <div className="flex-1 flex justify-center xl:justify-end w-full xl:w-1/2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-md">
+              
+              <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[var(--tx)]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="text-[9.5px] font-semibold text-[var(--tx2)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Working</div>
+                <div className="text-[18px] font-black text-[var(--tx)] leading-none mt-1">{displayStats.working}</div>
+              </div>
+
+              <div className="bg-[var(--green-bg)]/30 border border-[var(--green)]/20 rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--green)]/0 to-[var(--green)]/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="text-[9.5px] font-semibold text-[var(--green-tx)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Present</div>
+                <div className="text-[18px] font-black text-[var(--green-tx)] leading-none mt-1">{displayStats.present}</div>
+              </div>
+
+              <div className="bg-[var(--purple-bg)]/30 border border-[var(--purple)]/20 rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--purple)]/0 to-[var(--purple)]/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="text-[9.5px] font-semibold text-[var(--purple-tx)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Half Days</div>
+                <div className="text-[18px] font-black text-[var(--purple-tx)] leading-none mt-1">{displayStats.half}</div>
+              </div>
+
+              <div className="bg-[var(--red-bg)]/30 border border-[var(--red)]/20 rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--red)]/0 to-[var(--red)]/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="text-[9.5px] font-semibold text-[var(--red-tx)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Absent</div>
+                <div className="text-[18px] font-black text-[var(--red-tx)] leading-none mt-1">{displayStats.absent}</div>
+              </div>
+
             </div>
           </div>
         </Card>
@@ -2633,6 +2714,25 @@ export function FeeManagement() {
                       ['102/2026', 'Transport Fee', '3000', '2026-10-31']
                     ];
                     const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
+                    ws['!cols'] = headers[0].map(() => ({ wch: 20 }));
+
+                    // Apply bold and yellow background to the first row (headers)
+                    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+                    for (let C = range.s.c; C <= range.e.c; ++C) {
+                      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
+                      if (!ws[cellRef]) continue;
+                      ws[cellRef].s = {
+                        font: { bold: true },
+                        fill: { fgColor: { rgb: "FFFF00" } },
+                        border: {
+                          top: { style: "thin", color: { rgb: "000000" } },
+                          bottom: { style: "thin", color: { rgb: "000000" } },
+                          left: { style: "thin", color: { rgb: "000000" } },
+                          right: { style: "thin", color: { rgb: "000000" } }
+                        }
+                      };
+                    }
+
                     const wb = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(wb, ws, 'Template');
                     XLSX.writeFile(wb, 'KTS_Fee_Assignment_Template.xlsx');

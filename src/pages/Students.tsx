@@ -7,7 +7,7 @@ import {
   Percent,
   History, Filter, ChevronDown, ChevronUp, Banknote, List, User
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Card } from '../components/Card';
@@ -41,6 +41,19 @@ interface Student {
   academicYearName?: string;
   biometric_employee_code?: string;
   aadhar_number?: string;
+  student_pen_no?: string;
+  father_occupation?: string;
+  father_mobile?: string;
+  mother_name?: string;
+  mother_mobile?: string;
+  mother_occupation?: string;
+  mother_tongue?: string;
+  nationality?: string;
+  state?: string;
+  religion?: string;
+  caste?: string;
+  sub_caste?: string;
+  tc_no?: string;
 }
 
 const INITIALS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -750,6 +763,19 @@ export function Students() {
         academicYearName: s.batch && s.batch.academic_year ? s.batch.academic_year.name : 'N/A',
         biometric_employee_code: s.biometric_employee_code || '',
         aadhar_number: s.aadhar_number || '',
+        student_pen_no: s.student_pen_no || '',
+        father_occupation: s.father_occupation || '',
+        father_mobile: s.father_mobile || '',
+        mother_name: s.mother_name || '',
+        mother_mobile: s.mother_mobile || '',
+        mother_occupation: s.mother_occupation || '',
+        mother_tongue: s.mother_tongue || '',
+        nationality: s.nationality || '',
+        state: s.state || '',
+        religion: s.religion || '',
+        caste: s.caste || '',
+        sub_caste: s.sub_caste || '',
+        tc_no: s.tc_no || '',
       }));
       setStudents(mapped);
     } catch (err) {
@@ -788,8 +814,17 @@ export function Students() {
     if (bio && !/^[A-Za-z0-9-]+$/.test(bio)) {
       errors.biometric_employee_code = 'Biometric Code must be alphanumeric (hyphens allowed)';
     }
+    const penNum = fd.get('student_pen_no') as string;
+    
     if (aadharNum && aadharNum.replace(/\D/g, '').length !== 12) {
       errors.aadhar_number = 'Aadhar Card Number must be exactly 12 digits';
+    }
+    
+    if (penNum) {
+      const cleanedPen = penNum.replace(/\s+/g, '');
+      if (!/^\d{12,14}$/.test(cleanedPen)) {
+         errors.student_pen_no = 'PEN must be 12 to 14 digits (e.g. 36 1204 1002 045)';
+      }
     }
 
     if (Object.keys(errors).length > 0) {
@@ -803,7 +838,21 @@ export function Students() {
       gender: fd.get('gender'),
       dob: fd.get('dob'),
       admission_date: fd.get('admissionDate'),
+      enrollment_number: fd.get('enrollment_number') || null,
+      student_pen_no: fd.get('student_pen_no') || null,
       father_name: parentVal,
+      father_mobile: fd.get('father_mobile') || null,
+      father_occupation: fd.get('father_occupation') || null,
+      mother_name: fd.get('mother_name') || null,
+      mother_mobile: fd.get('mother_mobile') || null,
+      mother_occupation: fd.get('mother_occupation') || null,
+      mother_tongue: fd.get('mother_tongue') || null,
+      nationality: fd.get('nationality') || null,
+      state: fd.get('state') || null,
+      religion: fd.get('religion') || null,
+      caste: fd.get('caste') || null,
+      sub_caste: fd.get('sub_caste') || null,
+      tc_no: fd.get('tc_no') || null,
       student_mobile: phone,
       village: fd.get('address'),
       class: fd.get('class'),
@@ -957,6 +1006,36 @@ export function Students() {
       if (absentCount > 0) return { status: 'absent' as const, className: 'bg-[var(--red-bg)] text-[var(--red-tx)] border-[var(--red-tx)]/25', label: 'Absent', details: `${absentCount} Absent` };
       return null;
     };
+
+    // Calculate Monthly Attendance Stats based on currentMonth
+    const currentMonthStats = { working: 0, present: 0, half: 0, absent: 0 };
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const info = getDayAttendanceInfo(dateStr);
+      if (info) {
+        currentMonthStats.working++;
+        if (info.status === 'present') currentMonthStats.present++;
+        else if (info.status === 'partial') currentMonthStats.half++;
+        else if (info.status === 'absent') currentMonthStats.absent++;
+      }
+    }
+
+    // Calculate Overall Stats up to present
+    const overallStats = { working: 0, present: 0, half: 0, absent: 0 };
+    const todayStr = new Date().toISOString().split('T')[0];
+    const studentRecords = attendanceRecords.filter(r => String(r.studentId) === String(s.id) && r.date <= todayStr);
+    const uniqueDates = Array.from(new Set(studentRecords.map(r => r.date)));
+    uniqueDates.forEach(dateStr => {
+      const info = getDayAttendanceInfo(dateStr);
+      if (info) {
+        overallStats.working++;
+        if (info.status === 'present') overallStats.present++;
+        else if (info.status === 'partial') overallStats.half++;
+        else if (info.status === 'absent') overallStats.absent++;
+      }
+    });
+
+    const displayStats = showCalendar ? currentMonthStats : overallStats;
 
     // Helper functions for timeline formatting
     const formatTimeAgo = (dateInput: string | Date | null | undefined): string => {
@@ -1189,8 +1268,8 @@ export function Students() {
         </div>
 
         {/* Profile card */}
-        <Card className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
+        <Card className="p-4 flex flex-col xl:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 xl:w-1/3">
             <div className="w-16 h-16 rounded-2xl bg-[var(--blue-bg)] flex items-center justify-center text-[20px] font-bold text-[var(--blue-tx)] flex-shrink-0">
               {s.name.slice(0, 2).toUpperCase()}
             </div>
@@ -1203,7 +1282,39 @@ export function Students() {
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 justify-center sm:justify-end flex-shrink-0">
+
+          {/* Attendance Overview Cards */}
+          <div className="flex-1 flex justify-center w-full xl:w-1/3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-md">
+              
+              <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[var(--tx)]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="text-[9.5px] font-semibold text-[var(--tx2)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Working</div>
+                <div className="text-[18px] font-black text-[var(--tx)] leading-none mt-1">{displayStats.working}</div>
+              </div>
+
+              <div className="bg-[var(--green-bg)]/30 border border-[var(--green)]/20 rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--green)]/0 to-[var(--green)]/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="text-[9.5px] font-semibold text-[var(--green-tx)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Present</div>
+                <div className="text-[18px] font-black text-[var(--green-tx)] leading-none mt-1">{displayStats.present}</div>
+              </div>
+
+              <div className="bg-[var(--purple-bg)]/30 border border-[var(--purple)]/20 rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--purple)]/0 to-[var(--purple)]/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="text-[9.5px] font-semibold text-[var(--purple-tx)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Half Days</div>
+                <div className="text-[18px] font-black text-[var(--purple-tx)] leading-none mt-1">{displayStats.half}</div>
+              </div>
+
+              <div className="bg-[var(--red-bg)]/30 border border-[var(--red)]/20 rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[var(--red)]/0 to-[var(--red)]/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="text-[9.5px] font-semibold text-[var(--red-tx)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Absent</div>
+                <div className="text-[18px] font-black text-[var(--red-tx)] leading-none mt-1">{displayStats.absent}</div>
+              </div>
+
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 justify-center xl:justify-end xl:w-1/3 flex-shrink-0">
             <button
               onClick={() => {
                 setSelectedConcessionFeeId('');
@@ -1239,9 +1350,11 @@ export function Students() {
                   { label: 'Gender', value: s.gender },
                   { label: 'Date of Birth', value: formatDate(s.dob) },
                   { label: 'Admission Date', value: formatDate(s.admissionDate) },
-                  { label: 'Parent / Guardian', value: s.parent },
-                  { label: 'Mobile', value: s.phone },
+                  { label: 'Admission No', value: s.roll },
+                  { label: 'Student PEN NO.', value: s.student_pen_no },
+                  { label: 'Student Mobile', value: s.phone },
                   { label: 'Aadhar Number', value: s.aadhar_number },
+                  { label: 'Biometric Code', value: s.biometric_employee_code },
                 ].map(item => (
                   <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
                     <div className="text-[10px] text-[var(--tx3)] mb-0.5">{item.label}</div>
@@ -1400,6 +1513,51 @@ export function Students() {
                   })}
                 </div>
               )}
+            </Card>
+
+            {/* Parent & Guardian Details */}
+            <Card className="space-y-4">
+              <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
+                <Users size={13} className="text-[var(--tx3)]" /> Parent / Guardian Details
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { label: "Father's Name", value: s.parent },
+                  { label: "Father's Mobile", value: s.father_mobile },
+                  { label: "Father's Occupation", value: s.father_occupation },
+                  { label: "Mother's Name", value: s.mother_name },
+                  { label: "Mother's Mobile", value: s.mother_mobile },
+                  { label: "Mother's Occupation", value: s.mother_occupation },
+                ].map(item => (
+                  <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
+                    <div className="text-[10px] text-[var(--tx3)] mb-0.5">{item.label}</div>
+                    <div className="text-[12px] font-semibold text-[var(--tx)]">{item.value || 'N/A'}</div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Demographics & TC Details */}
+            <Card className="space-y-4">
+              <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5">
+                <FileText size={13} className="text-[var(--tx3)]" /> Demographics &amp; TC Details
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { label: 'Mother Tongue', value: s.mother_tongue },
+                  { label: 'Nationality', value: s.nationality },
+                  { label: 'State', value: s.state },
+                  { label: 'Religion', value: s.religion },
+                  { label: 'Caste', value: s.caste },
+                  { label: 'Sub Caste', value: s.sub_caste },
+                  { label: 'TC Number', value: s.tc_no },
+                ].map(item => (
+                  <div key={item.label} className="bg-[var(--surf2)] rounded-xl p-3">
+                    <div className="text-[10px] text-[var(--tx3)] mb-0.5">{item.label}</div>
+                    <div className="text-[12px] font-semibold text-[var(--tx)]">{item.value || 'N/A'}</div>
+                  </div>
+                ))}
+              </div>
             </Card>
           </div>
 
@@ -1733,7 +1891,7 @@ export function Students() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name, roll no, parent..."
+                  placeholder="Search by name, admission no, parent..."
                   className="flex-1 bg-transparent text-[12px] text-[var(--tx)] placeholder:text-[var(--tx3)] outline-none"
                 />
               </div>
@@ -1817,7 +1975,10 @@ export function Students() {
                       Student {sortField === 'name' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
                     </th>
                     <th onClick={() => handleSort('roll')} className="hidden md:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
-                      Roll No {sortField === 'roll' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                      Admission No {sortField === 'roll' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                    </th>
+                    <th className="hidden md:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap">
+                      Student PEN NO.
                     </th>
                     <th onClick={() => handleSort('class')} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
                       Class {sortField === 'class' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
@@ -1836,13 +1997,13 @@ export function Students() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={9} className="px-2 py-4">
-                        <TableSkeleton rows={8} cols={9} />
+                      <td colSpan={10} className="px-2 py-4">
+                        <TableSkeleton rows={8} cols={10} />
                       </td>
                     </tr>
                   ) : paginated.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-2 py-4">
+                      <td colSpan={10} className="px-2 py-4">
                         <EmptyState
                           title="No students found"
                           description={search.trim() ? "We couldn't find any students matching your search criteria. Try refining your filters." : "Add your first student to populate the directory."}
@@ -1884,6 +2045,7 @@ export function Students() {
                           </div>
                         </td>
                         <td className="hidden md:table-cell px-2 py-2.5 font-mono text-[11px] text-[var(--tx2)]">{s.roll}</td>
+                        <td className="hidden md:table-cell px-2 py-2.5 font-mono text-[11px] text-[var(--tx2)]">{s.student_pen_no || 'N/A'}</td>
                         <td className="px-2 py-2.5 text-[var(--tx2)]">Class {s.class} — {s.section}</td>
                         <td className="hidden sm:table-cell px-2 py-2.5">
                           <div className="font-medium text-[var(--tx)]">{s.parent}</div>
@@ -2049,6 +2211,28 @@ export function Students() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Admission Number</label>
+                  <input
+                    name="enrollment_number"
+                    defaultValue={selected?.roll === 'N/A' ? '' : selected?.roll}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    placeholder={modal === 'add' ? "Leave blank to auto-generate" : "e.g. UV-2026-001"}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Student PEN NO.</label>
+                  <input
+                    name="student_pen_no"
+                    defaultValue={selected?.student_pen_no}
+                    onChange={() => setHasUnsavedChanges(true)}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    placeholder="Student PEN Number"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Date of Birth *</label>
                   <input
                     type="date"
@@ -2089,51 +2273,111 @@ export function Students() {
               {modal === 'add' && <input type="hidden" name="studentStatus" value="Active" />}
               <div className="border-t border-[var(--b)] pt-4">
                 <div className="text-[12px] font-semibold text-[var(--tx)] mb-3">Parent / Guardian Details</div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Parent Name *</label>
-                    <input
-                      name="parent"
-                      required
-                      defaultValue={selected?.parent}
-                      onChange={(e) => {
-                        setHasUnsavedChanges(true);
-                        if (e.target.value.trim() && formErrors.parent) {
-                          setFormErrors(prev => {
-                            const copy = { ...prev };
-                            delete copy.parent;
-                            return copy;
-                          });
-                        }
-                      }}
-                      className={`w-full bg-[var(--surf2)] border ${formErrors.parent ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
-                      placeholder="Father/Mother name"
-                    />
-                    {formErrors.parent && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.parent}</span>}
+                <div className="space-y-4">
+                  {/* Father Details */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Father's Name *</label>
+                      <input
+                        name="parent"
+                        required
+                        defaultValue={selected?.parent === 'N/A' ? '' : selected?.parent}
+                        onChange={(e) => {
+                          setHasUnsavedChanges(true);
+                          if (e.target.value.trim() && formErrors.parent) {
+                            setFormErrors(prev => {
+                              const copy = { ...prev };
+                              delete copy.parent;
+                              return copy;
+                            });
+                          }
+                        }}
+                        className={`w-full bg-[var(--surf2)] border ${formErrors.parent ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                        placeholder="Father's name"
+                      />
+                      {formErrors.parent && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.parent}</span>}
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Father's Mobile</label>
+                      <input
+                        name="father_mobile"
+                        defaultValue={selected?.father_mobile}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="Father's phone"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Father's Occupation</label>
+                      <input
+                        name="father_occupation"
+                        defaultValue={selected?.father_occupation}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="e.g. Engineer, Business"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Mobile Number *</label>
-                    <input
-                      name="phone"
-                      required
-                      value={phoneVal}
-                      onChange={(e) => {
-                        setHasUnsavedChanges(true);
-                        // Clean input: numbers only, max 10 digits
-                        const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        setPhoneVal(cleaned);
-                        if (cleaned.length === 10 && formErrors.phone) {
-                          setFormErrors(prev => {
-                            const copy = { ...prev };
-                            delete copy.phone;
-                            return copy;
-                          });
-                        }
-                      }}
-                      className={`w-full bg-[var(--surf2)] border ${formErrors.phone ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
-                      placeholder="e.g. 9876543210"
-                    />
-                    {formErrors.phone && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.phone}</span>}
+
+                  {/* Mother Details */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Mother's Name</label>
+                      <input
+                        name="mother_name"
+                        defaultValue={selected?.mother_name}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="Mother's name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Mother's Mobile</label>
+                      <input
+                        name="mother_mobile"
+                        defaultValue={selected?.mother_mobile}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="Mother's phone"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Mother's Occupation</label>
+                      <input
+                        name="mother_occupation"
+                        defaultValue={selected?.mother_occupation}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="e.g. Teacher, Homemaker"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Student/Guardian Mobile */}
+                  <div className="grid grid-cols-1 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Student/Guardian Mobile Number *</label>
+                      <input
+                        name="phone"
+                        required
+                        value={phoneVal}
+                        onChange={(e) => {
+                          setHasUnsavedChanges(true);
+                          const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setPhoneVal(cleaned);
+                          if (cleaned.length === 10 && formErrors.phone) {
+                            setFormErrors(prev => {
+                              const copy = { ...prev };
+                              delete copy.phone;
+                              return copy;
+                            });
+                          }
+                        }}
+                        className={`w-full bg-[var(--surf2)] border ${formErrors.phone ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                        placeholder="e.g. 9876543210"
+                      />
+                      {formErrors.phone && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.phone}</span>}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2204,6 +2448,86 @@ export function Students() {
                       placeholder="e.g. 123456789012"
                     />
                     {formErrors.aadhar_number && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.aadhar_number}</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-[var(--b)] pt-4">
+                <div className="text-[12px] font-semibold text-[var(--tx)] mb-3">Demographics &amp; TC Details</div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Mother Tongue</label>
+                      <input
+                        name="mother_tongue"
+                        defaultValue={selected?.mother_tongue}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="e.g. Telugu, Hindi"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Nationality</label>
+                      <input
+                        name="nationality"
+                        defaultValue={selected?.nationality || 'Indian'}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="e.g. Indian"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">State</label>
+                      <input
+                        name="state"
+                        defaultValue={selected?.state}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="e.g. Andhra Pradesh"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Religion</label>
+                      <input
+                        name="religion"
+                        defaultValue={selected?.religion}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="e.g. Hindu"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Caste</label>
+                      <input
+                        name="caste"
+                        defaultValue={selected?.caste}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="e.g. OC, BC-B"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Sub Caste</label>
+                      <input
+                        name="sub_caste"
+                        defaultValue={selected?.sub_caste}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="Sub Caste"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">TC Number</label>
+                      <input
+                        name="tc_no"
+                        defaultValue={selected?.tc_no}
+                        onChange={() => setHasUnsavedChanges(true)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        placeholder="TC Number"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2691,7 +3015,21 @@ const SYNONYMS: Record<string, string[]> = {
   parent: ['parent name', 'parent', 'father name', 'father', 'guardian', 'mother name', 'mother', 'parent_name'],
   phone: ['mobile number', 'mobile', 'phone', 'phone number', 'contact', 'student mobile', 'parent mobile', 'mobile_no', 'phone_no'],
   address: ['address', 'village', 'city', 'location', 'residence', 'street'],
-  aadhar_number: ['aadhar number', 'aadhar', 'aadhar card number', 'aadhar card', 'aadhaar', 'aadhaar number', 'aadhar_number', 'aadhaar_number']
+  aadhar_number: ['aadhar number', 'aadhar', 'aadhar card number', 'aadhar card', 'aadhaar', 'aadhaar number', 'aadhar_number', 'aadhaar_number'],
+  enrollment_number: ['admission number', 'admission_number', 'admission no', 'admission_no', 'enrollment number', 'enrollment_number', 'roll no', 'roll_no', 'roll number', 'rollnumber'],
+  student_pen_no: ['student pen no', 'student_pen_no', 'pen no', 'pen_no', 'pen number', 'student pen number', 'pen'],
+  father_mobile: ['father mobile', 'father_mobile', 'father phone', 'father_phone', 'father mobile number', 'father_mobile_number'],
+  father_occupation: ['father occupation', 'father_occupation', 'father job', 'father_job', 'father profession', 'father_profession'],
+  mother_name: ['mother name', 'mother_name', 'mother', 'mother_fullname', 'mother fullname'],
+  mother_mobile: ['mother mobile', 'mother_mobile', 'mother phone', 'mother_phone', 'mother mobile number', 'mother_mobile_number'],
+  mother_occupation: ['mother occupation', 'mother_occupation', 'mother job', 'mother_job', 'mother profession', 'mother_profession'],
+  mother_tongue: ['mother tongue', 'mother_tongue', 'mothertongue', 'native tongue', 'native_tongue', 'tongue'],
+  nationality: ['nationality', 'nation', 'citizenship'],
+  state: ['state', 'region', 'province'],
+  religion: ['religion', 'faith', 'belief'],
+  caste: ['caste', 'cast', 'social category'],
+  sub_caste: ['sub caste', 'sub_caste', 'subcast', 'sub_cast'],
+  tc_no: ['tc number', 'tc_number', 'tc no', 'tc_no', 'transfer certificate number', 'transfer certificate no', 'tc']
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2705,6 +3043,12 @@ const cleanDate = (val: any): string => {
     return `${y}-${m}-${d}`;
   }
   const str = String(val).trim();
+  if (/^\d{8}$/.test(str)) {
+    const day = str.slice(0, 2);
+    const month = str.slice(2, 4);
+    const year = str.slice(4, 8);
+    return `${year}-${month}-${day}`;
+  }
   const parsed = Date.parse(str);
   if (!isNaN(parsed)) {
     const d = new Date(parsed);
@@ -2771,6 +3115,20 @@ interface MappedStudent {
   phone: string;
   address: string;
   aadhar_number?: string;
+  enrollment_number?: string;
+  student_pen_no?: string;
+  father_mobile?: string;
+  father_occupation?: string;
+  mother_name?: string;
+  mother_mobile?: string;
+  mother_occupation?: string;
+  mother_tongue?: string;
+  nationality?: string;
+  state?: string;
+  religion?: string;
+  caste?: string;
+  sub_caste?: string;
+  tc_no?: string;
 }
 
 const validateStudent = (s: MappedStudent) => {
@@ -2780,15 +3138,39 @@ const validateStudent = (s: MappedStudent) => {
   if (!s.class) errors.push('Class is required');
   if (!s.section) errors.push('Section is required');
   if (s.gender !== 'Male' && s.gender !== 'Female') errors.push('Gender must be Male or Female');
-  if (!s.dob || !/^\d{4}-\d{2}-\d{2}$/.test(s.dob)) errors.push('Valid DOB required (YYYY-MM-DD)');
-  if (!s.admissionDate || !/^\d{4}-\d{2}-\d{2}$/.test(s.admissionDate)) errors.push('Valid Admission Date required (YYYY-MM-DD)');
-  if (!s.parent.trim() || s.parent === 'N/A') errors.push('Parent name is required');
-  if (!s.phone.trim() || s.phone === 'N/A') errors.push('Mobile number is required');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!s.address.trim()) errors.push('Address is required');
-  if (s.aadhar_number && s.aadhar_number.replace(/\D/g, '').length !== 12) {
+  if (!s.dob || !/^\d{4}-\d{2}-\d{2}$/.test(s.dob)) errors.push('Valid DOB required');
+  if (!s.enrollment_number?.trim()) errors.push('Admission Number is required');
+  if (!s.admissionDate || !/^\d{4}-\d{2}-\d{2}$/.test(s.admissionDate)) errors.push('Valid Admission Date required');
+  if (!s.student_pen_no?.trim()) {
+    errors.push('Student PEN NO. is required');
+  } else {
+    const cleanedPen = s.student_pen_no.replace(/\s+/g, '');
+    if (!/^\d{12,14}$/.test(cleanedPen)) {
+      errors.push('PEN must be 12 to 14 digits');
+    }
+  }
+  if (!s.aadhar_number?.trim()) {
+    errors.push('Aadhar Number is required');
+  } else if (s.aadhar_number.replace(/\D/g, '').length !== 12) {
     errors.push('Aadhar must be exactly 12 digits');
   }
+
+  if (!s.parent.trim() || s.parent === 'N/A') errors.push('Father Name is required');
+  if (!s.father_mobile?.trim()) errors.push('Father Mobile Number is required');
+  if (!s.father_occupation?.trim()) errors.push('Father Occupation is required');
+  
+  if (!s.mother_name?.trim()) errors.push('Mother Name is required');
+  if (!s.mother_mobile?.trim()) errors.push('Mother Mobile Number is required');
+  if (!s.mother_occupation?.trim()) errors.push('Mother Occupation is required');
+  
+  if (!s.address.trim()) errors.push('Address is required');
+  if (!s.mother_tongue?.trim()) errors.push('Mother Tongue is required');
+  if (!s.nationality?.trim()) errors.push('Nationality is required');
+  if (!s.state?.trim()) errors.push('State is required');
+  if (!s.religion?.trim()) errors.push('Religion is required');
+  if (!s.caste?.trim()) errors.push('Caste is required');
+  if (!s.sub_caste?.trim()) errors.push('Sub Caste is required');
+  
   return errors;
 };
 
@@ -3005,6 +3387,20 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
           const rawPhone = colMap.phone !== undefined ? row[colMap.phone] : '';
           const rawAddress = colMap.address !== undefined ? row[colMap.address] : '';
           const rawAadhar = colMap.aadhar_number !== undefined ? row[colMap.aadhar_number] : '';
+          const rawEnrollment = colMap.enrollment_number !== undefined ? row[colMap.enrollment_number] : '';
+          const rawPen = colMap.student_pen_no !== undefined ? row[colMap.student_pen_no] : '';
+          const rawFatherMobile = colMap.father_mobile !== undefined ? row[colMap.father_mobile] : '';
+          const rawFatherOccupation = colMap.father_occupation !== undefined ? row[colMap.father_occupation] : '';
+          const rawMotherName = colMap.mother_name !== undefined ? row[colMap.mother_name] : '';
+          const rawMotherMobile = colMap.mother_mobile !== undefined ? row[colMap.mother_mobile] : '';
+          const rawMotherOccupation = colMap.mother_occupation !== undefined ? row[colMap.mother_occupation] : '';
+          const rawMotherTongue = colMap.mother_tongue !== undefined ? row[colMap.mother_tongue] : '';
+          const rawNationality = colMap.nationality !== undefined ? row[colMap.nationality] : '';
+          const rawState = colMap.state !== undefined ? row[colMap.state] : '';
+          const rawReligion = colMap.religion !== undefined ? row[colMap.religion] : '';
+          const rawCaste = colMap.caste !== undefined ? row[colMap.caste] : '';
+          const rawSubCaste = colMap.sub_caste !== undefined ? row[colMap.sub_caste] : '';
+          const rawTcNo = colMap.tc_no !== undefined ? row[colMap.tc_no] : '';
 
           return {
             id: Math.random().toString(36).substr(2, 9),
@@ -3019,6 +3415,20 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             phone: rawPhone ? String(rawPhone).trim() : 'N/A',
             address: rawAddress ? String(rawAddress).trim() : '',
             aadhar_number: rawAadhar ? String(rawAadhar).trim() : '',
+            enrollment_number: rawEnrollment ? String(rawEnrollment).trim() : '',
+            student_pen_no: rawPen ? String(rawPen).trim() : '',
+            father_mobile: rawFatherMobile ? String(rawFatherMobile).trim() : '',
+            father_occupation: rawFatherOccupation ? String(rawFatherOccupation).trim() : '',
+            mother_name: rawMotherName ? String(rawMotherName).trim() : '',
+            mother_mobile: rawMotherMobile ? String(rawMotherMobile).trim() : '',
+            mother_occupation: rawMotherOccupation ? String(rawMotherOccupation).trim() : '',
+            mother_tongue: rawMotherTongue ? String(rawMotherTongue).trim() : '',
+            nationality: rawNationality ? String(rawNationality).trim() : '',
+            state: rawState ? String(rawState).trim() : '',
+            religion: rawReligion ? String(rawReligion).trim() : '',
+            caste: rawCaste ? String(rawCaste).trim() : '',
+            sub_caste: rawSubCaste ? String(rawSubCaste).trim() : '',
+            tc_no: rawTcNo ? String(rawTcNo).trim() : '',
           };
         })
         .filter((s): s is MappedStudent => s !== null);
@@ -3105,6 +3515,20 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
       section: s.section,
       status: 'active',
       aadhar_number: s.aadhar_number || null,
+      enrollment_number: s.enrollment_number || null,
+      student_pen_no: s.student_pen_no || null,
+      father_mobile: s.father_mobile || null,
+      father_occupation: s.father_occupation || null,
+      mother_name: s.mother_name || null,
+      mother_mobile: s.mother_mobile || null,
+      mother_occupation: s.mother_occupation || null,
+      mother_tongue: s.mother_tongue || null,
+      nationality: s.nationality || null,
+      state: s.state || null,
+      religion: s.religion || null,
+      caste: s.caste || null,
+      sub_caste: s.sub_caste || null,
+      tc_no: s.tc_no || null,
     }));
 
     try {
@@ -3122,12 +3546,15 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
   // ── Sample template download ─────────────────────────────────────────────
   const SAMPLE_HEADERS = [
     'First Name', 'Last Name', 'Class', 'Section', 'Gender',
-    'Date of Birth', 'Admission Date', 'Parent Name', 'Mobile Number', 'Address', 'Aadhar Number',
+    'Date of Birth', 'Admission Number', 'Admission Date', 'Student PEN NO.', 'Aadhar Number of Student',
+    'Father Name', 'Father Mobile Number', 'Father Occupation', 'Mother Name', 'Mother Mobile Number',
+    'Mother Occupation', 'Address', 'Mother Tongue', 'Nationality', 'State',
+    'Religion', 'Caste', 'Sub Caste', 'TC Number'
   ];
   const SAMPLE_ROWS = [
-    ['Ravi', 'Teja', '9', 'B', 'Male', '2012-05-15', '2026-06-01', 'Nageswara Rao', '9876543210', 'Nizamabad Main Street', '123456789012'],
-    ['Anjali', 'Devi', '10', 'A', 'Female', '2011-09-22', '2026-06-01', 'Srinivas', '9848022338', 'Housing Board Colony', '234567890123'],
-    ['Arun', 'Kumar', '8', 'C', 'Male', '2013-03-10', '2026-06-01', 'Ramesh', '9700123456', 'Old Town, Nizamabad', '345678901234'],
+    ['Ravi', 'Teja', '9', 'B', 'Male', '15-05-2012', 'UV-2026-101', '01-06-2026', '36 1204 1002 045', '123456789012', 'Nageswara Rao', '9876543210', 'Farmer', 'Laxmi', '9876543211', 'Homemaker', 'Nizamabad Main Street', 'Telugu', 'Indian', 'Andhra Pradesh', 'Hindu', 'BC-B', 'Yadav', 'TC-9988'],
+    ['Anjali', 'Devi', '10', 'A', 'Female', '22-09-2011', 'UV-2026-102', '01-06-2026', '36 1204 1002 046', '234567890123', 'Srinivas', '9848022338', 'Teacher', 'Rani', '9848022340', 'Government Employee', 'Housing Board Colony', 'Telugu', 'Indian', 'Andhra Pradesh', 'Hindu', 'OC', 'Reddy', 'TC-9989'],
+    ['Arun', 'Kumar', '8', 'C', 'Male', '10-03-2013', 'UV-2026-103', '01-06-2026', '36 1204 1002 047', '345678901234', 'Ramesh', '9700123456', 'Business', 'Latha', '9700123458', 'Homemaker', 'Old Town, Nizamabad', 'Telugu', 'Indian', 'Telangana', 'Hindu', 'BC-D', 'Goud', 'TC-9990'],
   ];
 
   const downloadTemplate = (format: 'xlsx' | 'csv') => {
@@ -3136,6 +3563,23 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
 
       // Style the header row a bit wider
       ws['!cols'] = SAMPLE_HEADERS.map(() => ({ wch: 20 }));
+
+      // Apply bold, yellow background, and borders to the first row (headers)
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
+        if (!ws[cellRef]) continue;
+        ws[cellRef].s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: "FFFF00" } }, // Yellow highlight
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
+        };
+      }
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Students');
@@ -3267,11 +3711,24 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                     { n: '4', label: 'Section', req: true },
                     { n: '5', label: 'Gender', req: true },
                     { n: '6', label: 'Date of Birth', req: true },
-                    { n: '7', label: 'Admission Date', req: true },
-                    { n: '8', label: 'Parent Name', req: true },
-                    { n: '9', label: 'Mobile Number', req: true },
-                    { n: '10', label: 'Address', req: true },
-                    { n: '11', label: 'Aadhar Number', req: false },
+                    { n: '7', label: 'Admission Number', req: true },
+                    { n: '8', label: 'Admission Date', req: true },
+                    { n: '9', label: 'Student PEN NO.', req: true },
+                    { n: '10', label: 'Aadhar Number of Student', req: true },
+                    { n: '11', label: 'Father Name', req: true },
+                    { n: '12', label: 'Father Mobile Number', req: true },
+                    { n: '13', label: 'Father Occupation', req: true },
+                    { n: '14', label: 'Mother Name', req: true },
+                    { n: '15', label: 'Mother Mobile Number', req: true },
+                    { n: '16', label: 'Mother Occupation', req: true },
+                    { n: '17', label: 'Address', req: true },
+                    { n: '18', label: 'Mother Tongue', req: true },
+                    { n: '19', label: 'Nationality', req: true },
+                    { n: '20', label: 'State', req: true },
+                    { n: '21', label: 'Religion', req: true },
+                    { n: '22', label: 'Caste', req: true },
+                    { n: '23', label: 'Sub Caste', req: true },
+                    { n: '24', label: 'TC Number', req: false },
                   ].map(col => (
                     <div
                       key={col.n}
@@ -3291,7 +3748,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                 <div className="bg-[var(--surf2)] rounded-lg p-2.5 overflow-x-auto">
                   <div className="text-[10px] text-[var(--tx3)] mb-1.5 font-medium uppercase tracking-wider">Example row</div>
                   <div className="flex gap-2 text-[10.5px] text-[var(--tx2)] whitespace-nowrap">
-                    {['Ravi', 'Teja', '9', 'B', 'Male', '2012-05-15', '2026-06-01', 'Nageswara Rao', '9876543210', 'Nizamabad', '123456789012'].map((v, i) => (
+                    {['Ravi', 'Teja', '9', 'B', 'Male', '15-05-2012', 'UV-2026-101', '01-06-2026', '36 1204 1002 045', '123456789012', 'Nageswara Rao', '9876543210', 'Farmer', 'Laxmi', '9876543211', 'Homemaker', 'Nizamabad', 'Telugu', 'Indian', 'Andhra Pradesh', 'Hindu', 'BC-B', 'Yadav', 'TC-9988'].map((v, i) => (
                       <span key={i} className="px-2 py-0.5 bg-[var(--surf)] border border-[var(--b)] rounded font-mono text-[10px]">{v}</span>
                     ))}
                   </div>
@@ -3299,10 +3756,10 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
 
                 <div className="flex items-center gap-3 mt-2.5 text-[10.5px]">
                   <span className="flex items-center gap-1 text-[var(--blue-tx)]">
-                    <span className="w-2 h-2 rounded-full bg-[var(--blue)]" /> 10 columns are required (Aadhar is optional)
+                    <span className="w-2 h-2 rounded-full bg-[var(--blue)]" /> 24 columns available (23 are required, 1 is optional)
                   </span>
                   <span className="ml-auto text-[var(--tx3)]">
-                    Dates accepted as: YYYY-MM-DD · DD/MM/YYYY · DD-MM-YYYY
+                    Dates accepted as: DD-MM-YYYY · DD/MM/YYYY · YYYY-MM-DD
                   </span>
                 </div>
               </div>

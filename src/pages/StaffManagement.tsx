@@ -13,7 +13,7 @@ import { StaffPayslipModal } from '../components/Staff/StaffPayslipModal';
 import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 export interface StaffMember {
   id: string;
@@ -199,6 +199,24 @@ export function StaffManagement() {
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Apply bold, yellow background, and borders to the first row (headers)
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
+      if (!ws[cellRef]) continue;
+      ws[cellRef].s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: "FFFF00" } },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } }
+        }
+      };
+    }
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Staff Directory');
     XLSX.writeFile(wb, 'KTS_Staff_Directory.xlsx');

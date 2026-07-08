@@ -97,6 +97,17 @@ class Student extends Model
         'referral_payment_remarks',
         'is_certificate_received',
         'certificate_type',
+        'student_pen_no',
+        'father_occupation',
+        'mother_name',
+        'mother_occupation',
+        'mother_tongue',
+        'nationality',
+        'state',
+        'religion',
+        'caste',
+        'sub_caste',
+        'tc_no',
     ];
 
     protected $casts = [

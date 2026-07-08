@@ -34,6 +34,19 @@ export interface Student {
   class?: string;
   section?: string;
   batch_id?: number | string;
+  student_pen_no?: string;
+  father_occupation?: string;
+  father_mobile?: string;
+  mother_name?: string;
+  mother_mobile?: string;
+  mother_occupation?: string;
+  mother_tongue?: string;
+  nationality?: string;
+  state?: string;
+  religion?: string;
+  caste?: string;
+  sub_caste?: string;
+  tc_no?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;

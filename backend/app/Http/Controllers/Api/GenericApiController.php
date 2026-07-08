@@ -633,8 +633,10 @@ class GenericApiController extends Controller
             }
 
             // Instantiate to generate enrollment number
-            $tempStudent = new \App\Models\Student($data);
-            $data['enrollment_number'] = $tempStudent->generateNewEnrollmentNumber();
+            if (empty($data['enrollment_number'])) {
+                $tempStudent = new \App\Models\Student($data);
+                $data['enrollment_number'] = $tempStudent->generateNewEnrollmentNumber();
+            }
         }
 
         // Custom validation / default attributes for Batch
@@ -1056,8 +1058,10 @@ class GenericApiController extends Controller
                     }
 
                     // Instantiate to generate enrollment number
-                    $tempStudent = new \App\Models\Student($data);
-                    $data['enrollment_number'] = $tempStudent->generateNewEnrollmentNumber();
+                    if (empty($data['enrollment_number'])) {
+                        $tempStudent = new \App\Models\Student($data);
+                        $data['enrollment_number'] = $tempStudent->generateNewEnrollmentNumber();
+                    }
                 }
 
                 // Filter out fields that do not exist as columns in the database table

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Upload, X, FileText, CheckCircle2, AlertCircle, FileSpreadsheet, Download, Loader2, Plus, Trash2 } from 'lucide-react';
 import { StaffMember } from '../../pages/StaffManagement';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -390,6 +390,24 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
     if (format === 'xlsx') {
       const ws = XLSX.utils.aoa_to_sheet([SAMPLE_HEADERS, ...SAMPLE_ROWS]);
       ws['!cols'] = SAMPLE_HEADERS.map(() => ({ wch: 20 }));
+
+      // Apply bold, yellow background, and borders to the first row (headers)
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
+        if (!ws[cellRef]) continue;
+        ws[cellRef].s = {
+          font: { bold: true },
+          fill: { fgColor: { rgb: "FFFF00" } }, // Yellow highlight
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } }
+          }
+        };
+      }
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Staff');
       XLSX.writeFile(wb, 'KTS_Staff_Import_Template.xlsx');
