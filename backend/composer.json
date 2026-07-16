@@ -8,15 +8,11 @@
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
-        "giggsey/libphonenumber-for-php": "^9.0",
         "google/apiclient": "^2.18",
         "laravel/framework": "^11.31",
-        "laravel/horizon": "^5.45",
-        "laravel/pulse": "^1.7",
         "laravel/sanctum": "^4.1",
         "laravel/tinker": "^2.9",
         "maatwebsite/excel": "^3.1",
-        "opcodesio/log-viewer": "^3.24",
         "predis/predis": "^3.1",
         "pusher/pusher-php-server": "^7.2",
         "spatie/laravel-activitylog": "^4.10",
@@ -45,7 +41,6 @@
         "files": [
             "app/Helpers/helpers.php",
             "app/Helpers/settings.php",
-            "app/Helpers/PermissionHelper.php",
             "app/Helpers/view_helpers.php"
         ]
     },

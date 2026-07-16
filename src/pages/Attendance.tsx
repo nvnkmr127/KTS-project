@@ -3,14 +3,15 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  CheckCircle, XCircle, BarChart2, AlertTriangle, Search, ArrowLeft, Calendar, BookOpen, Clock, Users, ArrowRight, User, ChevronLeft, ChevronRight, Loader2, Trash2
+  CheckCircle, XCircle, BarChart2, AlertTriangle, Search, ArrowLeft, Calendar, BookOpen, Clock, Users, ArrowRight, User, ChevronLeft, ChevronRight, Loader2
 } from 'lucide-react';
 // @ts-ignore
 import * as XLSX from 'xlsx-js-style';
+import { downloadSheet } from '../utils/excel';
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { Avatar, ProgressBar } from '../components/ui';
+import { Avatar, ProgressBar, getInitials } from '../components/ui';
 import { api, clearApiCache } from '../services/api';
 import { useDialog } from '../context/DialogContext';
 
@@ -133,7 +134,7 @@ export function Attendance() {
     try {
       const local = localStorage.getItem('kts_student_attendance_records');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let records = (local && JSON.parse(local)) as any[] || [];
+      const records = (local && JSON.parse(local)) as any[] || [];
 
       selectedStudentIds.forEach((studentId) => {
         // Mark both morning and lunch period
@@ -215,28 +216,7 @@ export function Attendance() {
       'Overall Attendance %': s.percentage
     }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    
-    // Apply bold, yellow background, and borders to the first row (headers)
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
-      if (!ws[cellRef]) continue;
-      ws[cellRef].s = {
-        font: { bold: true },
-        fill: { fgColor: { rgb: "FFFF00" } },
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } }
-        }
-      };
-    }
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `Attendance Class ${selectedBatch.name}`);
-    XLSX.writeFile(wb, `KTS_Attendance_Class_${selectedBatch.name}.xlsx`);
+    downloadSheet(XLSX.utils.json_to_sheet(dataToExport), `Attendance Class ${selectedBatch.name}`, `KTS_Attendance_Class_${selectedBatch.name}.xlsx`);
   };
 
   const handleImportExcelAttendance = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,7 +236,7 @@ export function Attendance() {
 
           const local = localStorage.getItem('kts_student_attendance_records');
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          let records = (local && JSON.parse(local)) as any[] || [];
+          const records = (local && JSON.parse(local)) as any[] || [];
 
           let count = 0;
           data.forEach(row => {
@@ -559,50 +539,46 @@ export function Attendance() {
     }
   };
 
-  // Fetch kts_student_attendance_records when selectedStudent changes
+  // Fetch kts_student_attendance_records globally to sync KPI cards
   useEffect(() => {
-    if (selectedStudent && view === 'student-details') {
-      setLoadingAttendance(true);
-      api.getResources('settings', { key: 'kts_student_attendance_records' })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .then((res: any) => {
-          if (Array.isArray(res) && res.length > 0 && res[0].value) {
-            try {
-              const parsed = (res[0].value && JSON.parse(res[0].value)) || [];
-              setAttendanceRecords(parsed);
-              (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
-            } catch (e) {
-              console.error('Error parsing kts_student_attendance_records:', e);
-              const local = localStorage.getItem('kts_student_attendance_records');
-              if (local) {
-                const parsedLocal = JSON.parse(local);
-                if (parsedLocal) setAttendanceRecords(parsedLocal);
-              }
-            }
-          } else {
+    setLoadingAttendance(true);
+    api.getResources('settings', { key: 'kts_student_attendance_records' })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((res: any) => {
+        if (Array.isArray(res) && res.length > 0 && res[0].value) {
+          try {
+            const parsed = (res[0].value && JSON.parse(res[0].value)) || [];
+            setAttendanceRecords(parsed);
+            (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
+          } catch (e) {
+            console.error('Error parsing kts_student_attendance_records:', e);
             const local = localStorage.getItem('kts_student_attendance_records');
             if (local) {
-              const parsedLocal = local && JSON.parse(local);
+              const parsedLocal = JSON.parse(local);
               if (parsedLocal) setAttendanceRecords(parsedLocal);
             }
           }
-        })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .catch((err: any) => {
-          console.error('Error loading attendance settings:', err);
+        } else {
           const local = localStorage.getItem('kts_student_attendance_records');
           if (local) {
-            const parsedLocal = JSON.parse(local);
+            const parsedLocal = local && JSON.parse(local);
             if (parsedLocal) setAttendanceRecords(parsedLocal);
           }
-        })
-        .finally(() => {
-          setLoadingAttendance(false);
-        });
-    } else {
-      setAttendanceRecords([]);
-    }
-  }, [selectedStudent, view]);
+        }
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .catch((err: any) => {
+        console.error('Error loading attendance settings:', err);
+        const local = localStorage.getItem('kts_student_attendance_records');
+        if (local) {
+          const parsedLocal = JSON.parse(local);
+          if (parsedLocal) setAttendanceRecords(parsedLocal);
+        }
+      })
+      .finally(() => {
+        setLoadingAttendance(false);
+      });
+  }, []);
 
   // Listen to cross-tab updates to kts_student_attendance_records
   useEffect(() => {
@@ -685,15 +661,6 @@ export function Attendance() {
     }
   };
 
-  // Avatar Initials Helper
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -745,21 +712,42 @@ export function Attendance() {
   let totalPresent = 0;
   let totalAbsent = 0;
 
+  const getLocalDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const todayStr = getLocalDateString();
+
   students.forEach(student => {
-    const studentAtt = todayAttendance.filter(
-      (att: any) => String(att.student_id) === String(student.id)
-    );
-    if (studentAtt.length > 0) {
-      const hasPresent = studentAtt.some(att => ['present', 'late'].includes(att.status));
-      if (hasPresent) {
-        totalPresent++;
-      } else {
-        const hasAbsent = studentAtt.some(att => att.status === 'absent');
-        if (hasAbsent) {
-          totalAbsent++;
+    // Check local/teacher settings records for today first
+    const teacherRecords = attendanceRecords.filter(r => String(r.studentId) === String(student.id) && r.date === todayStr);
+    
+    let isPresent = false;
+    let isAbsent = false;
+
+    if (teacherRecords.length > 0) {
+      isPresent = teacherRecords.some(r => ['present', 'late'].includes(r.status?.toLowerCase()));
+      if (!isPresent) {
+        isAbsent = teacherRecords.some(r => r.status?.toLowerCase() === 'absent');
+      }
+    } else {
+      // Fallback to API todayAttendance
+      const studentAtt = todayAttendance.filter(
+        (att: any) => String(att.student_id) === String(student.id)
+      );
+      if (studentAtt.length > 0) {
+        isPresent = studentAtt.some(att => ['present', 'late'].includes(att.status));
+        if (!isPresent) {
+          isAbsent = studentAtt.some(att => att.status === 'absent');
         }
       }
     }
+
+    if (isPresent) totalPresent++;
+    else if (isAbsent) totalAbsent++;
   });
 
   const presentPercentage = totalSchoolStudents > 0 

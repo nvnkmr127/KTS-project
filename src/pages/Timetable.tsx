@@ -123,24 +123,66 @@ export function Timetable() {
           setEditTeacher(list[0].id);
         }
 
-        const batchesData = await api.getResources('batches');
-        if (batchesData && batchesData.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const names = batchesData.map((b: any) => b.name).sort((a: string, b: string) => {
-            const numA = parseInt(a);
-            const numB = parseInt(b);
-            if (!isNaN(numA) && !isNaN(numB)) {
-              if (numA !== numB) return numA - numB;
-              return a.localeCompare(b);
+        const batchesDataRes = await api.getResources('batches').catch(() => []);
+        const allBatches = Array.isArray(batchesDataRes) ? batchesDataRes : (batchesDataRes?.data || []);
+        
+        const classGroups: Record<string, string[]> = {};
+        const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        allBatches.forEach((b: any) => {
+          const batchName = b.name;
+          let classId = '8';
+          let sectionLetter = 'A';
+
+          const match = batchName.match(/^(.+?)([A-Z])$/);
+          if (match) {
+            classId = match[1];
+            sectionLetter = match[2];
+          } else {
+            if (batchName === 'Default Batch') { classId = '8'; sectionLetter = 'A'; }
+            else {
+               classId = batchName;
+               sectionLetter = '';
             }
-            if (!isNaN(numA)) return -1;
-            if (!isNaN(numB)) return 1;
-            return a.localeCompare(b);
-          });
-          setClasses(names);
-          if (names.length > 0 && !names.includes(selectedClass)) {
-            setSelectedClass(names[0]);
           }
+
+          if (!classGroups[classId]) classGroups[classId] = [];
+          if (sectionLetter && !classGroups[classId].includes(sectionLetter)) {
+             classGroups[classId].push(sectionLetter);
+          }
+        });
+
+        defaultClasses.forEach((cId) => {
+          if (!classGroups[cId] || classGroups[cId].length === 0) {
+            classGroups[cId] = ['A', 'B'];
+          }
+        });
+
+        const names: string[] = [];
+        Object.keys(classGroups).sort((a, b) => {
+          const numA = parseInt(a);
+          const numB = parseInt(b);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            if (numA !== numB) return numA - numB;
+            return a.localeCompare(b);
+          }
+          if (!isNaN(numA)) return -1;
+          if (!isNaN(numB)) return 1;
+          return a.localeCompare(b);
+        }).forEach(cId => {
+          if (classGroups[cId].length === 0) {
+             names.push(cId);
+          } else {
+             classGroups[cId].sort().forEach(sec => {
+                names.push(`${cId}${sec}`);
+             });
+          }
+        });
+
+        setClasses(names);
+        if (names.length > 0 && !names.includes(selectedClass)) {
+          setSelectedClass(names[0]);
         }
       } catch (err) {
         console.error('Error loading timetable initial data:', err);

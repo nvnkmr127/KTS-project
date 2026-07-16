@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, MapPin, Calendar, Phone, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, Edit2, GraduationCap } from 'lucide-react';
+import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, GraduationCap } from 'lucide-react';
 // @ts-ignore
 import * as XLSX from 'xlsx-js-style';
+import { downloadSheet } from '../utils/excel';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -11,7 +12,7 @@ import { api } from '../services/api';
 import { useDialog } from '../context/DialogContext';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { formatDate } from '../utils/date';
+import { formatDate, formatDateTimeParts, formatTimeAgo } from '../utils/date';
 
 interface StudentFeeDisplay {
   id: string;
@@ -98,28 +99,7 @@ export function FeeManagement() {
       'Balance': s.bal,
       'Status': s.status
     }));
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-
-    // Apply bold and yellow background to the first row (headers)
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
-      if (!ws[cellRef]) continue;
-      ws[cellRef].s = {
-        font: { bold: true },
-        fill: { fgColor: { rgb: "FFFF00" } },
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } }
-        }
-      };
-    }
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Fees');
-    XLSX.writeFile(wb, 'KTS_Fees_Report.xlsx');
+    downloadSheet(XLSX.utils.json_to_sheet(dataToExport), 'Fees', 'KTS_Fees_Report.xlsx');
   };
 
   // Modals state
@@ -769,7 +749,7 @@ export function FeeManagement() {
     const classNameVal = fd.get('className') as string;
     const dueDateVal = fd.get('dueDate') as string;
 
-    let itemsToAssign = [...assignedItems];
+    const itemsToAssign = [...assignedItems];
 
     if (itemsToAssign.length === 0 && currentCategory.trim() && currentAmount && Number(currentAmount) > 0) {
       itemsToAssign.push({ category: currentCategory.trim(), amount: Number(currentAmount) });
@@ -960,43 +940,6 @@ export function FeeManagement() {
     });
 
     const displayStats = showCalendar ? currentMonthStats : overallStats;
-
-    // Helper functions for timeline formatting
-    const formatTimeAgo = (dateInput: string | Date | null | undefined): string => {
-      if (!dateInput) return 'some time ago';
-      const date = new Date(dateInput);
-      if (isNaN(date.getTime())) return 'some time ago';
-      const now = new Date();
-      const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-      if (seconds < 60) return 'Just now';
-      const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-      const days = Math.floor(hours / 24);
-      if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
-      const months = Math.floor(days / 30);
-      if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`;
-      const years = Math.floor(months / 12);
-      return `${years} year${years > 1 ? 's' : ''} ago`;
-    };
-
-    const formatDateTimeParts = (dateInput: string | Date | null | undefined) => {
-      if (!dateInput) return { date: '', time: '' };
-      const date = new Date(dateInput);
-      if (isNaN(date.getTime())) return { date: '', time: '' };
-      const dateStr = date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-      const timeStr = date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-      return { date: dateStr, time: timeStr };
-    };
 
     // Timeline activities processing
     const activities: any[] = [];
@@ -2715,27 +2658,7 @@ export function FeeManagement() {
                     ];
                     const ws = XLSX.utils.aoa_to_sheet([...headers, ...rows]);
                     ws['!cols'] = headers[0].map(() => ({ wch: 20 }));
-
-                    // Apply bold and yellow background to the first row (headers)
-                    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
-                      if (!ws[cellRef]) continue;
-                      ws[cellRef].s = {
-                        font: { bold: true },
-                        fill: { fgColor: { rgb: "FFFF00" } },
-                        border: {
-                          top: { style: "thin", color: { rgb: "000000" } },
-                          bottom: { style: "thin", color: { rgb: "000000" } },
-                          left: { style: "thin", color: { rgb: "000000" } },
-                          right: { style: "thin", color: { rgb: "000000" } }
-                        }
-                      };
-                    }
-
-                    const wb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(wb, ws, 'Template');
-                    XLSX.writeFile(wb, 'KTS_Fee_Assignment_Template.xlsx');
+                    downloadSheet(ws, 'Template', 'KTS_Fee_Assignment_Template.xlsx');
                   }}
                   className="text-[11px] text-[var(--blue-tx)] hover:underline font-semibold cursor-pointer bg-transparent border-0"
                 >

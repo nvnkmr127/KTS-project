@@ -23,3 +23,7 @@ dist-ssr
 .env
 .env*
 
+composer.phar
+eslint-results.json
+eslint_report.json
+

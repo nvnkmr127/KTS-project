@@ -159,11 +159,15 @@ export function Classes() {
 
     // ── Batches + Students (backend-dependent) ─────────────────────────────
     try {
-      const [allBatches, studentsData] = await Promise.all([
+      const [batchesRes, studentsRes] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        api.getResources('batches'),
-        api.getResources('students'),
+        api.getResources('batches').catch(() => []),
+        api.getResources('students').catch(() => []),
       ]);
+
+      const allBatches = Array.isArray(batchesRes) ? batchesRes : (batchesRes?.data || []);
+      const studentsData = Array.isArray(studentsRes) ? studentsRes : (studentsRes?.data || []);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const batchesData = allBatches.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
 

@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Maatwebsite\Excel\Facades\Excel;
 
-class AttendanceExportController extends Controller
+class AttendanceController extends Controller
 {
     /**
      * ✅ FIX 3: Display attendance settings page with separate student/faculty times
@@ -442,34 +442,6 @@ class AttendanceExportController extends Controller
                 'message' => 'Failed to load biometric statistics',
                 'error' => $e->getMessage(),
             ], 500);
-        }
-    }
-
-    /**
-     * Show data pulling interface
-     */
-    public function showDataPuller(Request $request)
-    {
-        $this->authorize('manage attendance settings');
-
-        try {
-            // Check if ETimeOffice is configured
-            $isConfigured = $this->isETimeOfficeConfigured();
-
-            // Get sync history
-            $syncHistory = $this->getSyncHistory($request);
-
-            // Get available date ranges
-            $dateRangeOptions = $this->getDateRangeOptions();
-
-            return view('admin.attendance.data-puller', compact(
-                'isConfigured',
-                'syncHistory',
-                'dateRangeOptions'
-            ));
-
-        } catch (\Exception $e) {
-            return back()->with('error', 'Failed to load data puller: '.$e->getMessage());
         }
     }
 
@@ -999,92 +971,6 @@ class AttendanceExportController extends Controller
     }
 
     /**
-     * Process daily attendance for a student with proper field mapping
-     */
-    private function processDailyAttendance($student, $date, $punches, $defaultFacultyId): array
-    {
-        // Get the first and last punch of the day
-        $firstPunch = $punches[0]['datetime'];
-        $lastPunch = end($punches)['datetime'];
-        $originalData = $punches[0]['original_data'];
-
-        // Calculate late minutes
-        $collegeStartTime = \Carbon\Carbon::parse($date.' '.$this->getSetting('attendance_student_college_start_time', '09:30:00'));
-        $lateMinutes = $firstPunch->gt($collegeStartTime) ? $firstPunch->diffInMinutes($collegeStartTime) : 0;
-
-        // Determine attendance status
-        $status = $this->determineAttendanceStatus($firstPunch);
-
-        // Check if attendance record already exists
-        $existingAttendance = Attendance::where([
-            'student_id' => $student->id,
-            'attendance_date' => $date,
-        ])->first();
-
-        $attendanceData = [
-            'student_id' => $student->id,
-            'batch_id' => $student->batch_id ?? 1,
-            'faculty_id' => $defaultFacultyId,
-            'attendance_date' => $date,
-            'check_in_time' => $firstPunch->format('H:i:s'),
-            'check_out_time' => count($punches) > 1 ? $lastPunch->format('H:i:s') : null,
-            'status' => $status,
-            'marked_at' => $firstPunch,
-            'marked_by' => auth()->id() ?? $defaultFacultyId,
-            'notes' => 'ETimeOffice API: '.($originalData['Name'] ?? 'Auto-sync'),
-            'late_minutes' => $lateMinutes > 0 ? $lateMinutes : null,
-            'location' => $originalData['Location'] ?? null,
-            'device_id' => 'etimeoffice-api',
-            'biometric_log_id' => $originalData['LogId'] ?? null,
-        ];
-
-        if ($existingAttendance) {
-            // Update existing record only if new data is more complete or earlier
-            $shouldUpdate = false;
-
-            if (! $existingAttendance->check_in_time || $firstPunch->lt($existingAttendance->marked_at)) {
-                $shouldUpdate = true;
-            }
-
-            if (count($punches) > 1 && ! $existingAttendance->check_out_time) {
-                $shouldUpdate = true;
-            }
-
-            if ($shouldUpdate) {
-                $existingAttendance->update($attendanceData);
-
-                \Log::channel('attendance-webhook')->info('Updated attendance record', [
-                    'student_id' => $student->id,
-                    'student_name' => $student->name,
-                    'date' => $date,
-                    'check_in' => $firstPunch->format('H:i:s'),
-                    'check_out' => $attendanceData['check_out_time'],
-                    'status' => $status,
-                ]);
-
-                return ['action' => 'updated'];
-            } else {
-                return ['action' => 'skipped'];
-            }
-        } else {
-            // Create new attendance record
-            Attendance::create($attendanceData);
-
-            \Log::channel('attendance-webhook')->info('Created attendance record', [
-                'student_id' => $student->id,
-                'student_name' => $student->name,
-                'date' => $date,
-                'check_in' => $firstPunch->format('H:i:s'),
-                'check_out' => $attendanceData['check_out_time'],
-                'status' => $status,
-                'late_minutes' => $lateMinutes,
-            ]);
-
-            return ['action' => 'created'];
-        }
-    }
-
-    /**
      * Map ETimeOffice punch data to standardized format
      */
     private function mapETimeOfficeData($punchRecord): ?array
@@ -1186,63 +1072,6 @@ class AttendanceExportController extends Controller
 
             return null;
         }
-    }
-
-    /**
-     * Group punch data by employee code and date
-     */
-    private function groupPunchDataByEmployeeAndDate($punchData): array
-    {
-        $grouped = [];
-
-        foreach ($punchData as $punch) {
-            $empCode = $punch['Empcode'] ?? $punch['EmpCode'] ?? $punch['EmployeeCode'] ?? null;
-            $punchDateTime = $punch['PunchDate'] ?? $punch['LogDateTime'] ?? $punch['DateTime'] ?? null;
-
-            if (! $empCode || ! $punchDateTime) {
-                continue;
-            }
-
-            try {
-                // Parse the date/time
-                $carbonDateTime = \Carbon\Carbon::createFromFormat('d/m/Y H:i:s', $punchDateTime);
-                if (! $carbonDateTime) {
-                    $carbonDateTime = \Carbon\Carbon::parse($punchDateTime);
-                }
-
-                $date = $carbonDateTime->format('Y-m-d');
-
-                if (! isset($grouped[$empCode])) {
-                    $grouped[$empCode] = [];
-                }
-
-                if (! isset($grouped[$empCode][$date])) {
-                    $grouped[$empCode][$date] = [];
-                }
-
-                $grouped[$empCode][$date][] = [
-                    'datetime' => $carbonDateTime,
-                    'original_data' => $punch,
-                ];
-
-            } catch (\Exception $e) {
-                \Log::warning('Could not parse punch datetime', [
-                    'punch_datetime' => $punchDateTime,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-
-        // Sort punches by time for each day
-        foreach ($grouped as $empCode => $dates) {
-            foreach ($dates as $date => $punches) {
-                usort($grouped[$empCode][$date], function ($a, $b) {
-                    return $a['datetime']->timestamp <=> $b['datetime']->timestamp;
-                });
-            }
-        }
-
-        return $grouped;
     }
 
     /**
@@ -1448,16 +1277,6 @@ class AttendanceExportController extends Controller
 
             return 1; // Fallback to ID 1
         }
-    }
-
-    /**
-     * Get random attendance status for simulation
-     */
-    private function getRandomStatus()
-    {
-        $statuses = ['present', 'present', 'present', 'late', 'absent']; // More likely to be present
-
-        return $statuses[array_rand($statuses)];
     }
 
     /**
@@ -1681,71 +1500,6 @@ class AttendanceExportController extends Controller
                     'start' => now()->startOfDay(),
                     'end' => now()->endOfDay(),
                 ];
-        }
-    }
-
-    /**
-     * Perform the actual data pull from ETimeOffice
-     */
-    private function performDataPull($startDate, $endDate, array $employeeCodes, bool $testMode = false): array
-    {
-        try {
-            // Get API credentials
-            $apiUrl = $this->getSetting('etimeoffice_api_url');
-            $corporateId = $this->getSetting('etimeoffice_corporate_id');
-            $username = $this->getSetting('etimeoffice_username');
-            $password = $this->getSetting('etimeoffice_password');
-
-            $results = [
-                'success' => true,
-                'message' => '',
-                'data' => [
-                    'total_records' => 0,
-                    'processed_records' => 0,
-                    'created_records' => 0,
-                    'updated_records' => 0,
-                    'skipped_records' => 0,
-                    'errors' => [],
-                    'date_range' => [
-                        'start' => $startDate->format('Y-m-d H:i:s'),
-                        'end' => $endDate->format('Y-m-d H:i:s'),
-                    ],
-                    'test_mode' => $testMode,
-                ],
-            ];
-
-            // Create auth token
-            $authString = "{$corporateId}:{$username}:{$password}:true";
-            $authToken = base64_encode($authString);
-
-            foreach ($employeeCodes as $empCode) {
-                $this->pullDataForEmployee(
-                    $apiUrl,
-                    $authToken,
-                    $empCode,
-                    $startDate,
-                    $endDate,
-                    $testMode,
-                    $results
-                );
-            }
-
-            // Update last sync time if not in test mode
-            if (! $testMode && $results['data']['total_records'] > 0) {
-                $this->updateSetting('etimeoffice_last_sync', now()->toDateTimeString());
-            }
-
-            // Generate summary message
-            $results['message'] = $this->generateSyncSummary($results['data']);
-
-            return $results;
-
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'API call failed: '.$e->getMessage(),
-                'data' => null,
-            ];
         }
     }
 
@@ -1987,56 +1741,6 @@ class AttendanceExportController extends Controller
     }
 
     /**
-     * Parse log files for sync history (fallback method)
-     */
-    private function parseLogHistory(): array
-    {
-        try {
-            $logPath = storage_path('logs/laravel.log');
-
-            if (! file_exists($logPath)) {
-                return [];
-            }
-
-            $logContent = file_get_contents($logPath);
-            $lines = explode("\n", $logContent);
-            $syncLogs = [];
-
-            foreach (array_reverse($lines) as $line) {
-                if (
-                    strpos($line, 'ETimeOffice sync') !== false ||
-                    strpos($line, 'ATTENDANCE SETTINGS') !== false
-                ) {
-
-                    // Parse the log line to extract sync information
-                    preg_match('/\[(.*?)\]/', $line, $dateMatch);
-
-                    if ($dateMatch) {
-                        $syncLogs[] = [
-                            'date' => $dateMatch[1],
-                            'range' => 'Manual',
-                            'records' => 'N/A',
-                            'status' => strpos($line, 'SUCCESS') !== false ? 'success' : 'unknown',
-                            'duration' => 'N/A',
-                        ];
-                    }
-
-                    if (count($syncLogs) >= 10) {
-                        break;
-                    }
-                }
-            }
-
-            return $syncLogs;
-
-        } catch (\Exception $e) {
-            Log::error('Error parsing log history', ['error' => $e->getMessage()]);
-
-            return [];
-        }
-    }
-
-    /**
      * Generate sync summary message
      */
     private function generateSyncSummary(array $results): string
@@ -2046,196 +1750,6 @@ class AttendanceExportController extends Controller
         }
 
         return "Sync completed: {$results['created_records']} created, {$results['updated_records']} updated, {$results['skipped_records']} skipped from {$results['total_records']} total records";
-    }
-
-    /**
-     * Log sync activities
-     */
-    private function log(string $message, string $level = 'info'): void
-    {
-        \Log::{$level}('ETimeOffice Sync: '.$message, [
-            'user_id' => auth()->id(),
-            'timestamp' => now(),
-        ]);
-    }
-
-    private function logSyncAttempt(array $dateRange, array $result): void
-    {
-        \Log::info('ETimeOffice sync attempt', [
-            'user_id' => auth()->id(),
-            'date_range' => $dateRange,
-            'result' => $result,
-            'timestamp' => now(),
-        ]);
-    }
-
-    /**
-     * Get today's sync count
-     */
-    private function getTodaySyncCount(): int
-    {
-        try {
-            // You can implement this by reading logs or maintaining a sync_logs table
-            return DB::table('settings')
-                ->where('key', 'etimeoffice_sync_count_today')
-                ->where('created_at', '>=', now()->startOfDay())
-                ->count();
-        } catch (\Exception $e) {
-            return 0;
-        }
-    }
-
-    /**
-     * Get today's records count
-     */
-    private function getTodayRecordsCount(): int
-    {
-        try {
-            return Attendance::whereDate('attendance_date', now()->toDateString())
-                ->where('device_id', 'etimeoffice-api')
-                ->count();
-        } catch (\Exception $e) {
-            return 0;
-        }
-    }
-
-    /**
-     * Get next auto sync time
-     */
-    private function getNextAutoSyncTime(): ?string
-    {
-        try {
-            $lastSync = $this->getSetting('etimeoffice_last_sync');
-            $frequency = (int) $this->getSetting('etimeoffice_sync_frequency', 15);
-
-            if ($lastSync) {
-                $nextSync = Carbon::parse($lastSync)->addMinutes($frequency);
-
-                return $nextSync->format('Y-m-d H:i:s');
-            }
-
-            return null;
-        } catch (\Exception $e) {
-            return null;
-        }
-    }
-
-    /**
-     * Get sync health status
-     */
-    private function getSyncHealth(): string
-    {
-        try {
-            $lastSync = $this->getSetting('etimeoffice_last_sync');
-            $frequency = (int) $this->getSetting('etimeoffice_sync_frequency', 15);
-
-            if (! $lastSync) {
-                return 'poor';
-            }
-
-            $lastSyncTime = Carbon::parse($lastSync);
-            $expectedNextSync = $lastSyncTime->addMinutes($frequency);
-            $timeDiff = now()->diffInMinutes($expectedNextSync);
-
-            if ($timeDiff < $frequency) {
-                return 'good';
-            } elseif ($timeDiff < $frequency * 2) {
-                return 'fair';
-            } else {
-                return 'poor';
-            }
-        } catch (\Exception $e) {
-            return 'poor';
-        }
-    }
-
-    /**
-     * Dashboard endpoint to show auto-sync status
-     */
-    public function getAutoSyncStatus(Request $request)
-    {
-        try {
-            $stats = [
-                'is_enabled' => filter_var($this->getSetting('etimeoffice_enabled', false), FILTER_VALIDATE_BOOLEAN),
-                'sync_frequency' => (int) $this->getSetting('etimeoffice_sync_frequency', 15),
-                'last_auto_sync' => $this->getSetting('etimeoffice_last_auto_sync'),
-                'last_manual_sync' => $this->getSetting('etimeoffice_last_sync'),
-                'total_syncs_today' => $this->getTodayAutoSyncCount(),
-                'failed_syncs_today' => $this->getTodayFailedSyncCount(),
-                'next_scheduled_sync' => $this->getNextScheduledSync(),
-                'scheduler_health' => $this->checkSchedulerHealth(),
-                'recent_errors' => $this->getRecentSyncErrors(),
-            ];
-
-            return response()->json([
-                'success' => true,
-                'data' => $stats,
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get auto-sync status',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Toggle auto-sync on/off
-     */
-    public function toggleAutoSync(Request $request)
-    {
-        try {
-            $enabled = $request->boolean('enabled');
-
-            $this->updateSetting('etimeoffice_enabled', $enabled);
-
-            \Log::info('Auto-sync toggled', [
-                'enabled' => $enabled,
-                'user_id' => auth()->id(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Auto-sync '.($enabled ? 'enabled' : 'disabled'),
-                'enabled' => $enabled,
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to toggle auto-sync',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Update sync frequency
-     */
-    public function updateSyncFrequency(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'frequency' => 'required|integer|min:1|max:1440',
-            ]);
-
-            $this->updateSetting('etimeoffice_sync_frequency', $validated['frequency']);
-
-            return response()->json([
-                'success' => true,
-                'message' => "Sync frequency updated to {$validated['frequency']} minutes",
-                'frequency' => $validated['frequency'],
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update sync frequency',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
     }
 
     /**
@@ -2344,82 +1858,6 @@ class AttendanceExportController extends Controller
     }
 
     /**
-     * Update existing attendance record
-     */
-    private function updateExistingAttendance($existingAttendance, array $record, Carbon $punchDateTime): bool
-    {
-        try {
-            $currentMarkedAt = $existingAttendance->marked_at;
-
-            // Only update if the new punch time is earlier (first punch of the day)
-            if (! $currentMarkedAt || $punchDateTime->lt($currentMarkedAt)) {
-                $existingAttendance->update([
-                    'marked_at' => $punchDateTime,
-                    'notes' => 'Updated via ETimeOffice API at '.now()->format('Y-m-d H:i:s'),
-                    'device_id' => 'etimeoffice-api',
-                ]);
-
-                return true;
-            }
-
-            return false;
-        } catch (\Exception $e) {
-            Log::error('Error updating existing attendance', [
-                'error' => $e->getMessage(),
-                'attendance_id' => $existingAttendance->id ?? null,
-            ]);
-
-            return false;
-        }
-    }
-
-    /**
-     * Create new attendance record
-     */
-    private function createNewAttendance(Student $student, array $record, Carbon $punchDateTime, string $attendanceDate): void
-    {
-        try {
-            // Determine attendance status based on punch time
-            $settings = [
-                'college_start_time' => $this->getSetting('attendance_student_college_start_time', '09:30:00'),
-                'present_cutoff_time' => $this->getSetting('attendance_student_present_cutoff_time', '11:00:00'),
-                'late_cutoff_time' => $this->getSetting('attendance_student_late_cutoff_time', '11:30:00'),
-                'college_end_time' => $this->getSetting('attendance_college_end_time', '17:00:00'),
-            ];
-
-            $status = $this->determineStatus($punchDateTime->format('H:i:s'), $settings);
-
-            Attendance::create([
-                'student_id' => $student->id,
-                'batch_id' => $student->batch_id,
-                'attendance_date' => $attendanceDate,
-                'status' => $status['status'],
-                'marked_at' => $punchDateTime,
-                'notes' => 'Created via ETimeOffice API - '.$status['reason'],
-                'device_id' => 'etimeoffice-api',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            Log::info('Created new attendance record', [
-                'student_id' => $student->id,
-                'student_name' => $student->name,
-                'attendance_date' => $attendanceDate,
-                'status' => $status['status'],
-                'punch_time' => $punchDateTime->format('Y-m-d H:i:s'),
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Error creating new attendance record', [
-                'error' => $e->getMessage(),
-                'student_id' => $student->id ?? null,
-                'attendance_date' => $attendanceDate ?? null,
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
      * Perform actual eTimeOffice connection test
      * This is a placeholder - implement according to your eTimeOffice API
      */
@@ -2492,160 +1930,6 @@ class AttendanceExportController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('eTimeOffice connection test exception', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            return [
-                'success' => false,
-                'message' => 'Connection test failed: '.$e->getMessage(),
-            ];
-        }
-    }
-
-    private function doConnectionTest($apiUrl, $corporateId, $username, $password)
-    {
-        try {
-            \Log::info('=== eTimeOffice Connection Debug ===', [
-                'api_url' => $apiUrl,
-                'corporate_id' => $corporateId,
-                'username' => $username,
-                'password_length' => strlen($password),
-                'timestamp' => now()->toDateTimeString(),
-            ]);
-
-            // Let's try the exact format from your ETimeOfficeService
-            $authToken = base64_encode("{$corporateId}:{$username}:{$password}:true");
-
-            \Log::info('Auth token details', [
-                'raw_string' => "{$corporateId}:{$username}:{$password}:true",
-                'base64_token' => $authToken,
-                'token_length' => strlen($authToken),
-            ]);
-
-            // Test different endpoints and methods
-            $endpoints = [
-                'DownloadPunchData' => 'GET',
-                'downloadpunchdata' => 'GET', // lowercase
-                'api/DownloadPunchData' => 'GET',
-                'DownloadPunchData' => 'POST',
-            ];
-
-            $baseParams = [
-                'Empcode' => 'ALL',
-                'FromDate' => now()->format('d/m/Y H:i'),
-                'ToDate' => now()->format('d/m/Y H:i'),
-            ];
-
-            foreach ($endpoints as $endpoint => $method) {
-                try {
-                    $testUrl = rtrim($apiUrl, '/').'/'.ltrim($endpoint, '/');
-
-                    \Log::info("Testing endpoint: {$testUrl} with {$method}");
-
-                    $headers = [
-                        'Authorization' => 'Basic '.$authToken,
-                        'Accept' => 'application/json',
-                        'Content-Type' => 'application/json',
-                        'User-Agent' => 'eTimeOffice-Client/1.0',
-                        'Cache-Control' => 'no-cache',
-                    ];
-
-                    if ($method === 'GET') {
-                        $fullUrl = $testUrl.'?'.http_build_query($baseParams);
-                        $response = \Http::timeout(30)->withHeaders($headers)->get($fullUrl);
-                    } else {
-                        $response = \Http::timeout(30)->withHeaders($headers)->post($testUrl, $baseParams);
-                    }
-
-                    \Log::info("Response from {$endpoint}", [
-                        'status' => $response->status(),
-                        'headers' => $response->headers(),
-                        'body' => $response->body(),
-                    ]);
-
-                    if ($response->successful()) {
-                        $responseBody = $response->body();
-
-                        // Try to parse as JSON
-                        try {
-                            $data = $response->json();
-                        } catch (\Exception $e) {
-                            // Maybe it's not JSON, let's see what we got
-                            return [
-                                'success' => false,
-                                'message' => 'API responded but not with JSON',
-                                'data' => [
-                                    'endpoint' => $endpoint,
-                                    'method' => $method,
-                                    'response_body' => substr($responseBody, 0, 500),
-                                    'content_type' => $response->header('Content-Type'),
-                                ],
-                            ];
-                        }
-
-                        // Check for API errors
-                        if (isset($data['Error'])) {
-                            $errorMsg = $data['Msg'] ?? 'Unknown error';
-
-                            \Log::warning("API Error from {$endpoint}", [
-                                'error' => $data['Error'],
-                                'message' => $errorMsg,
-                                'full_response' => $data,
-                            ]);
-
-                            // Continue to next endpoint
-                            continue;
-                        }
-
-                        // Success!
-                        return [
-                            'success' => true,
-                            'message' => "Connection successful with {$endpoint} ({$method})!",
-                            'data' => [
-                                'working_endpoint' => $endpoint,
-                                'working_method' => $method,
-                                'response_keys' => array_keys($data),
-                                'punch_data_count' => isset($data['PunchData']) ? count($data['PunchData']) : 0,
-                                'sample_response' => array_slice($data, 0, 3, true),
-                            ],
-                        ];
-                    }
-
-                    // Non-200 response
-                    \Log::warning("HTTP Error from {$endpoint}", [
-                        'status' => $response->status(),
-                        'body' => $response->body(),
-                    ]);
-
-                } catch (\Exception $e) {
-                    \Log::warning("Exception testing {$endpoint}", [
-                        'error' => $e->getMessage(),
-                    ]);
-
-                    continue;
-                }
-            }
-
-            // If we get here, all attempts failed
-            return [
-                'success' => false,
-                'message' => 'All authentication attempts failed. Please verify credentials with eTimeOffice support.',
-                'debug_info' => [
-                    'tested_endpoints' => array_keys($endpoints),
-                    'auth_string_used' => "{$corporateId}:{$username}:{$password}:true",
-                    'recommendations' => [
-                        'Check if Corporate ID is correct (usually numeric)',
-                        'Verify username is for API access (not web login)',
-                        'Confirm password is correct',
-                        'Contact eTimeOffice to verify API access is enabled',
-                        'Ask eTimeOffice for exact API documentation',
-                    ],
-                ],
-            ];
-
-        } catch (\Exception $e) {
-            \Log::error('Connection test failed completely', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -2867,34 +2151,6 @@ class AttendanceExportController extends Controller
         }
     }
 
-    // Temporary test method - add this at the end of the class
-    public function testSyncLogging()
-    {
-        $syncLog = \App\Models\ETimeOfficeSyncLog::create([
-            'sync_type' => 'manual',
-            'date_range_type' => 'today',
-            'date_range_start' => now()->startOfDay(),
-            'date_range_end' => now()->endOfDay(),
-            'status' => 'success',
-            'total_records' => 42,
-            'processed_records' => 40,
-            'created_records' => 15,
-            'updated_records' => 20,
-            'skipped_records' => 5,
-            'started_at' => now()->subMinutes(1),
-            'completed_at' => now(),
-            'duration_seconds' => 60,
-            'user_id' => auth()->id(),
-            'notes' => 'Test from sync button click - '.now(),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Test sync completed - Log ID: '.$syncLog->id,
-            'data' => ['test' => true],
-        ]);
-    }
-
     /**
      * Simulate ETimeOffice sync - replace with real API calls later
      */
@@ -2956,101 +2212,6 @@ class AttendanceExportController extends Controller
     }
 
     /**
-     * Process individual ETimeOffice record
-     */
-    private function processETimeOfficeRecord(array $record, bool $testMode = false): array
-    {
-        // Extract employee code - different APIs use different field names
-        $employeeCode = $record['Empcode'] ?? $record['EmpcardNo'] ?? $record['EmployeeCode'] ?? null;
-
-        if (! $employeeCode) {
-            return [
-                'action' => 'skipped',
-                'reason' => 'No employee code found in record',
-            ];
-        }
-
-        // Find student by employee code
-        $student = \App\Models\Student::where('employee_code', $employeeCode)
-            ->orWhere('biometric_employee_code', $employeeCode)
-            ->first();
-
-        if (! $student) {
-            return [
-                'action' => 'skipped',
-                'reason' => 'Student not found with employee code: '.$employeeCode,
-            ];
-        }
-
-        // Extract punch date and time - handle different API response formats
-        $punchDateTime = null;
-
-        if (isset($record['PunchDate'])) {
-            $punchDateTime = \Carbon\Carbon::parse($record['PunchDate']);
-        } elseif (isset($record['LogDateTime'])) {
-            $punchDateTime = \Carbon\Carbon::parse($record['LogDateTime']);
-        } elseif (isset($record['Date']) && isset($record['Time'])) {
-            $punchDateTime = \Carbon\Carbon::parse($record['Date'].' '.$record['Time']);
-        } else {
-            return [
-                'action' => 'skipped',
-                'reason' => 'No valid date/time found in record for employee: '.$employeeCode,
-            ];
-        }
-
-        $attendanceDate = $punchDateTime->format('Y-m-d');
-
-        // Check if attendance already exists
-        $existingAttendance = Attendance::where('student_id', $student->id)
-            ->where('attendance_date', $attendanceDate)
-            ->first();
-
-        if ($testMode) {
-            // In test mode, just return what would happen
-            if ($existingAttendance) {
-                return ['action' => 'updated', 'reason' => 'Would update existing attendance'];
-            } else {
-                return ['action' => 'created', 'reason' => 'Would create new attendance'];
-            }
-        }
-
-        // Determine attendance status based on punch time
-        $status = $this->determineAttendanceStatus($punchDateTime);
-
-        if ($existingAttendance) {
-            // Update existing attendance if the new punch is earlier (first punch of the day)
-            $currentPunchTime = $existingAttendance->marked_at ? \Carbon\Carbon::parse($existingAttendance->marked_at) : null;
-
-            if (! $currentPunchTime || $punchDateTime->lt($currentPunchTime)) {
-                $existingAttendance->update([
-                    'marked_at' => $punchDateTime,
-                    'status' => $status,
-                    'device_id' => 'etimeoffice-api',
-                    'notes' => 'Updated via ETimeOffice sync at '.now()->format('Y-m-d H:i:s'),
-                ]);
-
-                return ['action' => 'updated', 'attendance_id' => $existingAttendance->id];
-            } else {
-                return ['action' => 'skipped', 'reason' => 'Later punch time, keeping existing record'];
-            }
-        } else {
-            // Create new attendance record
-            $attendance = Attendance::create([
-                'student_id' => $student->id,
-                'batch_id' => $student->batch_id,
-                'academic_year_id' => $student->batch->academic_year_id ?? null,
-                'attendance_date' => $attendanceDate,
-                'marked_at' => $punchDateTime,
-                'status' => $status,
-                'device_id' => 'etimeoffice-api',
-                'notes' => 'Created via ETimeOffice sync at '.now()->format('Y-m-d H:i:s'),
-            ]);
-
-            return ['action' => 'created', 'attendance_id' => $attendance->id];
-        }
-    }
-
-    /**
      * Get live attendance data
      */
     private function getLiveAttendanceData()
@@ -3079,20 +2240,6 @@ class AttendanceExportController extends Controller
 
             return [];
         }
-    }
-
-    /**
-     * Get status color for UI
-     */
-    private function getStatusColor($status)
-    {
-        return match ($status) {
-            'present' => 'success',
-            'late' => 'warning',
-            'absent' => 'danger',
-            'excused' => 'info',
-            default => 'secondary'
-        };
     }
 
     /**
@@ -3717,27 +2864,6 @@ class AttendanceExportController extends Controller
     }
 
     /**
-     * Get default stats structure
-     */
-    private function getDefaultStats()
-    {
-        return [
-            'students' => [
-                'total' => 0,
-                'present' => 0,
-                'absent' => 0,
-                'percentage' => 0,
-            ],
-            'faculty' => [
-                'total' => 0,
-                'present' => 0,
-                'absent' => 0,
-                'percentage' => 0,
-            ],
-        ];
-    }
-
-    /**
      * Get weekly stats data
      */
     private function getWeeklyStatsData()
@@ -4251,25 +3377,6 @@ class AttendanceExportController extends Controller
 
             return back()->with('error', 'Export failed: '.$e->getMessage());
         }
-    }
-
-    private function getTodayAttendanceData()
-    {
-        // Replace with your actual attendance data logic
-        return [
-            [
-                'student_name' => 'John Doe',
-                'enrollment_number' => 'STD001',
-                'batch_name' => 'Batch A',
-                'course_name' => 'Computer Science',
-                'status' => 'Present',
-                'time_in' => '09:00',
-                'time_out' => '17:00',
-                'date' => now()->format('Y-m-d'),
-                'remarks' => 'On time',
-            ],
-            // Add more data here
-        ];
     }
 
     /**

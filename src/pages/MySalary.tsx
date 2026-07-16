@@ -86,6 +86,7 @@ export function MySalary() {
   const [loading, setLoading] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedSlip, setSelectedSlip] = useState<PayslipRecord | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>('All');
   const [components, setComponents] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
@@ -451,7 +452,8 @@ export function MySalary() {
   const latestPayslip = payslips.find(p => p.status === 'Paid') || payslips[0];
   const activeBasic = userSalaries['basic'] !== undefined ? userSalaries['basic'] : (latestPayslip?.basic ?? 25000);
   
-  const activeMonth = latestPayslip?.month || 'May 2026';
+  const activeMonth = selectedMonth !== 'All' ? selectedMonth : (latestPayslip?.month || 'May 2026');
+  const activePayslip = selectedMonth !== 'All' ? payslips.find(p => p.month === selectedMonth) || latestPayslip : latestPayslip;
   const activeComponents = components.filter(
     (c) => !c.month || c.month === 'All' || c.month === activeMonth
   );
@@ -459,26 +461,29 @@ export function MySalary() {
   // Calculate dynamic components
   let grossSalary = 0;
   let totalDeductionsSum = 0;
-  const latestLop = latestPayslip ? getRowLop(latestPayslip) : 0;
+  const latestLop = activePayslip ? getRowLop(activePayslip) : 0;
   const salaryDetails = activeComponents.map(c => {
-    const fallback = getFallbackAmt(c, latestPayslip || { basic: 25000, hra: 8000, allowances: 5000, deductions: 3000, gross: 38000 });
+    const fallback = getFallbackAmt(c, activePayslip || { basic: 25000, hra: 8000, allowances: 5000, deductions: 3000, gross: 38000 });
     const amt = getComponentAmt(c, userSalaries, activeBasic, fallback, latestLop);
     if (c.type === 'earning') grossSalary += amt;
     else totalDeductionsSum += amt;
     return { name: c.name, type: c.type, amount: amt };
   });
 
-  const dynLatest = latestPayslip ? getDynamicPayslipValues(latestPayslip) : null;
+  const dynLatest = activePayslip ? getDynamicPayslipValues(activePayslip) : null;
   const netSalary = dynLatest ? dynLatest.net : Math.max(0, grossSalary - totalDeductionsSum);
   const deductionsToShow = dynLatest ? dynLatest.deductions : totalDeductionsSum;
-  const paidPayslips = payslips.filter(p => p.status === 'Paid');
+
+  const filteredPayslips = selectedMonth === 'All' ? payslips : payslips.filter(p => p.month === selectedMonth);
+
+  const paidPayslips = filteredPayslips.filter(p => p.status === 'Paid');
   const yearToDateEarnings = paidPayslips.reduce((acc, curr) => {
     const dyn = getDynamicPayslipValues(curr);
     return acc + dyn.net;
   }, 0);
 
   // Trend data for chart
-  const trendData = payslips
+  const trendData = filteredPayslips
     .slice()
     .reverse()
     .map(p => {
@@ -492,9 +497,24 @@ export function MySalary() {
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
       {/* Header */}
-      <div className="mb-4">
-        <h1 className="text-[18px] font-bold text-[var(--tx)]">My Payroll Dashboard</h1>
-        <p className="text-[12px] text-[var(--tx3)]">View your current salary structure, monthly payslips, and tax details.</p>
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-[18px] font-bold text-[var(--tx)]">My Payroll Dashboard</h1>
+          <p className="text-[12px] text-[var(--tx3)]">View your current salary structure, monthly payslips, and tax details.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-[11.5px] font-medium text-[var(--tx2)]">Month:</label>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+          >
+            <option value="All">All Months</option>
+            {generateMonths().map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -525,7 +545,7 @@ export function MySalary() {
                 </tr>
               </thead>
               <tbody>
-                {payslips.map((p) => {
+                {filteredPayslips.map((p) => {
                   const dyn = getDynamicPayslipValues(p);
                   return (
                     <tr key={p.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
@@ -549,7 +569,7 @@ export function MySalary() {
                     </tr>
                   );
                 })}
-                {payslips.length === 0 && (
+                {filteredPayslips.length === 0 && (
                   <tr>
                     <td colSpan={6} className="text-center py-6 text-[12px] text-[var(--tx3)]">
                       No payslips found for your account. Contact administration.

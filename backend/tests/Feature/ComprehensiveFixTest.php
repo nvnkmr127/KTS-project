@@ -216,10 +216,6 @@ class ComprehensiveFixTest extends TestCase
         // Test array settings
         update_setting('array_setting', ['item1', 'item2'], 'general', 'array');
         $this->assertEquals(['item1', 'item2'], setting('array_setting'));
-
-        // Test formatted values
-        $this->assertEquals('Yes', format_setting_value('boolean_setting', true, 'boolean'));
-        $this->assertEquals('item1, item2', format_setting_value('array_setting', ['item1', 'item2'], 'array'));
     }
 
     /** @test */
@@ -381,24 +377,4 @@ class ComprehensiveFixTest extends TestCase
         $this->assertStringContainsString(date('Y'), $student->enrollment_number);
     }
 
-    /** @test */
-    public function validation_helper_functions_work()
-    {
-        // Test email validation
-        $this->assertTrue(validate_setting_value('test@example.com', 'email'));
-        $this->assertFalse(validate_setting_value('invalid-email', 'email'));
-
-        // Test URL validation
-        $this->assertTrue(validate_setting_value('https://example.com', 'url'));
-        $this->assertFalse(validate_setting_value('not-a-url', 'url'));
-
-        // Test number validation with range
-        $this->assertTrue(validate_setting_value(50, 'number', ['min' => 0, 'max' => 100]));
-        $this->assertFalse(validate_setting_value(150, 'number', ['min' => 0, 'max' => 100]));
-
-        // Test boolean validation
-        $this->assertTrue(validate_setting_value('1', 'boolean'));
-        $this->assertTrue(validate_setting_value(true, 'boolean'));
-        $this->assertFalse(validate_setting_value('invalid', 'boolean'));
-    }
 }

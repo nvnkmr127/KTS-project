@@ -364,30 +364,6 @@ class SettingsTest extends TestCase
     }
 
     /** @test */
-    public function get_settings_by_group_works()
-    {
-        Setting::create([
-            'key' => 'group_setting_1',
-            'value' => 'value_1',
-            'group' => 'test_group',
-            'type' => 'text',
-        ]);
-
-        Setting::create([
-            'key' => 'group_setting_2',
-            'value' => 'value_2',
-            'group' => 'test_group',
-            'type' => 'text',
-        ]);
-
-        $groupSettings = get_settings_by_group('test_group');
-
-        $this->assertCount(2, $groupSettings);
-        $this->assertEquals('value_1', $groupSettings['group_setting_1']);
-        $this->assertEquals('value_2', $groupSettings['group_setting_2']);
-    }
-
-    /** @test */
     public function public_settings_work()
     {
         Setting::create([

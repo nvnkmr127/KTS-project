@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Trash2, RotateCcw, AlertTriangle, Users, BadgeIcon,
+  Trash2, RotateCcw, AlertTriangle, Users,
   Search, Loader2, RefreshCw, X, GraduationCap, CheckCircle2,
   Activity,
 } from 'lucide-react';

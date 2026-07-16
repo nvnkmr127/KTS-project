@@ -10,15 +10,13 @@ import { Badge } from '../components/Badge';
 import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
-import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useDialog } from '../context/DialogContext';
 import { EmptyState } from '../components/EmptyState';
 import { TableSkeleton } from '../components/Skeleton';
 import {
   type LocalAlumni,
-  readLocalAlumni,
   addLocalAlumni,
   updateLocalAlumni,
-  deleteLocalAlumni,
   mergeAlumni,
 } from '../utils/alumniStore';
 
@@ -76,6 +74,7 @@ const ITEMS_PER_PAGE = 10;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function Alumni() {
+  const { confirm } = useDialog();
   const [alumni, setAlumni] = useState<Alumni[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -89,8 +88,6 @@ export function Alumni() {
   const [selected, setSelected] = useState<Alumni | null>(null);
   const [detailAlumni, setDetailAlumni] = useState<Alumni | null>(null);
 
-  const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -267,9 +264,8 @@ export function Alumni() {
   };
 
   // ── Delete ────────────────────────────────────────────────────────────────
-  const confirmDelete = async () => {
-    if (!deleteId) return;
-    setDeleting(true);
+  const handleDelete = async (deleteId: string) => {
+    if (!(await confirm('Are you sure you want to remove this alumni from the network? This action cannot be undone.', 'Delete Alumni Record', true))) return;
     try {
       if (!deleteId.toString().startsWith('local-')) {
         await api.updateResource('alumni', deleteId, { status: 'Deleted' });
@@ -284,9 +280,6 @@ export function Alumni() {
       updateLocalAlumni(deleteId, { status: 'Deleted' as any });
       await load();
       showToast('Alumni record moved to recycle bin.', true);
-    } finally {
-      setDeleting(false);
-      setDeleteId(null);
     }
   };
 
@@ -744,7 +737,7 @@ export function Alumni() {
                                   <Edit2 size={13} />
                                 </button>
                                 <button
-                                  onClick={() => setDeleteId(a.id)}
+                                  onClick={() => handleDelete(a.id)}
                                   title="Delete"
                                   className="p-1.5 hover:bg-[var(--red-bg)] hover:text-[var(--red-tx)] text-[var(--tx3)] rounded-lg transition-colors cursor-pointer"
                                 >
@@ -816,17 +809,6 @@ export function Alumni() {
       {/* Add/Edit Modal */}
       {renderModal()}
 
-      {/* Delete Confirm */}
-      <ConfirmDialog
-        isOpen={!!deleteId}
-        title="Delete Alumni Record"
-        message="Are you sure you want to remove this alumni from the network? This action cannot be undone."
-        confirmText="Delete"
-        isDestructive={true}
-        loading={deleting}
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteId(null)}
-      />
     </div>
   );
 }

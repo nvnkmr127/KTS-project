@@ -63,63 +63,6 @@ function buildDefaultTimetable(): SchoolTimetable {
       }
     }
   }
-
-  const times8A: { day: string; period: number; subject: string; room: string }[] = [
-    { day: 'Monday', period: 0, subject: 'Mathematics', room: 'Room 12' },
-    { day: 'Monday', period: 1, subject: 'Science', room: 'Room 12' },
-    { day: 'Monday', period: 2, subject: 'English', room: 'Room 12' },
-    { day: 'Tuesday', period: 0, subject: 'Mathematics', room: 'Room 12' },
-    { day: 'Tuesday', period: 1, subject: 'Telugu', room: 'Room 12' },
-    { day: 'Wednesday', period: 0, subject: 'Mathematics', room: 'Room 12' },
-    { day: 'Wednesday', period: 2, subject: 'Social', room: 'Room 12' },
-    { day: 'Thursday', period: 0, subject: 'Mathematics', room: 'Room 12' },
-    { day: 'Thursday', period: 1, subject: 'Science', room: 'Room 12' },
-    { day: 'Friday', period: 0, subject: 'Mathematics', room: 'Room 12' },
-    { day: 'Friday', period: 3, subject: 'English', room: 'Room 12' },
-    { day: 'Saturday', period: 0, subject: 'Mathematics', room: 'Room 12' },
-  ];
-  for (const entry of times8A) {
-    timetable['8A'][entry.day][entry.period] = {
-      subject: entry.subject,
-      teacher: 'Mrs. Lakshmi Devi',
-      teacherId: '2',
-      room: entry.room,
-    };
-  }
-
-  const times8B: { day: string; period: number; subject: string; room: string }[] = [
-    { day: 'Monday', period: 1, subject: 'Mathematics', room: 'Room 13' },
-    { day: 'Tuesday', period: 2, subject: 'Mathematics', room: 'Room 13' },
-    { day: 'Wednesday', period: 1, subject: 'Mathematics', room: 'Room 13' },
-    { day: 'Thursday', period: 3, subject: 'Mathematics', room: 'Room 13' },
-    { day: 'Friday', period: 1, subject: 'Mathematics', room: 'Room 13' },
-  ];
-  for (const entry of times8B) {
-    timetable['8B'][entry.day][entry.period] = {
-      subject: entry.subject,
-      teacher: 'Mrs. Lakshmi Devi',
-      teacherId: '2',
-      room: entry.room,
-    };
-  }
-
-  const times9A: { day: string; period: number; subject: string; room: string }[] = [
-    { day: 'Monday', period: 2, subject: 'Mathematics', room: 'Room 15' },
-    { day: 'Tuesday', period: 0, subject: 'Mathematics', room: 'Room 15' },
-    { day: 'Wednesday', period: 3, subject: 'Mathematics', room: 'Room 15' },
-    { day: 'Thursday', period: 0, subject: 'Mathematics', room: 'Room 15' },
-    { day: 'Friday', period: 2, subject: 'Mathematics', room: 'Room 15' },
-    { day: 'Saturday', period: 1, subject: 'Mathematics', room: 'Room 15' },
-  ];
-  for (const entry of times9A) {
-    timetable['9A'][entry.day][entry.period] = {
-      subject: entry.subject,
-      teacher: 'Mrs. Lakshmi Devi',
-      teacherId: '2',
-      room: entry.room,
-    };
-  }
-
   return timetable;
 }
 
@@ -162,18 +105,30 @@ interface AppContextValue {
   setHasUnsavedChanges: (val: boolean) => void;
 }
 
+// Server notifications use generic types (info/success/warning); the bell UI
+// filters on leave_* types, so classify by the notification text. Read state
+// lives in the per-user read_by array on the server.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapServerNotification(n: any, userId: string): Notification {
+  const text = `${n.title || ''} ${n.message || ''}`;
+  const type: Notification['type'] = /rejected/i.test(text)
+    ? 'leave_rejected'
+    : /approved/i.test(text)
+      ? 'leave_approved'
+      : 'leave_request';
+  return {
+    id: String(n.id),
+    type,
+    message: n.message,
+    time: 'Recently',
+    read: Array.isArray(n.read_by) && n.read_by.some((id: unknown) => String(id) === userId),
+  };
+}
+
 const AppContext = createContext<AppContextValue | null>(null);
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const TIMETABLE_DAYS = DAYS;
-// eslint-disable-next-line react-refresh/only-export-components
-export const TIMETABLE_PERIODS = PERIODS;
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const PERIOD_TIMES = [
-  '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
-  '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM',
-];
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
@@ -207,6 +162,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     setSettingsLoaded(false);
+    const uid = String(user.id);
 
     async function loadInitialData() {
       try {
@@ -268,14 +224,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const notifData = await api.getResources('notifications').catch(() => []);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setNotifications((notifData || []).map((n: any) => ({
-          id: String(n.id),
-          type: n.type || 'leave_request',
-          message: n.message,
-          time: 'Recently',
-          read: !!n.read_at,
-        })));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setNotifications((notifData || []).map((n: any) => mapServerNotification(n, uid)));
       } catch (err) {
         console.error('Error loading notifications in AppContext:', err);
       }
@@ -502,6 +451,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
         }
 
+        // Sync notifications (so the bell updates without a reload)
+        const notifData = await api.getResources('notifications').catch(() => null);
+        if (Array.isArray(notifData)) {
+          const mappedNotifs = notifData.map((n) => mapServerNotification(n, String(user.id)));
+          setNotifications(prev => {
+            const hasChanged = JSON.stringify(prev) !== JSON.stringify(mappedNotifs);
+            return hasChanged ? mappedNotifs : prev;
+          });
+        }
+
         // Sync leaves
         const leavesData = await api.getResources('leaves');
         if (Array.isArray(leavesData)) {
@@ -579,16 +538,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         adminNotes: '',
       };
       setLeaveRequests((prev) => [newReq, ...prev]);
-
-      const notif: Notification = {
-        id: 'n' + res.id,
-        type: 'leave_request',
-        message: `${req.staffName} applied for ${req.type} (${req.from})`,
-        time: 'Just now',
-        read: false,
-        refId: String(res.id),
-      };
-      setNotifications((prev) => [notif, ...prev]);
+      // The backend notifies admins; the background poll delivers it.
     } catch (err) {
       console.error('Error adding leave request:', err);
     }
@@ -600,18 +550,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLeaveRequests((prev) =>
         prev.map((l) => (l.id === id ? { ...l, status: 'Approved' } : l))
       );
-      const req = leaveRequests.find((l) => l.id === id);
-      if (req) {
-        const notif: Notification = {
-          id: 'na' + id,
-          type: 'leave_approved',
-          message: `Your ${req.type} request has been approved`,
-          time: 'Just now',
-          read: false,
-          refId: id,
-        };
-        setNotifications((prev) => [notif, ...prev]);
-      }
+      // The backend notifies the applicant; the background poll delivers it.
     } catch (err) {
       console.error('Error approving leave:', err);
     }
@@ -623,18 +562,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLeaveRequests((prev) =>
         prev.map((l) => (l.id === id ? { ...l, status: 'Rejected', adminNotes: notes } : l))
       );
-      const req = leaveRequests.find((l) => l.id === id);
-      if (req) {
-        const notif: Notification = {
-          id: 'nr' + id,
-          type: 'leave_rejected',
-          message: `Your ${req.type} request has been rejected.${notes ? ` Reason: ${notes}` : ''}`,
-          time: 'Just now',
-          read: false,
-          refId: id,
-        };
-        setNotifications((prev) => [notif, ...prev]);
-      }
+      // The backend notifies the applicant; the background poll delivers it.
     } catch (err) {
       console.error('Error rejecting leave:', err);
     }
@@ -642,6 +570,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const markNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    // Persist server-side so the background poll doesn't flip them back to unread
+    api.markAllNotificationsRead().catch(() => {});
   };
 
   const setTimetablePeriod = (

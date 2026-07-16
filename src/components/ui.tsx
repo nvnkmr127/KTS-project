@@ -5,6 +5,15 @@ interface AvatarProps {
   size?: 'sm' | 'md';
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
+export const getInitials = (name: string) =>
+  (name || '')
+    .split(' ')
+    .map((n) => n[0] ?? '')
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+
 export function Avatar({ initials, bg, color, size = 'sm' }: AvatarProps) {
   const sz = size === 'sm' ? 'w-6 h-6 text-[11px] rounded-[7px]' : 'w-8 h-8 text-[12px] rounded-lg';
   return (

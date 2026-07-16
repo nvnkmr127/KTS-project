@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../services/api';
-import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
+import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/ui';
-import { STAFF, StaffMember } from './StaffManagement';
+import { STAFF, StaffMember, isRealStaff } from './StaffManagement';
 
 import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
+import { utcDateTimeToParts, scanDateTimeToParts, formatDate } from '../utils/date';
 
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Leave' | 'Half Day';
@@ -45,6 +46,8 @@ const normalizeName = (name: string) => {
 const parsePunchDate = (punchDateStr: string): string => {
   if (!punchDateStr) return '';
   try {
+    const utc = utcDateTimeToParts(punchDateStr);
+    if (utc) return utc.date;
     const cleanStr = punchDateStr.includes('T') ? punchDateStr.split('T')[0] : punchDateStr;
     const parts = cleanStr.trim().split(' ');
     const datePart = parts[0];
@@ -75,13 +78,109 @@ const parsePunchDate = (punchDateStr: string): string => {
   return '';
 };
 
-const formatDateDDMMYYYY = (isoDate: string) => {
-  const parts = isoDate.split('-');
-  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  return isoDate;
+// Extracts "HH:MM" from a "YYYY-MM-DD HH:MM:SS" or ISO timestamp
+const extractTimeOfDay = (ts: string): string => {
+  if (!ts) return '';
+  const timePart = ts.includes('T') ? ts.split('T')[1] : ts.split(' ')[1];
+  return timePart ? timePart.substring(0, 5) : '';
+};
+
+// True when the last biometric OUT scan is basically "now" (i.e. an open/running clock, not a real checkout)
+const isOutTimePlaceholder = (outTime: string, targetDate: string): boolean => {
+  if (targetDate !== new Date().toISOString().slice(0, 10)) return false;
+  const [outH, outM] = outTime.split(':').map(Number);
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const outMinutes = outH * 60 + outM;
+  return Math.abs(currentMinutes - outMinutes) <= 2;
+};
+
+const buildPunchesFromBioRecords = (records: BiometricRecord[], staff: StaffMember, targetDate: string, idSuffix: string): LocalPunch[] => {
+  const punches: LocalPunch[] = [];
+  records.forEach((rec) => {
+    if (rec.INTime && rec.INTime !== '--:--') {
+      punches.push({ id: `bio-in-${rec.Empcode}${idSuffix}`, staffId: staff.id, timestamp: `${targetDate} ${rec.INTime}:00` });
+    }
+    if (rec.OUTTime && rec.OUTTime !== '--:--' && !isOutTimePlaceholder(rec.OUTTime, targetDate)) {
+      punches.push({ id: `bio-out-${rec.Empcode}${idSuffix}`, staffId: staff.id, timestamp: `${targetDate} ${rec.OUTTime}:00` });
+    }
+    if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
+      punches.push({ id: `bio-${rec.Empcode}${idSuffix}`, staffId: staff.id, timestamp: rec.PunchDate });
+    }
+  });
+  return punches;
+};
+
+// Matches a biometric record to a staff member by employee code (preferred) or name, plus the selected date
+const matchesStaffOnDate = (record: BiometricRecord, staff: StaffMember, targetDate: string): boolean => {
+  const empCode = String(record.Empcode || '').toLowerCase().trim();
+  const name = String(record.Name || '').toLowerCase().trim();
+
+  const matchesBiometricCode = staff.biometric_employee_code && (
+    empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
+    (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
+  );
+
+  const matchesIdNumerically = !isNaN(Number(empCode)) && !isNaN(Number(staff.id)) && Number(empCode) === Number(staff.id);
+  const hasBioCode = staff.biometric_employee_code && String(staff.biometric_employee_code).trim() !== '';
+  const matchCode = hasBioCode
+    ? matchesBiometricCode
+    : (empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically);
+
+  const nName = normalizeName(name);
+  const sName = normalizeName(staff.name);
+  const matchName = (name && name === staff.name.toLowerCase().trim()) || (nName && sName && nName === sName);
+
+  let dateMatch = false;
+  if (record.DateString) {
+    dateMatch = parsePunchDate(record.DateString) === targetDate;
+  } else if (record.PunchDate) {
+    dateMatch = (parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10)) === targetDate;
+  }
+
+  return !!(matchCode || matchName) && dateMatch;
 };
 
 type ConnectionStatus = 'unknown' | 'connected' | 'disconnected' | 'testing';
+
+const getIntervalDuration = () => {
+  const currentHour = new Date().getHours();
+  // Active hours: 7:00 AM to 10:00 PM (7 to 22)
+  return currentHour >= 7 && currentHour < 22 ? 10000 : 15 * 60 * 1000;
+};
+
+// Runs `callback` on an interval that's fast during active hours and slow otherwise,
+// re-checking the active-hours window every minute so it adapts without a remount.
+function useAdaptiveInterval(callback: (silent: boolean) => void) {
+  const callbackRef = useRef(callback);
+  useEffect(() => { callbackRef.current = callback; }, [callback]);
+
+  useEffect(() => {
+    let timerId: ReturnType<typeof setInterval> | null = null;
+    let currentInterval = getIntervalDuration();
+
+    const startTimer = (ms: number) => {
+      if (timerId) clearInterval(timerId);
+      timerId = setInterval(() => callbackRef.current(true), ms);
+    };
+
+    startTimer(currentInterval);
+
+    // Watch for hour changes to dynamically adjust the interval duration
+    const watchTimer = setInterval(() => {
+      const ms = getIntervalDuration();
+      if (ms !== currentInterval) {
+        currentInterval = ms;
+        startTimer(currentInterval);
+      }
+    }, 60000);
+
+    return () => {
+      if (timerId) clearInterval(timerId);
+      clearInterval(watchTimer);
+    };
+  }, []);
+}
 
 export function StaffAttendance() {
   const { confirm } = useDialog();
@@ -96,7 +195,7 @@ export function StaffAttendance() {
       if (saved) {
         const arr = JSON.parse(saved);
         if (Array.isArray(arr)) {
-          return arr.filter((s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com');
+          return arr.filter(isRealStaff);
         }
       }
     } catch { /* empty */ }
@@ -152,9 +251,7 @@ export function StaffAttendance() {
       if (savedStaffStr) {
         const parsed = JSON.parse(savedStaffStr);
         if (Array.isArray(parsed)) {
-          const filtered = parsed.filter(
-            (s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com'
-          );
+          const filtered = parsed.filter(isRealStaff);
           if (filtered.length !== parsed.length) {
             localStorage.setItem('kts_staff_members', JSON.stringify(filtered));
           }
@@ -164,21 +261,45 @@ export function StaffAttendance() {
       console.error(e);
     }
 
+    api.getResources('faculty')
+      .then((facultyList) => {
+        let currentStaffList = STAFF;
+        if (facultyList && Array.isArray(facultyList) && facultyList.length > 0) {
+          currentStaffList = facultyList.map((s: any) => ({
+            ...s,
+            documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
+            status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
+            salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
+          }));
+        } else if (facultyList && facultyList.data && Array.isArray(facultyList.data)) {
+          // Fallback if backend wraps it in `{ data: [] }`
+          currentStaffList = facultyList.data.map((s: any) => ({
+            ...s,
+            documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
+            status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
+            salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
+          }));
+        }
+        setStaffList(currentStaffList);
+      })
+      .catch((e) => {
+        console.error('Failed to fetch faculty list in StaffAttendance', e);
+      });
+
     api.getResources('settings')
       .then(async (settings) => {
+        const settingsArray = Array.isArray(settings) ? settings : (settings && settings.data && Array.isArray(settings.data) ? settings.data : []);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        // Load timings configurations
+        const startSetting = settingsArray.find((s: any) => s.key === 'school_start_time');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const startSetting = settings.find((s: any) => s.key === 'school_start_time');
+        const endSetting = settingsArray.find((s: any) => s.key === 'school_end_time');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const endSetting = settings.find((s: any) => s.key === 'school_end_time');
+        const presMSetting = settingsArray.find((s: any) => s.key === 'present_cutoff_morning');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const presMSetting = settings.find((s: any) => s.key === 'present_cutoff_morning');
+        const presESetting = settingsArray.find((s: any) => s.key === 'present_cutoff_evening');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const presESetting = settings.find((s: any) => s.key === 'present_cutoff_evening');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const lateSetting = settings.find((s: any) => s.key === 'late_entry_cutoff');
-        const earlySetting = settings.find((s: any) => s.key === 'early_entry_cutoff');
+        const lateSetting = settingsArray.find((s: any) => s.key === 'late_entry_cutoff');
+        const earlySetting = settingsArray.find((s: any) => s.key === 'early_entry_cutoff');
 
         const sStart = startSetting?.value || '08:30';
         const sEnd = endSetting?.value || '17:30';
@@ -194,28 +315,8 @@ export function StaffAttendance() {
         setLateEntryCutoff(lCutM);
         setEarlyEntryCutoff(eCutE);
 
-        // 1. Staff Members
-        try {
-          const facultyList = await api.getResources('faculty');
-          let currentStaffList = STAFF;
-          if (facultyList && facultyList.length > 0) {
-            currentStaffList = facultyList.map((s: any) => ({
-              ...s,
-              documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
-              status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
-              salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
-            }));
-          }
-          setStaffList(currentStaffList);
-        } catch (e) {
-          console.error('Failed to fetch faculty list in StaffAttendance', e);
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        // 2. Staff Attendance & 3. Biometric Punches
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const attendanceSetting = settings.find((s: any) => s.key === 'kts_staff_attendance');
-        const punchesSetting = settings.find((s: any) => s.key === 'kts_biometric_punches');
+        const attendanceSetting = settingsArray.find((s: any) => s.key === 'kts_staff_attendance');
+        const punchesSetting = settingsArray.find((s: any) => s.key === 'kts_biometric_punches');
         
         let loadedAttendance: Record<string, Record<string, AttendanceStatus>> = {};
         let loadedPunches: LocalPunch[] = [];
@@ -308,23 +409,18 @@ export function StaffAttendance() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (Array.isArray(logs)) {
           const mapped: BiometricRecord[] = logs.map((l: any) => {
-            let scanTime: string | undefined;
-            if (l.scan_datetime) {
-              // The backend might append 'Z' (UTC) but the time is actually local time stored in DB.
-              // To avoid browser timezone shifting, we extract the time string directly without parsing as Date.
-              const timeStr = l.scan_datetime.includes('T') ? l.scan_datetime.split('T')[1] : l.scan_datetime.split(' ')[1];
-              scanTime = timeStr ? timeStr.slice(0, 5) : l.scan_datetime.slice(11, 16);
-            }
+            const scanTime = l.scan_datetime ? scanDateTimeToParts(l.scan_datetime).time : undefined;
             const scanType = String(l.scan_type || '').toLowerCase();
+            const dateStr = l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined;
             return {
               Empcode: l.employee_code || l.Empcode || '',
               Name: l.raw_data?.name || l.raw_data?.Name || l.raw_data?.EmpName || '',
-              PunchDate: l.scan_datetime,
+              PunchDate: (dateStr && scanTime) ? `${dateStr} ${scanTime}:00` : l.scan_datetime,
               INTime: l.raw_data?.in_time || l.raw_data?.INTime || (scanType === 'in' ? scanTime : undefined),
               OUTTime: l.raw_data?.out_time || l.raw_data?.OUTTime || (scanType === 'out' ? scanTime : undefined),
               WorkTime: l.raw_data?.work_time,
               Status: l.raw_data?.status,
-              DateString: l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined,
+              DateString: dateStr,
             };
           });
 
@@ -387,59 +483,8 @@ export function StaffAttendance() {
           const newPunches: LocalPunch[] = [];
 
           staffList.forEach((staff) => {
-            // Get biometric records matching this staff member
-            const staffBioRecords = records.filter((record) => {
-              const empCode = String(record.Empcode || '').toLowerCase().trim();
-              const name    = String(record.Name || '').toLowerCase().trim();
-
-              const matchesBiometricCode = staff.biometric_employee_code && (
-                empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
-                (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
-              );
-
-              const matchesIdNumerically = !isNaN(Number(empCode)) && !isNaN(Number(staff.id)) && Number(empCode) === Number(staff.id);
-              const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically || matchesBiometricCode;
-              const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
-
-              let dateMatch = false;
-              if (record.DateString) {
-                const parsed = parsePunchDate(record.DateString);
-                dateMatch = parsed === date;
-              } else if (record.PunchDate) {
-                const parsed = parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10);
-                dateMatch = parsed === date;
-              }
-
-              return (matchCode || matchName) && dateMatch;
-            });
-
-            // Generate punches
-            const staffPunches: LocalPunch[] = [];
-            staffBioRecords.forEach((rec) => {
-              if (rec.INTime && rec.INTime !== '--:--') {
-                staffPunches.push({ id: `bio-in-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
-              }
-              // Push OUTTime if it's not a running clock placeholder
-              if (rec.OUTTime && rec.OUTTime !== '--:--') {
-                const isToday = date === new Date().toISOString().slice(0, 10);
-                let isPresentTimePlaceholder = false;
-                if (isToday) {
-                  const [outH, outM] = rec.OUTTime.split(':').map(Number);
-                  const now = new Date();
-                  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                  const outMinutes = outH * 60 + outM;
-                  isPresentTimePlaceholder = Math.abs(currentMinutes - outMinutes) <= 2;
-                }
-                if (!isPresentTimePlaceholder) {
-                  staffPunches.push({ id: `bio-out-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
-                }
-              }
-              if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
-                staffPunches.push({ id: `bio-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: rec.PunchDate });
-              }
-            });
-
-            newPunches.push(...staffPunches);
+            const staffBioRecords = records.filter((record) => matchesStaffOnDate(record, staff, date));
+            newPunches.push(...buildPunchesFromBioRecords(staffBioRecords, staff, date, `-${date}`));
           });
 
           // Update localPunches (filter out previous punches for this date)
@@ -498,18 +543,8 @@ export function StaffAttendance() {
       });
   }, [date, fetchLocalBiometricLogs]);
 
-  // Refs to hold latest function references for the intervals
-  const syncBiometricRef = useRef(syncBiometric);
-  const syncBiometricPunchesRef = useRef(syncBiometricPunches);
+  // Ref to hold the latest function reference for the 1s local-DB poll below
   const fetchLocalBiometricLogsRef = useRef(fetchLocalBiometricLogs);
-
-  useEffect(() => {
-    syncBiometricRef.current = syncBiometric;
-  }, [syncBiometric]);
-
-  useEffect(() => {
-    syncBiometricPunchesRef.current = syncBiometricPunches;
-  }, [syncBiometricPunches]);
 
   useEffect(() => {
     fetchLocalBiometricLogsRef.current = fetchLocalBiometricLogs;
@@ -529,66 +564,29 @@ export function StaffAttendance() {
         .then((logs) => {
           if (Array.isArray(logs) && logs.length > 0) {
             const mapped: BiometricRecord[] = logs.map((l: any) => {
-              let scanTime: string | undefined;
-              if (l.scan_datetime) {
-                const timeStr = l.scan_datetime.includes('T') ? l.scan_datetime.split('T')[1] : l.scan_datetime.split(' ')[1];
-                scanTime = timeStr ? timeStr.slice(0, 5) : l.scan_datetime.slice(11, 16);
-              }
+              const scanTime = l.scan_datetime ? scanDateTimeToParts(l.scan_datetime).time : undefined;
               const scanType = String(l.scan_type || '').toLowerCase();
+              const dateStr = l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined;
               return {
                 Empcode: l.employee_code || l.Empcode || '',
                 Name: l.raw_data?.name || l.raw_data?.Name || l.raw_data?.EmpName || '',
-                PunchDate: l.scan_datetime,
+                PunchDate: (dateStr && scanTime) ? `${dateStr} ${scanTime}:00` : l.scan_datetime,
                 INTime: l.raw_data?.in_time || l.raw_data?.INTime || (scanType === 'in' ? scanTime : undefined),
                 OUTTime: l.raw_data?.out_time || l.raw_data?.OUTTime || (scanType === 'out' ? scanTime : undefined),
                 WorkTime: l.raw_data?.work_time,
                 Status: l.raw_data?.status,
-                DateString: l.scan_datetime ? parsePunchDate(l.scan_datetime) : undefined,
+                DateString: dateStr,
               };
             });
-            
+
             setBiometricRecords(mapped);
             setConnectionStatus('connected');
-            
+
             // Convert biometric records to LocalPunch format for saving
             const newPunches: LocalPunch[] = [];
             staffList.forEach((staff) => {
-              const staffBioRecords = mapped.filter((record) => {
-                const empCode = String(record.Empcode || '').toLowerCase().trim();
-                const name    = String(record.Name || '').toLowerCase().trim();
-
-                const matchesBiometricCode = staff.biometric_employee_code && (
-                  empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
-                  (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
-                );
-
-                const matchesIdNumerically = !isNaN(Number(empCode)) && !isNaN(Number(staff.id)) && Number(empCode) === Number(staff.id);
-                const matchCode = empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically || matchesBiometricCode;
-                const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
-
-                let dateMatch = false;
-                if (record.DateString) {
-                  const parsed = parsePunchDate(record.DateString);
-                  dateMatch = parsed === date;
-                } else if (record.PunchDate) {
-                  const parsed = parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10);
-                  dateMatch = parsed === date;
-                }
-
-                return (matchCode || matchName) && dateMatch;
-              });
-
-              staffBioRecords.forEach((rec) => {
-                if (rec.INTime && rec.INTime !== '--:--') {
-                  newPunches.push({ id: `bio-in-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
-                }
-                if (rec.OUTTime && rec.OUTTime !== '--:--') {
-                  newPunches.push({ id: `bio-out-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
-                }
-                if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
-                  newPunches.push({ id: `bio-${rec.Empcode}-${date}`, staffId: staff.id, timestamp: rec.PunchDate });
-                }
-              });
+              const staffBioRecords = mapped.filter((record) => matchesStaffOnDate(record, staff, date));
+              newPunches.push(...buildPunchesFromBioRecords(staffBioRecords, staff, date, `-${date}`));
             });
 
             // Update localPunches (filter out previous punches for this date)
@@ -631,89 +629,9 @@ export function StaffAttendance() {
     return () => clearInterval(timerId);
   }, []);
 
-  // Live auto-sync interval for raw punches (every 10 seconds during active hours)
-  useEffect(() => {
-    const getIntervalDuration = () => {
-      const now = new Date();
-      const currentHour = now.getHours();
-
-      // Active hours: 7:00 AM to 10:00 PM (7 to 22)
-      if (currentHour >= 7 && currentHour < 22) {
-        return 10000; // 10 seconds
-      } else {
-        return 15 * 60 * 1000; // 15 minutes
-      }
-    };
-
-    let timerId: NodeJS.Timeout | null = null;
-    let currentInterval = getIntervalDuration();
-
-    const startTimer = (ms: number) => {
-      if (timerId) clearInterval(timerId);
-      timerId = setInterval(() => {
-        syncBiometricPunchesRef.current(true);
-      }, ms);
-    };
-
-    // Start initial timer
-    startTimer(currentInterval);
-
-    // Watch for hour changes to dynamically adjust the interval duration
-    const watchTimer = setInterval(() => {
-      const ms = getIntervalDuration();
-      if (ms !== currentInterval) {
-        currentInterval = ms;
-        startTimer(currentInterval);
-      }
-    }, 60000);
-
-    return () => {
-      if (timerId) clearInterval(timerId);
-      clearInterval(watchTimer);
-    };
-  }, []);
-
-  // Live auto-sync interval for In/Out summaries (every 10 seconds during active hours)
-  useEffect(() => {
-    const getIntervalDuration = () => {
-      const now = new Date();
-      const currentHour = now.getHours();
-
-      // Active hours: 7:00 AM to 10:00 PM (7 to 22)
-      if (currentHour >= 7 && currentHour < 22) {
-        return 10000; // 10 seconds
-      } else {
-        return 15 * 60 * 1000; // 15 minutes
-      }
-    };
-
-    let timerId: NodeJS.Timeout | null = null;
-    let currentInterval = getIntervalDuration();
-
-    const startTimer = (ms: number) => {
-      if (timerId) clearInterval(timerId);
-      timerId = setInterval(() => {
-        syncBiometricRef.current(true);
-      }, ms);
-    };
-
-    // Start initial timer
-    startTimer(currentInterval);
-
-    // Watch for hour changes to dynamically adjust the interval duration
-    const watchTimer = setInterval(() => {
-      const ms = getIntervalDuration();
-      if (ms !== currentInterval) {
-        currentInterval = ms;
-        startTimer(currentInterval);
-      }
-    }, 60000);
-
-    return () => {
-      if (timerId) clearInterval(timerId);
-      clearInterval(watchTimer);
-    };
-  }, []);
+  // Live auto-sync intervals (every 10 seconds during active hours, else every 15 minutes)
+  useAdaptiveInterval(syncBiometricPunches);
+  useAdaptiveInterval(syncBiometric);
 
   // Trigger sync immediately when window/tab receives focus
   useEffect(() => {
@@ -769,34 +687,7 @@ export function StaffAttendance() {
 
   // Find biometric record(s) for a given staff member on the selected date
   const getBiometricRecordsForStaff = (staff: StaffMember): BiometricRecord[] => {
-    return biometricRecords.filter((record) => {
-      const empCode = String(record.Empcode || '').toLowerCase().trim();
-      const name    = String(record.Name || '').toLowerCase().trim();
-
-      // Matches biometric employee code
-      const matchesBiometricCode = staff.biometric_employee_code && (
-        empCode === String(staff.biometric_employee_code).toLowerCase().trim() ||
-        (!isNaN(Number(empCode)) && !isNaN(Number(staff.biometric_employee_code)) && Number(empCode) === Number(staff.biometric_employee_code))
-      );
-
-      const hasBioCode = staff.biometric_employee_code && staff.biometric_employee_code.trim() !== '';
-      const matchesIdNumerically = !isNaN(Number(empCode)) && !isNaN(Number(staff.id)) && Number(empCode) === Number(staff.id);
-      const matchCode = hasBioCode 
-        ? matchesBiometricCode 
-        : (empCode === String(staff.id).toLowerCase().trim() || matchesIdNumerically);
-      const matchName = name === staff.name.toLowerCase().trim() || normalizeName(name) === normalizeName(staff.name);
-
-      let dateMatch = false;
-      if (record.DateString) {
-        const parsed = parsePunchDate(record.DateString);
-        dateMatch = parsed === date;
-      } else if (record.PunchDate) {
-        const parsed = parsePunchDate(record.PunchDate) || record.PunchDate.slice(0, 10);
-        dateMatch = parsed === date;
-      }
-
-      return (matchCode || matchName) && dateMatch;
-    });
+    return biometricRecords.filter((record) => matchesStaffOnDate(record, staff, date));
   };
 
   // Helper to count all punches (biometric API + local simulation)
@@ -822,30 +713,7 @@ export function StaffAttendance() {
 
     // Real biometric records
     const apiRecords = getBiometricRecordsForStaff(staff);
-    const apiCount: LocalPunch[] = [];
-    for (const rec of apiRecords) {
-      if (rec.INTime && rec.INTime !== '--:--') {
-        apiCount.push({ id: `bio-in-${rec.Empcode}`, staffId: staff.id, timestamp: `${date} ${rec.INTime}:00` });
-      }
-      // Push OUTTime if it's not a running clock placeholder
-      if (rec.OUTTime && rec.OUTTime !== '--:--') {
-        const isToday = date === new Date().toISOString().slice(0, 10);
-        let isPresentTimePlaceholder = false;
-        if (isToday) {
-          const [outH, outM] = rec.OUTTime.split(':').map(Number);
-          const now = new Date();
-          const currentMinutes = now.getHours() * 60 + now.getMinutes();
-          const outMinutes = outH * 60 + outM;
-          isPresentTimePlaceholder = Math.abs(currentMinutes - outMinutes) <= 2;
-        }
-        if (!isPresentTimePlaceholder) {
-          apiCount.push({ id: `bio-out-${rec.Empcode}`, staffId: staff.id, timestamp: `${date} ${rec.OUTTime}:00` });
-        }
-      }
-      if (!rec.INTime && !rec.OUTTime && rec.PunchDate) {
-        apiCount.push({ id: `bio-${rec.Empcode}`, staffId: staff.id, timestamp: rec.PunchDate });
-      }
-    }
+    const apiCount = buildPunchesFromBioRecords(apiRecords, staff, date, '');
 
     return [...localCount, ...apiCount];
   };
@@ -885,13 +753,8 @@ export function StaffAttendance() {
     let hasCheckOut = false;
 
     if (todayPunches.length > 0) {
-      const extractTime = (ts: string) => {
-        if (!ts) return '';
-        const timePart = ts.includes('T') ? ts.split('T')[1] : ts.split(' ')[1];
-        return timePart ? timePart.substring(0, 5) : '';
-      };
-      const firstPunchTime = extractTime(todayPunches[0].timestamp);
-      const lastPunchTime = extractTime(todayPunches[todayPunches.length - 1].timestamp);
+      const firstPunchTime = extractTimeOfDay(todayPunches[0].timestamp);
+      const lastPunchTime = extractTimeOfDay(todayPunches[todayPunches.length - 1].timestamp);
 
       // Check-in: first punch must be before or during the late entry window
       if (firstPunchTime <= (lateEntryCutoff + ':59')) {
@@ -1137,7 +1000,7 @@ export function StaffAttendance() {
             <span className="text-[11.5px] text-[var(--tx2)] leading-relaxed">
               {attendanceMode === 'biometric' ? (
                 <>
-                  <strong>Biometric Mode:</strong> Attendance driven by e-TimeOffice impressions for <strong>{formatDateDDMMYYYY(date)}</strong>.<br />
+                  <strong>Biometric Mode:</strong> Attendance driven by e-TimeOffice impressions for <strong>{formatDate(date)}</strong>.<br />
                   <span className="text-[10px] text-[var(--tx3)]">Rules: 0 punches = Absent · 1 punch = Half Day · 2+ punches = Present.</span>
                   {lastSyncMsg && (
                     <span className={`block mt-0.5 text-[10.5px] ${lastSyncMsg.startsWith('✓') ? 'text-emerald-600' : lastSyncMsg.startsWith('⚠') ? 'text-amber-600' : 'text-red-500'}`}>
@@ -1194,19 +1057,13 @@ export function StaffAttendance() {
                 if (todayPunches.length > 0) {
                   todayPunches.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
                   
-                  const extractTime = (ts: string) => {
-                    if (!ts) return null;
-                    const timePart = ts.includes('T') ? ts.split('T')[1] : ts.split(' ')[1];
-                    return timePart ? timePart.substring(0, 5) : null;
-                  };
-
                   // First punch is check-in
-                  const earliest = extractTime(todayPunches[0].timestamp);
+                  const earliest = extractTimeOfDay(todayPunches[0].timestamp);
                   inTime = earliest;
 
                   // Last punch (if different and more than one punch) is check-out
                   if (todayPunches.length > 1) {
-                    const latest = extractTime(todayPunches[todayPunches.length - 1].timestamp);
+                    const latest = extractTimeOfDay(todayPunches[todayPunches.length - 1].timestamp);
                     if (latest !== earliest) {
                       outTime = latest;
                     }
@@ -1216,19 +1073,8 @@ export function StaffAttendance() {
                   if (bioRecord?.INTime && bioRecord.INTime !== '--:--') {
                     inTime = bioRecord.INTime;
                   }
-                  if (bioRecord?.OUTTime && bioRecord.OUTTime !== '--:--') {
-                    const isToday = date === new Date().toISOString().slice(0, 10);
-                    let isPresentTimePlaceholder = false;
-                    if (isToday) {
-                      const [outH, outM] = bioRecord.OUTTime.split(':').map(Number);
-                      const now = new Date();
-                      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                      const outMinutes = outH * 60 + outM;
-                      isPresentTimePlaceholder = Math.abs(currentMinutes - outMinutes) <= 2;
-                    }
-                    if (!isPresentTimePlaceholder) {
-                      outTime = bioRecord.OUTTime;
-                    }
+                  if (bioRecord?.OUTTime && bioRecord.OUTTime !== '--:--' && !isOutTimePlaceholder(bioRecord.OUTTime, date)) {
+                    outTime = bioRecord.OUTTime;
                   }
                 }
 

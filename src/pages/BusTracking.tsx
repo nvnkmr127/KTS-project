@@ -42,10 +42,10 @@ const ROUTE_CONFIG: RouteConfig[] = [
   {
     id: 1,
     busNumber: 'TS07UP2292',   // deviceId 204221
-    route: 'Route 1 — Ibrahimpatnam Central',
-    next: 'Bus Stand',
-    eta: 7,
-    driver: 'Driver 1',
+    route: 'Route 1',
+    next: '',
+    eta: null,
+    driver: 'Driver',
     phone: '98765 43210',
     color: '#185FA5',
     startPos: { lat: 17.3100, lng: 78.1400 },
@@ -59,10 +59,10 @@ const ROUTE_CONFIG: RouteConfig[] = [
   {
     id: 2,
     busNumber: 'TS07UM4821',   // deviceId 204197
-    route: 'Route 2 — Sheriguda',
-    next: 'Gurunanak College',
-    eta: 12,
-    driver: 'Driver 2',
+    route: 'Route 2',
+    next: '',
+    eta: null,
+    driver: 'Driver',
     phone: '99887 65432',
     color: '#0A6E5F',
     startPos: { lat: 17.3320, lng: 78.1650 },
@@ -76,10 +76,10 @@ const ROUTE_CONFIG: RouteConfig[] = [
   {
     id: 3,
     busNumber: 'TG07T2823',    // deviceId 204238
-    route: 'Route 3 — Police Station Road',
-    next: 'Ibrahimpatnam X Roads',
-    eta: 3,
-    driver: 'Driver 3',
+    route: 'Route 3',
+    next: '',
+    eta: null,
+    driver: 'Driver',
     phone: '97654 32109',
     color: '#B45309',
     startPos: { lat: 17.3080, lng: 78.1480 },
@@ -93,10 +93,10 @@ const ROUTE_CONFIG: RouteConfig[] = [
   {
     id: 4,
     busNumber: 'TG07T2824',    // deviceId 204227
-    route: 'Route 4 — Bongloor / Mangalpally',
-    next: 'Mangalpally',
-    eta: 18,
-    driver: 'Driver 4',
+    route: 'Route 4',
+    next: '',
+    eta: null,
+    driver: 'Driver',
     phone: '96543 21098',
     color: '#7C3AED',
     startPos: { lat: 17.2910, lng: 78.1150 },
@@ -110,10 +110,10 @@ const ROUTE_CONFIG: RouteConfig[] = [
   {
     id: 5,
     busNumber: 'TG07V7473',    // deviceId 204214
-    route: 'Route 5 — Yacharam Road',
-    next: 'Outer Ring Road',
-    eta: 22,
-    driver: 'Driver 5',
+    route: 'Route 5',
+    next: '',
+    eta: null,
+    driver: 'Driver',
     phone: '95432 10987',
     color: '#BE185D',
     startPos: { lat: 17.1500, lng: 78.2500 },
@@ -607,12 +607,12 @@ export function BusTracking() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[12px] font-semibold text-[var(--tx)] truncate">{cfg.route}</span>
+                      <span className="text-[12px] font-semibold text-[var(--tx)] truncate">{live?.address ? live.address : cfg.route}</span>
                       {active && <span className="w-1.5 h-1.5 rounded-full bg-[var(--teal)] flex-shrink-0" />}
                     </div>
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className="text-[11px] text-[var(--tx3)] truncate">
-                        {active ? `Next: ${cfg.next}${cfg.eta ? ` · ETA ${cfg.eta} min` : ''}` : cfg.next}
+                        {active ? (live?.address ? `Location: ${live.address}` : 'Live Tracking') : 'Offline'}
                       </span>
                       {/* Live speed chip */}
                       {gpsStatus === 'live' && speed !== null && active && (
@@ -660,9 +660,9 @@ export function BusTracking() {
 
                 {/* Route summary */}
                 <div className="p-3 rounded-xl border border-[var(--b)] bg-[var(--surf2)] mb-3">
-                  <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-1">{cfg.route}</div>
+                  <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-1">{live?.address ? live.address : cfg.route}</div>
                   <div className="text-[11px] text-[var(--tx3)] mb-2">
-                    {active ? `Next: ${cfg.next}${cfg.eta ? ` · ETA ${cfg.eta} min` : ''}` : cfg.next}
+                    {active ? (live?.address ? `Location: ${live.address}` : 'Live Tracking') : 'Offline'}
                   </div>
                   {active && <ProgressBar value={pct} color={cfg.color} height={5} />}
 
@@ -714,58 +714,19 @@ export function BusTracking() {
                   </a>
                 </div>
 
-                {/* Stop progress */}
-                <div className="text-[11.5px] font-semibold text-[var(--tx)] mb-2">Stop Progress</div>
-                <div className="space-y-1">
-                  {cfg.stops.map((stop, i) => {
-                    const stopProgress = (i / (cfg.stops.length - 1)) * 100;
-                    const passed = stopProgress <= pct;
-                    return (
-                      <div key={i} className="flex items-center gap-2">
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${passed ? 'bg-[var(--teal-bg)]' : 'bg-[var(--surf3)]'}`}>
-                          {i === cfg.stops.length - 1 ? (
-                            <div className="w-2 h-2 rounded-sm bg-[var(--blue)]" />
-                          ) : (
-                            <div className={`w-1.5 h-1.5 rounded-full ${passed ? 'bg-[var(--teal)]' : 'bg-[var(--tx3)]'}`} />
-                          )}
-                        </div>
-                        <span className={`text-[11px] ${passed ? 'text-[var(--tx)]' : 'text-[var(--tx3)]'}`}>{stop.name}</span>
-                        {passed && i < cfg.stops.length - 1 && <span className="ml-auto text-[10px] text-[var(--teal-tx)]">Done</span>}
-                      </div>
-                    );
-                  })}
-                </div>
+
               </Card>
             );
           })() : (
             <Card>
-              <CardHeader title="Stop-wise Alerts" icon={<MapPin size={14} />} />
-              <div className="space-y-0">
-                {[
-                  { name: 'Railway Colony', info: 'Alert sent · 7:48 AM · 8 parents', status: 'done' as const },
-                  { name: 'Bus Stand', info: 'Alert sent · 7:55 AM · 11 parents', status: 'done' as const },
-                  { name: 'Gandhi Nagar Stop', info: 'ETA 12 min · 9 parents waiting', status: 'upcoming' as const },
-                  { name: 'Market Circle', info: 'Not yet reached · 7 parents', status: 'waiting' as const },
-                ].map((stop, i, arr) => (
-                  <div key={i} className={`flex items-center gap-2.5 py-2 ${i < arr.length - 1 ? 'border-b border-[var(--b)]' : ''}`}>
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${stop.status === 'done' ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)]' : stop.status === 'upcoming' ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)]' : 'bg-[var(--surf2)] text-[var(--tx3)]'}`}>
-                      {stop.status === 'done' ? (
-                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M2 5.5L4.5 8L9 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      ) : stop.status === 'upcoming' ? (
-                        <Clock size={11} />
-                      ) : (
-                        <MapPin size={11} />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12px] font-semibold text-[var(--tx)]">{stop.name}</div>
-                      <div className="text-[10.5px] text-[var(--tx3)]">{stop.info}</div>
-                    </div>
-                    {stop.status === 'done' && <Badge variant="teal">Done</Badge>}
-                    {stop.status === 'upcoming' && <Badge variant="amber">Upcoming</Badge>}
-                    {stop.status === 'waiting' && <Badge variant="gray">Waiting</Badge>}
-                  </div>
-                ))}
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <div className="w-12 h-12 rounded-full bg-[var(--surf3)] flex items-center justify-center mb-3">
+                  <Bus size={20} className="text-[var(--tx3)]" />
+                </div>
+                <div className="text-[13px] font-semibold text-[var(--tx)] mb-1">Select a bus</div>
+                <div className="text-[11.5px] text-[var(--tx3)] max-w-[200px]">
+                  Click on a bus from the list to view its live location and details.
+                </div>
               </div>
             </Card>
           )}
@@ -928,7 +889,7 @@ export function BusTracking() {
                     >
                       <div className="p-2 min-w-[150px] text-gray-800">
                         <div className="font-bold text-[12px] flex items-center gap-1.5" style={{ color: cfg.color }}>
-                          <Bus size={12} /> {cfg.route}
+                          <Bus size={12} /> {liveData[cfg.busNumber]?.address ? liveData[cfg.busNumber].address : cfg.route}
                         </div>
                         <div className="text-[10px] text-gray-500 mt-0.5">
                           Plate: <span className="font-semibold text-gray-700">{cfg.busNumber}</span>

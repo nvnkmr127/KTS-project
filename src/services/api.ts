@@ -3,51 +3,11 @@ import { storage } from '../utils/storage';
 
 const BASE_URL = config.apiUrl;
 
-class LRUCache<K, V> {
-  private capacity: number;
-  private cache: Map<K, V>;
-
-  constructor(capacity: number) {
-    this.capacity = capacity;
-    this.cache = new Map<K, V>();
-  }
-
-  get(key: K): V | undefined {
-    if (!this.cache.has(key)) return undefined;
-    const value = this.cache.get(key)!;
-    // Move to end to mark as recently used
-    this.cache.delete(key);
-    this.cache.set(key, value);
-    return value;
-  }
-
-  set(key: K, value: V): void {
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    } else if (this.cache.size >= this.capacity) {
-      // Evict least recently used (first item)
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey !== undefined) this.cache.delete(firstKey);
-    }
-    this.cache.set(key, value);
-  }
-
-  delete(key: K): boolean {
-    return this.cache.delete(key);
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-
-  keys(): IterableIterator<K> {
-    return this.cache.keys();
-  }
-}
-
+// ponytail: plain Map with insertion-order eviction, not true LRU — entries
+// expire on TTL anyway; bring back recency tracking if the 100-entry cap thrashes.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const cache = new LRUCache<string, { data: any; timestamp: number }>(100);
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_CAPACITY = 100;
 const CACHE_TTL = 300000; // 5 minutes cache TTL, allowing data to update without browser refresh
 
 export function clearApiCache(resource?: string) {
@@ -117,7 +77,12 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
     path.includes('/live-feed') ||
     path.includes('/biometric') ||
     path.includes('biometric-logs') ||
-    path.includes('/attendance');
+    path.includes('/attendance') ||
+    path.includes('/settings') ||
+    path.includes('/timetable') ||
+    path.includes('/leaves') ||
+    path.includes('/notifications') ||
+    path.includes('/activity-logs');
 
   if (method === 'GET' && !bypassCache) {
     const cached = cache.get(path);
@@ -169,6 +134,9 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
       const result = await response.json();
 
       if (method === 'GET' && !bypassCache) {
+        if (!cache.has(path) && cache.size >= CACHE_CAPACITY) {
+          cache.delete(cache.keys().next().value!);
+        }
         cache.set(path, { data: result, timestamp: Date.now() });
       }
 
@@ -190,8 +158,35 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
 }
 
 
+// Proactively pull the latest attendance-records setting from the DB into
+// localStorage so admin views stay in sync with teacher updates.
+async function syncLocalAttendanceRecords() {
+  try {
+    const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
+    if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (localStorage as any).originalSetItem('kts_student_attendance_records', settingsRes[0].value);
+    }
+  } catch (err) {
+    console.error('Failed to sync kts_student_attendance_records setting:', err);
+  }
+}
+
 export const api = {
   request,
+
+  // Lives outside the /v1 prefix (see backend routes/api.php notifications group)
+  async markAllNotificationsRead() {
+    const token = storage.getItem<string>('token');
+    return fetch(`${BASE_URL.replace(/\/v1$/, '')}/notifications/mark-all-read`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  },
+
   async getMe() {
     return request('/me');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -287,16 +282,7 @@ export const api = {
   },
 
   async getBatchStudentPercentages(batchId: string) {
-    // Proactively pull the latest database setting to keep in sync with teacher updates
-    try {
-      const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
-      if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (localStorage as any).originalSetItem('kts_student_attendance_records', settingsRes[0].value);
-      }
-    } catch (err) {
-      console.error('Failed to sync kts_student_attendance_records setting:', err);
-    }
+    await syncLocalAttendanceRecords();
     const original = await request(`/attendance/batch/${batchId}/student-percentages`);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     try {
@@ -425,16 +411,7 @@ export const api = {
   },
 
   async getTodayAttendance(type: string = 'all') {
-    // Proactively pull the latest database setting to keep in sync with teacher updates
-    try {
-      const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
-      if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (localStorage as any).originalSetItem('kts_student_attendance_records', settingsRes[0].value);
-      }
-    } catch (err) {
-      console.error('Failed to sync kts_student_attendance_records setting today:', err);
-    }
+    await syncLocalAttendanceRecords();
     const original = await request(`/attendance/today?type=${type}`);
     try {
       const getLocalDateString = () => {

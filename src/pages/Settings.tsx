@@ -6,9 +6,8 @@ import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
 import { 
   Calendar, Plus, Trash2, Edit2, CheckCircle2, Shield, 
-  AlertCircle, RefreshCw, RotateCcw, X, Loader2, Save,
-  Activity, User, Search, Clock, GitCompare, ArrowRight,
-  ShieldAlert, ChevronDown, ChevronRight, Fingerprint, Key, Upload
+  AlertCircle, RefreshCw, RotateCcw, X, Loader2, Save, Search, Clock,
+  ShieldAlert, Key, Upload
 } from 'lucide-react';
 import { TabBar } from '../components/ui';
 import { WebhookManagement } from '../components/WebhookManagement';

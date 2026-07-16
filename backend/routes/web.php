@@ -22,9 +22,7 @@ use App\Http\Controllers\Admin\AttendanceImportController;
 use App\Http\Controllers\Admin\AttendanceReportController;
 // Admin Controllers
 use App\Http\Controllers\Admin\AttendanceSettingsController;
-use App\Http\Controllers\Admin\AttendanceDashboardController;
-use App\Http\Controllers\Admin\AttendanceExportController;
-use App\Http\Controllers\Admin\ETimeOfficeController;
+use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\BatchController;
@@ -290,7 +288,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'permission:view bac
 
     });
 
-    Route::get('/attendance/leaderboard', [AttendanceDashboardController::class, 'getAttendanceLeaderboard'])
+    Route::get('/attendance/leaderboard', [AttendanceController::class, 'getAttendanceLeaderboard'])
         ->name('attendance.leaderboard')
         ->middleware('permission:view attendance|manage attendance');
 
@@ -1029,20 +1027,20 @@ Route::middleware(['auth', 'permission:revert payments'])->group(function () {
 Route::prefix('admin/attendance')->name('admin.attendance.')->middleware(['auth', 'role:super-admin|college-admin|staff'])->group(function () {
 
     // AJAX endpoints for live updates (add these to your existing attendance routes)
-    Route::get('/dashboard/absent-students', [AttendanceDashboardController::class, 'getAbsentStudentsAjax'])
+    Route::get('/dashboard/absent-students', [AttendanceController::class, 'getAbsentStudentsAjax'])
         ->name('dashboard.absent.ajax');
 
-    Route::get('/dashboard/recent-activity', [AttendanceDashboardController::class, 'getRecentActivityAjax'])
+    Route::get('/dashboard/recent-activity', [AttendanceController::class, 'getRecentActivityAjax'])
         ->name('dashboard.activity.ajax');
 
-    Route::get('/dashboard/stats', [AttendanceDashboardController::class, 'getTodayStatsAjax'])
+    Route::get('/dashboard/stats', [AttendanceController::class, 'getTodayStatsAjax'])
         ->name('dashboard.stats.ajax');
 
     // Quick actions for marking attendance
-    Route::post('/dashboard/mark-present', [AttendanceDashboardController::class, 'markStudentPresent'])
+    Route::post('/dashboard/mark-present', [AttendanceController::class, 'markStudentPresent'])
         ->name('dashboard.mark.present');
 
-    Route::post('/dashboard/bulk-mark-present', [AttendanceDashboardController::class, 'bulkMarkPresent'])
+    Route::post('/dashboard/bulk-mark-present', [AttendanceController::class, 'bulkMarkPresent'])
         ->name('dashboard.bulk.mark.present');
 });
 
@@ -1082,9 +1080,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin|super-ad
             ->name('daily-attendance.student-bulk-store');
 
         // Attendance Dashboard Routes
-        Route::get('attendance/dashboard', [AttendanceDashboardController::class, 'dashboard'])->name('attendance.dashboard');
-        Route::get('attendance/dashboard/today', [AttendanceDashboardController::class, 'getTodayDashboard'])->name('attendance.dashboard.today');
-        Route::get('attendance/dashboard/weekly', [AttendanceDashboardController::class, 'getWeeklyStats'])->name('attendance.dashboard.weekly');
+        Route::get('attendance/dashboard', [AttendanceController::class, 'dashboard'])->name('attendance.dashboard');
+        Route::get('attendance/dashboard/today', [AttendanceController::class, 'getTodayDashboard'])->name('attendance.dashboard.today');
+        Route::get('attendance/dashboard/weekly', [AttendanceController::class, 'getWeeklyStats'])->name('attendance.dashboard.weekly');
 
         // Attendance Import Routes
         Route::get('attendance/import', [AttendanceImportController::class, 'show'])->name('attendance.import.show');
@@ -1092,14 +1090,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin|super-ad
         Route::get('attendance/import/sample', [AttendanceImportController::class, 'downloadSample'])->name('attendance.import.sample');
 
         // Export functionality
-        Route::get('attendance/export/today', [AttendanceExportController::class, 'exportTodayAttendance'])
+        Route::get('attendance/export/today', [AttendanceController::class, 'exportTodayAttendance'])
             ->name('attendance.export.today')
             ->middleware('permission:export attendance');
 
         // Testing endpoints
         Route::post('attendance/test-rules', [AttendanceSettingsController::class, 'testRules'])->name('attendance.test.rules');
-        Route::post('/attendance/settings/test-sync', [ETimeOfficeController::class, 'testSync'])->name('admin.attendance.test-sync');
-        Route::post('/attendance/settings/trigger-sync', [ETimeOfficeController::class, 'triggerManualSync'])->name('admin.attendance.trigger-sync');
+        Route::post('/attendance/settings/test-sync', [AttendanceController::class, 'testSync'])->name('admin.attendance.test-sync');
+        Route::post('/attendance/settings/trigger-sync', [AttendanceController::class, 'triggerManualSync'])->name('admin.attendance.trigger-sync');
 
     });
 
@@ -1142,44 +1140,44 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::prefix('attendance')->name('attendance.')->middleware(['role:super-admin|admin|college-admin|staff'])->group(function () {
         Route::get('/settings', [AttendanceSettingsController::class, 'index'])->name('settings');
         Route::post('/settings/update', [App\Http\Controllers\Admin\AttendanceSettingsController::class, 'update'])->name('settings.update');
-        Route::get('/dashboard', [AttendanceDashboardController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard', [AttendanceController::class, 'dashboard'])->name('dashboard');
 
         // ETimeOffice Integration Routes
         Route::prefix('settings/etimeoffice')->name('settings.etimeoffice.')->group(function () {
             // Basic CRUD
-            Route::get('/', [ETimeOfficeController::class, 'getETimeOfficeSettings'])->name('get');
-            Route::post('/', [ETimeOfficeController::class, 'updateETimeOfficeSettings'])->name('update');
+            Route::get('/', [AttendanceController::class, 'getETimeOfficeSettings'])->name('get');
+            Route::post('/', [AttendanceController::class, 'updateETimeOfficeSettings'])->name('update');
 
             // Connection and Testing
-            Route::post('/test-connection', [ETimeOfficeController::class, 'testETimeOfficeConnection'])->name('test');
-            Route::post('/test-auth-formats', [ETimeOfficeController::class, 'testAuthFormats'])->name('test-auth-formats');
-            Route::get('/test-data-format', [ETimeOfficeController::class, 'testETimeOfficeDataFormat'])->name('test-data-format');
+            Route::post('/test-connection', [AttendanceController::class, 'testETimeOfficeConnection'])->name('test');
+            Route::post('/test-auth-formats', [AttendanceController::class, 'testAuthFormats'])->name('test-auth-formats');
+            Route::get('/test-data-format', [AttendanceController::class, 'testETimeOfficeDataFormat'])->name('test-data-format');
 
             // FIXED ROUTES - These were causing 404 errors
-            Route::get('/validate-config', [ETimeOfficeController::class, 'validateConfiguration'])->name('validate-config');
-            Route::get('/setup-recommendations', [ETimeOfficeController::class, 'getSetupRecommendations'])->name('setup-recommendations');
+            Route::get('/validate-config', [AttendanceController::class, 'validateConfiguration'])->name('validate-config');
+            Route::get('/setup-recommendations', [AttendanceController::class, 'getSetupRecommendations'])->name('setup-recommendations');
 
             // Data Pulling
-            Route::post('/pull-data', [ETimeOfficeController::class, 'pullETimeOfficeData'])->name('pull-data');
-            Route::post('/sync', [ETimeOfficeController::class, 'triggerManualSync'])->name('sync');
+            Route::post('/pull-data', [AttendanceController::class, 'pullETimeOfficeData'])->name('pull-data');
+            Route::post('/sync', [AttendanceController::class, 'triggerManualSync'])->name('sync');
 
             // Status and Monitoring - FIXED ROUTES
-            Route::get('/sync-status', [ETimeOfficeController::class, 'getSyncStatus'])->name('sync-status');
-            Route::get('/sync-history', [ETimeOfficeController::class, 'getSyncHistory'])->name('sync-history');
-            Route::get('/stats', [ETimeOfficeController::class, 'getBiometricStats'])->name('biometric.stats');
+            Route::get('/sync-status', [AttendanceController::class, 'getSyncStatus'])->name('sync-status');
+            Route::get('/sync-history', [AttendanceController::class, 'getSyncHistory'])->name('sync-history');
+            Route::get('/stats', [AttendanceController::class, 'getBiometricStats'])->name('biometric.stats');
 
         });
 
         // Export Routes
         Route::prefix('export')->name('export.')->group(function () {
-            Route::get('/today', [AttendanceExportController::class, 'exportTodayAttendance'])->name('today');
-            Route::post('/custom', [AttendanceExportController::class, 'exportAttendanceData'])->name('custom');
-            Route::get('/sync-logs', [AttendanceExportController::class, 'exportSyncLogs'])->name('sync-logs');
+            Route::get('/today', [AttendanceController::class, 'exportTodayAttendance'])->name('today');
+            Route::post('/custom', [AttendanceController::class, 'exportAttendanceData'])->name('custom');
+            Route::get('/sync-logs', [AttendanceController::class, 'exportSyncLogs'])->name('sync-logs');
         });
 
         // Dashboard Data Routes
-        Route::get('/dashboard/today', [AttendanceDashboardController::class, 'getTodayDashboard'])->name('dashboard.today');
-        Route::get('/dashboard/weekly', [AttendanceDashboardController::class, 'getWeeklyStats'])->name('dashboard.weekly');
+        Route::get('/dashboard/today', [AttendanceController::class, 'getTodayDashboard'])->name('dashboard.today');
+        Route::get('/dashboard/weekly', [AttendanceController::class, 'getWeeklyStats'])->name('dashboard.weekly');
 
         // Testing and Rules
         Route::post('/test-rules', [AttendanceSettingsController::class, 'testRules'])->name('test-rules');
@@ -1239,7 +1237,7 @@ Route::prefix('admin/notifications')->name('admin.notifications.')->middleware([
         ->middleware('permission:manage settings');
 
     // Attendance settings test route
-    Route::post('attendance/settings/test-auth-formats', [ETimeOfficeController::class, 'testAuthFormats'])
+    Route::post('attendance/settings/test-auth-formats', [AttendanceController::class, 'testAuthFormats'])
         ->name('attendance.settings.test-auth-formats');
 
     // Notification Settings
@@ -1454,26 +1452,28 @@ if (app()->environment(['local', 'testing'])) {
     });
 }
 
-// Test route conflict debugging route
-Route::get('/test-route-conflict', function () {
-    try {
-        $request = \Illuminate\Http\Request::create('/attendance/analytics', 'GET');
-        $route = \Route::getRoutes()->match($request);
+// Debug/test routes — local environment only (test-direct-sync triggers a real
+// eTimeOffice sync and must never be publicly reachable in production).
+if (app()->environment(['local', 'testing'])) {
+    Route::get('/test-route-conflict', function () {
+        try {
+            $request = \Illuminate\Http\Request::create('/attendance/analytics', 'GET');
+            $route = \Route::getRoutes()->match($request);
 
-        return response()->json([
-            'url_tested' => '/attendance/analytics',
-            'matched_route' => $route->uri(),
-            'matched_action' => $route->getActionName(),
-            'route_parameters' => $route->parameters(),
-            'is_conflict' => $route->uri() === 'attendance/{attendance}' ? 'YES - CONFLICT!' : 'No conflict',
-        ]);
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()]);
-    }
-});
-Route::get('/admin/test-direct-sync', [ETimeOfficeController::class, 'testDirectSync']);
-// Test lab generation route
-Route::get('/test-lab-generation', [TimetableController::class, 'testLabGeneration']);
+            return response()->json([
+                'url_tested' => '/attendance/analytics',
+                'matched_route' => $route->uri(),
+                'matched_action' => $route->getActionName(),
+                'route_parameters' => $route->parameters(),
+                'is_conflict' => $route->uri() === 'attendance/{attendance}' ? 'YES - CONFLICT!' : 'No conflict',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()]);
+        }
+    });
+    Route::get('/admin/test-direct-sync', [AttendanceController::class, 'testDirectSync']);
+    Route::get('/test-lab-generation', [TimetableController::class, 'testLabGeneration']);
+}
 
 // Student Self-Service Portal Routes
 Route::get('students/login', function () {

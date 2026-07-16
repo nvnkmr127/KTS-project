@@ -467,8 +467,8 @@ export function Leave() {
       <Card>
         <div className="flex items-center justify-between mb-4 border-b border-[var(--b)] pb-3">
           <div>
-            <div className="text-[13px] font-semibold text-[var(--tx)]">School Holidays Designer</div>
-            <div className="text-[11px] text-[var(--tx3)]">Click on any weekday to add/edit custom holidays, or view Sundays.</div>
+            <div className="text-[13px] font-semibold text-[var(--tx)]">School Holidays {isAdmin ? 'Designer' : 'Calendar'}</div>
+            <div className="text-[11px] text-[var(--tx3)]">{isAdmin ? 'Click on any weekday to add/edit custom holidays, or view Sundays.' : 'View school holidays and Sundays.'}</div>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -533,13 +533,14 @@ export function Leave() {
               <div
                 key={day}
                 onClick={async () => {
+                  if (!isAdmin) return;
                   if (isSunday) {
                     await alert('Sundays are automatic school holidays.', 'Notice');
                     return;
                   }
                   openHolidayModal(dateStr);
                 }}
-                className={`min-h-[68px] p-2 flex flex-col justify-between rounded-xl border border-[var(--b)] cursor-pointer transition-all ${styleClass}`}
+                className={`min-h-[68px] p-2 flex flex-col justify-between rounded-xl border border-[var(--b)] transition-all ${isAdmin ? 'cursor-pointer' : 'cursor-default'} ${styleClass}`}
                 style={customStyle}
               >
                 <div className="font-bold text-[11.5px]">{day}</div>
@@ -575,10 +576,9 @@ export function Leave() {
         <KPICard label="Days Used" value={totalDaysUsed} sub="By all staff" icon={<XCircle size={15} />} iconBg="var(--red-bg)" iconColor="var(--red-tx)" />
       </div>
 
-      {isAdmin && (
-        <div className="flex border-b border-[var(--b)] mb-3">
-          <button
-            onClick={() => setActiveTab('requests')}
+      <div className="flex border-b border-[var(--b)] mb-3">
+        <button
+          onClick={() => setActiveTab('requests')}
             className={`px-4 py-2 text-[12px] border-b-2 -mb-px transition-colors cursor-pointer ${
               activeTab === 'requests'
                 ? 'text-[var(--blue-tx)] border-[var(--blue)] font-semibold'
@@ -598,9 +598,9 @@ export function Leave() {
             Holiday Calendar
           </button>
         </div>
-      )}
+      
 
-      {isAdmin && activeTab === 'holidays' ? (
+      {activeTab === 'holidays' ? (
         renderAdminHolidayCalendar()
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5">

@@ -81,12 +81,6 @@ export function updateLocalAlumni(id: string, updates: Partial<LocalAlumni>): vo
   writeLocalAlumni(updated);
 }
 
-/** Remove a local alumni record by id */
-export function deleteLocalAlumni(id: string): void {
-  const existing = readLocalAlumni();
-  writeLocalAlumni(existing.filter(a => a.id !== id));
-}
-
 /**
  * Merge backend alumni records with local ones.
  * Backend records take precedence; local-only records are appended.

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RotateCcw, LogIn, LogOut, Edit2, Trash2, Plus, Activity, Clock, TrendingUp, Calendar, Search, X } from 'lucide-react';
+import { RotateCcw, LogIn, LogOut, Edit2, Trash2, Plus, Activity, Clock, TrendingUp, Search, X } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/Card';

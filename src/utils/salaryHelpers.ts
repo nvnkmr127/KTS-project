@@ -1,15 +1,15 @@
-const MONTH_MAP: Record<string, number> = {
-  January: 0, February: 1, March: 2, April: 3, May: 4, June: 5,
-  July: 6, August: 7, September: 8, October: 9, November: 10, December: 11
-};
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export const getYearMonth = (monthStr: string) => {
   if (monthStr === 'All') return null;
   const parts = monthStr.split(' ');
   if (parts.length === 2) {
-    const month = MONTH_MAP[parts[0]];
+    const month = MONTH_NAMES.indexOf(parts[0]);
     const year = parseInt(parts[1], 10);
-    if (month !== undefined && !isNaN(year)) {
+    if (month !== -1 && !isNaN(year)) {
       return { year, month };
     }
   }
@@ -40,17 +40,12 @@ export const generateMonths = (): string[] => {
   
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth(); // 0-indexed
-  
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  
+
   let year = currentYear;
   let month = currentMonth;
   
   while (year > startYear || (year === startYear && month >= startMonth)) {
-    monthsList.push(`${monthNames[month]} ${year}`);
+    monthsList.push(`${MONTH_NAMES[month]} ${year}`);
     month--;
     if (month < 0) {
       month = 11;

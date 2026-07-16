@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Users, ShieldAlert, ArrowRight, X, GraduationCap, School, BookOpen } from 'lucide-react';
 import { api } from '../services/api';
 import { Badge } from '../components/Badge';
-import { Avatar } from '../components/ui';
+import { Avatar, getInitials } from '../components/ui';
 import type { PageId } from '../types';
 
 interface SearchPageProps {
@@ -77,14 +77,6 @@ export function SearchPage({ searchQuery, onNavigate, onClearSearch }: SearchPag
     };
   }, [searchQuery, students, faculty, batches]);
 
-  const getInitials = (name: string) => {
-    return (name || '')
-      .split(' ')
-      .map((n) => n[0] ?? '')
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
 
   return (
     <div className="flex-1 overflow-y-auto p-4 bg-[var(--bg)] pb-10">

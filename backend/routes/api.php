@@ -204,23 +204,33 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
-    Route::get('/resources/{resource}', [GenericApiController::class, 'index']);
-    Route::get('/resources/{resource}/{id}', [GenericApiController::class, 'show']);
-    Route::post('/resources/{resource}', [GenericApiController::class, 'store']);
-    Route::post('/resources/{resource}/bulk', [GenericApiController::class, 'bulkStore']);
-    Route::put('/resources/{resource}/{id}', [GenericApiController::class, 'update']);
-    Route::delete('/resources/{resource}/{id}', [GenericApiController::class, 'destroy']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/resources/{resource}', [GenericApiController::class, 'index']);
+        Route::get('/resources/{resource}/{id}', [GenericApiController::class, 'show']);
+        Route::post('/resources/{resource}', [GenericApiController::class, 'store']);
+        Route::post('/resources/{resource}/bulk', [GenericApiController::class, 'bulkStore']);
+        Route::put('/resources/{resource}/{id}', [GenericApiController::class, 'update']);
+        Route::delete('/resources/{resource}/{id}', [GenericApiController::class, 'destroy']);
 
-    // Webhook management API endpoints
-    Route::get('/webhooks/stats', [\App\Http\Controllers\Admin\WebhookController::class, 'getStatsApi']);
-    Route::get('/webhooks/events', [\App\Http\Controllers\Admin\WebhookController::class, 'getEventsApi']);
-    Route::post('/webhooks/{webhook}/toggle', [\App\Http\Controllers\Admin\WebhookController::class, 'toggle'])->where('webhook', '[0-9]+');
-    Route::post('/webhooks/{webhook}/test', [\App\Http\Controllers\Admin\WebhookController::class, 'test'])->where('webhook', '[0-9]+');
-    Route::post('/webhooks/{webhook}/regenerate-secret', [\App\Http\Controllers\Admin\WebhookController::class, 'regenerateSecret'])->where('webhook', '[0-9]+');
-    Route::get('/webhooks/{webhook}/calls', [\App\Http\Controllers\Admin\WebhookController::class, 'getCallsApi'])->where('webhook', '[0-9]+');
-    Route::post('/webhooks/test-daily-summary', [\App\Http\Controllers\Admin\WebhookController::class, 'testDailySummary']);
-    Route::post('/webhooks/send-daily-summary', [\App\Http\Controllers\Admin\WebhookController::class, 'sendDailySummary']);
-    Route::post('/webhooks/calls/{call}/replay', [\App\Http\Controllers\Admin\WebhookController::class, 'replay'])->where('call', '[0-9]+');
+        // Webhook management API endpoints
+        Route::get('/webhooks/stats', [\App\Http\Controllers\Admin\WebhookController::class, 'getStatsApi']);
+        Route::get('/webhooks/events', [\App\Http\Controllers\Admin\WebhookController::class, 'getEventsApi']);
+        Route::post('/webhooks/{webhook}/toggle', [\App\Http\Controllers\Admin\WebhookController::class, 'toggle'])->where('webhook', '[0-9]+');
+        Route::post('/webhooks/{webhook}/test', [\App\Http\Controllers\Admin\WebhookController::class, 'test'])->where('webhook', '[0-9]+');
+        Route::post('/webhooks/{webhook}/regenerate-secret', [\App\Http\Controllers\Admin\WebhookController::class, 'regenerateSecret'])->where('webhook', '[0-9]+');
+        Route::get('/webhooks/{webhook}/calls', [\App\Http\Controllers\Admin\WebhookController::class, 'getCallsApi'])->where('webhook', '[0-9]+');
+        Route::post('/webhooks/test-daily-summary', [\App\Http\Controllers\Admin\WebhookController::class, 'testDailySummary']);
+        Route::post('/webhooks/send-daily-summary', [\App\Http\Controllers\Admin\WebhookController::class, 'sendDailySummary']);
+        Route::post('/webhooks/calls/{call}/replay', [\App\Http\Controllers\Admin\WebhookController::class, 'replay'])->where('call', '[0-9]+');
+    });
+
+    // Public branding settings for the login page (no auth — whitelisted keys only)
+    Route::get('/public-settings', function () {
+        $keys = ['school_name', 'school_logo', 'school_address'];
+        return response()->json(
+            \App\Models\Setting::whereIn('key', $keys)->get(['key', 'value'])
+        );
+    });
 
     // ── e-TimeOffice Biometric Pull Sync (auth:sanctum applied per-route below) ──
     Route::middleware('auth:sanctum')->prefix('biometric')->group(function () {
@@ -480,9 +490,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
 Route::get('/v1/backups/gdrive/callback', [BackupController::class, 'handleGoogleDriveCallback'])->name('api.backups.gdrive.callback');
 
 // ── Millitrack GPS Bus Tracking Proxy ────────────────────────────────────
-// Accessible without auth:sanctum middleware to support local demo-token logins.
 // Credentials live securely in the Laravel .env and are never exposed.
-Route::prefix('v1/bus')->name('api.bus.')->group(function () {
+Route::middleware('auth:sanctum')->prefix('v1/bus')->name('api.bus.')->group(function () {
     // List all buses in the fleet (no external call)
     Route::get('/fleet', [\App\Http\Controllers\Api\MillitrackProxyController::class, 'getFleet'])
         ->name('fleet');
@@ -534,10 +543,14 @@ Route::middleware(['auth', 'web'])->prefix('notifications')->name('api.notificat
     Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
 });
 
-// Developer Seed & Clear Routes (Public for local dev/testing without active session token restrictions)
-Route::prefix('v1')->group(function () {
+// Developer Seed & Clear Routes — local environment only, and only for
+// authenticated super-admins. clear-mock-data runs migrate:fresh (destroys ALL data).
+Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
 
-    Route::post('/dev/seed-mock-data', function() {
+    Route::post('/dev/seed-mock-data', function(Request $request) {
+        if (! app()->environment('local') || ! $request->user()->hasRole('super-admin')) {
+            abort(404);
+        }
         try {
             if (function_exists('opcache_reset')) {
                 opcache_reset();
@@ -570,7 +583,10 @@ Route::prefix('v1')->group(function () {
         }
     });
 
-    Route::post('/dev/clear-mock-data', function() {
+    Route::post('/dev/clear-mock-data', function(Request $request) {
+        if (! app()->environment('local') || ! $request->user()->hasRole('super-admin')) {
+            abort(404);
+        }
         try {
             \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--seed' => true]);
             return response()->json(['success' => true, 'message' => 'Database reset successfully for handover!']);

@@ -8,6 +8,7 @@ import {
   History, Filter, ChevronDown, ChevronUp, Banknote, List, User
 } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
+import { downloadSheet } from '../utils/excel';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist';
 import { Card } from '../components/Card';
@@ -15,13 +16,12 @@ import { Badge } from '../components/Badge';
 import { Avatar } from '../components/ui';
 import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
-import { formatDate } from '../utils/date';
+import { formatDate, formatDateTimeParts, formatTimeAgo } from '../utils/date';
 import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
 import { useAuth } from '../context/AuthContext';
 import { TableSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
-import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface Student {
   id: string;
@@ -131,13 +131,9 @@ export function Students() {
     }
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    setBulkDeleteConfirmOpen(true);
-  };
-
-  const executeBulkDelete = async () => {
-    setBulkDeleteConfirmOpen(false);
+    if (!(await confirm(`Are you sure you want to delete the ${selectedIds.length} selected students? They will be moved to the Recycle Bin.`, 'Delete Selected Students', true))) return;
     setLoading(true);
     const previousStatuses = selectedIds.map(id => {
       const s = students.find(std => std.id === id);
@@ -189,9 +185,6 @@ export function Students() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [admittedStudentForFee, setAdmittedStudentForFee] = useState<{ id: string; name: string } | null>(null);
@@ -902,15 +895,13 @@ export function Students() {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteConfirmId) return;
-    setDeleting(true);
-    const targetStudent = students.find(s => s.id === deleteConfirmId);
+  const handleDeleteStudent = async (studentId: string) => {
+    if (!(await confirm('Are you sure you want to delete this student? They will be moved to the Recycle Bin.', 'Delete Student', true))) return;
+    const targetStudent = students.find(s => s.id === studentId);
     const previousStatus = targetStudent ? targetStudent.status : 'Active';
+    setLoading(true);
     try {
-      await api.updateResource('students', deleteConfirmId, { status: 'left' });
-      const studentId = deleteConfirmId;
-      setDeleteConfirmId(null);
+      await api.updateResource('students', studentId, { status: 'left' });
       await loadStudents();
       showToast(
         `Student "${targetStudent?.name}" has been deleted.`,
@@ -929,10 +920,9 @@ export function Students() {
       );
     } catch (err) {
       console.error('Error marking student as left:', err);
-      setDeleteConfirmId(null);
       showToast('Failed to delete student.', false);
     } finally {
-      setDeleting(false);
+      setLoading(false);
     }
   };
 
@@ -1037,42 +1027,6 @@ export function Students() {
 
     const displayStats = showCalendar ? currentMonthStats : overallStats;
 
-    // Helper functions for timeline formatting
-    const formatTimeAgo = (dateInput: string | Date | null | undefined): string => {
-      if (!dateInput) return 'some time ago';
-      const date = new Date(dateInput);
-      if (isNaN(date.getTime())) return 'some time ago';
-      const now = new Date();
-      const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-      if (seconds < 60) return 'Just now';
-      const minutes = Math.floor(seconds / 60);
-      if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-      const hours = Math.floor(minutes / 60);
-      if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-      const days = Math.floor(hours / 24);
-      if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
-      const months = Math.floor(days / 30);
-      if (months < 12) return `${months} month${months > 1 ? 's' : ''} ago`;
-      const years = Math.floor(months / 12);
-      return `${years} year${years > 1 ? 's' : ''} ago`;
-    };
-
-    const formatDateTimeParts = (dateInput: string | Date | null | undefined) => {
-      if (!dateInput) return { date: '', time: '' };
-      const date = new Date(dateInput);
-      if (isNaN(date.getTime())) return { date: '', time: '' };
-      const dateStr = date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-      const timeStr = date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true
-      });
-      return { date: dateStr, time: timeStr };
-    };
 
     // Timeline activities processing
     const activities: any[] = [];
@@ -2078,7 +2032,7 @@ export function Students() {
                                 <ArrowRightLeft size={13} />
                               )}
                             </button>
-                            <button onClick={() => setDeleteConfirmId(s.id)} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer" title="Delete Student"><Trash2 size={13} /></button>
+                            <button onClick={() => handleDeleteStudent(s.id)} className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center rounded text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer" title="Delete Student"><Trash2 size={13} /></button>
                           </div>
                         </td>
                       </tr>
@@ -2549,32 +2503,6 @@ export function Students() {
           </form>
         </div>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={!!deleteConfirmId}
-        title="Delete Student"
-        message="Are you sure you want to delete this student? They will be moved to the Recycle Bin."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirmId(null)}
-        isDestructive={true}
-        loading={deleting}
-      />
-
-      {/* Bulk Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={bulkDeleteConfirmOpen}
-        title="Delete Selected Students"
-        message={`Are you sure you want to delete the ${selectedIds.length} selected students? They will be moved to the Recycle Bin.`}
-        confirmText="Delete All"
-        cancelText="Cancel"
-        onConfirm={executeBulkDelete}
-        onCancel={() => setBulkDeleteConfirmOpen(false)}
-        isDestructive={true}
-        loading={loading}
-      />
 
       {importOpen && (
         <ImportModal
@@ -3560,30 +3488,8 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
   const downloadTemplate = (format: 'xlsx' | 'csv') => {
     if (format === 'xlsx') {
       const ws = XLSX.utils.aoa_to_sheet([SAMPLE_HEADERS, ...SAMPLE_ROWS]);
-
-      // Style the header row a bit wider
       ws['!cols'] = SAMPLE_HEADERS.map(() => ({ wch: 20 }));
-
-      // Apply bold, yellow background, and borders to the first row (headers)
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
-        if (!ws[cellRef]) continue;
-        ws[cellRef].s = {
-          font: { bold: true },
-          fill: { fgColor: { rgb: "FFFF00" } }, // Yellow highlight
-          border: {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } }
-          }
-        };
-      }
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Students');
-      XLSX.writeFile(wb, 'KTS_Student_Import_Template.xlsx');
+      downloadSheet(ws, 'Students', 'KTS_Student_Import_Template.xlsx');
     } else {
       // CSV
       const csvLines = [
@@ -3789,7 +3695,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
 
               {/* Responsive table for inline editing */}
               <div className="overflow-x-auto border border-[var(--b)] rounded-xl max-h-[400px]">
-                <table className="w-full border-collapse text-[11.5px] min-w-[1100px]">
+                <table className="w-full border-collapse text-[11.5px] min-w-[2800px]">
                   <thead>
                     <tr className="bg-[var(--surf2)] border-b border-[var(--b)] sticky top-0 z-10 text-[var(--tx3)]">
                       <th className="px-3 py-2 text-left font-medium w-[50px]">Status</th>
@@ -3799,11 +3705,24 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                       <th className="px-2 py-2 text-left font-medium w-[90px]">Section *</th>
                       <th className="px-2 py-2 text-left font-medium w-[100px]">Gender *</th>
                       <th className="px-2 py-2 text-left font-medium w-[130px]">DOB *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Admission Date</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Parent Name *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mobile *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Aadhar</th>
-                      <th className="px-2 py-2 text-left font-medium">Address</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Number *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Date *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[140px]">Student PEN *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[140px]">Aadhar *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[140px]">Father Name *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Father Mobile *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">Father Occ *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[140px]">Mother Name *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Mobile *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">Mother Occ *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[180px]">Address *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Tongue *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Nationality *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">State *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Religion *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[100px]">Caste *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[100px]">Sub Caste *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[100px]">TC Number</th>
                       <th className="px-2 py-2 text-center font-medium w-[50px]">Action</th>
                     </tr>
                   </thead>
@@ -3880,39 +3799,130 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                           </td>
                           <td className="px-1 py-1.5">
                             <input
+                              value={s.enrollment_number || ''}
+                              onChange={(e) => updateStudentField(s.id, 'enrollment_number', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.enrollment_number ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
                               type="date"
                               value={s.admissionDate}
                               onChange={(e) => updateStudentField(s.id, 'admissionDate', e.target.value)}
-                              className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded px-1 py-1 text-[11px] outline-none"
+                              className={`w-full bg-[var(--surf2)] border ${!s.admissionDate ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-1 py-1 text-[11px] outline-none`}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
-                              value={s.parent}
-                              onChange={(e) => updateStudentField(s.id, 'parent', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${s.parent === 'N/A' || !s.parent ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.phone}
-                              onChange={(e) => updateStudentField(s.id, 'phone', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${s.phone === 'N/A' || !s.phone ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              value={s.student_pen_no || ''}
+                              onChange={(e) => updateStudentField(s.id, 'student_pen_no', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.student_pen_no ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.aadhar_number || ''}
                               onChange={(e) => updateStudentField(s.id, 'aadhar_number', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${s.aadhar_number && s.aadhar_number.replace(/\D/g, '').length !== 12 ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={`w-full bg-[var(--surf2)] border ${!s.aadhar_number || s.aadhar_number.replace(/\D/g, '').length !== 12 ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
                               placeholder="12-digit"
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
-                              value={s.address}
+                              value={s.parent || ''}
+                              onChange={(e) => updateStudentField(s.id, 'parent', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.parent || s.parent === 'N/A' ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.father_mobile || ''}
+                              onChange={(e) => updateStudentField(s.id, 'father_mobile', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.father_mobile ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.father_occupation || ''}
+                              onChange={(e) => updateStudentField(s.id, 'father_occupation', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.father_occupation ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.mother_name || ''}
+                              onChange={(e) => updateStudentField(s.id, 'mother_name', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.mother_name ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.mother_mobile || ''}
+                              onChange={(e) => updateStudentField(s.id, 'mother_mobile', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.mother_mobile ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.mother_occupation || ''}
+                              onChange={(e) => updateStudentField(s.id, 'mother_occupation', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.mother_occupation ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.address || ''}
                               onChange={(e) => updateStudentField(s.id, 'address', e.target.value)}
-                              className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded px-2 py-1 text-[11.5px] outline-none"
+                              className={`w-full bg-[var(--surf2)] border ${!s.address ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.mother_tongue || ''}
+                              onChange={(e) => updateStudentField(s.id, 'mother_tongue', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.mother_tongue ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.nationality || ''}
+                              onChange={(e) => updateStudentField(s.id, 'nationality', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.nationality ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.state || ''}
+                              onChange={(e) => updateStudentField(s.id, 'state', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.state ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.religion || ''}
+                              onChange={(e) => updateStudentField(s.id, 'religion', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.religion ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.caste || ''}
+                              onChange={(e) => updateStudentField(s.id, 'caste', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.caste ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.sub_caste || ''}
+                              onChange={(e) => updateStudentField(s.id, 'sub_caste', e.target.value)}
+                              className={`w-full bg-[var(--surf2)] border ${!s.sub_caste ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                            />
+                          </td>
+                          <td className="px-1 py-1.5">
+                            <input
+                              value={s.tc_no || ''}
+                              onChange={(e) => updateStudentField(s.id, 'tc_no', e.target.value)}
+                              className="w-full bg-[var(--surf2)] border border-[var(--b)] focus:border-[var(--blue)] rounded px-2 py-1 text-[11.5px] outline-none"
                             />
                           </td>
                           <td className="px-1 py-1.5 text-center">

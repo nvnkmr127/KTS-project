@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { useApp, TIMETABLE_DAYS } from '../context/AppContext';
 import { Card, CardHeader } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
 
 const notices = [
   { title: 'Staff Meeting on Friday', time: '2 hours ago', type: 'info' as const },
@@ -46,6 +48,44 @@ export function TeacherDashboard() {
   const { user } = useAuth();
   const { timetable, leaveRequests, notifications, periodTimings } = useApp();
 
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadAttendance() {
+      try {
+        const settingsRes = await api.getResources('settings', { key: 'kts_student_attendance_records' });
+        if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
+          const parsed = JSON.parse(settingsRes[0].value);
+          setAttendanceRecords(parsed);
+          (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
+        } else {
+          const local = localStorage.getItem('kts_student_attendance_records');
+          if (local) setAttendanceRecords(JSON.parse(local));
+        }
+      } catch (e) {
+        console.error('Failed to load attendance records in Teacher Dashboard', e);
+      }
+    }
+    loadAttendance();
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'kts_student_attendance_records' && e.newValue) {
+        try { setAttendanceRecords(JSON.parse(e.newValue)); } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const getLocalDateString = () => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = getLocalDateString();
   const today = getTodayDayName();
   const currentPeriod = getCurrentPeriodIndex();
 
@@ -84,6 +124,28 @@ export function TeacherDashboard() {
   const completed = todayClasses.filter((c) => c.status === 'Completed').length;
   const total = todayClasses.length;
 
+  const lunchIdx = periodTimings.findIndex(t => t.isBreak && t.label?.toLowerCase().includes('lunch'));
+  const firstPeriodAfterLunchIdx = periodTimings.findIndex((t, i) => i > lunchIdx && !t.isBreak);
+
+  let classesToMarkAttendance = 0;
+  let classesMarkedAttendance = 0;
+
+  todayClasses.forEach(cls => {
+    // Only check if they are the teacher for the first period or the first period after lunch
+    if (cls.periodIndex === 0 || cls.periodIndex === firstPeriodAfterLunchIdx) {
+      classesToMarkAttendance++;
+      const sessionName = cls.periodIndex === 0 ? 'first_period' : 'lunch_period';
+      const isMarked = attendanceRecords.some(r => 
+        r.date === todayStr && 
+        r.session === sessionName && 
+        r.className.toLowerCase() === cls.class.toLowerCase()
+      );
+      if (isMarked) classesMarkedAttendance++;
+    }
+  });
+
+  const attendancePending = classesToMarkAttendance - classesMarkedAttendance;
+
   const myLeaves = leaveRequests.filter((l) => l.staffId === user?.id);
   const myNotifications = notifications.filter(
     (n) => n.type === 'leave_approved' || n.type === 'leave_rejected'
@@ -106,7 +168,7 @@ export function TeacherDashboard() {
               <Clock size={11} /> {completed}/{total} classes today
             </span>
             <span className="flex items-center gap-1 bg-white/20 px-2.5 py-1 rounded-full">
-              <CalendarCheck size={11} /> Attendance pending: {Math.max(0, total - completed - 1)}
+              <CalendarCheck size={11} /> Attendance pending: {attendancePending}
             </span>
             {unreadLeaveNotifs > 0 && (
               <span className="flex items-center gap-1 bg-white/20 px-2.5 py-1 rounded-full">
@@ -125,7 +187,7 @@ export function TeacherDashboard() {
         </div>
         <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-3">
           <div className="text-[10.5px] text-[var(--tx3)] mb-1">Attendance Status</div>
-          <div className="text-[20px] font-semibold text-[var(--tx)]">3/4</div>
+          <div className="text-[20px] font-semibold text-[var(--tx)]">{classesMarkedAttendance}/{classesToMarkAttendance}</div>
           <div className="text-[10.5px] text-[var(--tx3)] mt-1">Classes marked today</div>
         </div>
         <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-3">

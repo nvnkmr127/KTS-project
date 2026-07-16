@@ -70,6 +70,98 @@ class GenericApiController extends Controller
     }
 
     /**
+     * Resources non-admin (teacher/faculty) users may write to.
+     * Everything else requires an admin role. Leaves and settings are
+     * further scoped in authorizeWrite().
+     */
+    private const TEACHER_WRITABLE_RESOURCES = [
+        'homework', 'daily-diaries', 'leaves', 'settings',
+        'students', 'batches', 'timetable', 'alumni',
+    ];
+
+    /**
+     * Settings keys teachers may write (feature data they legitimately own).
+     * Admin-only keys (staff_salaries, kts_staff_members, school_*, ...) are
+     * implicitly denied for non-admins.
+     */
+    private const TEACHER_WRITABLE_SETTINGS = [
+        'kts_student_attendance_records',
+        'kts_student_marks',
+        'examinations_exams',
+        'examinations_schedules',
+        'kts_exam_invigilations',
+        'kts_daily_diaries',
+    ];
+
+    private function isAdmin($user): bool
+    {
+        return $user && ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin'));
+    }
+
+    /**
+     * Authorize a write (store/update/destroy). Returns an error response to
+     * short-circuit with, or null when the write may proceed. For leave
+     * requests by non-admins this also forces ownership and strips
+     * admin-only fields from the request.
+     */
+    private function authorizeWrite(Request $request, $resource, $item = null)
+    {
+        $user = auth('sanctum')->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+        if ($this->isAdmin($user)) {
+            return null;
+        }
+        if (!in_array(strtolower($resource), self::TEACHER_WRITABLE_RESOURCES)) {
+            return response()->json(['error' => 'You are not authorized to modify this resource'], 403);
+        }
+        if ($resource === 'settings') {
+            $key = $item->key ?? $request->input('key');
+            if (!in_array($key, self::TEACHER_WRITABLE_SETTINGS)) {
+                return response()->json(['error' => 'You are not authorized to modify this setting'], 403);
+            }
+        }
+        if ($resource === 'leaves') {
+            if ($item && (int) $item->user_id !== (int) $user->id) {
+                return response()->json(['error' => 'You may only modify your own leave requests'], 403);
+            }
+            // Teachers always file leaves as themselves and cannot self-approve.
+            $request->merge(['user_id' => $user->id]);
+            if ($item === null) {
+                $request->merge(['status' => 'Pending']);
+            } else {
+                $request->request->remove('status');
+                $request->request->remove('admin_notes');
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Non-admins may only see their own entry inside the staff_salaries blob.
+     */
+    private function filterSettingForNonAdmin($setting, $user): void
+    {
+        if (!$setting || $setting->key !== 'staff_salaries' || $this->isAdmin($user)) {
+            return;
+        }
+        $all = json_decode($setting->value ?? '', true);
+        if (!is_array($all)) {
+            $setting->value = '{}';
+            return;
+        }
+        $norm = fn ($s) => preg_replace('/[^a-z]/', '', strtolower((string) $s));
+        $own = [];
+        foreach ($all as $k => $v) {
+            if ((string) $k === (string) $user->id || ($user->name && $norm($k) === $norm($user->name))) {
+                $own[$k] = $v;
+            }
+        }
+        $setting->value = json_encode($own, JSON_FORCE_OBJECT);
+    }
+
+    /**
      * Parse batch name to extract class number and section letter.
      */
     private function parseBatchName($batchName): array
@@ -115,6 +207,14 @@ class GenericApiController extends Controller
         // Intercept settings request to dynamically map from individual tables
         if ($resource === 'settings') {
             $key = $request->query('key');
+            if ($key === 'staff_salaries') {
+                $setting = \App\Models\Setting::where('key', 'staff_salaries')->first();
+                if (!$setting) {
+                    return response()->json([]);
+                }
+                $this->filterSettingForNonAdmin($setting, auth('sanctum')->user());
+                return response()->json([$setting]);
+            }
             if ($key) {
                 $constructedValue = $this->constructSettingFromTables($key);
                 if ($constructedValue !== null) {
@@ -132,12 +232,14 @@ class GenericApiController extends Controller
                     return response()->json([$setting]);
                 }
             } else {
+                $user = auth('sanctum')->user();
                 $settings = $query->get();
                 foreach ($settings as $setting) {
                     $constructedValue = $this->constructSettingFromTables($setting->key);
                     if ($constructedValue !== null) {
                         $setting->value = $constructedValue;
                     }
+                    $this->filterSettingForNonAdmin($setting, $user);
                 }
                 return response()->json($settings);
             }
@@ -521,6 +623,7 @@ class GenericApiController extends Controller
             if ($constructedValue !== null) {
                 $item->value = $constructedValue;
             }
+            $this->filterSettingForNonAdmin($item, auth('sanctum')->user());
         }
 
         return response()->json($item);
@@ -534,6 +637,10 @@ class GenericApiController extends Controller
         $modelClass = $this->getModelClass($resource);
         if (!$modelClass) {
             return response()->json(['error' => 'Resource not found'], 404);
+        }
+
+        if ($denied = $this->authorizeWrite($request, $resource)) {
+            return $denied;
         }
 
         $data = $request->all();
@@ -974,6 +1081,10 @@ class GenericApiController extends Controller
             return response()->json(['error' => 'Resource ' . $resource . ' not found'], 404);
         }
 
+        if ($denied = $this->authorizeWrite($request, $resource)) {
+            return $denied;
+        }
+
         $records = $request->input('records', []);
         if (!is_array($records)) {
             return response()->json(['error' => 'Expected records array'], 400);
@@ -1104,6 +1215,10 @@ class GenericApiController extends Controller
         $item = $modelClass::find($id);
         if (!$item) {
             return response()->json(['error' => 'Item not found'], 404);
+        }
+
+        if ($denied = $this->authorizeWrite($request, $resource, $item)) {
+            return $denied;
         }
 
         $data = $request->all();
@@ -1254,7 +1369,7 @@ class GenericApiController extends Controller
     /**
      * Delete resource.
      */
-    public function destroy($resource, $id)
+    public function destroy(Request $request, $resource, $id)
     {
         $modelClass = $this->getModelClass($resource);
         if (!$modelClass) {
@@ -1264,6 +1379,10 @@ class GenericApiController extends Controller
         $item = $modelClass::find($id);
         if (!$item) {
             return response()->json(['error' => 'Item not found'], 404);
+        }
+
+        if ($denied = $this->authorizeWrite($request, $resource, $item)) {
+            return $denied;
         }
 
         if ($resource === 'batches') {
@@ -1286,6 +1405,10 @@ class GenericApiController extends Controller
             $data = json_decode($valueStr, true);
             if (!is_array($data)) return;
 
+            // All-or-nothing: a failure mid-sync must never leave a table
+            // emptied by a delete without its matching re-insert.
+            \Illuminate\Support\Facades\DB::transaction(function () use ($key, $data) {
+
             // ── 1. HOLIDAYS Sync ───────────────────────────────────────────
             if ($key === 'kts_holidays') {
                 \App\Models\Holiday::query()->delete();
@@ -1300,29 +1423,34 @@ class GenericApiController extends Controller
             }
 
             // ── 2. ATTENDANCE Sync ─────────────────────────────────────────
+            // Upsert per (student, date) instead of wiping the whole table:
+            // two teachers saving different classes concurrently no longer
+            // erase each other's records. Unresolvable students are skipped
+            // and logged — never attached to a wrong student.
+            // ponytail: record deletions in the client blob do not propagate; add
+            // tombstone handling if per-record deletion becomes a real workflow.
             if ($key === 'kts_student_attendance_records') {
-                \App\Models\Attendance::query()->delete();
-                
-                $academicYear = \App\Models\AcademicYear::where('is_current', true)->first() 
+                $academicYear = \App\Models\AcademicYear::where('is_current', true)->first()
                     ?? \App\Models\AcademicYear::first();
                 $academicYearId = $academicYear ? $academicYear->id : null;
 
                 $batchesCache = \App\Models\Batch::pluck('id', 'name')->toArray();
-                $studentsCache = \App\Models\Student::pluck('id', 'name')->toArray();
+                $studentsByName = \App\Models\Student::pluck('id', 'name')->toArray();
+                $studentIds = \App\Models\Student::pluck('id')->flip()->toArray();
 
                 foreach ($data as $item) {
                     if (!isset($item['studentName']) || !isset($item['date'])) continue;
 
                     $studentId = null;
-                    if (isset($item['studentId']) && is_numeric($item['studentId'])) {
+                    if (isset($item['studentId']) && is_numeric($item['studentId']) && isset($studentIds[intval($item['studentId'])])) {
                         $studentId = intval($item['studentId']);
                     }
-                    if (!$studentId || !\App\Models\Student::where('id', $studentId)->exists()) {
-                        $studentId = $studentsCache[$item['studentName']] ?? null;
+                    if (!$studentId) {
+                        $studentId = $studentsByName[$item['studentName']] ?? null;
                     }
                     if (!$studentId) {
-                        $firstStudent = \App\Models\Student::first();
-                        $studentId = $firstStudent ? $firstStudent->id : 1;
+                        \Log::warning('Attendance sync: skipping record for unknown student "' . $item['studentName'] . '" on ' . $item['date']);
+                        continue;
                     }
 
                     $batchId = null;
@@ -1341,22 +1469,23 @@ class GenericApiController extends Controller
                         }
                     }
                     if (!$batchId) {
-                        $firstBatch = \App\Models\Batch::first();
-                        $batchId = $firstBatch ? $firstBatch->id : 1;
+                        \Log::warning('Attendance sync: skipping record with no class for student ID ' . $studentId . ' on ' . $item['date']);
+                        continue;
                     }
 
-                    $status = in_array(strtolower($item['status'] ?? ''), ['present', 'absent', 'late', 'excused']) 
-                        ? strtolower($item['status']) 
+                    $status = in_array(strtolower($item['status'] ?? ''), ['present', 'absent', 'late', 'excused'])
+                        ? strtolower($item['status'])
                         : 'present';
-                    $markedBy = isset($item['markedById']) && is_numeric($item['markedById']) 
-                        ? intval($item['markedById']) 
+                    $markedBy = isset($item['markedById']) && is_numeric($item['markedById'])
+                        ? intval($item['markedById'])
                         : 1;
 
-                    \App\Models\Attendance::create([
+                    \App\Models\Attendance::updateOrCreate([
                         'student_id' => $studentId,
+                        'attendance_date' => $item['date'],
+                    ], [
                         'batch_id' => $batchId,
                         'status' => $status,
-                        'attendance_date' => $item['date'],
                         'marked_by' => $markedBy,
                         'marked_at' => $item['markedAt'] ?? now(),
                         'academic_year_id' => $academicYearId,
@@ -1382,15 +1511,17 @@ class GenericApiController extends Controller
                 }
             }
 
+            // Upsert per (exam, student) so two teachers entering marks for
+            // different exams concurrently cannot erase each other's rows.
             if ($key === 'kts_student_marks') {
-                \App\Models\Mark::query()->delete();
                 foreach ($data as $examId => $results) {
                     if (!is_array($results)) continue;
                     foreach ($results as $item) {
                         if (isset($item['name'])) {
-                            \App\Models\Mark::create([
+                            \App\Models\Mark::updateOrCreate([
                                 'exam_id' => intval($examId),
                                 'student_name' => $item['name'],
+                            ], [
                                 'roll' => $item['roll'] ?? null,
                                 'maths' => intval($item['maths'] ?? 0),
                                 'science' => intval($item['science'] ?? 0),
@@ -1432,6 +1563,8 @@ class GenericApiController extends Controller
                     }
                 }
             }
+
+            }); // end transaction
 
         } catch (\Exception $e) {
             \Log::error('Settings sync to tables failed for key ' . $key . ': ' . $e->getMessage());

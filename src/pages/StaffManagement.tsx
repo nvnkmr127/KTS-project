@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Plus, Upload, X, FileText, CheckCircle2, Download, Printer, Trash2 } from 'lucide-react';
+import { Plus, Upload, X, FileText, CheckCircle2, Download, Trash2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { StaffFilters } from '../components/Staff/StaffFilters';
@@ -12,8 +12,9 @@ import { StaffPayslipModal } from '../components/Staff/StaffPayslipModal';
 
 import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
-import { ConfirmDialog } from '../components/ConfirmDialog';
 import * as XLSX from 'xlsx-js-style';
+import { downloadSheet } from '../utils/excel';
+import { scanDateTimeToParts } from '../utils/date';
 
 export interface StaffMember {
   id: string;
@@ -35,6 +36,17 @@ export interface StaffMember {
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const STAFF: StaffMember[] = [];
+
+const MOCK_STAFF_EMAILS = new Set([
+  'teacher@krishnaveni.edu',
+  'prasad@krishnaveni.edu',
+  'anitha@krishnaveni.edu',
+  'suresh@krishnaveni.edu',
+  'javvajimadhuteja2000@gmail.com',
+  'pavan@gmail.com',
+]);
+// eslint-disable-next-line react-refresh/only-export-components
+export const isRealStaff = (s: any) => Boolean(s) && !MOCK_STAFF_EMAILS.has(s.email);
 
   // eslint-disable-next-line unused-imports/no-unused-vars
 const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
@@ -58,7 +70,7 @@ export function StaffManagement() {
       if (saved) {
         const arr = JSON.parse(saved);
         if (Array.isArray(arr)) {
-          return arr.filter((s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com');
+          return arr.filter(isRealStaff);
         }
       }
     } catch { /* empty */ }
@@ -72,9 +84,7 @@ export function StaffManagement() {
       if (savedStaffStr) {
         const parsed = JSON.parse(savedStaffStr);
         if (Array.isArray(parsed)) {
-          const filtered = parsed.filter(
-            (s: any) => s && s.email !== 'teacher@krishnaveni.edu' && s.email !== 'prasad@krishnaveni.edu' && s.email !== 'anitha@krishnaveni.edu' && s.email !== 'suresh@krishnaveni.edu' && s.email !== 'javvajimadhuteja2000@gmail.com' && s.email !== 'pavan@gmail.com'
-          );
+          const filtered = parsed.filter(isRealStaff);
           if (filtered.length !== parsed.length) {
             localStorage.setItem('kts_staff_members', JSON.stringify(filtered));
           }
@@ -122,9 +132,6 @@ export function StaffManagement() {
   const [sortField, setSortField] = useState<'name' | 'department' | 'join_date' | 'attendance_percentage' | 'status' | ''>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
-  const [bulkStatusConfirmOpen, setBulkStatusConfirmOpen] = useState<'Active' | 'On Leave' | 'Resigned' | null>(null);
   const [loading] = useState(false);
   // eslint-disable-next-line unused-imports/no-unused-vars
   const [error] = useState<string | null>(null);
@@ -138,42 +145,31 @@ export function StaffManagement() {
     }
   };
 
-  const handleBulkStatusChange = (newStatus: 'Active' | 'On Leave' | 'Resigned') => {
+  const handleBulkStatusChange = async (newStatus: 'Active' | 'On Leave' | 'Resigned') => {
     if (selectedIds.length === 0) return;
     if (newStatus === 'Resigned') {
-      setBulkDeleteConfirmOpen(true);
-    } else {
-      setBulkStatusConfirmOpen(newStatus);
+      await handleBulkDelete();
+      return;
+    }
+    if (!(await confirm(`Are you sure you want to change the status of the ${selectedIds.length} selected staff members to ${newStatus}?`, 'Update Selected Staff Status'))) return;
+    try {
+      await Promise.all(selectedIds.map(id => api.updateResource('faculty', id, { status: newStatus })));
+      setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: newStatus } : s));
+      setSelectedIds([]);
+    } catch (err) {
+      console.error('Bulk status update failed', err);
     }
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
-    setBulkDeleteConfirmOpen(true);
-  };
-
-  const executeBulkDelete = async () => {
+    if (!(await confirm(`Are you sure you want to move the ${selectedIds.length} selected staff members to the recycle bin? You can restore them later.`, 'Move Selected Staff Members to Recycle Bin', true))) return;
     try {
-      // In a real app, you'd have a bulk delete endpoint or map promises.
-      // For now, we update local state assuming it works, or map API calls:
       await Promise.all(selectedIds.map(id => api.deleteResource('faculty', id)));
       setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: 'Resigned' } : s));
       setSelectedIds([]);
-      setBulkDeleteConfirmOpen(false);
     } catch (err) {
       console.error('Bulk delete failed', err);
-    }
-  };
-
-  const executeBulkStatusChange = async () => {
-    if (!bulkStatusConfirmOpen) return;
-    try {
-      await Promise.all(selectedIds.map(id => api.updateResource('faculty', id, { status: bulkStatusConfirmOpen })));
-      setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: bulkStatusConfirmOpen } : s));
-      setSelectedIds([]);
-      setBulkStatusConfirmOpen(null);
-    } catch (err) {
-      console.error('Bulk status update failed', err);
     }
   };
 
@@ -198,28 +194,7 @@ export function StaffManagement() {
       'Status': s.status
     }));
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-
-    // Apply bold, yellow background, and borders to the first row (headers)
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
-      if (!ws[cellRef]) continue;
-      ws[cellRef].s = {
-        font: { bold: true },
-        fill: { fgColor: { rgb: "FFFF00" } },
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } }
-        }
-      };
-    }
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Staff Directory');
-    XLSX.writeFile(wb, 'KTS_Staff_Directory.xlsx');
+    downloadSheet(XLSX.utils.json_to_sheet(dataToExport), 'Staff Directory', 'KTS_Staff_Directory.xlsx');
   };
 
   const [selectedCategory, setSelectedCategory] = useState('Teaching');
@@ -338,16 +313,14 @@ export function StaffManagement() {
             const mappedPunches: any[] = [];
             logs.forEach((l: any) => {
               let date = '';
+              let scanTime: string | undefined;
               if (l.scan_datetime) {
-                date = l.scan_datetime.includes('T') ? l.scan_datetime.split('T')[0] : l.scan_datetime.split(' ')[0];
+                const parts = scanDateTimeToParts(l.scan_datetime);
+                date = parts.date;
+                scanTime = parts.time;
               }
               if (!date) return;
 
-              let scanTime: string | undefined;
-              if (l.scan_datetime) {
-                const timeStr = l.scan_datetime.includes('T') ? l.scan_datetime.split('T')[1] : l.scan_datetime.split(' ')[1];
-                scanTime = timeStr ? timeStr.slice(0, 5) : l.scan_datetime.slice(11, 16);
-              }
               const scanType = String(l.scan_type || '').toLowerCase();
 
               const inTime = l.raw_data?.in_time || l.raw_data?.INTime || (scanType === 'in' ? scanTime : undefined);
@@ -370,9 +343,9 @@ export function StaffManagement() {
               }
 
               if (!inTime && !outTime && l.scan_datetime) {
-                const cleanTimestamp = l.scan_datetime.includes('T')
+                const cleanTimestamp = (scanTime && date) ? `${date} ${scanTime}:00` : (l.scan_datetime.includes('T')
                   ? l.scan_datetime.replace('T', ' ').split('.')[0].slice(0, 19)
-                  : l.scan_datetime;
+                  : l.scan_datetime);
                 mappedPunches.push({
                   id: `bio-${l.id}-${date}`,
                   staffId: currentStaff.id,
@@ -800,16 +773,11 @@ export function StaffManagement() {
     setModal(null);
   };
 
-  const handleDelete = (id: string) => {
-    setDeleteConfirmId(id);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteConfirmId) return;
+  const handleDelete = async (id: string) => {
+    if (!(await confirm('Are you sure you want to move this staff member to the recycle bin? You can restore them later.', 'Move Staff Member to Recycle Bin', true))) return;
     try {
-      await api.deleteResource('faculty', deleteConfirmId);
-      setStaffList(prev => prev.map(s => s.id === deleteConfirmId ? { ...s, status: 'Resigned' as const } : s));
-      setDeleteConfirmId(null);
+      await api.deleteResource('faculty', id);
+      setStaffList(prev => prev.map(s => s.id === id ? { ...s, status: 'Resigned' as const } : s));
     } catch (err) {
       console.error('Failed to delete staff', err);
     }
@@ -1185,41 +1153,6 @@ export function StaffManagement() {
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={!!deleteConfirmId}
-        title="Move Staff Member to Recycle Bin"
-        message="Are you sure you want to move this staff member to the recycle bin? You can restore them later."
-        confirmText="Confirm"
-        cancelText="Cancel"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirmId(null)}
-        isDestructive={true}
-      />
-
-      {/* Bulk Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={bulkDeleteConfirmOpen}
-        title="Move Selected Staff Members to Recycle Bin"
-        message={`Are you sure you want to move the ${selectedIds.length} selected staff members to the recycle bin? You can restore them later.`}
-        confirmText="Confirm"
-        cancelText="Cancel"
-        onConfirm={executeBulkDelete}
-        onCancel={() => setBulkDeleteConfirmOpen(false)}
-        isDestructive={true}
-      />
-
-      {/* Bulk Status Update Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={!!bulkStatusConfirmOpen}
-        title="Update Selected Staff Status"
-        message={`Are you sure you want to change the status of the ${selectedIds.length} selected staff members to ${bulkStatusConfirmOpen}?`}
-        confirmText="Confirm"
-        cancelText="Cancel"
-        onConfirm={executeBulkStatusChange}
-        onCancel={() => setBulkStatusConfirmOpen(null)}
-        isDestructive={false}
-      />
     </div>
   );
 }

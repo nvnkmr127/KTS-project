@@ -63,17 +63,3 @@ export interface Staff {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
-
-export interface ApiResponse<T = unknown> {
-  success?: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data?: T;
-  message?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any;
-}
-
-export interface SelectOption {
-  value: string | number;
-  label: string;
-}

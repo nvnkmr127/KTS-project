@@ -13,6 +13,7 @@ import { formatDate } from '../utils/date';
 import { StaffMember, STAFF } from './StaffManagement';
 import { useDialog } from '../context/DialogContext';
 import * as XLSX from 'xlsx-js-style';
+import { downloadSheet } from '../utils/excel';
 
 
 export interface Invigilation {
@@ -533,28 +534,7 @@ export function Examinations() {
       'Max Marks': e.maxMarks,
       'Status': e.status
     }));
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-
-    // Apply bold, yellow background, and borders to the first row (headers)
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
-      if (!ws[cellRef]) continue;
-      ws[cellRef].s = {
-        font: { bold: true },
-        fill: { fgColor: { rgb: "FFFF00" } },
-        border: {
-          top: { style: "thin", color: { rgb: "000000" } },
-          bottom: { style: "thin", color: { rgb: "000000" } },
-          left: { style: "thin", color: { rgb: "000000" } },
-          right: { style: "thin", color: { rgb: "000000" } }
-        }
-      };
-    }
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Exams');
-    XLSX.writeFile(wb, 'KTS_Exam_Schedules.xlsx');
+    downloadSheet(XLSX.utils.json_to_sheet(dataToExport), 'Exams', 'KTS_Exam_Schedules.xlsx');
   };
 
   const handleImportExamsExcel = async (evt: React.ChangeEvent<HTMLInputElement>) => {

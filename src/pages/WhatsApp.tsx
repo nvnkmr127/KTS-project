@@ -15,13 +15,8 @@ const TEMPLATES = [
   { id: '6', name: 'Emergency Alert', category: 'Emergency', content: '🚨 URGENT: {{message}}. Please take immediate action. Contact school: 9876543210. — Krishnaveni Talent School', usage: 5 },
 ];
 
-const RECENT_LOGS = [
-  { id: '1', type: 'Fee Reminder', recipients: 18, delivered: 17, failed: 1, time: '8:00 AM', date: '2026-06-05', status: 'Sent' as const },
-  { id: '2', type: 'Absent Alert', recipients: 26, delivered: 26, failed: 0, time: '9:15 AM', date: '2026-06-05', status: 'Sent' as const },
-  { id: '3', type: 'Daily Diary', recipients: 847, delivered: 839, failed: 8, time: '9:45 AM', date: '2026-06-05', status: 'Sent' as const },
-  { id: '4', type: 'Bus Alert — Route 1', recipients: 24, delivered: 24, failed: 0, time: '7:48 AM', date: '2026-06-05', status: 'Sent' as const },
-  { id: '5', type: 'Birthday Wish', recipients: 2, delivered: 2, failed: 0, time: '7:00 AM', date: '2026-06-05', status: 'Sent' as const },
-];
+// Populated once the WhatsApp Business API integration is connected.
+const RECENT_LOGS: { id: string; type: string; recipients: number; delivered: number; failed: number; time: string; date: string; status: 'Sent' }[] = [];
 
 const CATEGORY_VARIANT: Record<string, 'blue' | 'amber' | 'teal' | 'purple' | 'green' | 'red' | 'coral'> = {
   Fee: 'amber', Attendance: 'blue', Events: 'teal', Meeting: 'purple', Notice: 'green', Emergency: 'red',
@@ -33,12 +28,21 @@ export function WhatsApp() {
 
   const totalSent = RECENT_LOGS.reduce((s, l) => s + l.delivered, 0);
   const totalFailed = RECENT_LOGS.reduce((s, l) => s + l.failed, 0);
+  const totalMessages = totalSent + totalFailed;
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
+      <div className="flex items-start gap-2.5 p-3.5 mb-3 bg-[var(--amber-bg)] border border-[var(--amber-tx)]/25 rounded-xl">
+        <AlertCircle size={15} className="text-[var(--amber-tx)] mt-0.5 flex-shrink-0" />
+        <div className="text-[12px] text-[var(--amber-tx)]">
+          <span className="font-semibold">WhatsApp integration is not connected yet.</span>{' '}
+          Templates below are ready to use once a WhatsApp Business API account is linked. Contact your service provider to enable sending.
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
-        <KPICard label="Messages Today" value={totalSent + totalFailed} sub="All channels" icon={<MessageCircle size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
-        <KPICard label="Delivered" value={totalSent} sub={`${Math.round((totalSent / (totalSent + totalFailed)) * 100)}% delivery rate`} icon={<CheckCircle2 size={15} />} iconBg="var(--green-bg)" iconColor="var(--green-tx)" />
+        <KPICard label="Messages Today" value={totalMessages} sub="All channels" icon={<MessageCircle size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
+        <KPICard label="Delivered" value={totalSent} sub={totalMessages > 0 ? `${Math.round((totalSent / totalMessages) * 100)}% delivery rate` : 'No messages yet'} icon={<CheckCircle2 size={15} />} iconBg="var(--green-bg)" iconColor="var(--green-tx)" />
         <KPICard label="Failed" value={totalFailed} sub="Retry available" icon={<AlertCircle size={15} />} iconBg="var(--red-bg)" iconColor="var(--red-tx)" />
         <KPICard label="Templates" value={TEMPLATES.length} sub="Ready to use" icon={<Bell size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
       </div>
@@ -52,27 +56,6 @@ export function WhatsApp() {
               <button onClick={() => setShowCompose(true)} className="flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11.5px] bg-[var(--teal)] text-white rounded-lg cursor-pointer hover:opacity-90 w-full sm:w-auto">
                 <Send size={11} /> Compose
               </button>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-              {[
-                { label: 'Fee Due Reminder', icon: '💰', count: '18 parents', color: 'var(--amber-bg)', tx: 'var(--amber-tx)' },
-                { label: 'Absent Alert', icon: '📋', count: '26 students', color: 'var(--blue-bg)', tx: 'var(--blue-tx)' },
-                { label: 'Holiday Notice', icon: '📅', count: 'All parents', color: 'var(--teal-bg)', tx: 'var(--teal-tx)' },
-                { label: 'PTM Invite', icon: '👥', count: 'All parents', color: 'var(--purple-bg)', tx: 'var(--purple-tx)' },
-                { label: 'Emergency Alert', icon: '🚨', count: 'All parents', color: 'var(--red-bg)', tx: 'var(--red-tx)' },
-                { label: 'Birthday Wish', icon: '🎂', count: "2 today", color: 'var(--pink-bg)', tx: 'var(--pink-tx)' },
-              ].map((item) => (
-                <button
-                   key={item.label}
-                   className="p-3 rounded-xl border border-[var(--b)] text-left hover:border-current cursor-pointer transition-all"
-                   style={{ background: item.color }}
-                >
-                  <div className="text-[16px] mb-1.5">{item.icon}</div>
-                  <div className="text-[11.5px] font-semibold" style={{ color: item.tx }}>{item.label}</div>
-                  <div className="text-[10.5px] mt-0.5" style={{ color: item.tx, opacity: 0.7 }}>{item.count}</div>
-                </button>
-              ))}
             </div>
 
             {/* Templates */}
@@ -101,6 +84,11 @@ export function WhatsApp() {
         {/* Recent logs */}
         <Card>
           <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Today's Message Log</div>
+          {RECENT_LOGS.length === 0 && (
+            <div className="text-center py-8 text-[11.5px] text-[var(--tx3)]">
+              No messages sent yet. The log will populate once WhatsApp is connected.
+            </div>
+          )}
           <div className="space-y-2">
             {RECENT_LOGS.map((log) => (
               <div key={log.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl">
@@ -126,14 +114,14 @@ export function WhatsApp() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-[var(--b)]">
-            <div className="text-[12px] font-semibold text-[var(--tx)] mb-2">Auto-Send Schedule</div>
+            <div className="text-[12px] font-semibold text-[var(--tx)] mb-2">Auto-Send Schedule <span className="font-normal text-[var(--tx3)]">(activates with integration)</span></div>
             <div className="space-y-2">
               {[
-                { label: 'Morning absent alerts', time: '8:30 AM', active: true },
-                { label: 'Daily diary', time: '9:30 AM', active: true },
-                { label: 'Fee reminders', time: '10:00 AM', active: true },
-                { label: 'Daily school summary', time: '5:00 PM', active: true },
-                { label: 'Bus arrival alert', time: 'Auto', active: true },
+                { label: 'Morning absent alerts', time: '8:30 AM', active: false },
+                { label: 'Daily diary', time: '9:30 AM', active: false },
+                { label: 'Fee reminders', time: '10:00 AM', active: false },
+                { label: 'Daily school summary', time: '5:00 PM', active: false },
+                { label: 'Bus arrival alert', time: 'Auto', active: false },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -177,9 +165,9 @@ export function WhatsApp() {
               </div>
             </div>
             <div className="flex gap-2 p-5 pt-0">
-              <button onClick={() => setSelectedTemplate(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
-              <button onClick={() => setSelectedTemplate(null)} className="flex-1 py-2.5 bg-[var(--teal)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer flex items-center justify-center gap-1.5">
-                <Send size={13} /> Send Now
+              <button onClick={() => setSelectedTemplate(null)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Close</button>
+              <button disabled title="Available once WhatsApp is connected" className="flex-1 py-2.5 bg-[var(--teal)] text-white rounded-xl text-[12.5px] font-semibold flex items-center justify-center gap-1.5 opacity-50 cursor-not-allowed">
+                <Send size={13} /> Send (integration pending)
               </button>
             </div>
           </div>
@@ -214,9 +202,9 @@ export function WhatsApp() {
               </div>
             </div>
             <div className="flex gap-2 p-5 pt-0">
-              <button onClick={() => setShowCompose(false)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Cancel</button>
-              <button onClick={() => setShowCompose(false)} className="flex-1 py-2.5 bg-[var(--teal)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer flex items-center justify-center gap-1.5">
-                <Send size={13} /> Send Message
+              <button onClick={() => setShowCompose(false)} className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12.5px] text-[var(--tx)] cursor-pointer">Close</button>
+              <button disabled title="Available once WhatsApp is connected" className="flex-1 py-2.5 bg-[var(--teal)] text-white rounded-xl text-[12.5px] font-semibold flex items-center justify-center gap-1.5 opacity-50 cursor-not-allowed">
+                <Send size={13} /> Send (integration pending)
               </button>
             </div>
           </div>

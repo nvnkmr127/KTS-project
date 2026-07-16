@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
 import { api } from '../services/api';
 import { useDialog } from '../context/DialogContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Database, Cloud, Save, Trash2, Settings2, RefreshCw, 
-  AlertCircle, CheckCircle2, Download, CloudOff, Play, RotateCcw
+  AlertCircle, Download, CloudOff, Play, RotateCcw
 } from 'lucide-react';
-import { config } from '../config';
 
 interface BackupItem {
   file_name: string;

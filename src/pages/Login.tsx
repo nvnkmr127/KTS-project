@@ -2,14 +2,9 @@ import { useState, useEffect } from 'react';
 import { Eye, EyeOff, ShieldCheck, GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
+import { config } from '../config';
 
 type PortalTab = 'admin' | 'teacher';
-
-const DEMO = {
-  admin: { email: 'admin@krishnaveni.edu', password: 'admin123' },
-  teacher: { email: 'teacher@krishnaveni.edu', password: 'teacher123' },
-};
 
 export function Login() {
   const { login, user } = useAuth();
@@ -20,8 +15,10 @@ export function Login() {
   const [schoolLogo, setSchoolLogo] = useState(() => localStorage.getItem('school_logo') || '/KTHS_Logo.png');
 
   useEffect(() => {
-    // Also fetch settings from API just in case cache is empty/invalid
-    api.getResources('settings').then((data) => {
+    // Fetch public branding settings (no auth required pre-login)
+    fetch(`${config.apiUrl}/public-settings`, { headers: { Accept: 'application/json' } })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
       if (Array.isArray(data)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const nameSet = data.find((s: any) => s.key === 'school_name');
@@ -63,12 +60,6 @@ export function Login() {
       navigate('/', { replace: true });
     }
     setLoading(false);
-  };
-
-  const fillDemo = () => {
-    setEmail(DEMO[portal].email);
-    setPassword(DEMO[portal].password);
-    setError('');
   };
 
   return (
@@ -191,7 +182,7 @@ export function Login() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={DEMO[portal].email}
+                placeholder="you@school.edu"
                 required
                 className="w-full bg-[var(--surf)] border border-[var(--b)] rounded-xl px-3.5 py-2.5 text-[13px] text-[var(--tx)] placeholder:text-[var(--tx3)] focus:outline-none focus:border-[var(--blue)] focus:ring-1 focus:ring-[var(--blue)]/20 transition-colors"
                 autoComplete="username"
@@ -237,26 +228,9 @@ export function Login() {
             </button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-5 p-3.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-semibold text-[var(--tx3)] uppercase tracking-wider">Demo credentials</span>
-              <button
-                onClick={fillDemo}
-                className="text-[11px] text-[var(--blue-tx)] hover:underline cursor-pointer font-medium"
-              >
-                Auto-fill
-              </button>
-            </div>
-            <div className="space-y-1">
-              <div className="text-[12px] text-[var(--tx2)]">
-                <span className="text-[var(--tx3)]">Email:</span> {DEMO[portal].email}
-              </div>
-              <div className="text-[12px] text-[var(--tx2)]">
-                <span className="text-[var(--tx3)]">Password:</span> {DEMO[portal].password}
-              </div>
-            </div>
-          </div>
+          <p className="mt-5 text-center text-[11.5px] text-[var(--tx3)]">
+            Forgot your password? Contact the school administrator.
+          </p>
         </div>
       </div>
     </div>

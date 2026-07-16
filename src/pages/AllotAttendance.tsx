@@ -113,14 +113,35 @@ export function AllotAttendance() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ]);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setBatches(batchesData.map((b: any) => ({
-          id: String(b.id),
-          name: b.name,
-          class_teacher_id: b.class_teacher_id || undefined,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          class_teacher_name: b.class_teacher_name || undefined
-        })));
+        const parseBatchName = (name: string) => {
+          const str = name.toUpperCase().trim();
+          const sectionWordMatch = str.match(/^(.*?)\s*(?:SECTION|SEC)\s*([A-Z])$/i);
+          if (sectionWordMatch) return { classId: sectionWordMatch[1].trim(), sectionLetter: sectionWordMatch[2] };
+          const standardMatch = str.match(/^([A-Z0-9-]+)\s*([A-Z])$/i);
+          if (standardMatch) return { classId: standardMatch[1], sectionLetter: standardMatch[2] };
+          const classMatch = str.match(/^(\d+)/) || str.match(/CLASS\s*(\d+)/i);
+          const classId = classMatch ? classMatch[1] : '8';
+          let sectionLetter = 'A';
+          const stdMatch = str.match(/^(\d+)\s*([A-Z])$/i);
+          if (stdMatch) sectionLetter = stdMatch[2];
+          else {
+            const sectionMatch = str.match(/(?:SECTION|SEC)\s*([A-Z])/i) || str.match(/\s+([A-Z])$/i);
+            if (sectionMatch) sectionLetter = sectionMatch[1];
+          }
+          return { classId, sectionLetter };
+        };
+
+        const mappedBatches: Batch[] = [];
+        batchesData.forEach((b: any) => {
+          const { classId, sectionLetter } = parseBatchName(b.name);
+          mappedBatches.push({
+            id: String(b.id),
+            name: `${classId}${sectionLetter}`,
+            class_teacher_id: b.class_teacher_id || undefined,
+            class_teacher_name: b.class_teacher_name || undefined
+          });
+        });
+        setBatches(mappedBatches);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setStudents(studentsData.map((s: any) => ({
