@@ -92,35 +92,47 @@ function authHeaders(): Record<string, string> {
  *   • status    — overall quality of the response
  */
 export async function getAllBusPositions(): Promise<[LiveBusData[], MillitrackStatus]> {
+  const url = `${API_BASE}/bus/positions`;
   try {
-    const res = await fetch(`${API_BASE}/bus/positions`, {
+    const res = await fetch(url, {
       headers: authHeaders(),
     });
 
     if (res.status === 401) {
+      console.warn('[Millitrack] 401 Unauthorized — token may be expired', url);
       return [[], 'unauthorized'];
     }
 
     if (!res.ok) {
+      console.warn(`[Millitrack] HTTP ${res.status} from proxy`, url);
       return [[], 'offline'];
     }
 
     const json = await res.json();
 
     if (!json.success || !Array.isArray(json.data)) {
+      console.warn('[Millitrack] Unexpected response shape', json);
       return [[], 'offline'];
     }
 
     const positions: LiveBusData[] = json.data;
     const anySuccess = positions.some((p) => !p.error);
 
+    if (!anySuccess) {
+      console.warn('[Millitrack] All devices returned errors', positions);
+    } else {
+      console.info(`[Millitrack] Live — ${positions.filter(p => !p.error).length}/${positions.length} buses OK`);
+    }
+
     return [positions, anySuccess ? 'live' : 'offline'];
 
-  } catch {
-    // Network error (e.g. Laravel server is down)
+  } catch (err) {
+    // Network error (e.g. Laravel server is down or CORS blocked)
+    console.error('[Millitrack] Network error fetching positions', url, err);
     return [[], 'offline'];
   }
 }
+
 
 /**
  * Fetch the live position for a single bus plate number.

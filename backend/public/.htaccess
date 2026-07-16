@@ -50,3 +50,12 @@
     RewriteRule ^login$ - [E=cache-control:no-cache]
     RewriteRule ^login$ - [E=no-gzip:1]
 </IfModule>
+
+# ── GPS Bus Tracking: increase execution time so concurrent Millitrack fetches ─
+# can complete without ERR_CONNECTION_CLOSED. The php controller already calls
+# set_time_limit(25), but this ensures the web server won't kill it first.
+<IfModule mod_php.c>
+    <FilesMatch "index\.php$">
+        php_value max_execution_time 30
+    </FilesMatch>
+</IfModule>

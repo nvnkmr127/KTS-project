@@ -12,6 +12,7 @@ class TimeSlot extends Model
     use WebhookEnabled;
 
     protected $fillable = [
+        'id',
         'start_time',
         'end_time',
     ];

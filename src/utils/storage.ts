@@ -56,7 +56,7 @@ async function syncSettingToDb(key: string, value: string) {
     }
 
     if (settingId) {
-      await fetch(`${config.apiUrl}/resources/settings/${settingId}`, {
+      const putRes = await fetch(`${config.apiUrl}/resources/settings/${settingId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -65,7 +65,19 @@ async function syncSettingToDb(key: string, value: string) {
         },
         body: JSON.stringify({ key, value })
       });
-    } else {
+
+      // If the cached ID no longer exists (404), clear stale cache and create fresh
+      if (putRes.status === 404) {
+        delete settingsCache[key];
+        settingId = undefined as unknown as string;
+        // fall through to POST below
+      } else {
+        return; // success or other error — don't create a duplicate
+      }
+    }
+
+    // No existing record found (or stale 404) — create new
+    if (!settingId) {
       const createRes = await fetch(`${config.apiUrl}/resources/settings`, {
         method: 'POST',
         headers: {
@@ -121,19 +133,25 @@ async function deleteSettingFromDb(key: string) {
     }
 
     if (settingId) {
-      await fetch(`${config.apiUrl}/resources/settings/${settingId}`, {
+      const delRes = await fetch(`${config.apiUrl}/resources/settings/${settingId}`, {
         method: 'DELETE',
         headers: {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         }
       });
+      // Always clear local cache regardless of response
       delete settingsCache[key];
+      if (delRes.status === 404) {
+        // Already gone on server — nothing more to do
+        return;
+      }
     }
   } catch (err) {
     console.warn(`Failed to delete setting ${key} from DB:`, err);
   }
 }
+
 
 // Monkey-patch Storage.prototype.setItem
 Storage.prototype.setItem = function (key: string, value: string): void {

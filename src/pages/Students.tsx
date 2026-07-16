@@ -826,6 +826,18 @@ export function Students() {
       return;
     }
 
+    const classVal = fd.get('class') as string;
+    const sectionVal = fd.get('section') as string;
+    let batchId = null;
+    if (classVal && sectionVal) {
+      const batchName = `${classVal}${sectionVal}`;
+      const foundBatch = batchesList.find((b: any) => 
+        (b.name || '').replace(/\s+/g, '').toLowerCase() === batchName.toLowerCase() ||
+        (b.name || '').replace(/section/i, '').replace(/\s+/g, '').toLowerCase() === batchName.toLowerCase()
+      );
+      if (foundBatch) batchId = Number(foundBatch.id);
+    }
+
     const data = {
       name: `${firstName} ${lastName}`,
       gender: fd.get('gender'),
@@ -848,8 +860,9 @@ export function Students() {
       tc_no: fd.get('tc_no') || null,
       student_mobile: phone,
       village: fd.get('address'),
-      class: fd.get('class'),
-      section: fd.get('section'),
+      class: classVal,
+      section: sectionVal,
+      batch_id: batchId,
       status: statusVal === 'Active' ? 'active' : statusVal === 'Left' ? 'left' : 'transfer',
       biometric_employee_code: bio || null,
       aadhar_number: aadharNum || null,

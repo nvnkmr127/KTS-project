@@ -112,6 +112,10 @@ class BiometricSyncController extends Controller
         }
 
         try {
+            // Allow up to 35s so the external e-TimeOffice API (25s timeout) can
+            // complete without the server killing the connection first.
+            set_time_limit(35);
+
             Log::info('BiometricSyncController: syncInOut', [
                 'from'    => $fromDate->toDateString(),
                 'to'      => $toDate->toDateString(),
@@ -185,6 +189,10 @@ class BiometricSyncController extends Controller
         }
 
         try {
+            // Allow up to 35s so the external e-TimeOffice API (25s timeout) can
+            // complete without the server killing the connection first.
+            set_time_limit(35);
+
             $result = $this->etimeoffice->fetchPunchData($fromDate, $toDate, $empcode);
 
             if (!$result['success']) {

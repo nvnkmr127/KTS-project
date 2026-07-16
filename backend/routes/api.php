@@ -505,6 +505,12 @@ Route::middleware('auth:sanctum')->prefix('v1/bus')->name('api.bus.')->group(fun
         ->name('position');
 });
 
+// Diagnostic ping — no auth needed so it can be tested from the browser / curl
+// Visit: https://kts.tribebella.com/backend/public/api/v1/bus/ping
+Route::get('/v1/bus/ping', [\App\Http\Controllers\Api\MillitrackProxyController::class, 'ping'])
+    ->name('api.bus.ping');
+
+
 
 /*
 |--------------------------------------------------------------------------

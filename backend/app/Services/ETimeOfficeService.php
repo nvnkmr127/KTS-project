@@ -396,7 +396,10 @@ class ETimeOfficeService
                 'params' => $params,
             ]);
 
-            $response = Http::timeout(60)
+            // Ensure PHP doesn't get killed by Apache/LiteSpeed before we respond cleanly
+            set_time_limit(30);
+
+            $response = Http::timeout(25)
                 ->withoutVerifying()
                 ->withHeaders([
                     'Authorization' => 'Basic '.$this->authToken,

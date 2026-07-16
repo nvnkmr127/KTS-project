@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { useAuth } from './AuthContext';
 import { updateSettingsCache } from '../utils/storage';
@@ -347,6 +347,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadInitialData();
   }, [user]);
 
+  const [hasUnsavedChangesState, setHasUnsavedChangesState] = useState(false);
+  const unsavedChangesRef = useRef(false);
+
+  const setHasUnsavedChanges = (val: boolean) => {
+    setHasUnsavedChangesState(val);
+    unsavedChangesRef.current = val;
+  };
+  const hasUnsavedChanges = hasUnsavedChangesState;
+
   // Periodic polling and focus refetching to ensure multi-device and tab synchronization
   useEffect(() => {
     if (!user || !settingsLoaded) return;
@@ -446,6 +455,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
           });
           setTimetable(prev => {
+            if (unsavedChangesRef.current) return prev;
             const hasChanged = JSON.stringify(prev) !== JSON.stringify(loadedTimetable);
             return hasChanged ? loadedTimetable : prev;
           });
@@ -615,7 +625,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {

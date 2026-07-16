@@ -48,7 +48,7 @@ interface EditCell {
 }
 
 export function Timetable() {
-  const { timetable, setTimetablePeriod, periodTimings, savePeriodTimings } = useApp();
+  const { timetable, setTimetablePeriod, periodTimings, savePeriodTimings, setHasUnsavedChanges } = useApp();
   const [selectedClass, setSelectedClass] = useState('8A');
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -222,6 +222,7 @@ export function Timetable() {
       teacherId: editTeacher,
       room: editRoom,
     });
+    setHasUnsavedChanges(true);
     setEditCell(null);
   };
 
@@ -229,6 +230,7 @@ export function Timetable() {
   const clearCell = () => {
     if (!editCell) return;
     setTimetablePeriod(selectedClass, editCell.day, editCell.period, null);
+    setHasUnsavedChanges(true);
     setEditCell(null);
   };
 
@@ -259,6 +261,7 @@ export function Timetable() {
         slots: slots
       });
 
+      setHasUnsavedChanges(false);
       setSavedMsg(true);
       setTimeout(() => setSavedMsg(false), 2000);
     } catch (err) {

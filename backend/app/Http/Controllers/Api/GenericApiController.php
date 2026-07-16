@@ -930,6 +930,9 @@ class GenericApiController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
+                } else {
+                    $fallbackUser = \App\Models\User::first();
+                    $userId = $fallbackUser ? $fallbackUser->id : 1;
                 }
                 
                 // Store day_of_week directly (e.g., 'Monday', 'Tuesday')

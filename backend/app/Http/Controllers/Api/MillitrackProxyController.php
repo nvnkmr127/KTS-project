@@ -122,10 +122,20 @@ class MillitrackProxyController extends Controller
      */
     public function getAllPositions(): JsonResponse
     {
+        // Override PHP max execution time for this endpoint so the concurrent
+        // Millitrack pool doesn't get killed by Apache's default 30s PHP limit.
+        set_time_limit(25);
+
         $baseUrl = config('services.millitrack.base_url');
         $results = [];
 
-        // Http::pool() fires all requests concurrently
+        Log::info('Millitrack: fetching all positions', [
+            'base_url'  => $baseUrl,
+            'bus_count' => count(self::BUS_DEVICE_MAP),
+        ]);
+
+        // Http::pool() fires all requests concurrently.
+        // Timeout intentionally short (6 s) so 5 buses finish well within 25 s total.
         $responses = Http::pool(function (\Illuminate\Http\Client\Pool $pool) use ($baseUrl) {
             foreach (self::BUS_DEVICE_MAP as $busNumber => $deviceId) {
                 $pool->as($busNumber)
@@ -133,7 +143,9 @@ class MillitrackProxyController extends Controller
                         (string) config('services.millitrack.username', ''),
                         (string) config('services.millitrack.password', '')
                     )
-                    ->timeout(10)
+                    ->withoutVerifying()   // match millitrackClient() — avoids SSL failures on prod
+                    ->connectTimeout(4)    // TCP connect must succeed in 4 s
+                    ->timeout(6)           // full read must complete in 6 s
                     ->acceptJson()
                     ->get("{$baseUrl}/devices/{$deviceId}/deviceLastPosition");
             }
@@ -146,7 +158,9 @@ class MillitrackProxyController extends Controller
             if ($response instanceof \Throwable) {
                 // Network / timeout error
                 Log::warning("Millitrack: failed to fetch {$busNumber} (deviceId {$deviceId})", [
-                    'error' => $response->getMessage(),
+                    'error'     => $response->getMessage(),
+                    'exception' => get_class($response),
+                    'base_url'  => $baseUrl,
                 ]);
                 $results[] = [
                     'busNumber' => $busNumber,
@@ -162,7 +176,10 @@ class MillitrackProxyController extends Controller
             }
 
             if (! $response->successful()) {
-                Log::warning("Millitrack: HTTP {$response->status()} for {$busNumber} (deviceId {$deviceId})");
+                Log::warning("Millitrack: HTTP {$response->status()} for {$busNumber} (deviceId {$deviceId})", [
+                    'body'    => substr((string) $response->body(), 0, 500),
+                    'headers' => $response->headers(),
+                ]);
                 $results[] = [
                     'busNumber' => $busNumber,
                     'deviceId'  => $deviceId,
@@ -185,6 +202,7 @@ class MillitrackProxyController extends Controller
             'fetchedAt' => now()->toISOString(),
         ]);
     }
+
 
     /**
      * GET /api/v1/bus/positions/{busNumber}
@@ -254,4 +272,64 @@ class MillitrackProxyController extends Controller
             'count'   => count($fleet),
         ]);
     }
+
+    /**
+     * GET /api/v1/bus/ping   (no auth — for production diagnostics)
+     *
+     * Tests connectivity to Millitrack by fetching one device and reports
+     * config values (credentials are masked). Safe to expose publicly since
+     * no student or personal data is returned.
+     */
+    public function ping(): JsonResponse
+    {
+        $baseUrl  = config('services.millitrack.base_url');
+        $username = config('services.millitrack.username');
+
+        if (empty($baseUrl) || empty($username)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Millitrack env vars not configured on this server.',
+                'config'  => [
+                    'MILLITRACK_BASE_URL' => $baseUrl  ?: '(empty)',
+                    'MILLITRACK_USERNAME' => $username ? '(set)' : '(empty)',
+                    'MILLITRACK_PASSWORD' => config('services.millitrack.password') ? '(set)' : '(empty)',
+                ],
+            ]);
+        }
+
+        // Pick the first bus to test with
+        $busNumber = array_key_first(self::BUS_DEVICE_MAP);
+        $deviceId  = self::BUS_DEVICE_MAP[$busNumber];
+
+        try {
+            $response = $this->millitrackClient()
+                ->get("{$baseUrl}/devices/{$deviceId}/deviceLastPosition");
+
+            return response()->json([
+                'success'    => $response->successful(),
+                'http_status'=> $response->status(),
+                'config'     => [
+                    'MILLITRACK_BASE_URL' => $baseUrl,
+                    'MILLITRACK_USERNAME' => $username ? '(set)' : '(empty)',
+                    'MILLITRACK_PASSWORD' => config('services.millitrack.password') ? '(set)' : '(empty)',
+                    'test_bus'            => $busNumber,
+                    'test_deviceId'       => $deviceId,
+                ],
+                'raw_preview'=> $response->successful()
+                    ? substr(json_encode($response->json()), 0, 300)
+                    : $response->body(),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'config'  => [
+                    'MILLITRACK_BASE_URL' => $baseUrl,
+                    'MILLITRACK_USERNAME' => $username ? '(set)' : '(empty)',
+                    'MILLITRACK_PASSWORD' => config('services.millitrack.password') ? '(set)' : '(empty)',
+                ],
+            ]);
+        }
+    }
 }
+
