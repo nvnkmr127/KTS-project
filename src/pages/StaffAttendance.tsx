@@ -8,7 +8,7 @@ import { STAFF, StaffMember, isRealStaff } from './StaffManagement';
 
 import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
-import { utcDateTimeToParts, scanDateTimeToParts, formatDate } from '../utils/date';
+import { utcDateTimeToParts, scanDateTimeToParts, formatDate, getLocalDateStr } from '../utils/date';
 
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Leave' | 'Half Day';
@@ -87,7 +87,7 @@ const extractTimeOfDay = (ts: string): string => {
 
 // True when the last biometric OUT scan is basically "now" (i.e. an open/running clock, not a real checkout)
 const isOutTimePlaceholder = (outTime: string, targetDate: string): boolean => {
-  if (targetDate !== new Date().toISOString().slice(0, 10)) return false;
+  if (targetDate !== getLocalDateStr()) return false;
   const [outH, outM] = outTime.split(':').map(Number);
   const now = new Date();
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -186,7 +186,7 @@ export function StaffAttendance() {
   const { confirm } = useDialog();
   const { leaveRequests } = useApp();
   const [date, setDate] = useState<string>(() => {
-    return new Date().toISOString().slice(0, 10);
+    return getLocalDateStr();
   });
 
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
@@ -554,7 +554,7 @@ export function StaffAttendance() {
   useEffect(() => {
     setBiometricRecords([]); // Clear old records
     
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateStr();
     const isPreviousDate = date < todayStr;
     
     if (isPreviousDate) {

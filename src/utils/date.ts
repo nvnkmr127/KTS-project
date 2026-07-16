@@ -63,6 +63,14 @@ export function formatDate(dateStr: string | undefined | null): string {
       const year = d.getFullYear();
       return `${day}-${month}-${year}`;
     }
-  } catch (e) {}
+} catch (e) {}
   return dateStr;
+}
+
+export function getLocalDateStr(dateInput?: string | Date): string {
+  const d = dateInput ? new Date(dateInput) : new Date();
+  if (isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+  const offset = d.getTimezoneOffset();
+  const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+  return localDate.toISOString().slice(0, 10);
 }
