@@ -94,7 +94,8 @@ export function Timetable() {
         if (activeTeachers.length === 0) {
           try {
             const facultyData = await api.getResources('faculty');
-            activeTeachers = (facultyData || []).filter((t: any) => {
+            const facultyList = Array.isArray(facultyData) ? facultyData : (facultyData?.data || []);
+            activeTeachers = facultyList.filter((t: any) => {
               if ((t.status || '').toLowerCase() === 'inactive') return false;
               if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
               const cat = (t.category || 'Teaching').toString().trim().toLowerCase();

@@ -51,30 +51,50 @@ export function StaffAccess() {
 
   // Load staff list
   useEffect(() => {
-    const savedStaffStr = localStorage.getItem('kts_staff_members');
-    let loadedStaff: StaffMember[] = [];
-    if (savedStaffStr) {
+    async function fetchStaff() {
+      const savedStaffStr = localStorage.getItem('kts_staff_members');
+      let loadedStaff: StaffMember[] = [];
+      if (savedStaffStr) {
+        try {
+          const parsed = JSON.parse(savedStaffStr);
+          if (Array.isArray(parsed)) {
+            loadedStaff = parsed.filter((s) => s && s.id && s.status !== 'Resigned');
+          }
+        } catch (err) {
+          console.error('Error parsing staff list:', err);
+        }
+      }
+      
       try {
-        const parsed = JSON.parse(savedStaffStr);
-        if (Array.isArray(parsed)) {
-          loadedStaff = parsed.filter((s) => s && s.id && s.status !== 'Resigned');
+        const staffData = await api.getResources('faculty');
+        const staffListFromApi = Array.isArray(staffData) ? staffData : (staffData?.data || []);
+        if (staffListFromApi.length > 0) {
+           const normalizedStaff = staffListFromApi.map((s: any) => ({
+             ...s,
+             documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
+             status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
+             salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
+           }));
+           loadedStaff = normalizedStaff.filter((s: any) => s && s.id && s.status !== 'Resigned');
+           localStorage.setItem('kts_staff_members', JSON.stringify(normalizedStaff));
         }
       } catch (err) {
-        console.error('Error parsing staff list:', err);
+        console.error('Error fetching staff list from DB in StaffAccess:', err);
+      }
+
+      if (loadedStaff.length === 0) {
+        loadedStaff = STAFF.filter((s) => s && s.id);
+      }
+      
+      setStaffList(loadedStaff);
+      
+      // Set first category as default
+      const cats = Array.from(new Set(loadedStaff.map((s) => s.category || 'Teaching')));
+      if (cats.length > 0) {
+        setSelectedCategory((prev) => cats.includes(prev) ? prev : cats[0]);
       }
     }
-    
-    if (loadedStaff.length === 0) {
-      loadedStaff = STAFF.filter((s) => s && s.id);
-    }
-    
-    setStaffList(loadedStaff);
-    
-    // Set first category as default
-    const cats = Array.from(new Set(loadedStaff.map((s) => s.category || 'Teaching')));
-    if (cats.length > 0) {
-      setSelectedCategory((prev) => cats.includes(prev) ? prev : cats[0]);
-    }
+    fetchStaff();
   }, []);
 
   // Sync access records to localStorage

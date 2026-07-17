@@ -221,15 +221,21 @@ export function AllotAttendance() {
   // Determine first period after lunch index
   const getLunchPeriodIndex = () => {
     const lunchIdx = periodTimings.findIndex(t => t.isBreak && t.label?.toLowerCase().includes('lunch'));
-    if (lunchIdx === -1) return 7; // fallback default
     
-    // Find next non-break period
-    for (let i = lunchIdx + 1; i < periodTimings.length; i++) {
-      if (!periodTimings[i].isBreak) {
-        return i; // Return direct index in periodTimings
+    if (lunchIdx !== -1) {
+      // Find next non-break period after lunch
+      for (let i = lunchIdx + 1; i < periodTimings.length; i++) {
+        if (!periodTimings[i].isBreak) {
+          return i; // Return direct index in periodTimings
+        }
       }
     }
-    return 7;
+    
+    // Fallback: if no lunch break is labeled, find the period starting at 1:10 PM (after the 12:30-1:10 break)
+    const fallbackIdx = periodTimings.findIndex(t => !t.isBreak && t.start.includes('1:10'));
+    if (fallbackIdx !== -1) return fallbackIdx;
+
+    return 7; // absolute fallback default
   };
 
   const lunchPeriodIndex = getLunchPeriodIndex();
@@ -248,7 +254,7 @@ export function AllotAttendance() {
     const lunchSlot = todaySlots[lunchPeriodIndex]; 
     const teachesAfterLunch = lunchSlot && (
       String(lunchSlot.teacherId) === String(user?.id) || 
-      (lunchSlot.teacher && lunchSlot.teacher.toLowerCase() === user?.name?.toLowerCase())
+      (lunchSlot.teacher && user?.name && lunchSlot.teacher.toLowerCase().trim() === user.name.toLowerCase().trim())
     );
 
     // 3. Is substitute teacher for the first period of this batch today?
@@ -285,7 +291,7 @@ export function AllotAttendance() {
   const lunchSlot = todaySlots[lunchPeriodIndex];
   const teachesAfterLunchForSelected = lunchSlot && (
     String(lunchSlot.teacherId) === String(user?.id) || 
-    (lunchSlot.teacher && lunchSlot.teacher.toLowerCase() === user?.name?.toLowerCase())
+    (lunchSlot.teacher && user?.name && lunchSlot.teacher.toLowerCase().trim() === user.name.toLowerCase().trim())
   );
 
   const isSubstituteFirstPeriodForSelected = substituteAssignments.some(sa => 

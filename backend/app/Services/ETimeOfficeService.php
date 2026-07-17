@@ -383,7 +383,7 @@ class ETimeOfficeService
         $this->ensureConfigurationLoaded();
 
         try {
-            $url = $this->apiUrl.'/'.$endpoint;
+            $url = rtrim($this->apiUrl, '/').'/'.$endpoint;
             // The eTimeOffice API returns 500 if slashes or colons are URL encoded.
             // It expects spaces as %20, but literal slashes and colons.
             $queryString = http_build_query($params, '', '&', PHP_QUERY_RFC3986);

@@ -43,6 +43,19 @@ class BiometricLog extends Model
     ];
 
     /**
+     * Biometric punches are wall-clock local times. The default Laravel serializer
+     * labels them as UTC ("...T09:15:00.000000Z"), so the SPA shifts them by the
+     * browser's offset (+05:30) — times/dates render wrong whenever the page falls
+     * back to these DB logs (production, where the live e-TimeOffice pull fails).
+     * Serialize as a plain string so the frontend displays the stored time verbatim,
+     * independent of APP_TIMEZONE and browser timezone.
+     */
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        return $date->format('Y-m-d H:i:s');
+    }
+
+    /**
      * Get the student associated with this biometric log
      */
     public function student(): BelongsTo
