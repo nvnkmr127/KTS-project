@@ -150,13 +150,13 @@ export function Faculty() {
           att: s.attendance || 95,
           present: s.status === 'Active',
         };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       });
 
       let mappedApi: FacultyMember[] = [];
       try {
         const users = await api.getResources('faculty');
-        
+
         // Filter to only include teaching and non-teaching staff (categories 'Teaching' and 'Non-Teaching')
         const teachingUsers = (users || []).filter((u: any) => {
           const cat = (u.category || 'Teaching').toString().trim().toLowerCase();
@@ -174,7 +174,7 @@ export function Faculty() {
             init: initials,
             subject: u.subject || 'Academics',
             classes: getTeacherClasses(u.name, String(u.id)),
-            designation: u.department || 'Teacher',
+            designation: u.designation || u.department || 'Teacher',
             att: u.attendance_percentage || 95,
             present: u.is_present ?? true,
           };
@@ -220,7 +220,7 @@ export function Faculty() {
 
   useEffect(() => {
     loadFaculty();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timetable]);
 
   useEffect(() => {
@@ -590,7 +590,6 @@ export function Faculty() {
                   tickLine={false}
                   width={52}
                 />
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`₹${v}k`, 'Salary']} cursor={{ fill: 'var(--surf2)' }} />
                 <Bar dataKey="amt" radius={[0, 4, 4, 0]} shape={<CustomBar />} />
               </BarChart>
@@ -599,7 +598,6 @@ export function Faculty() {
 
           <div className="mt-3 p-2.5 bg-[var(--amber-bg)] rounded-xl flex items-center gap-2">
             <Lock size={14} className="text-[var(--amber-tx)] flex-shrink-0" />
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             <span className="text-[11.5px] text-[var(--amber-tx)]">
               Salary details visible to admin & principal only
             </span>
@@ -793,11 +791,10 @@ export function Faculty() {
                             const input = document.getElementById(`faculty-file-input-${doc}`);
                             if (input) input.click();
                           }}
-                          className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${
-                            file
-                              ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
-                              : 'border-[var(--b)] bg-[var(--surf2)]/20 hover:border-[var(--blue)]'
-                          }`}
+                          className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${file
+                            ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
+                            : 'border-[var(--b)] bg-[var(--surf2)]/20 hover:border-[var(--blue)]'
+                            }`}
                         >
                           <input
                             id={`faculty-file-input-${doc}`}
@@ -855,11 +852,10 @@ export function Faculty() {
                             const input = document.getElementById(`faculty-file-input-${doc}`);
                             if (input) input.click();
                           }}
-                          className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${
-                            file
-                              ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
-                              : 'border-[var(--blue)] bg-[var(--blue-bg)]/10 hover:border-[var(--blue)]'
-                          }`}
+                          className={`relative border border-dashed rounded-lg p-2.5 text-center cursor-pointer transition-colors ${file
+                            ? 'border-[var(--teal)] bg-[var(--teal-bg)]/10'
+                            : 'border-[var(--blue)] bg-[var(--blue-bg)]/10 hover:border-[var(--blue)]'
+                            }`}
                         >
                           <input
                             id={`faculty-file-input-${doc}`}
