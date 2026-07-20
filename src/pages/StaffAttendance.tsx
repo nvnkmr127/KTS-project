@@ -146,7 +146,7 @@ type ConnectionStatus = 'unknown' | 'connected' | 'disconnected' | 'testing';
 const getIntervalDuration = () => {
   const currentHour = new Date().getHours();
   // Active hours: 7:00 AM to 10:00 PM (7 to 22)
-  return currentHour >= 7 && currentHour < 22 ? 10000 : 15 * 60 * 1000;
+  return currentHour >= 7 && currentHour < 22 ? 5000 : 15 * 60 * 1000;
 };
 
 // Runs `callback` on an interval that's fast during active hours and slow otherwise,
@@ -618,13 +618,13 @@ export function StaffAttendance() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, staffList]);
 
-  // Local DB polling interval (every 1 second)
+  // Local DB polling interval (every 5 seconds)
   useEffect(() => {
     fetchLocalBiometricLogsRef.current();
 
     const timerId = setInterval(() => {
       fetchLocalBiometricLogsRef.current();
-    }, 1000);
+    }, 5000);
 
     return () => clearInterval(timerId);
   }, []);
