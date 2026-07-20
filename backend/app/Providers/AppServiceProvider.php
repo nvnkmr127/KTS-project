@@ -133,6 +133,11 @@ class AppServiceProvider extends ServiceProvider
         // Set default string length for older MySQL versions
         Schema::defaultStringLength(191);
 
+        // Force HTTPS if APP_URL uses https to prevent mixed-content blocking
+        if (str_starts_with(config('app.url'), 'https://') || $this->app->environment('production')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // Use Bootstrap 4 for pagination
         Paginator::useBootstrap();
 
