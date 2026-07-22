@@ -130,6 +130,9 @@ class ETimeOfficeAutoSync extends Command
     private function performSync($range, $testMode): array
     {
         try {
+            Log::debug("=== FULL ATTENDANCE DEBUG PROCESS STARTED ===");
+            Log::debug("STEP 1: Daemon/Command triggered sync for range: {$range}, Test Mode: {$testMode}");
+
             // Create a mock request
             $request = new \Illuminate\Http\Request([
                 'date_range' => $range,
@@ -137,11 +140,14 @@ class ETimeOfficeAutoSync extends Command
                 'employee_codes' => null,
             ]);
 
+            Log::debug("STEP 2: Passing request to AttendanceSettingsController::pullETimeOfficeData");
             // Use the existing controller method
             $controller = new AttendanceSettingsController;
             $response = $controller->pullETimeOfficeData($request);
 
             $responseData = json_decode($response->getContent(), true);
+            
+            Log::debug("STEP 10: Sync process entirely completed. Final Response:", $responseData);
 
             // Log the sync attempt
             Log::channel('attendance-webhook')->info('Auto-sync completed', [
