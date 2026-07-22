@@ -18,10 +18,10 @@ class DebugETimeOfficeResponse extends Command
         $this->info('=====================================');
 
         // Get configuration
-        $apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
-        $corporateId = env('ETIMEOFFICE_CORPORATE_ID');
-        $username = env('ETIMEOFFICE_USERNAME');
-        $password = env('ETIMEOFFICE_PASSWORD');
+        $apiUrl = config('services.etimeoffice.url');
+        $corporateId = config('services.etimeoffice.corporate_id');
+        $username = config('services.etimeoffice.username');
+        $password = config('services.etimeoffice.password');
 
         if (! $corporateId || ! $username || ! $password) {
             $this->error('❌ ETimeOffice configuration missing');

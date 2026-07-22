@@ -61,6 +61,16 @@ return [
         ],
     ],
 
+    // ── e-TimeOffice Biometric API ────────────────────────────────────────────
+    // Must live here (not raw env() calls) so credentials survive `config:cache`
+    // in production. env() returns null once config is cached.
+    'etimeoffice' => [
+        'url' => env('ETIMEOFFICE_API_URL', env('VITE_ETIMEOFFICE_API_URL', 'https://api.etimeoffice.com/api')),
+        'corporate_id' => env('ETIMEOFFICE_CORPORATE_ID'),
+        'username' => env('ETIMEOFFICE_USERNAME'),
+        'password' => env('ETIMEOFFICE_PASSWORD'),
+    ],
+
     // ── Millitrack GPS Tracking ───────────────────────────────────────────────
     'millitrack' => [
         'base_url' => env('MILLITRACK_BASE_URL', 'http://track4.millitrack.com/api'),

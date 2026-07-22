@@ -98,16 +98,16 @@ class ETimeOfficeAutoSync extends Command
 
             // Also check for required credentials
             $missing = [];
-            if (! (env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api')) {
+            if (! config('services.etimeoffice.url')) {
                 $missing[] = 'API URL';
             }
-            if (! env('ETIMEOFFICE_CORPORATE_ID')) {
+            if (! config('services.etimeoffice.corporate_id')) {
                 $missing[] = 'Corporate ID';
             }
-            if (! env('ETIMEOFFICE_USERNAME')) {
+            if (! config('services.etimeoffice.username')) {
                 $missing[] = 'Username';
             }
-            if (! env('ETIMEOFFICE_PASSWORD')) {
+            if (! config('services.etimeoffice.password')) {
                 $missing[] = 'Password';
             }
 

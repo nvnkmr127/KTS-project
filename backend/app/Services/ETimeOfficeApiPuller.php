@@ -31,10 +31,11 @@ class ETimeOfficeApiPuller
      */
     private function loadConfiguration()
     {
-        $this->apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
-        $this->corporateId = env('ETIMEOFFICE_CORPORATE_ID') ?: 'support';
-        $this->username = env('ETIMEOFFICE_USERNAME') ?: 'support';
-        $this->password = env('ETIMEOFFICE_PASSWORD') ?: 'support@1';
+        // config() (not env()) so credentials survive `config:cache` in production
+        $this->apiUrl = config('services.etimeoffice.url') ?: 'https://api.etimeoffice.com/api';
+        $this->corporateId = config('services.etimeoffice.corporate_id');
+        $this->username = config('services.etimeoffice.username');
+        $this->password = config('services.etimeoffice.password');
 
         if ($this->corporateId && $this->username && $this->password) {
             $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");

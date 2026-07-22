@@ -3458,16 +3458,16 @@ class AttendanceController extends Controller
     {
         try {
             if ($key === 'etimeoffice_api_url') {
-                return env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
+                return config('services.etimeoffice.url') ?: 'https://api.etimeoffice.com/api';
             }
             if ($key === 'etimeoffice_corporate_id') {
-                return env('ETIMEOFFICE_CORPORATE_ID') ?: '';
+                return config('services.etimeoffice.corporate_id') ?: '';
             }
             if ($key === 'etimeoffice_username') {
-                return env('ETIMEOFFICE_USERNAME') ?: '';
+                return config('services.etimeoffice.username') ?: '';
             }
             if ($key === 'etimeoffice_password') {
-                return env('ETIMEOFFICE_PASSWORD') ?: '';
+                return config('services.etimeoffice.password') ?: '';
             }
             return \App\Models\Setting::where('key', $key)->value('value') ?? $default;
         } catch (\Exception $e) {

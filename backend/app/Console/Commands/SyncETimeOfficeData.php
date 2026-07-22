@@ -251,9 +251,9 @@ class SyncETimeOfficeData extends Command
      */
     private function checkApiConfiguration(): bool
     {
-        $corporateId = env('ETIMEOFFICE_CORPORATE_ID');
-        $username = env('ETIMEOFFICE_USERNAME');
-        $password = env('ETIMEOFFICE_PASSWORD');
+        $corporateId = config('services.etimeoffice.corporate_id');
+        $username = config('services.etimeoffice.username');
+        $password = config('services.etimeoffice.password');
 
         return ! empty($corporateId) && ! empty($username) && ! empty($password);
     }

@@ -32,30 +32,16 @@ class ETimeOfficeService
      */
     private function loadConfiguration(): void
     {
-        try {
-            $this->apiUrl = env('ETIMEOFFICE_API_URL') ?: env('VITE_ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
-            $this->corporateId = env('ETIMEOFFICE_CORPORATE_ID') ?: 'support';
-            $this->username = env('ETIMEOFFICE_USERNAME') ?: 'support';
-            $this->password = env('ETIMEOFFICE_PASSWORD') ?: 'support@1';
+        // config() (not env()) so credentials survive `config:cache` in production.
+        // No demo-account fallback: missing credentials must fail validateConfiguration()
+        // loudly instead of silently fetching the eTimeOffice demo corporate's data.
+        $this->apiUrl = config('services.etimeoffice.url') ?: 'https://api.etimeoffice.com/api';
+        $this->corporateId = (string) config('services.etimeoffice.corporate_id', '');
+        $this->username = (string) config('services.etimeoffice.username', '');
+        $this->password = (string) config('services.etimeoffice.password', '');
 
-            // Create Basic Auth token (base64 encoded)
-            $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");
-        } catch (\Exception $e) {
-            // Fallback to default configuration if database is not available
-            $this->setDefaultConfiguration();
-        }
-    }
-
-    /**
-     * Set default configuration when database is not available
-     */
-    private function setDefaultConfiguration(): void
-    {
-        $this->apiUrl = 'https://api.etimeoffice.com/api';
-        $this->corporateId = 'support';
-        $this->username = 'support';
-        $this->password = 'support@1';
-        $this->authToken = base64_encode('support:support:support@1:true');
+        // Create Basic Auth token (base64 encoded)
+        $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");
     }
 
     /**
