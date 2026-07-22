@@ -368,6 +368,15 @@ class ETimeOfficeService
     {
         $this->ensureConfigurationLoaded();
 
+        // REMOVE FALLBACK: Never make an API call if credentials are missing
+        $validation = $this->validateConfiguration();
+        if (!$validation['valid']) {
+            return [
+                'success' => false,
+                'error' => 'eTimeOffice API credentials are not fully configured. Cannot perform sync.',
+            ];
+        }
+
         try {
             $url = rtrim($this->apiUrl, '/').'/'.$endpoint;
             // The eTimeOffice API returns 500 if slashes or colons are URL encoded.
