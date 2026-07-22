@@ -64,6 +64,9 @@ export function StaffTable({ loading, sortedFiltered, selectedIds, setSelectedId
                     <th onClick={() => handleSort('join_date')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
                       Join Date {sortField === 'join_date' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
                     </th>
+                    <th onClick={() => handleSort('biometric_code')} className="hidden sm:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
+                      Biometric Employee Code {sortField === 'biometric_code' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+                    </th>
                     <th onClick={() => handleSort('attendance_percentage')} className="hidden lg:table-cell text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2 whitespace-nowrap cursor-pointer hover:text-[var(--tx)]">
                       Attendance {sortField === 'attendance_percentage' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
                     </th>
@@ -76,13 +79,13 @@ export function StaffTable({ loading, sortedFiltered, selectedIds, setSelectedId
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="px-2 py-4">
-                        <TableSkeleton rows={6} cols={8} />
+                      <td colSpan={9} className="px-2 py-4">
+                        <TableSkeleton rows={6} cols={9} />
                       </td>
                     </tr>
                   ) : sortedFiltered.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-2 py-4">
+                      <td colSpan={9} className="px-2 py-4">
                         <EmptyState
                           title="No staff members found"
                           description={search.trim() ? "We couldn't find any staff matching your search criteria. Try refining your filters." : "Add your first staff member to populate the directory."}
@@ -140,6 +143,9 @@ export function StaffTable({ loading, sortedFiltered, selectedIds, setSelectedId
                                 if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
                                 return s.join_date;
                               })()}
+                            </td>
+                            <td className="hidden sm:table-cell px-2 py-3 text-[11.5px] text-[var(--tx2)] whitespace-nowrap">
+                              {s.biometric_employee_code || '-'}
                             </td>
                             <td className="hidden lg:table-cell px-2 py-3 text-[11.5px]">
                               <span className={`font-semibold ${s.attendance_percentage >= 90 ? 'text-[var(--teal-tx)]' : 'text-[var(--amber-tx)]'}`}>{s.attendance_percentage}%</span>

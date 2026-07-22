@@ -1030,6 +1030,7 @@ class GenericApiController extends Controller
         // Filter out fields that do not exist as columns in the database table
         $columns = $this->getTableColumns($modelClass);
         $data = array_intersect_key($data, array_flip($columns));
+        unset($data['id']);
 
         $item = $modelClass::create($data);
 
@@ -1039,6 +1040,26 @@ class GenericApiController extends Controller
                 $item->syncRoles([$request->input('role')]);
             } else if ($resource === 'faculty') {
                 $item->assignRole('faculty');
+            }
+            
+            // Automatically generate unique 4-digit biometric code if empty
+            if (empty($item->biometric_employee_code)) {
+                $attempts = 0;
+                $generatedCode = null;
+                do {
+                    $code = str_pad(rand(1000, 9999), 4, '0', STR_PAD_LEFT);
+                    $existsUser = \App\Models\User::where('biometric_employee_code', $code)->exists();
+                    $existsStudent = class_exists(\App\Models\Student::class) && \App\Models\Student::where('biometric_employee_code', $code)->exists();
+                    if (!$existsUser && !$existsStudent) {
+                        $generatedCode = $code;
+                        break;
+                    }
+                    $attempts++;
+                } while ($attempts < 1000);
+                
+                if ($generatedCode) {
+                    $item->update(['biometric_employee_code' => $generatedCode]);
+                }
             }
         }
 

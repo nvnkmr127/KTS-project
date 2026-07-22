@@ -1146,9 +1146,16 @@ export function StaffManagement() {
       {importOpen && (
         <StaffImportModal
           onClose={() => setImportOpen(false)}
-          onImportSuccess={(newStaff) => {
-            setStaffList(prev => [...newStaff, ...prev]);
-            setImportOpen(false);
+          onImportSuccess={async (newStaff) => {
+            try {
+              const savedStaff = await Promise.all(
+                newStaff.map(staff => api.createResource('faculty', staff))
+              );
+              setStaffList(prev => [...savedStaff, ...prev]);
+            } catch (err) {
+              console.error('Failed to import staff:', err);
+              throw err;
+            }
           }}
         />
       )}

@@ -7,7 +7,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 
 interface StaffImportModalProps {
   onClose: () => void;
-  onImportSuccess: (newStaff: StaffMember[]) => void;
+  onImportSuccess: (newStaff: StaffMember[]) => void | Promise<void>;
 }
 
 const STAFF_SYNONYMS: Record<string, string[]> = {
@@ -361,7 +361,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
     setMappedStaff(prev => [...prev, newStaff]);
   };
 
-  const handleImportSave = () => {
+  const handleImportSave = async () => {
     setImporting(true);
     setError('');
 
@@ -372,9 +372,14 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
       return;
     }
 
-    onImportSuccess(mappedStaff);
-    setSuccessCount(mappedStaff.length);
-    setImporting(false);
+    try {
+      await onImportSuccess(mappedStaff);
+      setSuccessCount(mappedStaff.length);
+    } catch (err) {
+      setError('Failed to import staff members. Please try again.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const SAMPLE_HEADERS = [
