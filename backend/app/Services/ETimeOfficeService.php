@@ -424,6 +424,17 @@ class ETimeOfficeService
                 'has_data' => !empty($data['PunchData']) || !empty($data['InOutPunchData']),
             ]);
 
+            // DEEP DEBUG: Log exactly what credentials were used and the RAW JSON from the external API
+            Log::debug('eTimeOffice Debug: Auth Configuration Used', [
+                'corporate_id' => $this->corporateId,
+                'username' => $this->username,
+                'api_url' => $this->apiUrl
+            ]);
+            Log::debug('eTimeOffice Debug: RAW API Response from Server', [
+                'endpoint' => $endpoint,
+                'raw_body' => $response->body()
+            ]);
+
             return [
                 'success' => true,
                 'data' => $data,
