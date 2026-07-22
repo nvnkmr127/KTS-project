@@ -225,6 +225,19 @@ class BiometricSyncController extends Controller
                     $carbonDate = Carbon::parse(str_replace('/', '-', $punchDateStr));
                     
                     $student = $this->etimeoffice->findStudentByBiometricCode($empCode);
+                    $staff = null;
+                    if (!$student) {
+                        $staff = \App\Models\User::whereHas('roles', function ($q) {
+                            $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+                        })->where('biometric_employee_code', $empCode)->first() ??
+                        \App\Models\User::whereHas('roles', function ($q) {
+                            $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+                        })->where('id', $empCode)->first();
+                    }
+                    
+                    if (!$student && !$staff) {
+                        continue;
+                    }
                     
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
@@ -234,7 +247,7 @@ class BiometricSyncController extends Controller
                             'processed'        => true,
                             'sync_status'      => 'success',
                             'status'           => 'processed',
-                            'processing_notes' => 'Raw punch sync',
+                            'processing_notes' => 'Raw punch sync' . ($staff ? " | Staff punch for: {$staff->name}" : ''),
                             'raw_data'         => $record,
                             'student_id'       => $student ? $student->id : null,
                         ]
@@ -316,6 +329,19 @@ class BiometricSyncController extends Controller
                     $carbonDate = Carbon::parse(str_replace('/', '-', $punchDateStr));
                     
                     $student = $this->etimeoffice->findStudentByBiometricCode($empCode);
+                    $staff = null;
+                    if (!$student) {
+                        $staff = \App\Models\User::whereHas('roles', function ($q) {
+                            $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+                        })->where('biometric_employee_code', $empCode)->first() ??
+                        \App\Models\User::whereHas('roles', function ($q) {
+                            $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+                        })->where('id', $empCode)->first();
+                    }
+                    
+                    if (!$student && !$staff) {
+                        continue;
+                    }
                     
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
@@ -325,7 +351,7 @@ class BiometricSyncController extends Controller
                             'processed'        => true,
                             'sync_status'      => 'success',
                             'status'           => 'processed',
-                            'processing_notes' => "Incremental | Name:{$name} | MCID:{$mcid}",
+                            'processing_notes' => "Incremental | Name:{$name} | MCID:{$mcid}" . ($staff ? " | Staff punch for: {$staff->name}" : ''),
                             'raw_data'         => $record,
                             'student_id'       => $student ? $student->id : null,
                         ]
@@ -433,32 +459,51 @@ class BiometricSyncController extends Controller
                 $carbonDate = Carbon::parse($dateStr);
                 $scanDate   = $carbonDate->toDateString();
 
-                // Use IN time for the primary datetime
-                $scanDatetime = ($inTime && $inTime !== '--:--')
-                    ? Carbon::parse("{$scanDate} {$inTime}:00")
-                    : $carbonDate->startOfDay();
+                $student = $this->etimeoffice->findStudentByBiometricCode($empCode);
+                $staff = null;
+                if (!$student) {
+                    $staff = \App\Models\User::whereHas('roles', function ($q) {
+                        $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+                    })->where('biometric_employee_code', $empCode)->first() ??
+                    \App\Models\User::whereHas('roles', function ($q) {
+                        $q->whereIn('name', ['staff', 'faculty', 'teacher']);
+                    })->where('id', $empCode)->first();
+                }
 
-                $biometricLog = BiometricLog::updateOrCreate(
-                    ['employee_code' => $empCode, 'scan_datetime' => $scanDatetime],
-                    [
-                        'device_id'        => 'etimeoffice-pull',
-                        'scan_type'        => 'in',
-                        'processed'        => true,
-                        'sync_status'      => 'success',
-                        'status'           => 'processed',
-                        'processing_notes' => "InOut | Status:{$status} | Work:{$workTime} | OT:{$overTime} | Late:{$lateIn} | EarlyOut:{$earlyOut} | Remark:{$remark}",
-                        'raw_data'         => array_merge($record, [
-                            'out_time'  => $outTime,
-                            'work_time' => $workTime,
-                            'over_time' => $overTime,
-                            'late_in'   => $lateIn,
-                            'erl_out'   => $earlyOut,
-                            'status'    => $status,
-                            'remark'    => $remark,
-                            'name'      => $name,
-                        ]),
-                    ]
-                );
+                if (!$student && !$staff) {
+                    continue;
+                }
+
+                // If there's no punch at all, we don't need a BiometricLog
+                $biometricLog = null;
+                if ($inTime !== '--:--' || $outTime !== '--:--') {
+                    // Use IN time for the primary datetime, or OUT time if IN time is missing
+                    $scanDatetime = ($inTime && $inTime !== '--:--')
+                        ? Carbon::parse("{$scanDate} {$inTime}:00")
+                        : Carbon::parse("{$scanDate} {$outTime}:00");
+
+                    $biometricLog = BiometricLog::updateOrCreate(
+                        ['employee_code' => $empCode, 'scan_datetime' => $scanDatetime],
+                        [
+                            'device_id'        => 'etimeoffice-pull',
+                            'scan_type'        => 'in',
+                            'processed'        => true,
+                            'sync_status'      => 'success',
+                            'status'           => 'processed',
+                            'processing_notes' => "InOut | Status:{$status} | Work:{$workTime} | OT:{$overTime} | Late:{$lateIn} | EarlyOut:{$earlyOut} | Remark:{$remark}",
+                            'raw_data'         => array_merge($record, [
+                                'out_time'  => $outTime,
+                                'work_time' => $workTime,
+                                'over_time' => $overTime,
+                                'late_in'   => $lateIn,
+                                'erl_out'   => $earlyOut,
+                                'status'    => $status,
+                                'remark'    => $remark,
+                                'name'      => $name,
+                            ]),
+                        ]
+                    );
+                }
 
                 $student = $this->etimeoffice->findStudentByBiometricCode($empCode);
                 if ($student) {
@@ -480,7 +525,9 @@ class BiometricSyncController extends Controller
                     }
 
                     $attendanceStatus = 'present';
-                    if ($lateIn && $lateIn !== '00:00') {
+                    if (strtoupper($status) === 'A' || $inTime === '--:--') {
+                        $attendanceStatus = 'absent';
+                    } elseif ($lateIn && $lateIn !== '00:00') {
                         $attendanceStatus = 'late';
                     }
 
@@ -499,7 +546,7 @@ class BiometricSyncController extends Controller
                         'status' => $attendanceStatus,
                         'marked_at' => now(),
                         'device_id' => 'etimeoffice-api',
-                        'biometric_log_id' => $biometricLog->id,
+                        'biometric_log_id' => $biometricLog ? $biometricLog->id : null,
                         'notes' => "Synced via eTimeOffice API | Status: {$status} | Work: {$workTime}",
                     ];
 
@@ -518,27 +565,14 @@ class BiometricSyncController extends Controller
                     );
 
                     Log::info('BiometricSync: Successfully created Attendance record', ['attendance_id' => $attendance->id]);
-                    $biometricLog->update(['attendance_id' => $attendance->id]);
-                } else {
-                    $staff = \App\Models\User::whereHas('roles', function ($q) {
-                        $q->whereIn('name', ['staff', 'faculty', 'teacher']);
-                    })->where('biometric_employee_code', $empCode)->first();
-                    
-                    if (!$staff) {
-                        $staff = \App\Models\User::whereHas('roles', function ($q) {
-                            $q->whereIn('name', ['staff', 'faculty', 'teacher']);
-                        })->where('id', $empCode)->first();
+                    if ($biometricLog) {
+                        $biometricLog->update(['attendance_id' => $attendance->id]);
                     }
-                        
-                    if ($staff) {
-                        Log::info('BiometricSync: Staff punch recorded', ['empcode' => $empCode]);
-                        // Append to the existing notes so we don't lose the WorkTime/Remark info
+                } else if ($staff) {
+                    Log::info('BiometricSync: Staff punch recorded', ['empcode' => $empCode]);
+                    if ($biometricLog) {
                         $existingNotes = $biometricLog->processing_notes;
                         $biometricLog->update(['processing_notes' => "{$existingNotes} | Staff punch for: {$staff->name}"]);
-                    } else {
-                        Log::warning('BiometricSync: Employee/Student not found for empcode', ['empcode' => $empCode]);
-                        $existingNotes = $biometricLog->processing_notes;
-                        $biometricLog->update(['processing_notes' => "{$existingNotes} | Not found in system: {$empCode}"]);
                     }
                 }
                 $saved++;
