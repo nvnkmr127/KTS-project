@@ -122,11 +122,11 @@ class BiometricSyncController extends Controller
                 'empcode' => $empcode,
             ]);
 
-            Log::debug("STEP 3: Initiating fetchInOutPunchData from eTimeOffice API...");
+            Log::info("STEP 3: Initiating fetchInOutPunchData from eTimeOffice API...");
             $result = $this->etimeoffice->fetchInOutPunchData($fromDate, $toDate, $empcode);
 
             if (!$result['success']) {
-                Log::debug("STEP 3 (Failed): fetchInOutPunchData returned failure.");
+                Log::info("STEP 3 (Failed): fetchInOutPunchData returned failure.");
                 return response()->json([
                     'success' => false,
                     'message' => $result['error'] ?? 'Sync failed',
@@ -135,11 +135,11 @@ class BiometricSyncController extends Controller
             }
 
             $punchRecords = $result['data'] ?? [];
-            Log::debug("STEP 4: API returned " . count($punchRecords) . " records. Starting insertion into biometric_logs.");
+            Log::info("STEP 4: API returned " . count($punchRecords) . " records. Starting insertion into biometric_logs.");
 
             // Store into biometric_logs for caching/history
             $saved = $this->saveInOutRecords($punchRecords);
-            Log::debug("STEP 7: Finished processing all records. Successfully saved/mapped {$saved} records.");
+            Log::info("STEP 7: Finished processing all records. Successfully saved/mapped {$saved} records.");
 
             // Update last sync timestamp
             Setting::updateOrCreate(
@@ -488,7 +488,7 @@ class BiometricSyncController extends Controller
                         $attendanceStatus = 'late';
                     }
 
-                    Log::debug("STEP 5: Attempting to mark attendance for Student ID: {$student->id}, Date: {$scanDate}");
+                    Log::info("STEP 5: Attempting to mark attendance for Student ID: {$student->id}, Date: {$scanDate}");
 
                     $attendanceValues = [
                         'batch_id' => $student->batch_id,
@@ -515,10 +515,10 @@ class BiometricSyncController extends Controller
                         $attendanceValues
                     );
 
-                    Log::debug("STEP 6: Successfully created/updated Attendance ID: {$attendance->id} for Student ID: {$student->id}");
+                    Log::info("STEP 6: Successfully created/updated Attendance ID: {$attendance->id} for Student ID: {$student->id}");
                     $biometricLog->update(['attendance_id' => $attendance->id]);
                 } else {
-                    Log::debug("STEP 5 (Staff Check): Searching staff database for empcode: {$empCode}");
+                    Log::info("STEP 5 (Staff Check): Searching staff database for empcode: {$empCode}");
                     $staff = \App\Models\User::whereHas('roles', function ($q) {
                         $q->whereIn('name', ['staff', 'faculty', 'teacher']);
                     })->where('biometric_employee_code', $empCode)->first();
@@ -530,13 +530,13 @@ class BiometricSyncController extends Controller
                     }
                         
                     if ($staff) {
-                        Log::debug("STEP 6 (Staff Found): Staff punch recorded for Name: {$staff->name}");
+                        Log::info("STEP 6 (Staff Found): Staff punch recorded for Name: {$staff->name}");
                         // Append to the existing notes so we don't lose the WorkTime/Remark info
                         $existingNotes = $biometricLog->processing_notes;
                         $biometricLog->update(['processing_notes' => "{$existingNotes} | Staff punch for: {$staff->name}"]);
                     } else {
                         Log::warning('BiometricSync: Employee/Student not found for empcode', ['empcode' => $empCode]);
-                        Log::debug("STEP 6 (Failed): Neither student nor staff found for empcode: {$empCode}");
+                        Log::info("STEP 6 (Failed): Neither student nor staff found for empcode: {$empCode}");
                         $existingNotes = $biometricLog->processing_notes;
                         $biometricLog->update(['processing_notes' => "{$existingNotes} | Not found in system: {$empCode}"]);
                     }

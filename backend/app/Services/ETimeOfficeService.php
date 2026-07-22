@@ -345,7 +345,7 @@ class ETimeOfficeService
                     $results['created']++;
                 }
 
-                Log::debug('Processed eTimeOffice punch record', [
+                Log::info('Processed eTimeOffice punch record', [
                     'empcode' => $empcode,
                     'student_name' => $student->name,
                     'punch_date' => $punchDate,
@@ -425,12 +425,12 @@ class ETimeOfficeService
             ]);
 
             // DEEP DEBUG: Log exactly what credentials were used and the RAW JSON from the external API
-            Log::debug('eTimeOffice Debug: Auth Configuration Used', [
+            Log::info('eTimeOffice Debug: Auth Configuration Used', [
                 'corporate_id' => $this->corporateId,
                 'username' => $this->username,
                 'api_url' => $this->apiUrl
             ]);
-            Log::debug('eTimeOffice Debug: RAW API Response from Server', [
+            Log::info('eTimeOffice Debug: RAW API Response from Server', [
                 'endpoint' => $endpoint,
                 'raw_body' => $response->body()
             ]);
