@@ -13,6 +13,7 @@ export const PAGE_TO_PATH = {
   'fee-categories': '/fee-categories',
   staff: '/staff',
   'staff-attendance': '/staff-attendance',
+  'staff-attendance-analytics': '/staff-attendance-analytics',
   faculty: '/faculty',
   leave: '/leave',
   bus: '/bus-tracking',

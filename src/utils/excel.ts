@@ -13,11 +13,13 @@ const HEADER_STYLE = {
 
 // Styles the header row (bold, yellow, bordered), wraps the sheet in a
 // workbook, and triggers the download.
-export function downloadSheet(ws: XLSX.WorkSheet, sheetName: string, filename: string) {
-  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  for (let C = range.s.c; C <= range.e.c; ++C) {
-    const cell = ws[XLSX.utils.encode_cell({ c: C, r: 0 })];
-    if (cell) cell.s = HEADER_STYLE;
+export function downloadSheet(ws: XLSX.WorkSheet, sheetName: string, filename: string, skipHeaderStyle?: boolean) {
+  if (!skipHeaderStyle) {
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cell = ws[XLSX.utils.encode_cell({ c: C, r: 0 })];
+      if (cell) cell.s = HEADER_STYLE;
+    }
   }
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheetName);

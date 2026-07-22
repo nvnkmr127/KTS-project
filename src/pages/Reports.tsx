@@ -16,6 +16,7 @@ import { api } from '../services/api';
 import { useDialog } from '../context/DialogContext';
 import { STAFF } from './StaffManagement';
 import { useApp } from '../context/AppContext';
+import { StaffAttendanceAnalytics } from './StaffAttendanceAnalytics';
 
 // --- FALLBACK MOCK DATA (used if database is empty) ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1012,108 +1013,8 @@ export function Reports() {
 
         {/* TAB 2: STAFF ATTENDANCE ANALYTICS */}
         {activeTab === 2 && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <KPICard
-                label="Overall Attendance Rate"
-                value={staffKPIs.rate}
-                sub="Staff average this month"
-                icon={<UserCheck size={15} />}
-                iconBg="var(--teal-bg)"
-                iconColor="var(--teal-tx)"
-              />
-              <KPICard
-                label="Most Absences (Staff)"
-                value={staffKPIs.worstVal}
-                sub={staffKPIs.worstName}
-                icon={<AlertTriangle size={15} />}
-                iconBg="var(--red-bg)"
-                iconColor="var(--red-tx)"
-              />
-              <KPICard
-                label="Perfect Attendance"
-                value={staffKPIs.perfectCount}
-                sub="No absences this month"
-                icon={<Award size={15} />}
-                iconBg="var(--purple-bg)"
-                iconColor="var(--purple-tx)"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-              {/* Absenteeism Leaderboard */}
-              <div className="lg:col-span-2">
-                <Card>
-                  <div className="p-4 pb-2">
-                    <h4 className="text-[13px] font-bold text-[var(--tx)] flex items-center gap-1.5">
-                      <TrendingDown size={14} className="text-[var(--red-tx)]" /> Staff Attendance & Absences (This Month)
-                    </h4>
-                    <p className="text-[11px] text-[var(--tx3)] mt-0.5">Identifies attendance rate, absences, and leaves for all staff members to assist in resource planning.</p>
-                  </div>
-
-                  <div className="overflow-x-auto p-4 pt-1">
-                    <table className="w-full text-left text-[11.5px] border-collapse">
-                      <thead>
-                        <tr className="border-b border-[var(--b)] text-[var(--tx3)]">
-                          <th className="py-2.5 font-bold">Staff Member</th>
-                          <th className="py-2.5 font-bold">Role</th>
-                          <th className="py-2.5 font-bold text-center">Absences</th>
-                          <th className="py-2.5 font-bold text-center">Leaves</th>
-                          <th className="py-2.5 font-bold text-center">Duty Status</th>
-                          <th className="py-2.5 font-bold text-right">Attendance Rate</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {staffAbsences.map((staff) => (
-                          <tr key={staff.name} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] transition-colors last:border-0">
-                            <td className="py-3 font-semibold text-[var(--tx)]">{staff.name}</td>
-                            <td className="py-3 text-[var(--tx2)]">{staff.role}</td>
-                            <td className="py-3 text-center font-extrabold text-[var(--red-tx)]">{staff.absences} Days</td>
-                            <td className="py-3 text-center font-semibold text-[var(--tx2)]">{staff.leaves} Days</td>
-                            <td className="py-3 text-center">
-                              <span className={`inline-block px-2 py-0.5 rounded text-[9.5px] font-bold ${staff.status === 'Active'
-                                ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)]'
-                                : 'bg-[var(--amber-bg)] text-[var(--amber-tx)]'
-                                }`}>
-                                {staff.status}
-                              </span>
-                            </td>
-                            <td className="py-3 text-right font-semibold text-[var(--tx)]">{staff.rate}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              </div>
-
-              {/* Weekly Trend Chart */}
-              <Card>
-                <CardHeader title="Weekly Staff Presence Trend" />
-                <div className="h-[180px] p-2">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                    <AreaChart data={staffAttTrend} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorAtt" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--blue)" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="var(--blue)" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid vertical={false} stroke="var(--b)" />
-                      <XAxis dataKey="week" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[80, 100]} tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-                      <Tooltip contentStyle={tooltipStyle} />
-                      <Area type="monotone" dataKey="rate" name="Presence Rate" stroke="var(--blue)" fillOpacity={1} fill="url(#colorAtt)" strokeWidth={2.5} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="text-[10px] text-[var(--tx3)] p-3 border-t border-[var(--b)] mt-2">
-                  ℹ️ Presence rates compiled from biometric punch logs and manual staff status reports.
-                </div>
-              </Card>
-
-            </div>
+          <div className="-mx-4">
+            <StaffAttendanceAnalytics />
           </div>
         )}
 

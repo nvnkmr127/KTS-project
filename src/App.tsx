@@ -32,6 +32,7 @@ const TeacherDashboard = lazy(() => import('./pages/TeacherDashboard').then(m =>
 const Homework = lazy(() => import('./pages/Homework').then(m => ({ default: m.Homework })));
 const Timetable = lazy(() => import('./pages/Timetable').then(m => ({ default: m.Timetable })));
 const StaffAttendance = lazy(() => import('./pages/StaffAttendance').then(m => ({ default: m.StaffAttendance })));
+const StaffAttendanceAnalytics = lazy(() => import('./pages/StaffAttendanceAnalytics').then(m => ({ default: m.StaffAttendanceAnalytics })));
 const StaffAccess = lazy(() => import('./pages/StaffAccess').then(m => ({ default: m.StaffAccess })));
 const AllotAttendance = lazy(() => import('./pages/AllotAttendance').then(m => ({ default: m.AllotAttendance })));
 const Promotion = lazy(() => import('./pages/Promotion').then(m => ({ default: m.Promotion })));
@@ -137,6 +138,7 @@ function AppShell() {
               <Route path={PAGE_TO_PATH['fee-categories']} element={<ProtectedRoute requireAdmin><FeeCategories /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['staff']} element={<ProtectedRoute requireAdmin><StaffManagement /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['staff-attendance']} element={<ProtectedRoute requireAdmin><StaffAttendance /></ProtectedRoute>} />
+              <Route path={PAGE_TO_PATH['staff-attendance-analytics']} element={<ProtectedRoute requireAdmin><StaffAttendanceAnalytics /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['salary']} element={<ProtectedRoute requireAdmin><Salary /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['salary-categories']} element={<ProtectedRoute requireAdmin><SalaryCategories /></ProtectedRoute>} />
               <Route path={PAGE_TO_PATH['expenses']} element={<ProtectedRoute requireAdmin><Expenses /></ProtectedRoute>} />

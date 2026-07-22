@@ -22,6 +22,7 @@ const PAGE_TITLES: Record<PageId, string> = {
   leave: 'Leave Management',
   'staff-access': 'Staff Access',
   'staff-attendance': 'Staff Attendance',
+  'staff-attendance-analytics': 'Staff Attendance Analytics',
   'salary-categories': 'Salary Categories',
   exams: 'Examinations',
   meetings: 'Parent Meetings',
