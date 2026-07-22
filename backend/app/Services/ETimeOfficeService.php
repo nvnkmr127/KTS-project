@@ -32,13 +32,17 @@ class ETimeOfficeService
      */
     private function loadConfiguration(): void
     {
-        // config() (not env()) so credentials survive `config:cache` in production.
-        // No demo-account fallback: missing credentials must fail validateConfiguration()
-        // loudly instead of silently fetching the eTimeOffice demo corporate's data.
-        $this->apiUrl = config('services.etimeoffice.url') ?: 'https://api.etimeoffice.com/api';
-        $this->corporateId = (string) config('services.etimeoffice.corporate_id', '');
-        $this->username = (string) config('services.etimeoffice.username', '');
-        $this->password = (string) config('services.etimeoffice.password', '');
+        // Prioritize Database Settings from the UI.
+        $dbUrl = Setting::where('key', 'etimeoffice_api_url')->value('value');
+        $dbCorporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value');
+        $dbUsername = Setting::where('key', 'etimeoffice_username')->value('value');
+        $dbPassword = Setting::where('key', 'etimeoffice_password')->value('value');
+
+        // Fallback to config, and finally fallback to raw env() to match your .env file
+        $this->apiUrl = $dbUrl ?: config('services.etimeoffice.url') ?: env('ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
+        $this->corporateId = (string) ($dbCorporateId ?: config('services.etimeoffice.corporate_id') ?: env('ETIMEOFFICE_CORPORATE_ID'));
+        $this->username = (string) ($dbUsername ?: config('services.etimeoffice.username') ?: env('USERNAME'));
+        $this->password = (string) ($dbPassword ?: config('services.etimeoffice.password') ?: env('PASSWORD'));
 
         // Create Basic Auth token (base64 encoded)
         $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");

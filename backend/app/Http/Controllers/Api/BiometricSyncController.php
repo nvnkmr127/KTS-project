@@ -371,7 +371,11 @@ class BiometricSyncController extends Controller
             'password'     => 'required|string|max:200',
         ]);
 
-        Log::info('BiometricSyncController: saveCredentials called but ignored as credentials are in .env');
+        Setting::updateOrCreate(['key' => 'etimeoffice_corporate_id'], ['value' => $request->corporate_id]);
+        Setting::updateOrCreate(['key' => 'etimeoffice_username'], ['value' => $request->username]);
+        Setting::updateOrCreate(['key' => 'etimeoffice_password'], ['value' => $request->password]);
+
+        Log::info('BiometricSyncController: saveCredentials actually saved credentials to database.');
 
         return response()->json([
             'success' => true,
