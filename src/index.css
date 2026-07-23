@@ -139,3 +139,50 @@ body {
   animation: scaleUp 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@media print {
+  html, body, #root {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-only-container, .print-only-container * {
+    visibility: visible;
+  }
+
+  .print-only-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+  }
+
+  .overflow-x-auto, .overflow-y-auto, .overflow-hidden {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  table { page-break-after: auto; }
+  tr    { page-break-inside: avoid; page-break-after: auto; }
+  td    { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+}
+
+

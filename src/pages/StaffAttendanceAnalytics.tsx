@@ -514,7 +514,7 @@ export function StaffAttendanceAnalytics() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 bg-[var(--bg)] space-y-4 pb-12">
+    <div className="flex-1 overflow-y-auto p-4 bg-[var(--bg)] space-y-4 pb-12 print-only-container">
       <div className="flex items-center justify-between mb-2">
         <h1 className="text-[20px] font-bold text-[var(--tx)] flex items-center gap-2">
           Faculty Attendance Analysis Report
@@ -661,10 +661,10 @@ export function StaffAttendanceAnalytics() {
         <div className="p-4 flex items-center justify-between border-b border-[var(--b)]">
           <h3 className="text-[14px] font-bold text-[#3B82F6]">Detailed Attendance Data {startDate === endDate ? `(${formatDate(startDate)})` : ''}</h3>
           <div className="flex gap-2">
-            <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--teal)] text-white rounded-lg text-[12px] font-medium hover:opacity-90 transition-opacity">
+            <button onClick={handleExport} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--teal)] text-white rounded-lg text-[12px] font-medium hover:opacity-90 transition-opacity no-print">
               <Download size={14} /> Export Excel
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--surf2)] border border-[var(--b)] text-[var(--tx)] rounded-lg text-[12px] font-medium hover:bg-[var(--surf3)] transition-colors">
+            <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--surf2)] border border-[var(--b)] text-[var(--tx)] rounded-lg text-[12px] font-medium hover:bg-[var(--surf3)] transition-colors no-print">
               <Printer size={14} /> Print
             </button>
           </div>
