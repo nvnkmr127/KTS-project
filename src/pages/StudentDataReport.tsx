@@ -54,10 +54,12 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
         }
       }
 
-      let rawAdmDate = student.admissionDate || (student.admission_date ? student.admission_date.slice(0,10) : '');
-      if (rawAdmDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(rawAdmDate)) {
-        const [y, m, d] = rawAdmDate.split('-');
-        rawAdmDate = `${d}-${m}-${y}`;
+      let rawAdmDate = String(student.admissionDate || student.admission_date || '');
+      const dateMatch = rawAdmDate.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+      if (dateMatch) {
+        rawAdmDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+      } else if (rawAdmDate.length > 10 && rawAdmDate.includes('T')) {
+        rawAdmDate = rawAdmDate.split('T')[0];
       }
 
       return {
