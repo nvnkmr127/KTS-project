@@ -107,9 +107,13 @@ export function Reports() {
           api.getResources('leaves').catch(() => []),
         ]);
 
+        const extractArray = (res: any) => Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.data?.data && Array.isArray(res.data.data) ? res.data.data : []));
+        const studentsArr = extractArray(rawStudents);
+        const studentFeesArr = extractArray(rawStudentFees);
+
         // Filter students & fees based on active status and selected Academic Year to match FeeManagement page
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const students = rawStudents.filter((s: any) => {
+        const students = studentsArr.filter((s: any) => {
           const isActive = s.status === 'active' || s.status === 'Active';
           const matchAy = !s.batch || String(s.batch.academic_year_id) === String(selectedAcademicYearId);
           return isActive && matchAy;
@@ -118,7 +122,7 @@ export function Reports() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const activeStudentIds = new Set(students.map((s: any) => String(s.id)));
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const studentFees = rawStudentFees.filter((f: any) => activeStudentIds.has(String(f.student_id)));
+        const studentFees = studentFeesArr.filter((f: any) => activeStudentIds.has(String(f.student_id)));
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let staffList: any[] = [];
@@ -152,8 +156,8 @@ export function Reports() {
         setStudentsList(students);
         setStudentFeesList(studentFees);
         setFacultyList(staffList);
-        setAllStudentsList(rawStudents);
-        setAllStudentFeesList(rawStudentFees);
+        setAllStudentsList(studentsArr);
+        setAllStudentFeesList(studentFeesArr);
 
         // Load student attendance
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

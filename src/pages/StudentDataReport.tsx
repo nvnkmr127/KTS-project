@@ -54,6 +54,12 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
         }
       }
 
+      let rawAdmDate = student.admissionDate || (student.admission_date ? student.admission_date.slice(0,10) : '');
+      if (rawAdmDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(rawAdmDate)) {
+        const [y, m, d] = rawAdmDate.split('-');
+        rawAdmDate = `${d}-${m}-${y}`;
+      }
+
       return {
         ...student,
         roll: student.roll || student.enrollment_number,
@@ -61,7 +67,7 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
         phone: student.phone || student.student_mobile || student.father_mobile,
         address: student.address || student.village,
         status: (student.status === 'active' || student.status === 'Active') ? 'Active' : (student.status === 'left' || student.status === 'dropout' || student.status === 'Left') ? 'Left' : (student.status === 'transfer' || student.status === 'transferred' || student.status === 'Transferred') ? 'Transferred' : 'Active',
-        admissionDate: student.admissionDate || (student.admission_date ? student.admission_date.slice(0,10) : ''),
+        admissionDate: rawAdmDate,
         displayDob: formattedDob,
         age: calculatedAge,
         totalFee,

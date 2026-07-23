@@ -84,8 +84,10 @@ export function StaffAttendanceAnalytics() {
       let staffList: StaffMember[] = [];
       try {
         const staffData = await api.getResources('faculty');
-        if (staffData && staffData.length > 0) {
-          staffList = staffData.map((s: any) => ({
+        const extractArray = (res: any) => Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.data?.data && Array.isArray(res.data.data) ? res.data.data : []));
+        const staffArr = extractArray(staffData);
+        if (staffArr.length > 0) {
+          staffList = staffArr.map((s: any) => ({
             ...s,
             documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
             status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
@@ -153,7 +155,8 @@ export function StaffAttendanceAnalytics() {
       let fetchedBiometricLogs: any[] = [];
       try {
         const logsData = await api.getResources('biometric-logs', { start_date: startDate, end_date: endDate, limit: '10000' });
-        if (Array.isArray(logsData)) fetchedBiometricLogs = logsData;
+        const extractArray = (res: any) => Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.data?.data && Array.isArray(res.data.data) ? res.data.data : []));
+        fetchedBiometricLogs = extractArray(logsData);
       } catch(e) {}
       setDailyBiometricLogs(fetchedBiometricLogs);
       

@@ -405,9 +405,11 @@ export function StaffAttendance() {
   // Fetch logs from the local biometric_logs table (which gets instant webhook data)
   const fetchLocalBiometricLogs = useCallback(() => {
     api.getResources('biometric-logs', { date })
-      .then((logs) => {
+      .then((res) => {
+        const extractArray = (res: any) => Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.data?.data && Array.isArray(res.data.data) ? res.data.data : []));
+        const logs = extractArray(res);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (Array.isArray(logs)) {
+        if (Array.isArray(logs) && logs.length > 0) {
           const mapped: BiometricRecord[] = logs.map((l: any) => {
             const scanTime = l.scan_datetime ? scanDateTimeToParts(l.scan_datetime).time : undefined;
             const scanType = String(l.scan_type || '').toLowerCase();
@@ -561,7 +563,9 @@ export function StaffAttendance() {
       setIsSyncing(true);
       setLastSyncMsg('Loading biometric logs from local database...');
       api.getResources('biometric-logs', { date })
-        .then((logs) => {
+        .then((res) => {
+          const extractArray = (res: any) => Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.data?.data && Array.isArray(res.data.data) ? res.data.data : []));
+          const logs = extractArray(res);
           if (Array.isArray(logs) && logs.length > 0) {
             const mapped: BiometricRecord[] = logs.map((l: any) => {
               const scanTime = l.scan_datetime ? scanDateTimeToParts(l.scan_datetime).time : undefined;

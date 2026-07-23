@@ -46,7 +46,7 @@ const MOCK_STAFF_EMAILS = new Set([
   'pavan@gmail.com',
 ]);
 // eslint-disable-next-line react-refresh/only-export-components
-export const isRealStaff = (s: any) => Boolean(s) && !MOCK_STAFF_EMAILS.has(s.email);
+export const isRealStaff = (s: any) => Boolean(s);
 
   // eslint-disable-next-line unused-imports/no-unused-vars
 const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
@@ -97,9 +97,11 @@ export function StaffManagement() {
     async function syncFromDb() {
       try {
         const staffData = await api.getResources('faculty');
-        if (staffData && staffData.length > 0) {
+        const extractArray = (res: any) => Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.data?.data && Array.isArray(res.data.data) ? res.data.data : []));
+        const staffArr = extractArray(staffData);
+        if (staffArr.length > 0) {
           // Normalize documents array and status capitalization
-          const normalizedStaff = staffData.map((s: any) => ({
+          const normalizedStaff = staffArr.map((s: any) => ({
             ...s,
             documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
             status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
@@ -302,11 +304,15 @@ export function StaffManagement() {
         
         let logs: any[] = [];
         try {
+          const extractArray = (res: any) => Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.data?.data && Array.isArray(res.data.data) ? res.data.data : []));
+          
           if (empCode) {
-            logs = await api.getResources('biometric-logs', { employee_code: String(empCode), limit: '1000' });
+            const res = await api.getResources('biometric-logs', { employee_code: String(empCode), limit: '1000' });
+            logs = extractArray(res);
           }
           if ((!logs || logs.length === 0) && staffId) {
-            logs = await api.getResources('biometric-logs', { employee_code: String(staffId), limit: '1000' });
+            const res = await api.getResources('biometric-logs', { employee_code: String(staffId), limit: '1000' });
+            logs = extractArray(res);
           }
 
           if (Array.isArray(logs)) {
