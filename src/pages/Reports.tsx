@@ -17,6 +17,7 @@ import { useDialog } from '../context/DialogContext';
 import { STAFF } from './StaffManagement';
 import { useApp } from '../context/AppContext';
 import { StaffAttendanceAnalytics } from './StaffAttendanceAnalytics';
+import { StudentDataReport } from './StudentDataReport';
 
 // --- FALLBACK MOCK DATA (used if database is empty) ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,6 +77,10 @@ export function Reports() {
   const [facultyList, setFacultyList] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [studentAttendanceList, setStudentAttendanceList] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [allStudentsList, setAllStudentsList] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [allStudentFeesList, setAllStudentFeesList] = useState<any[]>([]);
 
   // Dynamic calculated states
   const [kpis, setKpis] = useState({ reports: 0, lastExport: 'Never', dataPoints: '0' });
@@ -147,6 +152,8 @@ export function Reports() {
         setStudentsList(students);
         setStudentFeesList(studentFees);
         setFacultyList(staffList);
+        setAllStudentsList(rawStudents);
+        setAllStudentFeesList(rawStudentFees);
 
         // Load student attendance
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -754,7 +761,7 @@ export function Reports() {
     <div className="flex-1 overflow-y-auto p-4 bg-[var(--bg)]">
 
       <TabBar
-        tabs={['Overview', 'Cohort & YoY Collection', 'Staff Attendance Analytics', 'Financial Forecasting']}
+        tabs={['Overview', 'Cohort & YoY Collection', 'Staff Attendance Analytics', 'Student Data Report', 'Financial Forecasting']}
         active={activeTab}
         onChange={setActiveTab}
       />
@@ -1018,8 +1025,15 @@ export function Reports() {
           </div>
         )}
 
-        {/* TAB 3: FINANCIAL FORECASTING */}
+        {/* TAB 3: STUDENT DATA REPORT */}
         {activeTab === 3 && (
+          <div className="-mx-4 sm:mx-0">
+            <StudentDataReport students={allStudentsList} studentFees={allStudentFeesList} />
+          </div>
+        )}
+
+        {/* TAB 4: FINANCIAL FORECASTING */}
+        {activeTab === 4 && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <KPICard
