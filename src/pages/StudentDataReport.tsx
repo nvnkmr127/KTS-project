@@ -25,10 +25,16 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
 
       return {
         ...student,
+        roll: student.roll || student.enrollment_number,
+        parent: student.parent || student.father_name,
+        phone: student.phone || student.student_mobile || student.father_mobile,
+        address: student.address || student.village,
+        status: (student.status === 'active' || student.status === 'Active') ? 'Active' : (student.status === 'left' || student.status === 'dropout' || student.status === 'Left') ? 'Left' : (student.status === 'transfer' || student.status === 'transferred' || student.status === 'Transferred') ? 'Transferred' : 'Active',
+        admissionDate: student.admissionDate || (student.admission_date ? student.admission_date.slice(0,10) : ''),
         totalFee,
         feePaid,
         feeDue,
-        batchName: student.batch?.academic_year || student.academicYearName || '-',
+        batchName: (typeof student.batch?.academic_year === 'object' ? student.batch?.academic_year?.name : student.batch?.academic_year) || student.academicYearName || '-',
       };
     });
   }, [students, studentFees]);

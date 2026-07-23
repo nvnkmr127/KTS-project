@@ -110,7 +110,9 @@ export function StaffAttendanceAnalytics() {
         : staffList.filter(s => s.department === department);
       setFilteredStaff(filteredStaffList);
 
-      // Fetch settings
+      // Fetch settings and attendance
+      let attendanceMap: any = {};
+      let localPunches: any[] = [];
       try {
         const sets = await api.getResources('settings');
         const sArr = Array.isArray(sets) ? sets : (sets && sets.data && Array.isArray(sets.data) ? sets.data : []);
@@ -120,12 +122,33 @@ export function StaffAttendanceAnalytics() {
           presentCutoffMorning: sArr.find((s:any) => s.key === 'present_cutoff_morning')?.value || '09:00',
           presentCutoffEvening: sArr.find((s:any) => s.key === 'present_cutoff_evening')?.value || '16:30'
         });
+        
+        const attendanceSetting = sArr.find((s: any) => s.key === 'kts_staff_attendance');
+        if (attendanceSetting && attendanceSetting.value) {
+          attendanceMap = JSON.parse(attendanceSetting.value);
+        }
+        
+        const punchesSetting = sArr.find((s: any) => s.key === 'kts_biometric_punches');
+        if (punchesSetting && punchesSetting.value) {
+          localPunches = JSON.parse(punchesSetting.value);
+        }
       } catch(e) {}
 
-      // 2. Fetch Attendance
-      const localAttendance = localStorage.getItem('kts_staff_attendance');
-      const attendanceMap = localAttendance ? JSON.parse(localAttendance) : {};
+      // 2. Fallback to localStorage if API data is empty
+      if (Object.keys(attendanceMap).length === 0) {
+        const localAttendance = localStorage.getItem('kts_staff_attendance');
+        if (localAttendance) {
+          try { attendanceMap = JSON.parse(localAttendance); } catch(e) {}
+        }
+      }
       setDailyAttendanceMap(attendanceMap);
+
+      if (localPunches.length === 0) {
+        const localP = localStorage.getItem('kts_biometric_punches');
+        if (localP) {
+          try { localPunches = JSON.parse(localP); } catch(e) {}
+        }
+      }
 
       if (startDate === endDate) {
         try {
@@ -133,8 +156,7 @@ export function StaffAttendanceAnalytics() {
           if (Array.isArray(logsData)) setDailyBiometricLogs(logsData);
           else setDailyBiometricLogs([]);
         } catch(e) { setDailyBiometricLogs([]); }
-        const localP = localStorage.getItem('kts_biometric_punches');
-        if (localP) setDailyLocalPunches(JSON.parse(localP).filter((p:any) => p.timestamp.startsWith(startDate)));
+        setDailyLocalPunches(localPunches.filter((p:any) => p.timestamp.startsWith(startDate)));
       }
 
       // 3. Leaves are directly used from useApp()

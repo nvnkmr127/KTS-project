@@ -101,7 +101,7 @@ export function Reports() {
       setLoading(true);
       try {
         const [rawStudents, rawStudentFees, settingsRes, leaves] = await Promise.all([
-          api.getResources('students', { with: 'batch', limit: '1000' }).catch(() => []),
+          api.getResources('students', { with: 'batch.academicYear', limit: '1000' }).catch(() => []),
           api.getResources('student-fees', { limit: '10000' }).catch(() => []),
           api.getResources('settings').catch(() => []),
           api.getResources('leaves').catch(() => []),
