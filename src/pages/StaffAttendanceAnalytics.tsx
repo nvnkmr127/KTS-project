@@ -150,14 +150,15 @@ export function StaffAttendanceAnalytics() {
         }
       }
 
-      if (startDate === endDate) {
-        try {
-          const logsData = await api.getResources('biometric-logs', { date: startDate });
-          if (Array.isArray(logsData)) setDailyBiometricLogs(logsData);
-          else setDailyBiometricLogs([]);
-        } catch(e) { setDailyBiometricLogs([]); }
-        setDailyLocalPunches(localPunches.filter((p:any) => p.timestamp.startsWith(startDate)));
-      }
+      let fetchedBiometricLogs: any[] = [];
+      try {
+        const logsData = await api.getResources('biometric-logs', { start_date: startDate, end_date: endDate, limit: '10000' });
+        if (Array.isArray(logsData)) fetchedBiometricLogs = logsData;
+      } catch(e) {}
+      setDailyBiometricLogs(fetchedBiometricLogs);
+      
+      const fetchedLocalPunches = localPunches.filter((p:any) => p.timestamp >= startDate && p.timestamp <= endDate + ' 23:59:59');
+      setDailyLocalPunches(fetchedLocalPunches);
 
       // 3. Leaves are directly used from useApp()
       const allLeaves = leaveRequests || [];
@@ -184,6 +185,66 @@ export function StaffAttendanceAnalytics() {
         datesInRange.push(tempDate.toISOString().split('T')[0]);
         tempDate.setDate(tempDate.getDate() + 1);
       }
+
+      const computeStatus = (staff: StaffMember, targetDate: string) => {
+        const manualStatus = attendanceMap[targetDate]?.[staff.id];
+        const hasLeave = allLeaves.some((l: any) => {
+           if (String(l.user_id || l.staffId) === String(staff.id) && l.status === 'Approved') {
+              return targetDate >= (l.start_date || l.from) && targetDate <= (l.end_date || l.to);
+           }
+           return false;
+        });
+        if (hasLeave) return 'Leave';
+        if (manualStatus) return manualStatus;
+
+        let mode = 'biometric';
+        try { mode = localStorage.getItem('kts_staff_attendance_mode') || 'biometric'; } catch(e) {}
+        if (mode === 'manual') return 'Present';
+
+        const punches: string[] = [];
+        fetchedLocalPunches.forEach(p => {
+          if (String(p.staffId) === String(staff.id) && p.timestamp.startsWith(targetDate)) punches.push(p.timestamp);
+        });
+
+        const normalizeName = (name: string) => (name||'').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+        const staffBioCode = String(staff.biometric_employee_code || staff.id).toLowerCase().trim();
+        const staffNameNorm = normalizeName(staff.name);
+
+        fetchedBiometricLogs.forEach(l => {
+          const eCode = String(l.employee_code || l.Empcode || '').toLowerCase().trim();
+          const lName = normalizeName(l.raw_data?.name || l.raw_data?.Name || '');
+          let logDate = l.scan_datetime ? l.scan_datetime.substring(0, 10) : '';
+          if (!logDate && l.raw_data?.in_time) logDate = targetDate;
+          
+          if (logDate === targetDate || l.scan_datetime?.startsWith(targetDate) || (l.raw_data?.in_time && l.PunchDate?.startsWith(targetDate))) {
+              if (eCode === staffBioCode || (lName && lName === staffNameNorm)) {
+                if (l.scan_datetime) punches.push(l.scan_datetime);
+                else if (l.raw_data?.in_time) punches.push(`${targetDate} ${l.raw_data.in_time}:00`);
+                else if (l.raw_data?.out_time) punches.push(`${targetDate} ${l.raw_data.out_time}:00`);
+              }
+          }
+        });
+
+        if (punches.length === 0) return 'Absent';
+
+        const sorted = [...new Set(punches)].sort();
+        const inTimeStr = sorted[0].split(' ')[1]?.substring(0, 5) || null;
+        const outTimeStr = sorted.length > 1 ? sorted[sorted.length - 1].split(' ')[1]?.substring(0, 5) : null;
+
+        let status = 'Absent';
+        let hasCheckIn = false;
+        let hasCheckOut = false;
+        const s = settings;
+        if (inTimeStr && inTimeStr <= ((s.lateEntryCutoff || '09:50') + ':59')) hasCheckIn = true;
+        if (outTimeStr && outTimeStr >= ((s.earlyEntryCutoff || '15:00') + ':00')) hasCheckOut = true;
+        if (!hasCheckIn && !hasCheckOut) {
+          if (sorted.length >= 2) { hasCheckIn = true; hasCheckOut = true; } else { hasCheckIn = true; } 
+        }
+        if (hasCheckIn && hasCheckOut) status = 'Present';
+        else if (hasCheckIn || hasCheckOut) status = 'Half Day';
+
+        return status;
+      };
 
       const reportData: FacultyReport[] = [];
       let totalAttPercentageSum = 0;
@@ -217,36 +278,24 @@ export function StaffAttendanceAnalytics() {
             monthsData[monthKey].workDays++;
             overallData.workDays++;
 
-            const dayRecord = attendanceMap[dateStr]?.[staff.id];
-            
-            // Check if there's an approved leave for this date
-            const hasLeave = allLeaves.some((l: any) => {
-              if (String(l.user_id) === String(staff.id) && l.status === 'Approved') {
-                const ls = new Date(l.start_date);
-                const le = new Date(l.end_date || l.start_date);
-                return dObj >= ls && dObj <= le;
-              }
-              return false;
-            });
+            const dayStatus = computeStatus(staff, dateStr);
 
-            if (hasLeave) {
+            if (dayStatus === 'Leave') {
               monthsData[monthKey].leave++;
               overallData.leave++;
-            } else if (dayRecord === 'Present') {
+            } else if (dayStatus === 'Present') {
               monthsData[monthKey].present++;
               overallData.present++;
-            } else if (dayRecord === 'Late') {
+            } else if (dayStatus === 'Late') {
               monthsData[monthKey].late++;
               overallData.late++;
-            } else if (dayRecord === 'Half Day') {
+            } else if (dayStatus === 'Half Day') {
               monthsData[monthKey].half++;
               overallData.half++;
-            } else if (dayRecord === 'Absent') {
+            } else if (dayStatus === 'Absent') {
               monthsData[monthKey].absent++;
               overallData.absent++;
             } else {
-              // default to present for mock if no record? 
-              // let's assume default is present if joined before date, but to be safe we'll count as present for now if not marked absent/leave
               monthsData[monthKey].present++;
               overallData.present++;
             }
@@ -465,23 +514,29 @@ export function StaffAttendanceAnalytics() {
     }
   };
 
-  const getStaffDailyData = (staff: StaffMember) => {
+  const getStaffDailyData = (staff: StaffMember, targetDate: string = startDate) => {
     // manual
-    const manualStatus = dailyAttendanceMap[startDate]?.[staff.id];
+    const manualStatus = dailyAttendanceMap[targetDate]?.[staff.id];
     // leaves
     const hasLeave = leaveRequests?.some((l: any) => 
-      String(l.user_id || l.staffId) === String(staff.id) && l.status === 'Approved' && startDate >= (l.start_date || l.from) && startDate <= (l.end_date || l.to)
+      String(l.user_id || l.staffId) === String(staff.id) && l.status === 'Approved' && targetDate >= (l.start_date || l.from) && targetDate <= (l.end_date || l.to)
     );
     if (hasLeave) return { in: null, out: null, hours: null, status: 'Leave' };
     if (manualStatus) {
       return { in: null, out: null, hours: null, status: manualStatus };
     }
 
+    let mode = 'biometric';
+    try { mode = localStorage.getItem('kts_staff_attendance_mode') || 'biometric'; } catch(e) {}
+    if (mode === 'manual') {
+      return { in: null, out: null, hours: null, status: 'Present' };
+    }
+
     // biometric & local punches
     const punches: string[] = [];
     
     dailyLocalPunches.forEach(p => {
-      if (String(p.staffId) === String(staff.id)) punches.push(p.timestamp);
+      if (String(p.staffId) === String(staff.id) && p.timestamp.startsWith(targetDate)) punches.push(p.timestamp);
     });
 
     const normalizeName = (name: string) => (name||'').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
@@ -491,10 +546,15 @@ export function StaffAttendanceAnalytics() {
     dailyBiometricLogs.forEach(l => {
       const eCode = String(l.employee_code || l.Empcode || '').toLowerCase().trim();
       const lName = normalizeName(l.raw_data?.name || l.raw_data?.Name || '');
-      if (eCode === staffBioCode || (lName && lName === staffNameNorm)) {
-        if (l.scan_datetime) punches.push(l.scan_datetime);
-        else if (l.raw_data?.in_time) punches.push(`${startDate} ${l.raw_data.in_time}:00`);
-        else if (l.raw_data?.out_time) punches.push(`${startDate} ${l.raw_data.out_time}:00`);
+      let logDate = l.scan_datetime ? l.scan_datetime.substring(0, 10) : '';
+      if (!logDate && l.raw_data?.in_time) logDate = targetDate;
+      
+      if (logDate === targetDate || l.scan_datetime?.startsWith(targetDate) || (l.raw_data?.in_time && l.PunchDate?.startsWith(targetDate))) {
+          if (eCode === staffBioCode || (lName && lName === staffNameNorm)) {
+            if (l.scan_datetime) punches.push(l.scan_datetime);
+            else if (l.raw_data?.in_time) punches.push(`${targetDate} ${l.raw_data.in_time}:00`);
+            else if (l.raw_data?.out_time) punches.push(`${targetDate} ${l.raw_data.out_time}:00`);
+          }
       }
     });
 

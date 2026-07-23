@@ -15,13 +15,44 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
   const [classFilter, setClassFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
 
-  // Process data to merge fees
   const processedData = useMemo(() => {
     return students.map(student => {
       const fees = studentFees.filter(f => f.student_id === student.id);
       const totalFee = fees.reduce((sum, f) => sum + (Number(f.total_amount) || 0), 0);
       const feePaid = fees.reduce((sum, f) => sum + (Number(f.paid_amount) || 0), 0);
       const feeDue = totalFee - feePaid;
+
+      let formattedDob = student.dob || '';
+      let calculatedAge = '-';
+      
+      if (formattedDob) {
+        const d = new Date(formattedDob);
+        if (!isNaN(d.getTime())) {
+          formattedDob = `${d.getDate().toString().padStart(2, '0')}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getFullYear()}`;
+          
+          const now = new Date();
+          let years = now.getFullYear() - d.getFullYear();
+          let months = now.getMonth() - d.getMonth();
+          if (months < 0) {
+            years--;
+            months += 12;
+          }
+          if (now.getDate() < d.getDate()) {
+            months--;
+            if (months < 0) {
+              years--;
+              months += 12;
+            }
+          }
+          if (years === 0 && months === 0) calculatedAge = '0 Months';
+          else {
+            let res = [];
+            if (years > 0) res.push(`${years} Years`);
+            if (months > 0) res.push(`${months} Months`);
+            calculatedAge = res.join(', ') || '0 Months';
+          }
+        }
+      }
 
       return {
         ...student,
@@ -31,6 +62,8 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
         address: student.address || student.village,
         status: (student.status === 'active' || student.status === 'Active') ? 'Active' : (student.status === 'left' || student.status === 'dropout' || student.status === 'Left') ? 'Left' : (student.status === 'transfer' || student.status === 'transferred' || student.status === 'Transferred') ? 'Transferred' : 'Active',
         admissionDate: student.admissionDate || (student.admission_date ? student.admission_date.slice(0,10) : ''),
+        displayDob: formattedDob,
+        age: calculatedAge,
         totalFee,
         feePaid,
         feeDue,
@@ -73,8 +106,8 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
         s.name || '-',
         s.student_pen_no || '-',
         s.gender || '-',
-        s.dob || '-',
-        '-', // Age
+        s.displayDob || '-',
+        s.age || '-', // Age
         s.father_name || s.parent || '-',
         s.father_mobile || s.phone || '-',
         s.address || '-',
@@ -206,7 +239,7 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
                   <td className="py-3 px-4 text-[13px] text-[var(--tx)] whitespace-nowrap font-medium">{student.name || '-'}</td>
                   <td className="py-3 px-4 text-[13px] text-[var(--tx)] whitespace-nowrap">{student.student_pen_no || '-'}</td>
                   <td className="py-3 px-4 text-[13px] text-[var(--tx)] whitespace-nowrap">{student.admissionDate || '-'}</td>
-                  <td className="py-3 px-4 text-[13px] text-[var(--tx)] whitespace-nowrap">{student.dob || '-'}</td>
+                  <td className="py-3 px-4 text-[13px] text-[var(--tx)] whitespace-nowrap">{student.displayDob || '-'}</td>
                   <td className="py-3 px-4 text-[13px] text-[var(--tx)] whitespace-nowrap">{student.father_name || student.parent || '-'}</td>
                   <td className="py-3 px-4 text-[13px] text-[var(--tx)] whitespace-nowrap">{student.mother_name || '-'}</td>
                   <td className="py-3 px-4 text-[13px] text-[var(--tx)] whitespace-nowrap">{student.father_mobile || student.phone || '-'}</td>

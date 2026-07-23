@@ -306,7 +306,7 @@ class GenericApiController extends Controller
 
         // Apply simple field-value filters from query parameters
         $columns = $this->getTableColumns($modelClass);
-        foreach ($request->except(['page', 'limit', 'search', 'with', 'role', 'date']) as $key => $value) {
+        foreach ($request->except(['page', 'limit', 'search', 'with', 'role', 'date', 'start_date', 'end_date']) as $key => $value) {
             if (in_array($key, $columns) && $value !== 'All' && $value !== '') {
                 $query->where($key, $value);
             }
@@ -318,6 +318,20 @@ class GenericApiController extends Controller
                 $query->whereDate('scan_datetime', $request->date);
             } elseif (in_array('created_at', $columns)) {
                 $query->whereDate('created_at', $request->date);
+            }
+        }
+
+        if ($request->has('start_date') && $request->start_date !== '') {
+            $col = ($resource === 'biometric-logs' && in_array('scan_datetime', $columns)) ? 'scan_datetime' : (in_array('created_at', $columns) ? 'created_at' : null);
+            if ($col) {
+                $query->whereDate($col, '>=', $request->start_date);
+            }
+        }
+
+        if ($request->has('end_date') && $request->end_date !== '') {
+            $col = ($resource === 'biometric-logs' && in_array('scan_datetime', $columns)) ? 'scan_datetime' : (in_array('created_at', $columns) ? 'created_at' : null);
+            if ($col) {
+                $query->whereDate($col, '<=', $request->end_date);
             }
         }
 
