@@ -82,11 +82,7 @@ export function Timetable() {
             .filter((x: any) => {
               if (!x?.id || !x.name || x.status === 'Resigned') return false;
               const cat = (x.category || 'Teaching').toString().trim().toLowerCase();
-              const desig = (x.designation || '').toString().trim().toLowerCase();
-              if (cat === 'non-teaching' || cat.includes('non-teach')) return false;
-              const nonTeachingCategories = ['driver', 'cleaner', 'watchman', 'house keeping', 'housekeeping'];
-              if (nonTeachingCategories.includes(cat)) return false;
-              return cat === 'teaching' || cat.includes('teach') || desig.includes('teacher');
+              return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
             })
             .map((x: any) => ({ id: String(x.id), name: x.name }));
         } catch { /* empty */ }
@@ -99,11 +95,7 @@ export function Timetable() {
               if ((t.status || '').toLowerCase() === 'inactive') return false;
               if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
               const cat = (t.category || 'Teaching').toString().trim().toLowerCase();
-              const desig = (t.designation || '').toString().trim().toLowerCase();
-              if (cat === 'non-teaching' || cat.includes('non-teach')) return false;
-              const nonTeachingCategories = ['driver', 'cleaner', 'watchman', 'house keeping', 'housekeeping'];
-              if (nonTeachingCategories.includes(cat)) return false;
-              return cat === 'teaching' || cat.includes('teach') || desig.includes('teacher');
+              return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
             });
           } catch { /* empty */ }
         }
