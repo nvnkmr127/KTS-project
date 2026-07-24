@@ -322,7 +322,7 @@ export function Students() {
       setHasUnsavedChanges(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modal, selected, setHasUnsavedChanges]);
+  }, [modal, selected]);
 
   useEffect(() => {
     const viewStudent = activeDetailStudent;
@@ -799,9 +799,7 @@ export function Students() {
     if (!firstName.trim()) errors.firstName = 'First Name is required';
     if (!lastName.trim()) errors.lastName = 'Last Name is required';
     if (!parentVal.trim()) errors.parent = 'Parent Name is required';
-    if (!phone) {
-      errors.phone = 'Mobile Number is required';
-    } else if (phone.replace(/\D/g, '').length !== 10) {
+    if (phone && phone.replace(/\D/g, '').length !== 10) {
       errors.phone = 'Mobile Number must be exactly 10 digits';
     }
     if (bio && !/^[A-Za-z0-9-]+$/.test(bio)) {
@@ -858,7 +856,7 @@ export function Students() {
       caste: fd.get('caste') || null,
       sub_caste: fd.get('sub_caste') || null,
       tc_no: fd.get('tc_no') || null,
-      student_mobile: phone,
+      student_mobile: phone || null,
       village: fd.get('address'),
       class: classVal,
       section: sectionVal,
@@ -2323,10 +2321,9 @@ export function Students() {
                   {/* Student/Guardian Mobile */}
                   <div className="grid grid-cols-1 gap-3">
                     <div>
-                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Student/Guardian Mobile Number *</label>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Student/Guardian Mobile Number</label>
                       <input
                         name="phone"
-                        required
                         value={phoneVal}
                         onChange={(e) => {
                           setHasUnsavedChanges(true);
