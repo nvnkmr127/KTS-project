@@ -36,15 +36,21 @@ export function Classes() {
     try {
       const savedStaffStr = localStorage.getItem('kts_staff_members');
       if (savedStaffStr) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const arr = JSON.parse(savedStaffStr).filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (s: any) => s && s.id && s.name && s.status !== 'Resigned'
+          (s: any) => {
+            if (!s || !s.id || !s.name || s.status === 'Resigned') return false;
+            const cat = (s.category || 'Teaching').toString().trim().toLowerCase();
+            return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
+          }
         );
         if (arr.length > 0) return arr;
       }
     } catch { /* empty */ }
-    return STAFF.filter(s => s.status !== 'Resigned');
+    return STAFF.filter(s => {
+      if (s.status === 'Resigned') return false;
+      const cat = (s.category || 'Teaching').toString().trim().toLowerCase();
+      return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
+    });
   });
   const [loading, setLoading] = useState(false);
   const [expandedClass, setExpandedClass] = useState<string | null>('8');
@@ -93,7 +99,11 @@ export function Classes() {
       const s = localStorage.getItem('kts_staff_members');
       if (s) {
         const arr = JSON.parse(s);
-        localTeachers = arr.filter((x: any) => x && x.status !== 'Resigned').map((x: any) => ({
+        localTeachers = arr.filter((x: any) => {
+          if (!x || x.status === 'Resigned') return false;
+          const cat = (x.category || 'Teaching').toString().trim().toLowerCase();
+          return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
+        }).map((x: any) => ({
           id: String(x.id),
           name: x.name,
           status: x.status || 'Active',
@@ -109,7 +119,8 @@ export function Classes() {
         apiTeachers = facultyData.filter((t: any) => {
           if ((t.status || '').toLowerCase() === 'inactive') return false;
           if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
-          return true;
+          const cat = (t.category || 'Teaching').toString().trim().toLowerCase();
+          return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
         }).map((t: any) => ({
           id: String(t.id),
           name: t.name,
@@ -150,8 +161,11 @@ export function Classes() {
     let activeTeachers = Array.from(mergedMap.values());
 
     if (activeTeachers.length === 0) {
-      activeTeachers = STAFF.filter(s => s.status !== 'Resigned')
-        .map(s => ({ id: String(s.id), name: s.name, status: s.status, department: s.department || '' }));
+      activeTeachers = STAFF.filter(s => {
+        if (s.status === 'Resigned') return false;
+        const cat = (s.category || 'Teaching').toString().trim().toLowerCase();
+        return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
+      }).map(s => ({ id: String(s.id), name: s.name, status: s.status, department: s.department || '' }));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -579,7 +593,7 @@ export function Classes() {
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Class Teacher</label>
                 <select name="teacherId" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
                   <option value="">Select teacher</option>
-                  {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teachers.filter(t => !assignedTeacherIds.has(String(t.id))).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div>
@@ -695,7 +709,7 @@ export function Classes() {
               <button onClick={() => setShowAssignTeacher(null)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer"><X size={16} /></button>
             </div>
             <div className="p-5 space-y-2 max-h-[300px] overflow-y-auto">
-              {teachers.map((teacher) => (
+              {teachers.filter(t => !assignedTeacherIds.has(String(t.id)) || showAssignTeacher.classTeacherId === String(t.id)).map((teacher) => (
                 <button
                   key={teacher.id}
                   onClick={() => handleAssignTeacher(teacher.id)}
@@ -829,7 +843,7 @@ export function Classes() {
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
                 >
                   <option value="">Select teacher</option>
-                  {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {teachers.filter(t => !assignedTeacherIds.has(String(t.id)) || editSectionData.section.classTeacherId === String(t.id)).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </div>
               <div>
