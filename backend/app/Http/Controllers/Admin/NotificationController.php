@@ -147,9 +147,9 @@ class NotificationController extends Controller
         try {
             $userId = Auth::id();
 
-            // Get all unread notifications for this user
+            // Get all active notifications for this user (safeguard against JSON scope issues)
             $unreadNotifications = SystemNotification::forUser($userId)
-                ->unread($userId)
+                ->active()
                 ->get();
 
             foreach ($unreadNotifications as $notification) {
