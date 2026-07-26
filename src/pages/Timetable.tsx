@@ -41,6 +41,18 @@ const SUBJECT_TEXT: Record<string, string> = {
   Break: 'var(--tx3)',
 };
 
+const getSubjectColor = (subject: string): string | undefined => {
+  if (!subject) return undefined;
+  const key = Object.keys(SUBJECT_COLORS).find(k => k.toLowerCase() === subject.toLowerCase());
+  return key ? SUBJECT_COLORS[key] : undefined;
+};
+
+const getSubjectText = (subject: string): string | undefined => {
+  if (!subject) return undefined;
+  const key = Object.keys(SUBJECT_TEXT).find(k => k.toLowerCase() === subject.toLowerCase());
+  return key ? SUBJECT_TEXT[key] : undefined;
+};
+
 interface EditCell {
   day: string;
   period: number;
@@ -56,6 +68,7 @@ export function Timetable() {
   const [editSubject, setEditSubject] = useState('Mathematics');
   const [editTeacher, setEditTeacher] = useState('');
   const [editRoom, setEditRoom] = useState('Room 12');
+  const [isManualRoom, setIsManualRoom] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
   const [classes, setClasses] = useState<string[]>(['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
   const [showEditTimings, setShowEditTimings] = useState(false);
@@ -203,7 +216,9 @@ export function Timetable() {
     });
 
     setEditTeacher(cell?.teacherId ?? (available[0]?.id || ''));
-    setEditRoom(cell?.room ?? 'Room 12');
+    const roomVal = cell?.room ?? 'Room 12';
+    setEditRoom(roomVal);
+    setIsManualRoom(!ROOMS.includes(roomVal));
   };
 
   const saveCell = () => {
@@ -244,6 +259,8 @@ export function Timetable() {
               room: cell.room,
               period: p,
               day: day,  // Send day name (e.g., 'Monday') instead of a specific date
+              start_time: periodTimings[p]?.start,
+              end_time: periodTimings[p]?.end,
             });
           }
         }
@@ -367,21 +384,21 @@ export function Timetable() {
                             onClick={() => openEdit(day, p)}
                             className="w-full min-h-[52px] rounded-lg p-1.5 text-left transition-all cursor-pointer border border-transparent hover:border-[var(--blue)] group/cell"
                             style={{
-                              background: cell ? SUBJECT_COLORS[cell.subject] ?? 'var(--surf2)' : 'var(--surf2)',
+                              background: cell ? getSubjectColor(cell.subject) ?? 'var(--surf2)' : 'var(--surf2)',
                             }}
                           >
                             {cell ? (
                               <>
                                 <div
                                   className="text-[11.5px] font-semibold leading-tight"
-                                  style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx)' }}
+                                  style={{ color: getSubjectText(cell.subject) ?? 'var(--tx)' }}
                                 >
                                   {cell.subject}
                                 </div>
-                                <div className="text-[11px] mt-0.5" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx2)' }}>
-                                  {cell.teacher.split(' ').slice(-1)[0]}
+                                <div className="text-[11px] mt-0.5" style={{ color: getSubjectText(cell.subject) ?? 'var(--tx2)' }}>
+                                  {cell.teacher}
                                 </div>
-                                <div className="text-[10.5px] mt-0.5" style={{ color: SUBJECT_TEXT[cell.subject] ?? 'var(--tx3)' }}>
+                                <div className="text-[10.5px] mt-0.5" style={{ color: getSubjectText(cell.subject) ?? 'var(--tx3)' }}>
                                   {cell.room}
                                 </div>
                               </>
@@ -458,13 +475,45 @@ export function Timetable() {
               </div>
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Room *</label>
-                <select
-                  value={editRoom}
-                  onChange={(e) => setEditRoom(e.target.value)}
-                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
-                >
-                  {ROOMS.map((r) => <option key={r}>{r}</option>)}
-                </select>
+                {isManualRoom ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={editRoom}
+                      onChange={(e) => setEditRoom(e.target.value)}
+                      placeholder="Enter room..."
+                      className="flex-1 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManualRoom(false);
+                        setEditRoom('Room 12');
+                      }}
+                      className="px-2 border border-[var(--b)] rounded-lg hover:bg-[var(--surf3)] text-[var(--tx2)]"
+                      title="Select from list"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <select
+                    value={editRoom}
+                    onChange={(e) => {
+                      if (e.target.value === 'manual') {
+                        setIsManualRoom(true);
+                        setEditRoom('');
+                      } else {
+                        setEditRoom(e.target.value);
+                      }
+                    }}
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                  >
+                    {ROOMS.map((r) => <option key={r} value={r}>{r}</option>)}
+                    <option value="manual">Manual Entry...</option>
+                  </select>
+                )}
               </div>
             </div>
             <div className="flex gap-2 p-5 pt-0">

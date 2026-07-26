@@ -925,14 +925,33 @@ class GenericApiController extends Controller
                     ['code' => strtoupper(substr($slot['subject'], 0, 3))]
                 );
                 
+                $convertTime = function ($timeString) {
+                    if (!$timeString) return null;
+                    try {
+                        return \Carbon\Carbon::parse($timeString)->format('H:i:s');
+                    } catch (\Exception $e) {
+                        return null;
+                    }
+                };
+
+                $startTime = $convertTime($slot['start_time'] ?? null) ?? '08:00:00';
+                $endTime = $convertTime($slot['end_time'] ?? null) ?? '09:00:00';
+
                 $periodIndex = intval($slot['period']);
                 $timeSlot = \App\Models\TimeSlot::firstOrCreate(
                     ['id' => $periodIndex + 1],
                     [
-                        'start_time' => '08:00:00',
-                        'end_time' => '09:00:00',
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
                     ]
                 );
+                
+                if ($timeSlot->start_time !== $startTime || $timeSlot->end_time !== $endTime) {
+                    $timeSlot->update([
+                        'start_time' => $startTime,
+                        'end_time' => $endTime
+                    ]);
+                }
                 
                 $userId = intval($slot['teacherId']);
                 if ($userId > 0) {
