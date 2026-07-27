@@ -40,6 +40,7 @@ class GenericApiController extends Controller
             'payslips' => \App\Models\Payslip::class,
             'student-fees' => \App\Models\StudentFee::class,
             'fee-categories' => \App\Models\FeeCategory::class,
+            'expense-categories' => \App\Models\ExpenseCategory::class,
             'attendance' => \App\Models\Attendance::class,
             'academic-years' => \App\Models\AcademicYear::class,
             'batches' => \App\Models\Batch::class,

@@ -9,6 +9,7 @@ import { Badge } from '../components/Badge';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
 import { useDialog } from '../context/DialogContext';
+import { RecurringExpensesTab } from './RecurringExpensesTab';
 
 interface Expense {
   id: string;
@@ -39,6 +40,7 @@ const tooltipStyle = { backgroundColor: 'var(--surf)', border: '0.5px solid var(
 
 export function Expenses() {
   const { confirm } = useDialog();
+  const [activeTab, setActiveTab] = useState<'ledger' | 'recurring'>('ledger');
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [catFilter, setCatFilter] = useState('All');
@@ -303,6 +305,26 @@ export function Expenses() {
         />
       </div>
 
+      <div className="flex gap-2 mb-4 bg-[var(--surf2)] p-1 rounded-xl w-max border border-[var(--b)]">
+        <button
+          onClick={() => setActiveTab('ledger')}
+          className={`px-4 py-1.5 text-[12px] font-medium rounded-lg transition-colors cursor-pointer ${
+            activeTab === 'ledger' ? 'bg-[var(--surf)] text-[var(--tx)] shadow-sm border border-[var(--b)]' : 'text-[var(--tx2)] hover:text-[var(--tx)]'
+          }`}
+        >
+          Standard Expenses
+        </button>
+        <button
+          onClick={() => setActiveTab('recurring')}
+          className={`px-4 py-1.5 text-[12px] font-medium rounded-lg transition-colors cursor-pointer ${
+            activeTab === 'recurring' ? 'bg-[var(--surf)] text-[var(--tx)] shadow-sm border border-[var(--b)]' : 'text-[var(--tx2)] hover:text-[var(--tx)]'
+          }`}
+        >
+          Recurring & EMIs
+        </button>
+      </div>
+
+      {activeTab === 'ledger' ? (
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5 mb-2.5">
         <Card>
           <div className="flex flex-col sm:flex-row gap-2 justify-between items-start sm:items-center mb-4">
@@ -497,6 +519,9 @@ export function Expenses() {
           </Card>
         </div>
       </div>
+      ) : (
+        <RecurringExpensesTab />
+      )}
 
       {/* Add Expense Modal */}
       {showAdd && (

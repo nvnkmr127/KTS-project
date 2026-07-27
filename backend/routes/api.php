@@ -364,6 +364,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
 
     // Roles and Permissions Management
     Route::apiResource('roles', RoleController::class);
+    Route::apiResource('recurring-expenses', \App\Http\Controllers\Api\RecurringExpenseController::class);
     Route::post('/roles/{role}/permissions', [RoleController::class, 'syncPermissions']);
     Route::get('/permissions', [PermissionController::class, 'index']);
 
