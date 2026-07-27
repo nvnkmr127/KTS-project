@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Clock, Save, Loader2 } from 'lucide-react';
+import { X, Clock, Save, Loader2, Printer } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useApp, TIMETABLE_DAYS } from '../context/AppContext';
@@ -291,6 +291,51 @@ export function Timetable() {
     return count;
   };
 
+  const handlePrint = () => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        #timetable-print-area, #timetable-print-area * {
+          visibility: visible;
+        }
+        #timetable-print-area {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          padding: 10px;
+        }
+        .print-only-title {
+          display: block !important;
+          font-size: 20px;
+          font-weight: bold;
+          margin-bottom: 10px;
+          text-align: center;
+        }
+        
+        /* Reduce row heights and padding to fit on one page */
+        #timetable-print-area table th,
+        #timetable-print-area table td {
+          padding: 4px 6px !important;
+        }
+        #timetable-print-area button {
+          min-height: 40px !important;
+        }
+        
+        @page {
+          size: landscape;
+          margin: 0.5cm;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    window.print();
+    document.head.removeChild(style);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
       {/* Header controls */}
@@ -318,6 +363,12 @@ export function Timetable() {
           {savedMsg && <span className="text-[11.5px] text-[var(--teal-tx)] font-medium">Saved!</span>}
           <Badge variant="blue">{countFilledPeriods()} periods assigned</Badge>
           <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
+          >
+            <Printer size={12} /> Print
+          </button>
+          <button
             onClick={() => { setTempTimings([...periodTimings]); setShowEditTimings(true); }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
           >
@@ -333,10 +384,12 @@ export function Timetable() {
       </div>
 
       {/* Timetable Grid */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[11.5px]" style={{ minWidth: 700 }}>
-            <thead>
+      <div id="timetable-print-area">
+        <h2 className="print-only-title hidden text-2xl font-bold text-center mb-6">Class {selectedClass} Timetable</h2>
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-[11.5px]" style={{ minWidth: 700 }}>
+              <thead>
               <tr>
                 <th className="w-[90px] text-left text-[11.5px] font-semibold text-[var(--tx2)] px-3 py-2 border-b border-[var(--b)]">Period</th>
                 {TIMETABLE_DAYS.map((day) => (
@@ -418,6 +471,7 @@ export function Timetable() {
           </table>
         </div>
       </Card>
+      </div>
 
       {/* Legend */}
       <div className="mt-3 flex flex-wrap gap-2 px-1">
