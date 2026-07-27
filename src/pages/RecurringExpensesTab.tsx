@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, X, Edit2, Trash2, Loader2, Calendar } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { api } from '../services/api';
+import { api, clearApiCache } from '../services/api';
 import { formatDate } from '../utils/date';
 import { useDialog } from '../context/DialogContext';
 
@@ -33,7 +33,7 @@ export function RecurringExpensesTab() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await api.getResources('recurring-expenses');
+      const data = await api.request('/recurring-expenses');
       setItems(data?.data || []);
     } catch (err) {
       console.error('Error loading recurring expenses:', err);
@@ -62,7 +62,11 @@ export function RecurringExpensesTab() {
     };
 
     try {
-      await api.createResource('recurring-expenses', data);
+      await api.request('/recurring-expenses', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      clearApiCache('recurring-expenses');
       setShowAdd(false);
       loadData();
     } catch (err) {
@@ -88,7 +92,11 @@ export function RecurringExpensesTab() {
     };
 
     try {
-      await api.updateResource('recurring-expenses', editingItem.id, data);
+      await api.request(`/recurring-expenses/${editingItem.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+      clearApiCache('recurring-expenses');
       setEditingItem(null);
       loadData();
     } catch (err) {
@@ -100,7 +108,8 @@ export function RecurringExpensesTab() {
     if (!await confirm('Are you sure you want to delete this item? Future expenses will not be generated.', 'Delete Recurring Expense', true)) return;
     
     try {
-      await api.deleteResource('recurring-expenses', id);
+      await api.request(`/recurring-expenses/${id}`, { method: 'DELETE' });
+      clearApiCache('recurring-expenses');
       loadData();
     } catch (err) {
       console.error('Error deleting:', err);
