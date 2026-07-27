@@ -60,7 +60,7 @@ interface EditCell {
 }
 
 export function Timetable() {
-  const { timetable, setTimetablePeriod, periodTimings, savePeriodTimings, setHasUnsavedChanges } = useApp();
+  const { timetable, setTimetablePeriod, periodTimings, savePeriodTimings, setHasUnsavedChanges, selectedAcademicYearId } = useApp();
   const [selectedClass, setSelectedClass] = useState('8A');
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -73,6 +73,7 @@ export function Timetable() {
   const [classes, setClasses] = useState<string[]>(['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
   const [showEditTimings, setShowEditTimings] = useState(false);
   const [tempTimings, setTempTimings] = useState<PeriodTiming[]>([]);
+  const [classTeachers, setClassTeachers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function loadInitialData() {
@@ -130,10 +131,14 @@ export function Timetable() {
         }
 
         const batchesDataRes = await api.getResources('batches').catch(() => []);
-        const allBatches = Array.isArray(batchesDataRes) ? batchesDataRes : (batchesDataRes?.data || []);
+        const allBatchesRaw = Array.isArray(batchesDataRes) ? batchesDataRes : (batchesDataRes?.data || []);
+        
+        // Filter exactly like Classes.tsx to ensure correct class teacher mapping
+        const allBatches = allBatchesRaw.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
         
         const classGroups: Record<string, string[]> = {};
         const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+        const teachersMap: Record<string, string> = {};
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         allBatches.forEach((b: any) => {
@@ -157,7 +162,12 @@ export function Timetable() {
           if (sectionLetter && !classGroups[classId].includes(sectionLetter)) {
              classGroups[classId].push(sectionLetter);
           }
+          const generatedName = sectionLetter ? `${classId}${sectionLetter}` : classId;
+          teachersMap[generatedName] = b.class_teacher_name || 'not alloted';
         });
+
+        setClassTeachers(teachersMap);
+
 
         defaultClasses.forEach((cId) => {
           if (!classGroups[cId] || classGroups[cId].length === 0) {
@@ -196,7 +206,7 @@ export function Timetable() {
     }
     loadInitialData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [selectedAcademicYearId]);
 
   const classTimetable = timetable[selectedClass] ?? {};
 
@@ -358,28 +368,33 @@ export function Timetable() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
-          {savedMsg && <span className="text-[11.5px] text-[var(--teal-tx)] font-medium">Saved!</span>}
-          <Badge variant="blue">{countFilledPeriods()} periods assigned</Badge>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
-          >
-            <Printer size={12} /> Print
-          </button>
-          <button
-            onClick={() => { setTempTimings([...periodTimings]); setShowEditTimings(true); }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
-          >
-            <Clock size={12} /> Edit Timings
-          </button>
-          <button
-            onClick={handleSaveAll}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90"
-          >
-            <Save size={12} /> Save Timetable
-          </button>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            {loading && <Loader2 size={13} className="animate-spin text-[var(--tx3)]" />}
+            {savedMsg && <span className="text-[11.5px] text-[var(--teal-tx)] font-medium">Saved!</span>}
+            <Badge variant="blue">{countFilledPeriods()} periods assigned</Badge>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
+            >
+              <Printer size={12} /> Print
+            </button>
+            <button
+              onClick={() => { setTempTimings([...periodTimings]); setShowEditTimings(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
+            >
+              <Clock size={12} /> Edit Timings
+            </button>
+            <button
+              onClick={handleSaveAll}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90"
+            >
+              <Save size={12} /> Save Timetable
+            </button>
+          </div>
+          <div className="text-[11px] text-[var(--tx2)] mr-1 mt-0.5">
+            Class Teacher: <span className="font-medium text-[var(--tx)]">{classTeachers[selectedClass] || 'not alloted'}</span>
+          </div>
         </div>
       </div>
 
