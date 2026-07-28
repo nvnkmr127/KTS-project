@@ -878,113 +878,154 @@ class GenericApiController extends Controller
         }
 
         // Custom bulk save / creation for Timetable
-        if ($resource === 'timetable' && $request->has('batch_name')) {
-            $batchName = $request->input('batch_name');
+        if ($resource === 'timetable') {
+            try {
+                $batchName = $request->input('batch_name') ?? $request->input('class_name') ?? $request->input('batch') ?? '8A';
 
-            $academicYear = \App\Models\AcademicYear::where('is_current', true)->first() 
-                ?? \App\Models\AcademicYear::first();
-            if (!$academicYear) {
-                $academicYear = \App\Models\AcademicYear::create([
-                    'name' => '2026-2027',
-                    'start_date' => '2026-06-01',
-                    'end_date' => '2027-05-31',
-                    'is_current' => true,
-                ]);
-            }
+                $academicYear = \App\Models\AcademicYear::where('is_current', true)->first() 
+                    ?? \App\Models\AcademicYear::first();
+                if (!$academicYear) {
+                    $academicYear = \App\Models\AcademicYear::create([
+                        'name' => '2026-2027',
+                        'start_date' => '2026-06-01',
+                        'end_date' => '2027-05-31',
+                        'is_current' => true,
+                    ]);
+                }
 
-            $course = \App\Models\Course::first();
-            if (!$course) {
-                $course = \App\Models\Course::create([
-                    'name' => 'Default Course',
-                    'code' => 'DFT',
-                    'duration_in_years' => 1.0,
-                ]);
-            }
+                $course = \App\Models\Course::first();
+                if (!$course) {
+                    $course = \App\Models\Course::create([
+                        'name' => 'Default Course',
+                        'code' => 'DFT',
+                        'duration_in_years' => 1.0,
+                    ]);
+                }
 
-            $batch = \App\Models\Batch::firstOrCreate(
-                ['name' => $batchName],
-                [
-                    'course_id' => $course->id,
-                    'academic_year_id' => $academicYear->id,
-                    'start_date' => '2026-06-01',
-                    'end_date' => '2027-05-31',
-                    'status' => 'active',
-                ]
-            );
-            
-            \App\Models\Timetable::where('batch_id', $batch->id)->delete();
-            
-            $slots = $request->input('slots', []);
-            foreach ($slots as $slot) {
-                $classroom = \App\Models\Classroom::firstOrCreate(
-                    ['name' => $slot['room'] ?? 'Room 12'],
-                    ['type' => 'lecture', 'capacity' => 40]
-                );
-                
-                $subject = \App\Models\Subject::firstOrCreate(
-                    ['name' => $slot['subject']],
-                    ['code' => strtoupper(substr($slot['subject'], 0, 3))]
-                );
-                
-                $convertTime = function ($timeString) {
-                    if (!$timeString) return null;
-                    try {
-                        return \Carbon\Carbon::parse($timeString)->format('H:i:s');
-                    } catch (\Exception $e) {
-                        return null;
-                    }
-                };
-
-                $startTime = $convertTime($slot['start_time'] ?? null) ?? '08:00:00';
-                $endTime = $convertTime($slot['end_time'] ?? null) ?? '09:00:00';
-
-                $periodIndex = intval($slot['period']);
-                $timeSlot = \App\Models\TimeSlot::firstOrCreate(
-                    ['id' => $periodIndex + 1],
+                $batch = \App\Models\Batch::firstOrCreate(
+                    ['name' => $batchName],
                     [
-                        'start_time' => $startTime,
-                        'end_time' => $endTime,
+                        'course_id' => $course->id,
+                        'academic_year_id' => $academicYear->id,
+                        'start_date' => '2026-06-01',
+                        'end_date' => '2027-05-31',
+                        'status' => 'active',
                     ]
                 );
                 
-                if ($timeSlot->start_time !== $startTime || $timeSlot->end_time !== $endTime) {
-                    $timeSlot->update([
-                        'start_time' => $startTime,
-                        'end_time' => $endTime
+                \App\Models\Timetable::where('batch_id', $batch->id)->delete();
+                
+                $slots = $request->input('slots', []);
+                foreach ($slots as $slot) {
+                    $roomName = !empty($slot['room']) ? trim($slot['room']) : 'Room 12';
+                    $classroom = \App\Models\Classroom::firstOrCreate(
+                        ['name' => $roomName],
+                        ['type' => 'lecture', 'capacity' => 40]
+                    );
+                    
+                    $subjectName = !empty($slot['subject']) ? trim($slot['subject']) : 'General';
+                    $code = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $subjectName), 0, 3));
+                    if (empty($code)) {
+                        $code = 'SUB';
+                    }
+                    $originalCode = $code;
+                    $counter = 1;
+                    while (\App\Models\Subject::where('code', $code)->where('name', '!=', $subjectName)->exists()) {
+                        $code = substr($originalCode, 0, 2) . $counter;
+                        $counter++;
+                    }
+
+                    $subject = \App\Models\Subject::firstOrCreate(
+                        ['name' => $subjectName],
+                        ['code' => $code]
+                    );
+                    
+                    $convertTime = function ($timeString) {
+                        if (!$timeString) return null;
+                        try {
+                            return \Carbon\Carbon::parse($timeString)->format('H:i:s');
+                        } catch (\Exception $e) {
+                            return null;
+                        }
+                    };
+
+                    $startTime = $convertTime($slot['start_time'] ?? null) ?? '08:00:00';
+                    $endTime = $convertTime($slot['end_time'] ?? null) ?? '09:00:00';
+
+                    $periodIndex = intval($slot['period'] ?? 0);
+                    $timeSlotId = $periodIndex + 1;
+                    
+                    $timeSlot = \App\Models\TimeSlot::find($timeSlotId);
+                    if (!$timeSlot) {
+                        $timeSlot = \App\Models\TimeSlot::create([
+                            'id' => $timeSlotId,
+                            'start_time' => $startTime,
+                            'end_time' => $endTime,
+                        ]);
+                    } else {
+                        if ($timeSlot->start_time !== $startTime || $timeSlot->end_time !== $endTime) {
+                            $timeSlot->update([
+                                'start_time' => $startTime,
+                                'end_time' => $endTime
+                            ]);
+                        }
+                    }
+                    
+                    // Safe user/teacher resolution
+                    $userId = null;
+                    $rawTeacherId = $slot['teacherId'] ?? null;
+                    $teacherName = !empty($slot['teacher']) ? trim($slot['teacher']) : null;
+
+                    if (!empty($rawTeacherId) && is_numeric($rawTeacherId)) {
+                        $targetId = intval($rawTeacherId);
+                        if (\App\Models\User::where('id', $targetId)->exists()) {
+                            $userId = $targetId;
+                        }
+                    }
+
+                    if (!$userId && $teacherName) {
+                        $foundUser = \App\Models\User::where('name', $teacherName)->first();
+                        if ($foundUser) {
+                            $userId = $foundUser->id;
+                        } else {
+                            $cleanEmailName = strtolower(preg_replace('/[^A-Za-z0-9]/', '', $teacherName));
+                            $email = ($cleanEmailName ? $cleanEmailName : 'teacher') . '_' . Str::random(5) . '@krishnaveni.edu';
+                            $newUser = \App\Models\User::create([
+                                'name' => $teacherName,
+                                'email' => $email,
+                                'password' => bcrypt('password'),
+                                'role' => 'staff',
+                            ]);
+                            $userId = $newUser->id;
+                        }
+                    }
+
+                    if (!$userId) {
+                        $fallbackUser = auth('sanctum')->user() ?? \App\Models\User::first();
+                        $userId = $fallbackUser ? $fallbackUser->id : 1;
+                    }
+                    
+                    // Store day_of_week directly (e.g., 'Monday', 'Tuesday')
+                    $dayOfWeek = $slot['day'] ?? $slot['date'] ?? 'Monday';
+                    
+                    \App\Models\Timetable::create([
+                        'batch_id' => $batch->id,
+                        'subject_id' => $subject->id,
+                        'user_id' => $userId,
+                        'classroom_id' => $classroom->id,
+                        'time_slot_id' => $timeSlot->id,
+                        'day_of_week' => $dayOfWeek,
+                        'schedule_date' => '2026-06-01', // Keep for compatibility
+                        'academic_year_id' => $academicYear->id,
                     ]);
                 }
-                
-                $userId = intval($slot['teacherId']);
-                if ($userId > 0) {
-                    \DB::table('users')->insertOrIgnore([
-                        'id' => $userId,
-                        'name' => $slot['teacher'] ?? ('Teacher ' . $userId),
-                        'email' => 'teacher_' . $userId . '@krishnaveni.edu',
-                        'password' => bcrypt('password'),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                } else {
-                    $fallbackUser = \App\Models\User::first();
-                    $userId = $fallbackUser ? $fallbackUser->id : 1;
-                }
-                
-                // Store day_of_week directly (e.g., 'Monday', 'Tuesday')
-                $dayOfWeek = $slot['day'] ?? $slot['date'] ?? 'Monday';
-                
-                \App\Models\Timetable::create([
-                    'batch_id' => $batch->id,
-                    'subject_id' => $subject->id,
-                    'user_id' => $userId,
-                    'classroom_id' => $classroom->id,
-                    'time_slot_id' => $timeSlot->id,
-                    'day_of_week' => $dayOfWeek,
-                    'schedule_date' => '2026-06-01', // Keep for compatibility
-                    'academic_year_id' => $academicYear->id,
-                ]);
+                return response()->json(['success' => true], 201);
+            } catch (\Throwable $e) {
+                \Log::error('Error saving timetable: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+                return response()->json(['error' => 'Failed to save timetable: ' . $e->getMessage()], 500);
             }
-            return response()->json(['success' => true], 201);
         }
+
 
         // Custom individual and bulk assignments for student-fees
         if ($resource === 'student-fees') {

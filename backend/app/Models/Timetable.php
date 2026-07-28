@@ -366,54 +366,71 @@ class Timetable extends Model
 
         // When a timetable entry is created, log the activity
         static::created(function ($timetable) {
-            $properties = [
-                'batch_name' => $timetable->batch?->name,
-                'subject_name' => $timetable->subject?->name,
-                'faculty_name' => $timetable->user?->name,
-                'classroom_name' => $timetable->classroom?->name,
-                'academic_year' => $timetable->academicYear?->name,
-                'schedule_date' => $timetable->schedule_date,
-                'time_range' => $timetable->time_range,
-                'is_lab_session' => $timetable->is_lab_session,
-            ];
+            try {
+                $properties = [
+                    'batch_name' => $timetable->batch?->name,
+                    'subject_name' => $timetable->subject?->name,
+                    'faculty_name' => $timetable->user?->name,
+                    'classroom_name' => $timetable->classroom?->name,
+                    'academic_year' => $timetable->academicYear?->name,
+                    'schedule_date' => $timetable->schedule_date,
+                    'time_range' => $timetable->time_range,
+                    'is_lab_session' => $timetable->is_lab_session,
+                ];
 
-            // NEW: Add practical group info for lab sessions
-            if ($timetable->isLabSession() && $timetable->practicalGroup) {
-                $properties['practical_group'] = $timetable->practicalGroup->name;
-                $properties['student_count'] = $timetable->getStudentCount();
+                // NEW: Add practical group info for lab sessions
+                if ($timetable->isLabSession() && $timetable->practicalGroup) {
+                    $properties['practical_group'] = $timetable->practicalGroup->name;
+                    $properties['student_count'] = $timetable->getStudentCount();
+                }
+
+                $causer = auth('sanctum')->user() ?? auth()->user();
+
+                activity()
+                    ->causedBy($causer)
+                    ->performedOn($timetable)
+                    ->withProperties($properties)
+                    ->log($timetable->isLabSession() ? 'Lab session scheduled' : 'Timetable entry created');
+            } catch (\Throwable $e) {
+                // Ignore activity logging errors during bulk operations
             }
-
-            activity()
-                ->causedBy(auth()->user())
-                ->performedOn($timetable)
-                ->withProperties($properties)
-                ->log($timetable->isLabSession() ? 'Lab session scheduled' : 'Timetable entry created');
         });
 
         static::updated(function ($timetable) {
-            activity()
-                ->causedBy(auth()->user())
-                ->performedOn($timetable)
-                ->log($timetable->isLabSession() ? 'Lab session updated' : 'Timetable entry updated');
+            try {
+                $causer = auth('sanctum')->user() ?? auth()->user();
+                activity()
+                    ->causedBy($causer)
+                    ->performedOn($timetable)
+                    ->log($timetable->isLabSession() ? 'Lab session updated' : 'Timetable entry updated');
+            } catch (\Throwable $e) {
+                // Ignore activity logging errors
+            }
         });
 
         static::deleted(function ($timetable) {
-            $properties = [
-                'batch_name' => $timetable->batch?->name,
-                'subject_name' => $timetable->subject?->name,
-                'schedule_date' => $timetable->schedule_date,
-                'is_lab_session' => $timetable->is_lab_session,
-            ];
+            try {
+                $properties = [
+                    'batch_name' => $timetable->batch?->name,
+                    'subject_name' => $timetable->subject?->name,
+                    'schedule_date' => $timetable->schedule_date,
+                    'is_lab_session' => $timetable->is_lab_session,
+                ];
 
-            if ($timetable->isLabSession() && $timetable->practicalGroup) {
-                $properties['practical_group'] = $timetable->practicalGroup->name;
+                if ($timetable->isLabSession() && $timetable->practicalGroup) {
+                    $properties['practical_group'] = $timetable->practicalGroup->name;
+                }
+
+                $causer = auth('sanctum')->user() ?? auth()->user();
+
+                activity()
+                    ->causedBy($causer)
+                    ->performedOn($timetable)
+                    ->withProperties($properties)
+                    ->log($timetable->isLabSession() ? 'Lab session deleted' : 'Timetable entry deleted');
+            } catch (\Throwable $e) {
+                // Ignore activity logging errors
             }
-
-            activity()
-                ->causedBy(auth()->user())
-                ->performedOn($timetable)
-                ->withProperties($properties)
-                ->log($timetable->isLabSession() ? 'Lab session deleted' : 'Timetable entry deleted');
         });
     }
 }
