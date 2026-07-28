@@ -34,35 +34,10 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Create mock admin
-        $mockAdmin = User::firstOrCreate(
-            ['email' => 'admin@krishnaveni.edu'],
-            [
-                'name' => 'Uday',
-                'password' => Hash::make('admin123'),
-            ]
-        );
-
-        // Create mock teacher
-        $mockTeacher = User::firstOrCreate(
-            ['email' => 'teacher@krishnaveni.edu'],
-            [
-                'name' => 'Mrs. Lakshmi Devi',
-                'password' => Hash::make('teacher123'),
-            ]
-        );
-
         // Find the 'super-admin' role and assign it to the user
         $superAdminRole = Role::findByName('super-admin');
         if ($superAdminRole) {
             $superAdminUser->assignRole($superAdminRole);
-            $mockAdmin->assignRole($superAdminRole);
-        }
-
-        // Assign faculty role to mock teacher
-        $facultyRole = Role::findByName('faculty');
-        if ($facultyRole) {
-            $mockTeacher->assignRole($facultyRole);
         }
 
         // Create API token for the super admin using Sanctum
