@@ -87,11 +87,15 @@ class GenericApiController extends Controller
      */
     private const TEACHER_WRITABLE_SETTINGS = [
         'kts_student_attendance_records',
+        'kts_staff_attendance_records',
         'kts_student_marks',
         'examinations_exams',
         'examinations_schedules',
         'kts_exam_invigilations',
         'kts_daily_diaries',
+        'timetable_period_timings',
+        'kts_holidays',
+        'kts_recurring_expenses',
     ];
 
     private function isAdmin($user): bool

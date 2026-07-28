@@ -205,6 +205,14 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/resources/attendance/invalidate-cache', function (\Illuminate\Http\Request $request) {
+            \Illuminate\Support\Facades\Cache::forget('kts_student_attendance_records');
+            if (\Illuminate\Support\Facades\Schema::hasTable('attendance_caches')) {
+                \Illuminate\Support\Facades\DB::table('attendance_caches')->truncate();
+            }
+            return response()->json(['success' => true, 'message' => 'Attendance cache invalidated']);
+        });
+
         Route::get('/resources/{resource}', [GenericApiController::class, 'index']);
         Route::get('/resources/{resource}/{id}', [GenericApiController::class, 'show']);
         Route::post('/resources/{resource}', [GenericApiController::class, 'store']);
