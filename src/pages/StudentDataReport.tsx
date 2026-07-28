@@ -46,7 +46,7 @@ export function StudentDataReport({ students, studentFees }: StudentDataReportPr
           }
           if (years === 0 && months === 0) calculatedAge = '0 Months';
           else {
-            let res = [];
+            const res = [];
             if (years > 0) res.push(`${years} Years`);
             if (months > 0) res.push(`${months} Months`);
             calculatedAge = res.join(', ') || '0 Months';

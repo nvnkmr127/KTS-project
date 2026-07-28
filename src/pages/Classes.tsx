@@ -30,7 +30,7 @@ export function Classes() {
   const { selectedAcademicYearId } = useApp();
   const [classes, setClasses] = useState<ClassData[]>([]);
   // Pre-populate teachers from local storage / STAFF constant so dropdown always works
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [teachers, setTeachers] = useState<any[]>(() => {
     try {
@@ -83,13 +83,13 @@ export function Classes() {
 
     // ── Teachers (fully independent – never blocks class loading) ──────────
     const resignedNames = new Set<string>();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const s = localStorage.getItem('kts_staff_members');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (s) JSON.parse(s).filter((x: any) => x?.status === 'Resigned' && x.name)
-               // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                
                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                .forEach((x: any) => resignedNames.add(x.name.toLowerCase().trim()));
     } catch { /* empty */ }
@@ -168,13 +168,13 @@ export function Classes() {
       }).map(s => ({ id: String(s.id), name: s.name, status: s.status, department: s.department || '' }));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     setTeachers(activeTeachers);
 
     // ── Batches + Students (backend-dependent) ─────────────────────────────
     try {
       const [batchesRes, studentsRes] = await Promise.all([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         api.getResources('batches').catch(() => []),
         api.getResources('students').catch(() => []),
       ]);
@@ -192,7 +192,7 @@ export function Classes() {
       batchesData.forEach((b: any) => {
         const batchName = b.name;
         let classId = '8';
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         let sectionLetter = 'A';
 
         const match = batchName.match(/^(.+?)([A-Z])$/);

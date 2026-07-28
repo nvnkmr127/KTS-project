@@ -81,12 +81,12 @@ export function Timetable() {
         const resignedNames = new Set<string>();
         try {
           const s = localStorage.getItem('kts_staff_members');
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if (s) JSON.parse(s).filter((x: any) => x?.status === 'Resigned' && x.name)
                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                    .forEach((x: any) => resignedNames.add(x.name.toLowerCase().trim()));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         } catch { /* empty */ }
 
         let activeTeachers: any[] = [];
@@ -124,7 +124,7 @@ export function Timetable() {
           id: String(t.id),
           name: t.name,
         }));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         setTeachers(list);
         if (list.length > 0) {
           setEditTeacher(list[0].id);
@@ -244,7 +244,7 @@ export function Timetable() {
     setEditCell(null);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const clearCell = () => {
     if (!editCell) return;
     setTimetablePeriod(selectedClass, editCell.day, editCell.period, null);

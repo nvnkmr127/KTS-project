@@ -34,7 +34,7 @@ const salaryData = [
 
 const barColors = ['var(--purple)', 'var(--blue)', 'var(--teal)', 'var(--amber)', 'var(--coral)'];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomBar = (props: any) => {
   const { x, y, width, height, index } = props;
@@ -62,7 +62,7 @@ export function Faculty() {
 
   const saveSettingToDb = async (key: string, value: string) => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const settings = await api.getResources('settings');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existing = settings.find((s: any) => s.key === key);
@@ -107,7 +107,7 @@ export function Faculty() {
   };
 
   const loadFaculty = async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     setLoading(true);
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -126,7 +126,7 @@ export function Faculty() {
         }
       } catch (err) {
         console.error('Error parsing kts_staff_members from localStorage:', err);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         currentStaffList = STAFF;
       }
 
@@ -150,7 +150,7 @@ export function Faculty() {
           att: s.attendance || 95,
           present: s.status === 'Active',
         };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
       });
 
       let mappedApi: FacultyMember[] = [];
@@ -268,7 +268,7 @@ export function Faculty() {
     const email = (fd.get('email') as string) || '';
     const phone = (fd.get('phone') as string) || '';
     const designation = (fd.get('designation') as string) || 'Teacher';
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const department = (fd.get('department') as string) || 'Mathematics';
     const subject = (fd.get('subject') as string) || 'Mathematics';
     const joinDate = (fd.get('joinDate') as string) || new Date().toISOString().slice(0, 10);
@@ -462,7 +462,7 @@ export function Faculty() {
           value={absentCount}
           sub="On approved leave"
           icon={<XCircle size={15} />}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           iconBg="var(--red-bg)"
           iconColor="var(--red-tx)"
         />
@@ -580,7 +580,7 @@ export function Faculty() {
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `₹${v}k`}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 />
                 <YAxis
                   dataKey="dept"

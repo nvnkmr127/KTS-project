@@ -408,7 +408,7 @@ export function StaffAttendance() {
       .then((res) => {
         const extractArray = (res: any) => Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.data?.data && Array.isArray(res.data.data) ? res.data.data : []));
         const logs = extractArray(res);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         if (Array.isArray(logs) && logs.length > 0) {
           const mapped: BiometricRecord[] = logs.map((l: any) => {
             const scanTime = l.scan_datetime ? scanDateTimeToParts(l.scan_datetime).time : undefined;
@@ -525,7 +525,7 @@ export function StaffAttendance() {
     setIsSyncingPunches(true);
 
     api.biometricSyncPunch(date, date, 'ALL')
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       .then((result) => {
         if (result?.success) {
           fetchLocalBiometricLogs();
@@ -669,7 +669,7 @@ export function StaffAttendance() {
     saveSettingToDb('kts_staff_attendance', JSON.stringify(manualAttendance));
   }, [manualAttendance]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // Force biometric mode if the device is connected/working
   useEffect(() => {
     if (connectionStatus === 'connected' && attendanceMode !== 'biometric') {

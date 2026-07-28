@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bus, MapPin, Satellite, Clock, Navigation, Phone, WifiOff, AlertTriangle, Zap, ZapOff, Gauge } from 'lucide-react';
+import { Bus, Satellite, Clock, Navigation, Phone, WifiOff, AlertTriangle, Zap, ZapOff, Gauge } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
-import { Card, CardHeader } from '../components/Card';
+import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { ProgressBar } from '../components/ui';
 import {
@@ -787,7 +787,7 @@ export function BusTracking() {
                   position={{ lat: 17.3198, lng: 78.1511 }}
                   icon={{
                     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(getSchoolSvgString())}`,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     scaledSize: new (window as any).google.maps.Size(46, 54),
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -829,9 +829,9 @@ export function BusTracking() {
                       position={{ lat: stop.lat, lng: stop.lng }}
                       icon={{
                         url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                           
                           `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="4" fill="${cfg.color}" stroke="white" stroke-width="1.5"/></svg>`
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                         
                         )}`,
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         scaledSize: new (window as any).google.maps.Size(10, 10),
@@ -856,9 +856,9 @@ export function BusTracking() {
 
                   return (
                     <MarkerF
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                       
                       key={cfg.id}
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                       
                       position={pos}
                       icon={{
                         url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(getBusSvgString(cfg.color, String(cfg.id), heading))}`,

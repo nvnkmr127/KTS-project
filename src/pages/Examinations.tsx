@@ -466,7 +466,7 @@ function ExamScheduleDesigner({
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function saveSettingToDb(key: string, value: any) {
   try {
@@ -546,7 +546,7 @@ export function Examinations() {
         try {
           const bstr = e.target?.result;
           const wb = XLSX.read(bstr, { type: 'binary' });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -556,7 +556,7 @@ export function Examinations() {
             id: 'exam-' + (Date.now() + idx),
             name: String(row['Exam Name'] || row['Name'] || 'Unit Test').trim(),
             class: String(row['Class'] || '8A').trim(),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             subject: String(row['Subject'] || 'All Subjects').trim(),
             date: String(row['Date'] || new Date().toISOString().slice(0, 10)).trim(),
             maxMarks: parseInt(row['Max Marks'] || row['Marks']) || 100,
@@ -626,7 +626,7 @@ export function Examinations() {
   });
 
   const [invigilations, setInvigilations] = useState<Invigilation[]>(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const saved = localStorage.getItem('kts_exam_invigilations');
     return (saved && JSON.parse(saved)) || [];
   });
@@ -816,7 +816,7 @@ export function Examinations() {
   const [allotTimeSlot, setAllotTimeSlot] = useState('10:00 AM');
   const [allotRoom, setAllotRoom] = useState('Room 101');
   const [allotStaffId, setAllotStaffId] = useState('');
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -967,7 +967,7 @@ export function Examinations() {
     setSelectedClass(targetClass);
     setSelectedExamId(exam.id);
     setActiveTab('designer');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   };
 
   const activeClassList = classList.length > 0 ? classList : CLASSES;
@@ -987,7 +987,7 @@ export function Examinations() {
       const savedMark = studentMarks[selectedMarksExamId]?.[selectedMarksSubject]?.[roll];
       const maths = savedMark !== undefined ? savedMark : defaultMark;
       return {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         name,
         init,
         roll,
@@ -1056,7 +1056,7 @@ export function Examinations() {
               />
               <select
                 value={examStatusFilter}
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                 
                 onChange={(e) => setExamStatusFilter(e.target.value)}
                 className="bg-[var(--surf)] border border-[var(--b2)] rounded-lg px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
               >

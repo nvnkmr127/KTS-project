@@ -5,14 +5,14 @@ import { Card } from '../Card';
 import { Badge } from '../Badge';
 
 interface StaffViewModalProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   modal: any;
   onClose: () => void;
   activeTab: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   setActiveTab: (tab: 'info' | 'leaves' | 'attendance' | 'salary' | 'slips') => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   leaveRequests: any[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,12 +22,12 @@ interface StaffViewModalProps {
     attStartDate: string;
   attEndDate: string;
   manualAttendance: Record<string, Record<string, string>>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   biometricPunches: any[];
   setAttStartDate: (val: string) => void;
   setAttEndDate: (val: string) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   setAttPage: (val: number) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setSelectedDocPreview: (doc: any) => void;
@@ -110,7 +110,7 @@ export function StaffViewModal({
               <div className="flex border-b border-[var(--b)] mb-4 overflow-x-auto">
                 {[
                   { id: 'info', label: 'Info', icon: <UserCheck size={13} /> },
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                   
                   { id: 'leaves', label: 'Leaves', icon: <Calendar size={13} /> },
                   { id: 'attendance', label: 'Attendance Log', icon: <History size={13} /> },
                   { id: 'salary', label: 'Salary Structure', icon: <Wallet size={13} /> },

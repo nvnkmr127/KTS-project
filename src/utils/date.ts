@@ -63,7 +63,9 @@ export function formatDate(dateStr: string | undefined | null): string {
       const year = d.getFullYear();
       return `${day}-${month}-${year}`;
     }
-} catch (e) {}
+  } catch (err) {
+    console.debug('Date formatting error:', err);
+  }
   return dateStr;
 }
 

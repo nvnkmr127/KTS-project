@@ -23,7 +23,7 @@ const STAFF_SYNONYMS: Record<string, string[]> = {
   qualifications: ['qualifications', 'qualification', 'degree', 'education']
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cleanDate = (val: any): string => {
   if (!val) return '';
@@ -57,7 +57,7 @@ const cleanDate = (val: any): string => {
   }
   return str;
 };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cleanDepartment = (val: any): string => {
@@ -90,7 +90,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const [successCount, setSuccessCount] = useState<number | null>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,7 +111,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
       };
       reader.onerror = (err) => reject(err);
       reader.readAsBinaryString(file);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     });
   };
 
@@ -125,7 +125,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
           const result = await mammoth.convertToHtml({ arrayBuffer });
           const html = result.value;
           
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, 'text/html');
           const tables = doc.querySelectorAll('table');
@@ -158,7 +158,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
           reject(err);
         }
       };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       reader.onerror = (err) => reject(err);
       reader.readAsArrayBuffer(file);
     });
@@ -169,15 +169,15 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async (e) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         try {
           const arrayBuffer = e.target?.result as ArrayBuffer;
           pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
           const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
           const pdf = await loadingTask.promise;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const rowsData: any[][] = [];
           for (let i = 1; i <= pdf.numPages; i++) {
@@ -214,7 +214,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
           reject(err);
         }
       };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       reader.onerror = (err) => reject(err);
       reader.readAsArrayBuffer(file);
     });
@@ -320,7 +320,7 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
       setDragActive(false);
     }
   };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();

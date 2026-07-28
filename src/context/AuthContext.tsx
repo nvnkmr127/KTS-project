@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (JSON.stringify(user) !== JSON.stringify(parsedUser)) {
                 setUser(parsedUser);
               }
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
     /* empty */
             } catch (err) {}
           }

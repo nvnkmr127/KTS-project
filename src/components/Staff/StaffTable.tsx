@@ -17,15 +17,15 @@ const DEPT_COLORS: Record<string, { bg: string, color: string }> = {
 
 interface StaffTableProps {
   loading: boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sortedFiltered: any[];
   selectedIds: string[];
   setSelectedIds: (val: string[]) => void;
   sortField: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   sortOrder: 'asc' | 'desc';
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleSort: (field: any) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

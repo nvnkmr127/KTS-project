@@ -84,16 +84,16 @@ export function MySalary() {
   const { user } = useAuth();
   const [payslips, setPayslips] = useState<PayslipRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const [selectedSlip, setSelectedSlip] = useState<PayslipRecord | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>('All');
   const [components, setComponents] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [leavesList, setLeavesList] = useState<any[]>([]);
   const [myStaffRecord, setMyStaffRecord] = useState<any>(null);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 
   const getLopDeduction = (s: any, monthStr: string): number => {
     const ym = getYearMonth(monthStr);
@@ -118,7 +118,7 @@ export function MySalary() {
     async function syncFromDb() {
       try {
         const settings = await api.getResources('settings');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         
         const compSetting = settings.find((s: any) => s.key === 'salary_components');
         if (compSetting && compSetting.value) {
@@ -137,7 +137,7 @@ export function MySalary() {
             ]);
           }
         }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 
         const salariesSetting = settings.find((s: any) => s.key === 'staff_salaries');
         if (salariesSetting && salariesSetting.value) {
@@ -147,7 +147,7 @@ export function MySalary() {
           const savedSalaries = localStorage.getItem('staff_salaries');
           if (savedSalaries) setStaffSalaries(JSON.parse(savedSalaries));
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         const savedStaff = localStorage.getItem('kts_staff_members');
@@ -188,7 +188,7 @@ export function MySalary() {
         currentSalaries[Object.keys(currentSalaries).find(k => isNameMatch(k, user.name)) || ''] || 
         {};
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const leavesData = await api.getResources('leaves').catch(() => []);
       const mappedLeaves = (leavesData || []).map((l: any) => ({
         id: String(l.id),
@@ -204,7 +204,7 @@ export function MySalary() {
 
       const savedStaffStr = localStorage.getItem('kts_staff_members');
       const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       let staffRecord = currentStaffList.find(
         (s: any) =>
           (s.email && user.email && s.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
@@ -214,7 +214,7 @@ export function MySalary() {
 
       // Fetch payslips from backend API
       const data = await api.getResources('payslips');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const apiSlips = data
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((p: any) => String(p.user_id) === String(user.id))

@@ -193,7 +193,7 @@ export function Students() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [toastTimeoutId, setToastTimeoutId] = useState<any>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const showToast = (message: string, success: boolean, undoAction?: () => Promise<void>) => {
     if (toastTimeoutId) {
       clearTimeout(toastTimeoutId);
@@ -207,7 +207,7 @@ export function Students() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [batchesList, setBatchesList] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const [modalSelectedClass, setModalSelectedClass] = useState<string>('');
   const [modalSelectedSection, setModalSelectedSection] = useState<string>('');
   const [attendancePercentage, setAttendancePercentage] = useState<number | null>(null);
@@ -216,7 +216,7 @@ export function Students() {
   const [loadingStudentFees, setLoadingStudentFees] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
@@ -232,7 +232,7 @@ export function Students() {
     }
   }, [modal, activeDetailStudent]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // Derive classes and sections from batches (mirrors Classes.tsx logic)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getClassesFromBatches = (batches: any[]): string[] => {
@@ -240,7 +240,7 @@ export function Students() {
       // Fallback safety classes if fail to load
       return ['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     // Priority: Union of default classes (1-10) and any custom classes from database batches
     const classSet = new Set<string>(['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -254,14 +254,14 @@ export function Students() {
       if (!isNaN(nA)) return -1;
       if (!isNaN(nB)) return 1;
       return a.localeCompare(b);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     });
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getSectionsForClass = (batches: any[], classId: string): string[] => {
     if (!batches || batches.length === 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       // Fallback safety sections if fail to load
       return ['A', 'B', 'C'];
     }
@@ -361,7 +361,7 @@ export function Students() {
   }, [activeDetailStudent]);
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     async function loadInitialData() {
       try {
         const [batchesData, ayData] = await Promise.all([
@@ -378,7 +378,7 @@ export function Students() {
     loadInitialData();
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   useEffect(() => {
     if (activeDetailStudent) {
       const batchName = `${activeDetailStudent.class}${activeDetailStudent.section}`;
@@ -725,8 +725,8 @@ export function Students() {
         setActiveDetailStudent(null);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
+     
   }, [students]);
 
   useEffect(() => {
@@ -1150,7 +1150,9 @@ export function Students() {
                 reasonText = parsed.text || '';
                 approvedBy = parsed.collectedBy || 'Super Admin';
               }
-            } catch (e) {}
+            } catch (err) {
+              console.debug('Failed to parse concession reason JSON:', err);
+            }
 
             activities.push({
               id: `con-${con.id}`,
@@ -2943,7 +2945,7 @@ interface ImportModalProps {
 const SYNONYMS: Record<string, string[]> = {
   firstName: ['first name', 'firstname', 'first_name', 'fname', 'first'],
   lastName: ['last name', 'lastname', 'last_name', 'lname', 'last', 'surname'],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   fullName: ['name', 'student name', 'student', 'full name', 'fullname', 'student_name'],
   class: ['class', 'grade', 'std', 'standard'],
   section: ['section', 'sec'],
@@ -2997,21 +2999,21 @@ const cleanDate = (val: any): string => {
     if (parts[2].length === 4 && parts[0].length <= 2 && parts[1].length <= 2) {
       const day = parts[0].padStart(2, '0');
       const month = parts[1].padStart(2, '0');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const year = parts[2];
       return `${year}-${month}-${day}`;
     }
     if (parts[0].length === 4 && parts[1].length <= 2 && parts[2].length <= 2) {
       const year = parts[0];
       const month = parts[1].padStart(2, '0');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const day = parts[2].padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
   }
   return str;
 };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cleanClass = (val: any): string => {
@@ -3125,7 +3127,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
   const parseExcel = async (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       reader.onload = (e) => {
         try {
           const data = e.target?.result;
@@ -3139,7 +3141,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
         }
       };
       reader.onerror = (err) => reject(err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       reader.readAsBinaryString(file);
     });
   };
@@ -3172,7 +3174,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                 rowsData.push(row);
               });
             });
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
             resolve(rowsData);
           } else {
             const paragraphs = doc.querySelectorAll('p');
@@ -3183,15 +3185,15 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             });
             resolve(lines.map((l) => [l]));
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
         } catch (err) {
           reject(err);
         }
       };
       reader.onerror = (err) => reject(err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       reader.readAsArrayBuffer(file);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     });
   };
 
@@ -3228,7 +3230,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             const sortedYs = Object.keys(lineGroups)
               .map(Number)
               .sort((a, b) => b - a);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             
 
             sortedYs.forEach((y) => {
               const rowItems = lineGroups[y].sort((a, b) => a.transform[4] - b.transform[4]);
@@ -3376,7 +3378,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
     } catch (err) {
       console.error(err);
       setError((err as Error).message || 'Failed to parse file. Please verify format.');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     } finally {
       setLoading(false);
     }

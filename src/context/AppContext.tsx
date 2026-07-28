@@ -166,7 +166,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     async function loadInitialData() {
       try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       // Load Academic Years
       try {
         const ays = await api.getResources('academic-years');
@@ -176,7 +176,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             id: String(ay.id),
             name: ay.name,
             is_current: !!ay.is_current,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           }));
           setAcademicYears(mapped);
           
@@ -189,12 +189,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.error('Error loading academic years in AppContext:', err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       }
 
       // Load leaves
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const leavesData = await api.getResources('leaves');
         if (leavesData) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -214,7 +214,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             adminNotes: d.admin_notes || '',
           }));
           setLeaveRequests(mappedLeaves);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         }
       } catch (err) {
         console.error('Error loading leaves in AppContext:', err);
@@ -271,7 +271,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           
           const loadedTimetable: SchoolTimetable = {};
           const classes = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           for (const cls of classes) {
             loadedTimetable[cls] = {};
             for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
@@ -416,7 +416,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           const loadedTimetable: SchoolTimetable = {};
           const classes = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           for (const cls of classes) {
             loadedTimetable[cls] = {};
             for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {

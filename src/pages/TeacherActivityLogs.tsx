@@ -348,7 +348,9 @@ const formatVal = (v: any): string => {
       try {
         const parsed = JSON.parse(v);
         return formatVal(parsed);
-      } catch (e) {}
+      } catch (err) {
+        console.debug('JSON parse error in formatVal:', err);
+      }
     }
     return v;
   }
@@ -434,7 +436,9 @@ const cleanJsonInString = (str: string): string => {
         formattedJson = formattedJson.substring(0, 120) + '...';
       }
       return `${cleanPrefix}${formattedJson ? ` to: ${formattedJson}` : ''}${suffix ? ` ${suffix}` : ''}`;
-    } catch (e) {}
+    } catch (err) {
+      console.debug('JSON parse error in cleanDescription:', err);
+    }
   }
   
   return str;
@@ -456,7 +460,9 @@ function formatDescription(log: any): string {
         if (Array.isArray(val)) return val;
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed)) return parsed;
-      } catch {}
+      } catch (err) {
+        console.debug('Parse error:', err);
+      }
       return [];
     };
 
@@ -548,7 +554,9 @@ function renderActivityProperties(log: any) {
         if (Array.isArray(val)) return val;
         const parsed = JSON.parse(val);
         if (Array.isArray(parsed)) return parsed;
-      } catch {}
+      } catch (err) {
+        console.debug('Parse error:', err);
+      }
       return [];
     };
 

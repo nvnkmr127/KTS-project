@@ -212,16 +212,16 @@ export function StaffManagement() {
   const [payslips, setPayslips] = useState<any[]>([]);
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
   const [manualAttendance, setManualAttendance] = useState<Record<string, Record<string, string>>>(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const saved = localStorage.getItem('kts_staff_attendance');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     return (saved && JSON.parse(saved)) || {};
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [biometricPunches, setBiometricPunches] = useState<any[]>(() => {
     const saved = localStorage.getItem('kts_biometric_punches');
     return (saved && JSON.parse(saved)) || [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   });
 
   // Dynamic base64 uploaded documents mapping
@@ -626,7 +626,7 @@ export function StaffManagement() {
     if (!sortField) return 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let valA: any = a[sortField];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let valB: any = b[sortField];
 

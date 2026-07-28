@@ -62,9 +62,9 @@ export class ApiError extends Error {
     this.isAuthError = status === 401 || status === 403;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+
 const activeRequests = new Map<string, Promise<any>>();
 
 async function request(path: string, options: RequestInit & { silent?: boolean } = {}) {
@@ -190,14 +190,14 @@ export const api = {
 
   async getMe() {
     return request('/me');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   },
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async login(credentials: any) {
     const res = await request('/login', {
       method: 'POST',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       body: JSON.stringify(credentials),
     });
     if (res.token) {
@@ -228,7 +228,7 @@ export const api = {
     return request(path);
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   async getResource(resource: string, id: string) {
     return request(`/resources/${resource}/${id}`);
   },
@@ -237,7 +237,7 @@ export const api = {
   async createResource(resource: string, data: any) {
     clearApiCache(resource);
     return request(`/resources/${resource}`, {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -246,7 +246,7 @@ export const api = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async bulkCreateResource(resource: string, records: any[]) {
     clearApiCache(resource);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     return request(`/resources/${resource}/bulk`, {
       method: 'POST',
       body: JSON.stringify({ records }),
@@ -265,7 +265,7 @@ export const api = {
   async deleteResource(resource: string, id: string) {
     clearApiCache(resource);
     return request(`/resources/${resource}/${id}`, {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       method: 'DELETE',
     });
   },
@@ -278,14 +278,14 @@ export const api = {
       return batch ? batch.name : batchId;
     } catch {
       return batchId;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     }
   },
 
   async getBatchStudentPercentages(batchId: string) {
     await syncLocalAttendanceRecords();
     const original = await request(`/attendance/batch/${batchId}/student-percentages`);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     try {
       const batchName = await this.getBatchName(batchId);
       const localRecords = storage.getItem('kts_student_attendance_records');
@@ -329,7 +329,7 @@ export const api = {
           });
         }
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     } catch (e) {
       console.error('Error merging local percentages:', e);
     }
@@ -338,13 +338,13 @@ export const api = {
 
   async getStudentAttendanceForDate(studentId: string, date: string) {
     const original = await request(`/attendance/student/${studentId}?date=${date}`);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     try {
       const localRecords = storage.getItem('kts_student_attendance_records');
       if (localRecords) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const records = localRecords as any[];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const studentRecords = records.filter(
           r => String(r.studentId) === String(studentId) && r.date === date
         );
@@ -367,12 +367,12 @@ export const api = {
                 check_in_time: isFirst ? '08:00:00' : '14:00:00',
                 subject: {
                   name: isFirst ? 'Morning Attendance (1st Period)' : 'Afternoon Attendance (After Lunch)',
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 },
                 time_slot: {
                   name: isFirst ? 'Period 1' : 'Period 6',
                   start_time: isFirst ? '08:00 AM' : '02:00 PM',
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                   end_time: isFirst ? '09:00 AM' : '03:00 PM',
                 },
                 faculty: {
@@ -381,7 +381,7 @@ export const api = {
               });
             }
           });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 
           // Sort by check-in time
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -398,7 +398,7 @@ export const api = {
             ...original.data.statistics,
             total,
             present,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             absent: list.filter((a: any) => a.status === 'absent').length,
             percentage,
@@ -417,21 +417,21 @@ export const api = {
     try {
       const getLocalDateString = () => {
         const d = new Date();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       };
       const today = getLocalDateString();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const localRecords = storage.getItem('kts_student_attendance_records');
       if (localRecords && original && original.success && original.data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const records = localRecords as any[];
         const todayRecords = records.filter(r => r.date === today);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         if (todayRecords.length > 0) {
           const list = original.data.attendances || [];
 
@@ -463,7 +463,7 @@ export const api = {
                 attendance_date: today,
                 check_in_time: isFirst ? '08:00:00' : '14:00:00',
                 batch_id: resolvedBatchId,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 student: {
                   id: Number(record.studentId),
                   name: record.studentName,
@@ -491,7 +491,7 @@ export const api = {
       if (existing) {
         return await request(`/resources/settings/${existing.id}`, {
           method: 'PUT',
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           body: JSON.stringify({ key, value }),
         });
       } else {
@@ -621,12 +621,12 @@ export const api = {
 
   async getActivityUsers() {
     return request('/activity-logs/users');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   },
 
   async getActivitySummary() {
     return request('/activity-logs/summary');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   },
 
   async clearActivityLogs() {
@@ -761,9 +761,9 @@ export const api = {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       }
     });
-    
+
     if (!response.ok) throw new Error('Download failed');
-    
+
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');

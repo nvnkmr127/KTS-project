@@ -109,19 +109,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const handleMarkSeen = (id: number) => {
     setActivities((prev: any[]) =>
       prev.map((a: { id: number; }) => (a.id === id ? { ...a, seen: true } : a))
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     );
   };
 
   const handleClearActivity = (id: number) => {
     setActivities((prev: any[]) => prev.filter((a: { id: number; }) => a.id !== id));
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
 
   const handleMarkAllSeen = () => {
     setActivities((prev: any[]) => prev.map((a: any) => ({ ...a, seen: true })));
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
 
   const handleClearAll = () => {
     setActivities([]);
@@ -129,7 +129,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   const unreadCount = activities.filter((a: { seen: any; }) => !a.seen).length;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
       {/* Header & Date Range Picker */}

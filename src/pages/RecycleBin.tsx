@@ -292,7 +292,7 @@ export function RecycleBin() {
       showToast('Activity log restored successfully!', true);
     } catch (err: any) {
       console.error('Error restoring activity log:', err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const errMsg = err.error || err.message || 'Failed to restore activity log.';
       showToast(errMsg, false);
       await alert(errMsg, "Error");

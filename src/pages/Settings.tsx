@@ -146,7 +146,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         const addrSet = data.find((s: any) => s.key === 'school_address');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const attSet = data.find((s: any) => s.key === 'minimum_attendance_percentage');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bioSet = data.find((s: any) => s.key === 'biometric_api_key');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

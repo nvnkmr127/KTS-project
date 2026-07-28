@@ -31,7 +31,7 @@ interface WebhookCall {
   webhook_id: string;
   success: boolean;
   status_code: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: any;
   response_body: string;
@@ -69,9 +69,9 @@ export function WebhookManagement() {
   });
   const [loadingStats, setLoadingStats] = useState(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // Events/Categories metadata
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [eventTypes, setEventTypes] = useState<Record<string, any>>({});
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -120,7 +120,7 @@ export function WebhookManagement() {
 
   // Load all webhooks
   const loadWebhooks = async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     setLoadingWebhooks(true);
     try {
       const data = await api.getResources('webhooks');
@@ -480,7 +480,7 @@ export function WebhookManagement() {
 
     // Fallbacks if categories empty
     const availableCategories = Object.keys(categories).length > 0 ? categories : {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       'Financial': { name: 'Financial', events: {} },
       'Student Management': { name: 'Student Management', events: {} },
       'Lead Management': { name: 'Lead Management', events: {} },
@@ -490,13 +490,13 @@ export function WebhookManagement() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Object.entries(availableCategories).forEach(([catKey, catVal]: [string, any]) => {
       const catName = catVal.name || catKey;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       if (!grouped[catName]) {
         grouped[catName] = { name: catName, events: [] };
       }
       
       // Events in this category
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const catEvents = catVal.events || {};
       if (Object.keys(catEvents).length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -3,7 +3,7 @@ import { X, CheckCircle2, Plus, FileText } from 'lucide-react';
 
 
 interface StaffFormModalProps {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   modal: any;
 
@@ -15,7 +15,7 @@ interface StaffFormModalProps {
   customCategory: string;
   setCustomCategory: (c: string) => void;
   getDocsForCategory: (c: string) => string[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   customDocs?: string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setCustomDocs: (docs: any) => void;
@@ -328,7 +328,7 @@ export function StaffFormModal({
                         />
                         <button
                           type="button"
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                           
                           onClick={(e) => {
                             e.stopPropagation();
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any

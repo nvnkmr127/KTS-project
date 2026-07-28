@@ -43,8 +43,6 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function saveSettingToDb(key: string, value: any) {
   try {
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
@@ -98,7 +96,7 @@ function CustomDatePicker({
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
 
-  const getCalendarDateStr = (day: number) => 
+  const getCalendarDateStr = (day: number) =>
     `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
   const getHolidayForDate = (dateStr: string) => {
@@ -324,10 +322,10 @@ export function Leave() {
 
   const visibleRequests = isAdmin
     ? leaveRequests.filter((l) =>
-        staffList.some(
-          (s) => (s.name || '').toLowerCase() === (l.staffName || '').toLowerCase()
-        )
+      staffList.some(
+        (s) => (s.name || '').toLowerCase() === (l.staffName || '').toLowerCase()
       )
+    )
     : leaveRequests.filter((l) => l.staffId === user?.id);
 
   const pending = leaveRequests.filter((l) => l.status === 'Pending').length;
@@ -339,15 +337,15 @@ export function Leave() {
     const from = new Date(fromStr);
     const to = new Date(toStr);
     const today = new Date();
-    today.setHours(0,0,0,0);
-    
+    today.setHours(0, 0, 0, 0);
+
     if (from < today) {
       return 'Start date cannot be in the past.';
     }
     if (to < from) {
       return 'End date cannot be before start date.';
     }
-    
+
     // Check if weekend (Sunday: 0)
     const fromDay = from.getDay();
     const toDay = to.getDay();
@@ -460,7 +458,7 @@ export function Leave() {
     for (let i = 0; i < firstDay; i++) calendarDays.push(null);
     for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
 
-    const getCalendarDateStr = (day: number) => 
+    const getCalendarDateStr = (day: number) =>
       `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
     return (
@@ -579,26 +577,24 @@ export function Leave() {
       <div className="flex border-b border-[var(--b)] mb-3">
         <button
           onClick={() => setActiveTab('requests')}
-            className={`px-4 py-2 text-[12px] border-b-2 -mb-px transition-colors cursor-pointer ${
-              activeTab === 'requests'
-                ? 'text-[var(--blue-tx)] border-[var(--blue)] font-semibold'
-                : 'text-[var(--tx3)] border-transparent hover:text-[var(--tx)]'
+          className={`px-4 py-2 text-[12px] border-b-2 -mb-px transition-colors cursor-pointer ${activeTab === 'requests'
+              ? 'text-[var(--blue-tx)] border-[var(--blue)] font-semibold'
+              : 'text-[var(--tx3)] border-transparent hover:text-[var(--tx)]'
             }`}
-          >
-            Leave Requests
-          </button>
-          <button
-            onClick={() => setActiveTab('holidays')}
-            className={`px-4 py-2 text-[12px] border-b-2 -mb-px transition-colors cursor-pointer ${
-              activeTab === 'holidays'
-                ? 'text-[var(--blue-tx)] border-[var(--blue)] font-semibold'
-                : 'text-[var(--tx3)] border-transparent hover:text-[var(--tx)]'
+        >
+          Leave Requests
+        </button>
+        <button
+          onClick={() => setActiveTab('holidays')}
+          className={`px-4 py-2 text-[12px] border-b-2 -mb-px transition-colors cursor-pointer ${activeTab === 'holidays'
+              ? 'text-[var(--blue-tx)] border-[var(--blue)] font-semibold'
+              : 'text-[var(--tx3)] border-transparent hover:text-[var(--tx)]'
             }`}
-          >
-            Holiday Calendar
-          </button>
-        </div>
-      
+        >
+          Holiday Calendar
+        </button>
+      </div>
+
 
       {activeTab === 'holidays' ? (
         renderAdminHolidayCalendar()

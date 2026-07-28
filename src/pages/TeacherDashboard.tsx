@@ -70,7 +70,11 @@ export function TeacherDashboard() {
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'kts_student_attendance_records' && e.newValue) {
-        try { setAttendanceRecords(JSON.parse(e.newValue)); } catch (err) {}
+        try { 
+          setAttendanceRecords(JSON.parse(e.newValue)); 
+        } catch (err) {
+          console.debug('Failed to parse attendance storage value:', err);
+        }
       }
     };
     window.addEventListener('storage', handleStorageChange);

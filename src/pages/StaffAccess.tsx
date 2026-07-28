@@ -24,14 +24,14 @@ export function StaffAccess() {
 
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [search, setSearch] = useState('');
-  
+
   // Modals state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalStaff, setModalStaff] = useState<StaffMember | null>(null);
   const [inputEmail, setInputEmail] = useState('');
   const [inputPassword, setInputPassword] = useState('');
   const [inputRole, setInputRole] = useState('faculty');
-  const [roles, setRoles] = useState<{id: number, name: string}[]>([]);
+  const [roles, setRoles] = useState<{ id: number, name: string }[]>([]);
 
   // Load roles
   useEffect(() => {
@@ -64,19 +64,19 @@ export function StaffAccess() {
           console.error('Error parsing staff list:', err);
         }
       }
-      
+
       try {
         const staffData = await api.getResources('faculty');
         const staffListFromApi = Array.isArray(staffData) ? staffData : (staffData?.data || []);
         if (staffListFromApi.length > 0) {
-           const normalizedStaff = staffListFromApi.map((s: any) => ({
-             ...s,
-             documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
-             status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
-             salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
-           }));
-           loadedStaff = normalizedStaff.filter((s: any) => s && s.id && s.status !== 'Resigned');
-           localStorage.setItem('kts_staff_members', JSON.stringify(normalizedStaff));
+          const normalizedStaff = staffListFromApi.map((s: any) => ({
+            ...s,
+            documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
+            status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
+            salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
+          }));
+          loadedStaff = normalizedStaff.filter((s: any) => s && s.id && s.status !== 'Resigned');
+          localStorage.setItem('kts_staff_members', JSON.stringify(normalizedStaff));
         }
       } catch (err) {
         console.error('Error fetching staff list from DB in StaffAccess:', err);
@@ -85,9 +85,9 @@ export function StaffAccess() {
       if (loadedStaff.length === 0) {
         loadedStaff = STAFF.filter((s) => s && s.id);
       }
-      
+
       setStaffList(loadedStaff);
-      
+
       // Set first category as default
       const cats = Array.from(new Set(loadedStaff.map((s) => s.category || 'Teaching')));
       if (cats.length > 0) {
@@ -104,7 +104,7 @@ export function StaffAccess() {
 
   // Unique categories list with counts
   const categories = Array.from(new Set(staffList.filter((s) => s && s.id).map((s) => s.category || 'Teaching')));
-  
+
   const getCategoryCount = (categoryName: string) => {
     return staffList.filter((s) => s && s.id && (s.category || 'Teaching') === categoryName).length;
   };
@@ -122,8 +122,7 @@ export function StaffAccess() {
     try {
       const existingUsers = await api.getResources('users');
       const matchedUser = existingUsers.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
       );
 
@@ -155,10 +154,10 @@ export function StaffAccess() {
 
     try {
       const newActiveState = !record.isActive;
-      
+
       // Update backend user status
       const existingUsers = await api.getResources('users');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const matchedUser = existingUsers.find(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
@@ -195,7 +194,7 @@ export function StaffAccess() {
 
     try {
       // Check if user already exists in DB
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const existingUsers = await api.getResources('users');
       const matchedUser = existingUsers.find(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -249,7 +248,7 @@ export function StaffAccess() {
           const flagKey = `kts_force_logout_${record.email.toLowerCase()}`;
           localStorage.setItem(flagKey, String(Date.now()));
         }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 
         const existingUsers = await api.getResources('users');
         const matchedUser = existingUsers.find(
@@ -279,7 +278,7 @@ export function StaffAccess() {
     setModalStaff(staff);
     setInputEmail(emailToUse);
     setInputPassword('');
-    
+
     try {
       if (emailToUse) {
         const existingUsers = await api.getResources('users');
@@ -298,7 +297,7 @@ export function StaffAccess() {
     } catch (err) {
       console.error(err);
     }
-    
+
     setModalOpen(true);
   };
 
@@ -319,7 +318,7 @@ export function StaffAccess() {
       <div className="text-[13.5px] font-bold text-[var(--tx)] mb-3 flex items-center gap-1.5">
         <Lock size={15} className="text-[var(--blue-tx)]" /> Staff Categories
       </div>
-      
+
       {categories.length === 0 ? (
         <Card className="mb-5">
           <div className="text-center py-8 text-[var(--tx3)] flex flex-col items-center gap-2">
@@ -339,11 +338,10 @@ export function StaffAccess() {
               <div
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`cursor-pointer rounded-2xl p-4 border transition-all hover:shadow-md ${
-                  isSelected
+                className={`cursor-pointer rounded-2xl p-4 border transition-all hover:shadow-md ${isSelected
                     ? 'bg-[var(--blue-bg)] border-[var(--blue-tx)] text-[var(--blue-tx)] shadow-sm'
                     : 'bg-[var(--surf)] border-[var(--b)] text-[var(--tx)] hover:bg-[var(--surf2)]'
-                }`}
+                  }`}
               >
                 <div className="text-[11px] font-bold tracking-wider uppercase opacity-60">Category</div>
                 <div className="text-[15px] font-bold mt-1.5 truncate">{cat}</div>
@@ -368,7 +366,7 @@ export function StaffAccess() {
                 Manage login credentials and activation state for staff members in {selectedCategory}
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 w-full sm:max-w-[280px]">
               <Search size={13} className="text-[var(--tx3)]" />
               <input
@@ -460,11 +458,10 @@ export function StaffAccess() {
                               <button
                                 type="button"
                                 onClick={() => toggleAccessActive(s.id)}
-                                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${
-                                  access.isActive
+                                className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${access.isActive
                                     ? 'bg-red-500/10 text-red-600 border-red-500/20 hover:bg-red-500/20'
                                     : 'bg-teal-500/10 text-teal-600 border-teal-500/20 hover:bg-teal-500/20'
-                                }`}
+                                  }`}
                               >
                                 {access.isActive ? 'Inactive' : 'Active'}
                               </button>
@@ -528,7 +525,7 @@ export function StaffAccess() {
                 <X size={16} />
               </button>
             </div>
-            
+
             <div className="p-5 space-y-3.5">
               <div>
                 <label className="block text-[11px] font-semibold text-[var(--tx2)] mb-1.5">Login Email *</label>

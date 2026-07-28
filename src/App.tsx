@@ -57,11 +57,11 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: JSX.Elem
 function AppShell() {
   const { user } = useAuth();
   const isTeacher = user?.role === 'teacher';
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   // eslint-disable-next-line unused-imports/no-unused-vars
   const { hasUnsavedChanges, setHasUnsavedChanges } = useApp();
   const location = useLocation();
-  // eslint-disable-next-line unused-imports/no-unused-vars
+   
   const navigate = useNavigate();
   
   const currentPath = location.pathname;

@@ -17,8 +17,7 @@ interface SalaryComponent {
 
 export function SalaryCategories() {
   const { alert, confirm } = useDialog();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const [faculty, setFaculty] = useState<any[]>([]);
   const loading = false;
   const [components, setComponents] = useState<SalaryComponent[]>([]);
@@ -34,7 +33,7 @@ export function SalaryCategories() {
   const [compCalcType, setCompCalcType] = useState<'flat' | 'percentage'>('flat');
   const [compMonth, setCompMonth] = useState<string>(() => generateMonths()[0] || 'May 2026');
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   // Assign Salary Modal
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
@@ -59,7 +58,7 @@ export function SalaryCategories() {
   };
 
   const saveSettingToDb = async (key: string, value: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     try {
       const settings = await api.getResources('settings');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,10 +76,10 @@ export function SalaryCategories() {
   // Initialize data
   useEffect(() => {
     async function syncFromDb() {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       try {
         const settings = await api.getResources('settings');
-        
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const compSetting = settings.find((s: any) => s.key === 'salary_components');
         if (compSetting && compSetting.value) {
@@ -100,7 +99,7 @@ export function SalaryCategories() {
             ];
             setComponents(defaultComps);
             localStorage.setItem('salary_components', JSON.stringify(defaultComps));
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             saveSettingToDb('salary_components', JSON.stringify(defaultComps));
           }
         }
@@ -113,7 +112,7 @@ export function SalaryCategories() {
         } else {
           const savedSalaries = localStorage.getItem('staff_salaries');
           if (savedSalaries) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
             setStaffSalaries(JSON.parse(savedSalaries));
             saveSettingToDb('staff_salaries', savedSalaries);
           }
@@ -146,7 +145,7 @@ export function SalaryCategories() {
         loadFaculty();
       }
     }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 
     // Load faculty
     const loadFaculty = () => {
@@ -187,7 +186,7 @@ export function SalaryCategories() {
   const handleAddComponent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!compName.trim()) return;
-    
+
     const monthSuffix = compMonth === 'All' ? '' : `_${compMonth.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
     const id = `${compName.toLowerCase().replace(/[^a-z0-9]/g, '_')}${monthSuffix}`;
     if (components.some((c) => c.id === id)) {
@@ -205,7 +204,7 @@ export function SalaryCategories() {
 
     const updated = [...components, newComp];
     saveComponents(updated);
-    
+
     setCompName('');
     setCompCalcType('flat');
     setShowCompModal(false);
@@ -233,7 +232,7 @@ export function SalaryCategories() {
       saveSettingToDb('staff_salaries', JSON.stringify(updatedSalaries));
     }
   };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 
   // Active components based on monthFilter
   const activeComponents = components.filter(
@@ -246,7 +245,7 @@ export function SalaryCategories() {
     setEditingStaff(staff);
     const salaries = staffSalaries[staff.id] || staffSalaries[staff.name] || {};
     const initialValues: Record<string, string> = {};
-    
+
     const defaultBasic = staff.salary ? Math.round(staff.salary * 0.65) : 25000;
     const defaultHra = staff.salary ? Math.round(staff.salary * 0.20) : 8000;
     const defaultAllowances = staff.salary ? staff.salary - defaultBasic - defaultHra : 5000;
@@ -321,7 +320,7 @@ export function SalaryCategories() {
           <div className="text-[12px] font-bold text-[var(--tx)] flex items-center gap-1.5 border-b border-[var(--b)] pb-2">
             <Tag size={13} className="text-[var(--tx3)]" /> Salary Components
           </div>
-          
+
           <div className="space-y-2">
             {activeComponents.map((comp) => (
               <div key={comp.id} className="flex items-center justify-between p-2.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl group transition-all hover:border-[var(--b2)]">
@@ -379,7 +378,7 @@ export function SalaryCategories() {
                   return hasJoinedBy(staff.joinDate, targetYM);
                 }).map((staff) => {
                   const salaries = staffSalaries[staff.id] || staffSalaries[staff.name] || {};
-                  
+
                   // Compute net salary
                   let earningsSum = 0;
                   let deductionsSum = 0;
@@ -401,7 +400,7 @@ export function SalaryCategories() {
                   activeComponents.forEach((c) => {
                     const fallback = getFallbackAmtLocal(c);
                     const amt = getComponentAmt(c, salaries, basicAmt, fallback);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                     if (c.type === 'earning') {
                       earningsSum += amt;
                     } else {

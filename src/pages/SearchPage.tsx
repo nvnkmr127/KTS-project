@@ -16,7 +16,7 @@ export function SearchPage({ searchQuery, onNavigate, onClearSearch }: SearchPag
   const [students, setStudents] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [faculty, setFaculty] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

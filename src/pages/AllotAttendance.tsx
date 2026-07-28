@@ -37,8 +37,8 @@ export interface StudentPeriodAttendance {
   markedAt: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+
 async function saveSettingToDb(key: string, value: any) {
   try {
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
@@ -76,18 +76,18 @@ export function AllotAttendance() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<StudentPeriodAttendance[]>([]);
-  
+
   const [selectedClass, setSelectedClass] = useState<string>('');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const [session, setSession] = useState<'first_period' | 'lunch_period'>('first_period');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [substituteAssignments, setSubstituteAssignments] = useState<any[]>([]);
-  
+
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Student selection state (studentId -> present/absent)
   const [statusMap, setStatusMap] = useState<Record<string, 'present' | 'absent'>>({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -110,7 +110,7 @@ export function AllotAttendance() {
         const [batchesData, studentsData] = await Promise.all([
           api.getResources('batches', { limit: '1000' }).catch(() => []),
           api.getResources('students', { limit: '1000' }).catch(() => [])
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         ]);
 
         const parseBatchName = (name: string) => {
@@ -221,7 +221,7 @@ export function AllotAttendance() {
   // Determine first period after lunch index
   const getLunchPeriodIndex = () => {
     const lunchIdx = periodTimings.findIndex(t => t.isBreak && t.label?.toLowerCase().includes('lunch'));
-    
+
     if (lunchIdx !== -1) {
       // Find next non-break period after lunch
       for (let i = lunchIdx + 1; i < periodTimings.length; i++) {
@@ -230,7 +230,7 @@ export function AllotAttendance() {
         }
       }
     }
-    
+
     // Fallback: if no lunch break is labeled, find the period starting at 1:10 PM (after the 12:30-1:10 break)
     const fallbackIdx = periodTimings.findIndex(t => !t.isBreak && t.start.includes('1:10'));
     if (fallbackIdx !== -1) return fallbackIdx;
@@ -243,29 +243,29 @@ export function AllotAttendance() {
   // Determine teacher access: which classes can they take attendance for today?
   const allowedClasses = batches.filter(batch => {
     // 1. Is class teacher? (First period access)
-    const isClassTeacher = String(batch.class_teacher_id) === String(user?.id) || 
+    const isClassTeacher = String(batch.class_teacher_id) === String(user?.id) ||
       (batch.class_teacher_name && batch.class_teacher_name.toLowerCase() === user?.name?.toLowerCase());
-    
+
     // 2. Teaches first period after lunch today? (Lunch period access)
     const classTimetable = timetable[batch.name] ?? {};
     const todaySlots = classTimetable[dayOfWeek] ?? {};
-    
+
     // Find the slot for the first period after lunch (no offset subtraction since lunchPeriodIndex is the raw slot index)
-    const lunchSlot = todaySlots[lunchPeriodIndex]; 
+    const lunchSlot = todaySlots[lunchPeriodIndex];
     const teachesAfterLunch = lunchSlot && (
-      String(lunchSlot.teacherId) === String(user?.id) || 
+      String(lunchSlot.teacherId) === String(user?.id) ||
       (lunchSlot.teacher && user?.name && lunchSlot.teacher.toLowerCase().trim() === user.name.toLowerCase().trim())
     );
 
     // 3. Is substitute teacher for the first period of this batch today?
-    const isSubstituteFirstPeriod = substituteAssignments.some(sa => 
-      sa.timetable?.batch?.name === batch.name && 
+    const isSubstituteFirstPeriod = substituteAssignments.some(sa =>
+      sa.timetable?.batch?.name === batch.name &&
       (sa.timetable?.time_slot_id - 1) === 0
     );
 
     // 4. Is substitute teacher for the first period after lunch of this batch today?
-    const isSubstituteAfterLunch = substituteAssignments.some(sa => 
-      sa.timetable?.batch?.name === batch.name && 
+    const isSubstituteAfterLunch = substituteAssignments.some(sa =>
+      sa.timetable?.batch?.name === batch.name &&
       (sa.timetable?.time_slot_id - 1) === lunchPeriodIndex
     );
 
@@ -282,7 +282,7 @@ export function AllotAttendance() {
   // Determine available sessions for selected class today
   const selectedBatchObj = batches.find(b => b.name === selectedClass);
   const isClassTeacherForSelected = selectedBatchObj && (
-    String(selectedBatchObj.class_teacher_id) === String(user?.id) || 
+    String(selectedBatchObj.class_teacher_id) === String(user?.id) ||
     (selectedBatchObj.class_teacher_name && selectedBatchObj.class_teacher_name.toLowerCase() === user?.name?.toLowerCase())
   );
 
@@ -290,17 +290,17 @@ export function AllotAttendance() {
   const todaySlots = classTimetable[dayOfWeek] ?? {};
   const lunchSlot = todaySlots[lunchPeriodIndex];
   const teachesAfterLunchForSelected = lunchSlot && (
-    String(lunchSlot.teacherId) === String(user?.id) || 
+    String(lunchSlot.teacherId) === String(user?.id) ||
     (lunchSlot.teacher && user?.name && lunchSlot.teacher.toLowerCase().trim() === user.name.toLowerCase().trim())
   );
 
-  const isSubstituteFirstPeriodForSelected = substituteAssignments.some(sa => 
-    sa.timetable?.batch?.name === selectedClass && 
+  const isSubstituteFirstPeriodForSelected = substituteAssignments.some(sa =>
+    sa.timetable?.batch?.name === selectedClass &&
     (sa.timetable?.time_slot_id - 1) === 0
   );
 
-  const isSubstituteAfterLunchForSelected = substituteAssignments.some(sa => 
-    sa.timetable?.batch?.name === selectedClass && 
+  const isSubstituteAfterLunchForSelected = substituteAssignments.some(sa =>
+    sa.timetable?.batch?.name === selectedClass &&
     (sa.timetable?.time_slot_id - 1) === lunchPeriodIndex
   );
 
@@ -316,10 +316,10 @@ export function AllotAttendance() {
       }
     }
   }, [
-    selectedClass, 
-    isClassTeacherForSelected, 
-    teachesAfterLunchForSelected, 
-    isSubstituteFirstPeriodForSelected, 
+    selectedClass,
+    isClassTeacherForSelected,
+    teachesAfterLunchForSelected,
+    isSubstituteFirstPeriodForSelected,
     isSubstituteAfterLunchForSelected
   ]);
 
@@ -339,8 +339,8 @@ export function AllotAttendance() {
 
       const records = attendanceRecords.filter(
         r => r.className.toLowerCase() === selectedClass.toLowerCase() &&
-             r.session === session &&
-             r.date === date
+          r.session === session &&
+          r.date === date
       );
 
       records.forEach(r => {
@@ -350,7 +350,7 @@ export function AllotAttendance() {
       setStatusMap(initialMap);
       setIsLocked(records.length > 0);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClass, session, date, attendanceRecords, students]);
 
   // Search filter
@@ -378,8 +378,8 @@ export function AllotAttendance() {
       // Filter out old records for the same class, session, and date
       const otherRecords = attendanceRecords.filter(
         r => !(r.className.toLowerCase() === selectedClass.toLowerCase() &&
-               r.session === session &&
-               r.date === date)
+          r.session === session &&
+          r.date === date)
       );
 
       const updatedRecords = [...otherRecords, ...newEntries];
@@ -390,7 +390,7 @@ export function AllotAttendance() {
       // Trigger cache invalidation so the changes show up in admin dashboards immediately
       try {
         await api.createResource('attendance/invalidate-cache', { timestamp });
-  // eslint-disable-next-line unused-imports/no-unused-vars
+        // eslint-disable-next-line unused-imports/no-unused-vars
       } catch (e) {
         // ignore if endpoint doesn't exist
       }
@@ -499,10 +499,10 @@ export function AllotAttendance() {
                   {(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
                     <option value="lunch_period">Afternoon (1st Period After Lunch - Teacher/Substitute)</option>
                   )}
-                  {!(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) && 
-                   !(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
-                    <option value="">No access for selected class today</option>
-                  )}
+                  {!(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) &&
+                    !(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
+                      <option value="">No access for selected class today</option>
+                    )}
                 </select>
               </div>
 
@@ -521,138 +521,137 @@ export function AllotAttendance() {
               </div>
             </div>
 
-            {allowedClasses.length > 0 && 
-             !(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) && 
-             !(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
-              <div className="mt-3 p-3 bg-[var(--amber-bg)] border border-[var(--amber-tx)]/10 text-[var(--amber-tx)] rounded-xl text-[11.5px] flex items-center gap-2">
-                <AlertCircle size={13} />
-                <span>You do not teach the lunch period slot nor are you the class teacher (or substitute) for Class {selectedClass} on {dayOfWeek}s.</span>
-              </div>
-            )}
-          </Card>
-
-          {allowedClasses.length > 0 && 
-           (isClassTeacherForSelected || teachesAfterLunchForSelected || isSubstituteFirstPeriodForSelected || isSubstituteAfterLunchForSelected) && (
-            <Card>
-              {isLocked && (
-                <div className="mb-4 p-3 bg-[var(--teal-bg)]/25 border border-[var(--teal-tx)]/15 rounded-xl flex items-center justify-between gap-3 text-[11.5px] text-[var(--tx)]">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle size={15} className="text-[var(--teal-tx)]" />
-                    <span>✓ Attendance has been submitted and locked for this session.</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsLocked(false)}
-                    className="px-2.5 py-1 text-[11px] font-bold bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg hover:bg-[var(--blue-bg)]/80 transition-all cursor-pointer"
-                  >
-                    Edit / Re-open
-                  </button>
+            {allowedClasses.length > 0 &&
+              !(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) &&
+              !(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
+                <div className="mt-3 p-3 bg-[var(--amber-bg)] border border-[var(--amber-tx)]/10 text-[var(--amber-tx)] rounded-xl text-[11.5px] flex items-center gap-2">
+                  <AlertCircle size={13} />
+                  <span>You do not teach the lunch period slot nor are you the class teacher (or substitute) for Class {selectedClass} on {dayOfWeek}s.</span>
                 </div>
               )}
-              {/* Stats & Bulk Operations */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-[var(--b)] pb-3.5">
-                <div className="flex items-center gap-3.5 flex-wrap">
-                  <div className="text-[12.5px] font-bold text-[var(--tx)]">
-                    Class {selectedClass} Attendance List
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant="teal">{presentCount} Present</Badge>
-                    <Badge variant="red">{absentCount} Absent</Badge>
-                  </div>
-                </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => markAll('present')}
-                    className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)] font-medium transition-all"
-                  >
-                    Mark All Present
-                  </button>
-                  <button
-                    onClick={() => markAll('absent')}
-                    className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--red)] hover:text-[var(--red-tx)] font-medium transition-all"
-                  >
-                    Mark All Absent
-                  </button>
-                </div>
-              </div>
+          </Card>
 
-              {/* Students Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[12px] min-w-[500px]">
-                  <thead>
-                    <tr className="border-b border-[var(--b)] text-[var(--tx3)]">
-                      <th className="text-[10.5px] font-medium text-left px-3 py-2 w-12">Init</th>
-                      <th className="text-[10.5px] font-medium text-left px-3 py-2">Student Name</th>
-                      <th className="text-[10.5px] font-medium text-left px-3 py-2">Roll No</th>
-                      <th className="text-[10.5px] font-medium text-center px-3 py-2 w-32">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStudents.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="text-center py-10 text-[var(--tx3)]">
-                          No students found in this class.
-                        </td>
+          {allowedClasses.length > 0 &&
+            (isClassTeacherForSelected || teachesAfterLunchForSelected || isSubstituteFirstPeriodForSelected || isSubstituteAfterLunchForSelected) && (
+              <Card>
+                {isLocked && (
+                  <div className="mb-4 p-3 bg-[var(--teal-bg)]/25 border border-[var(--teal-tx)]/15 rounded-xl flex items-center justify-between gap-3 text-[11.5px] text-[var(--tx)]">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle size={15} className="text-[var(--teal-tx)]" />
+                      <span>✓ Attendance has been submitted and locked for this session.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsLocked(false)}
+                      className="px-2.5 py-1 text-[11px] font-bold bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg hover:bg-[var(--blue-bg)]/80 transition-all cursor-pointer"
+                    >
+                      Edit / Re-open
+                    </button>
+                  </div>
+                )}
+                {/* Stats & Bulk Operations */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-[var(--b)] pb-3.5">
+                  <div className="flex items-center gap-3.5 flex-wrap">
+                    <div className="text-[12.5px] font-bold text-[var(--tx)]">
+                      Class {selectedClass} Attendance List
+                    </div>
+                    <div className="flex gap-2">
+                      <Badge variant="teal">{presentCount} Present</Badge>
+                      <Badge variant="red">{absentCount} Absent</Badge>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={() => markAll('present')}
+                      className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)] font-medium transition-all"
+                    >
+                      Mark All Present
+                    </button>
+                    <button
+                      onClick={() => markAll('absent')}
+                      className="flex-1 sm:flex-none px-2.5 py-1.5 text-[11.5px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--red)] hover:text-[var(--red-tx)] font-medium transition-all"
+                    >
+                      Mark All Absent
+                    </button>
+                  </div>
+                </div>
+
+                {/* Students Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-[12px] min-w-[500px]">
+                    <thead>
+                      <tr className="border-b border-[var(--b)] text-[var(--tx3)]">
+                        <th className="text-[10.5px] font-medium text-left px-3 py-2 w-12">Init</th>
+                        <th className="text-[10.5px] font-medium text-left px-3 py-2">Student Name</th>
+                        <th className="text-[10.5px] font-medium text-left px-3 py-2">Roll No</th>
+                        <th className="text-[10.5px] font-medium text-center px-3 py-2 w-32">Status</th>
                       </tr>
-                    ) : (
-                      filteredStudents.map((s) => {
-                        const isPresent = statusMap[s.id] === 'present';
-                        const initials = s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-                        return (
-                          <tr
-                            key={s.id}
-                            className="border-b border-[var(--b)] hover:bg-[var(--surf2)]/40 transition-colors last:border-0"
-                          >
-                            <td className="px-3 py-2.5">
-                              <Avatar initials={initials} bg={isPresent ? 'var(--teal-bg)' : 'var(--red-bg)'} color={isPresent ? 'var(--teal-tx)' : 'var(--red-tx)'} />
-                            </td>
-                            <td className="px-3 py-2.5 font-semibold text-[var(--tx)]">{s.name}</td>
-                            <td className="px-3 py-2.5 font-mono text-[11px] text-[var(--tx3)]">{s.roll}</td>
-                            <td className="px-3 py-2.5 text-center">
-                              <button
-                                onClick={() => toggleStudent(s.id)}
-                                className={`w-24 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1 mx-auto ${
-                                  isPresent
-                                    ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/20 hover:opacity-85'
-                                    : 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/20 hover:opacity-85'
-                                }`}
-                              >
-                                {isPresent ? <Check size={11} /> : <XCircle size={11} />}
-                                {isPresent ? 'Present' : 'Absent'}
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Submit Footer */}
-              <div className="mt-4 pt-4 border-t border-[var(--b)] flex flex-col sm:flex-row justify-between items-center gap-3">
-                <div className="text-[11.5px] text-[var(--tx3)] font-medium">
-                  {savedMsg && (
-                    <span className="text-[var(--teal-tx)] flex items-center gap-1">
-                      <CheckCircle size={13} /> Student Attendance saved and synced successfully!
-                    </span>
-                  )}
+                    </thead>
+                    <tbody>
+                      {filteredStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-center py-10 text-[var(--tx3)]">
+                            No students found in this class.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredStudents.map((s) => {
+                          const isPresent = statusMap[s.id] === 'present';
+                          const initials = s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                          return (
+                            <tr
+                              key={s.id}
+                              className="border-b border-[var(--b)] hover:bg-[var(--surf2)]/40 transition-colors last:border-0"
+                            >
+                              <td className="px-3 py-2.5">
+                                <Avatar initials={initials} bg={isPresent ? 'var(--teal-bg)' : 'var(--red-bg)'} color={isPresent ? 'var(--teal-tx)' : 'var(--red-tx)'} />
+                              </td>
+                              <td className="px-3 py-2.5 font-semibold text-[var(--tx)]">{s.name}</td>
+                              <td className="px-3 py-2.5 font-mono text-[11px] text-[var(--tx3)]">{s.roll}</td>
+                              <td className="px-3 py-2.5 text-center">
+                                <button
+                                  onClick={() => toggleStudent(s.id)}
+                                  className={`w-24 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1 mx-auto ${isPresent
+                                      ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/20 hover:opacity-85'
+                                      : 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/20 hover:opacity-85'
+                                    }`}
+                                >
+                                  {isPresent ? <Check size={11} /> : <XCircle size={11} />}
+                                  {isPresent ? 'Present' : 'Absent'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <button
-                  onClick={() => setShowConfirmModal(true)}
-                  disabled={saving || classStudents.length === 0 || isLocked}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-bold cursor-pointer hover:opacity-95 disabled:opacity-40 disabled:pointer-events-none transition-all"
-                >
-                  {saving ? (
-                    <Loader2 size={13} className="animate-spin" />
-                  ) : (
-                    <Save size={13} />
-                  )}
-                  {saving ? 'Submitting...' : 'Submit Attendance'}
-                </button>
-              </div>
-            </Card>
-          )}
+
+                {/* Submit Footer */}
+                <div className="mt-4 pt-4 border-t border-[var(--b)] flex flex-col sm:flex-row justify-between items-center gap-3">
+                  <div className="text-[11.5px] text-[var(--tx3)] font-medium">
+                    {savedMsg && (
+                      <span className="text-[var(--teal-tx)] flex items-center gap-1">
+                        <CheckCircle size={13} /> Student Attendance saved and synced successfully!
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowConfirmModal(true)}
+                    disabled={saving || classStudents.length === 0 || isLocked}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-bold cursor-pointer hover:opacity-95 disabled:opacity-40 disabled:pointer-events-none transition-all"
+                  >
+                    {saving ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : (
+                      <Save size={13} />
+                    )}
+                    {saving ? 'Submitting...' : 'Submit Attendance'}
+                  </button>
+                </div>
+              </Card>
+            )}
         </div>
       )}
       {showConfirmModal && (
@@ -664,20 +663,20 @@ export function AllotAttendance() {
                 <Users size={16} />
                 <span className="text-[13.5px] font-bold">Confirm Attendance Submission</span>
               </div>
-              <button 
+              <button
                 onClick={() => setShowConfirmModal(false)}
                 className="p-1 hover:bg-white/10 rounded-lg text-white/80 hover:text-white transition-colors cursor-pointer"
               >
                 <XCircle size={16} />
               </button>
             </div>
-            
+
             {/* Body */}
             <div className="p-6 space-y-4">
               <p className="text-xs text-[var(--tx2)]">
                 You are about to submit attendance for <strong className="text-[var(--tx)]">Class {selectedClass}</strong> ({session === 'first_period' ? 'Morning' : 'Afternoon'}) on <strong className="text-[var(--tx)]">{date}</strong>.
               </p>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-[var(--teal-bg)]/30 border border-[var(--teal-tx)]/15 rounded-xl p-3 text-center">
                   <div className="text-[9.5px] text-[var(--teal-tx)] font-semibold uppercase tracking-wider mb-1">Present</div>
@@ -701,15 +700,15 @@ export function AllotAttendance() {
 
             {/* Actions */}
             <div className="flex gap-3 p-5 pt-0">
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowConfirmModal(false)}
                 className="flex-1 py-2.5 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer transition-colors"
               >
                 Cancel
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => {
                   setShowConfirmModal(false);
                   handleSubmit();

@@ -64,12 +64,12 @@ export function Promotion() {
           api.getResources('batches', { with: 'academicYear' }),
         ]);
         
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sortedAys = (ayData || []).map((ay: any) => ({ id: String(ay.id), name: ay.name }));
         setAcademicYears(sortedAys);
         
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         // Find current academic year to set as default source
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentAy = ayData?.find((ay: any) => ay.is_current);
@@ -90,7 +90,7 @@ export function Promotion() {
           }
         } else if (sortedAys.length > 0) {
           setTargetAy(sortedAys[0].id);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -192,10 +192,10 @@ export function Promotion() {
     async function loadStudents() {
       setStudentsLoading(true);
       setMessage(null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       try {
         // Fetch all students from cache (no params = uses the pre-warmed cached list)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         // then filter client-side by batch_id — this is instant when cached.
         const allStudents = await api.getResources('students');
         const batchStudents = (allStudents || []).filter(
@@ -297,7 +297,7 @@ export function Promotion() {
 
   const executePromotion = async () => {
     if (students.length === 0) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     
     setExecuting(true);
     setMessage(null);
@@ -368,7 +368,7 @@ export function Promotion() {
       await Promise.all(updates);
       
       const alumniCount = Object.values(promotionStates).filter(s => s.action === 'alumni').length;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       setMessage({
         type: errorCount === 0 ? 'success' : 'error',
         text: `Promotion completed: ${successCount} student(s) updated successfully.${

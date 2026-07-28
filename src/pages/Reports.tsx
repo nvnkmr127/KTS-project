@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, Legend,
+  Tooltip, ResponsiveContainer, LineChart, Line, Legend,
   ComposedChart
 } from 'recharts';
 import {
   FileText, BarChart2, Database, Download, CalendarCheck, Wallet,
-  TrendingUp, Users, DollarSign, AlertTriangle, ArrowRight,
-  TrendingDown, Percent, Award, UserCheck, Loader2
+  TrendingUp, Users, DollarSign, ArrowRight, Percent, Loader2
 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card, CardHeader } from '../components/Card';
