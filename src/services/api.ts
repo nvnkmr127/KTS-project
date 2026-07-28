@@ -175,17 +175,20 @@ async function syncLocalAttendanceRecords() {
 export const api = {
   request,
 
-  // Lives outside the /v1 prefix (see backend routes/api.php notifications group)
   async markAllNotificationsRead() {
     const token = storage.getItem<string>('token');
-    return fetch(`${BASE_URL.replace(/\/v1$/, '')}/notifications/mark-all-read`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
+    try {
+      return await request('/notifications/mark-all-read', { method: 'POST', silent: true });
+    } catch {
+      return fetch(`${BASE_URL.replace(/\/v1$/, '')}/notifications/mark-all-read`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+    }
   },
 
   async getMe() {
@@ -675,6 +678,15 @@ export const api = {
   async biometricResetCursor() {
     return request('/biometric/reset-cursor', {
       method: 'POST'
+    });
+  },
+
+  // --- Force Logout ---
+  async forceLogoutUser(id: string | number) {
+    clearApiCache('users');
+    clearApiCache('faculty');
+    return request(`/users/${id}/force-logout`, {
+      method: 'POST',
     });
   },
 

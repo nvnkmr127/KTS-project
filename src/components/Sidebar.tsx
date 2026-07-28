@@ -148,8 +148,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const currentPath = location.pathname;
   const onNavigate = (page: PageId) => navigate(PAGE_TO_PATH[page] || "/" + page);
   const { user, logout } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.roles?.includes('admin') || user?.roles?.includes('super-admin');
   const roles = user?.roles || [];
+  const userPermissions = user?.permissions || [];
   
   const rawSections = isAdmin ? ADMIN_SECTIONS : TEACHER_SECTIONS;
   const sections = rawSections.map(section => {
@@ -161,12 +162,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           return true;
         }
 
-        const hasNoPermissionsArray = !user?.permissions || user.permissions.length === 0;
-
-        // Verify permissions for teachers
-        if (item.permission && !user?.permissions?.includes(item.permission)) {
-          if (user?.role === 'teacher' && hasNoPermissionsArray) return true;
-          return false;
+        // Verify permissions for non-admin users
+        if (item.permission) {
+          return userPermissions.includes(item.permission);
         }
 
         return true;

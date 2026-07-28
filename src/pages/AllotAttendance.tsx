@@ -385,6 +385,10 @@ export function AllotAttendance() {
       const updatedRecords = [...otherRecords, ...newEntries];
       setAttendanceRecords(updatedRecords);
       localStorage.setItem('kts_student_attendance_records', JSON.stringify(updatedRecords));
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'kts_student_attendance_records',
+        newValue: JSON.stringify(updatedRecords)
+      }));
       await saveSettingToDb('kts_student_attendance_records', updatedRecords);
 
       // Trigger cache invalidation so the changes show up in admin dashboards immediately

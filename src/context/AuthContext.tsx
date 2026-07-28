@@ -77,6 +77,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token === 'demo-token') return;
 
     const interval = setInterval(async () => {
+      // Check local force logout flag first
+      if (user?.email) {
+        const expectedKey = `kts_force_logout_${user.email.toLowerCase()}`;
+        if (localStorage.getItem(expectedKey)) {
+          localStorage.removeItem(expectedKey);
+          logout();
+          alert('You have been logged out by an administrator.', 'Session Ended');
+          return;
+        }
+      }
+
       try {
         const res = await api.getMe();
         if (res.user && res.user.status && res.user.status.toLowerCase() === 'inactive') {

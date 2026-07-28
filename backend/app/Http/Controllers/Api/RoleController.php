@@ -38,7 +38,11 @@ class RoleController extends Controller
             ]);
 
             if ($request->has('permissions')) {
-                $role->syncPermissions($request->permissions);
+                $perms = (array) $request->permissions;
+                foreach ($perms as $permName) {
+                    Permission::firstOrCreate(['name' => $permName], ['guard_name' => 'web']);
+                }
+                $role->syncPermissions($perms);
             }
 
             DB::commit();
@@ -78,7 +82,11 @@ class RoleController extends Controller
             ]);
 
             if ($request->has('permissions')) {
-                $role->syncPermissions($request->permissions);
+                $perms = (array) $request->permissions;
+                foreach ($perms as $permName) {
+                    Permission::firstOrCreate(['name' => $permName], ['guard_name' => 'web']);
+                }
+                $role->syncPermissions($perms);
             }
 
             DB::commit();
@@ -115,7 +123,11 @@ class RoleController extends Controller
             'permissions.*' => 'string'
         ]);
 
-        $role->syncPermissions($request->permissions);
+        $perms = (array) $request->permissions;
+        foreach ($perms as $permName) {
+            Permission::firstOrCreate(['name' => $permName], ['guard_name' => 'web']);
+        }
+        $role->syncPermissions($perms);
 
         return response()->json([
             'message' => 'Permissions synced successfully',

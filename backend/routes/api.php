@@ -119,6 +119,19 @@ Route::post('/v1/login', function(Request $request) {
         $classes = array_values(array_unique(array_merge($timetableClasses, $classTeacherBatches, $substituteBatches)));
     }
 
+    $userRoles = method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : [];
+    if (empty($userRoles)) {
+        $userRoles = [$role];
+    }
+
+    $userPermissions = method_exists($user, 'getAllPermissions') ? $user->getAllPermissions()->pluck('name')->toArray() : [];
+    if ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin') || $role === 'admin') {
+        if (\Illuminate\Support\Facades\Schema::hasTable('permissions')) {
+            $allPerms = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
+            $userPermissions = array_values(array_unique(array_merge($userPermissions, $allPerms)));
+        }
+    }
+
     // Log successful login
     try {
         activity()
@@ -140,6 +153,8 @@ Route::post('/v1/login', function(Request $request) {
             'name' => $user->name,
             'email' => $user->email,
             'role' => $role,
+            'roles' => $userRoles,
+            'permissions' => $userPermissions,
             'initials' => $initials,
             'designation' => $designation,
             'subject' => $subject,
@@ -190,12 +205,27 @@ Route::prefix('v1')->group(function () {
             $classes = array_values(array_unique(array_merge($timetableClasses, $classTeacherBatches, $substituteBatches)));
         }
 
+        $userRoles = method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : [];
+        if (empty($userRoles)) {
+            $userRoles = [$role];
+        }
+
+        $userPermissions = method_exists($user, 'getAllPermissions') ? $user->getAllPermissions()->pluck('name')->toArray() : [];
+        if ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin') || $role === 'admin') {
+            if (\Illuminate\Support\Facades\Schema::hasTable('permissions')) {
+                $allPerms = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
+                $userPermissions = array_values(array_unique(array_merge($userPermissions, $allPerms)));
+            }
+        }
+
         return response()->json([
             'user' => [
                 'id' => (string)$user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $role,
+                'roles' => $userRoles,
+                'permissions' => $userPermissions,
                 'initials' => $initials,
                 'designation' => $designation,
                 'subject' => $subject,
@@ -211,6 +241,17 @@ Route::prefix('v1')->group(function () {
                 \Illuminate\Support\Facades\DB::table('attendance_caches')->truncate();
             }
             return response()->json(['success' => true, 'message' => 'Attendance cache invalidated']);
+        });
+
+        Route::post('/users/{id}/force-logout', function ($id) {
+            $user = \App\Models\User::find($id);
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+            $user->status = 'inactive';
+            $user->save();
+            $user->tokens()->delete();
+            return response()->json(['success' => true, 'message' => 'User force logged out successfully']);
         });
 
         Route::get('/resources/{resource}', [GenericApiController::class, 'index']);
@@ -533,7 +574,7 @@ Route::get('/v1/bus/ping', [\App\Http\Controllers\Api\MillitrackProxyController:
 |--------------------------------------------------------------------------
 */
 
-// API routes with token authentication
+// API routes with token authentication (supports both Sanctum Bearer tokens and web session auth)
 Route::middleware(['auth:sanctum'])->prefix('notifications')->name('api.notifications.')->group(function () {
     Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     Route::get('/', [NotificationController::class, 'index'])->name('index');
@@ -543,15 +584,8 @@ Route::middleware(['auth:sanctum'])->prefix('notifications')->name('api.notifica
     Route::post('/preferences', [NotificationController::class, 'updatePreferences'])->name('preferences.update');
 });
 
-// Fallback API routes with session authentication for web interface
-Route::middleware(['auth', 'web'])->prefix('api/notifications')->name('api.notifications.web.')->group(function () {
-    Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
-    Route::get('/', [NotificationController::class, 'index'])->name('index');
-    Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');
-    Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
-});
-
-Route::middleware(['auth', 'web'])->prefix('notifications')->name('api.notifications.web2.')->group(function () {
+// Also register under /v1/notifications for consistency with API v1 endpoints
+Route::middleware(['auth:sanctum'])->prefix('v1/notifications')->name('api.v1.notifications.')->group(function () {
     Route::get('/unread-count', [NotificationController::class, 'getUnreadCount'])->name('unread-count');
     Route::get('/', [NotificationController::class, 'index'])->name('index');
     Route::post('/{notification}/read', [NotificationController::class, 'markAsRead'])->name('mark-read');

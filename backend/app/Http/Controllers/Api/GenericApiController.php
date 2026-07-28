@@ -671,11 +671,15 @@ class GenericApiController extends Controller
                 if (in_array($key, ['kts_student_attendance_records', 'kts_holidays', 'examinations_exams', 'kts_student_marks', 'examinations_schedules'])) {
                     $this->syncSettingToTables($key, $data['value'] ?? '');
                     
-                    // Return a virtual setting object to satisfy the frontend client
-                    $item = new \App\Models\Setting();
-                    $item->id = 999999;
-                    $item->key = $key;
-                    $item->value = $data['value'] ?? '';
+                    $item = \App\Models\Setting::updateOrCreate(
+                        ['key' => $key],
+                        [
+                            'value' => $data['value'] ?? '',
+                            'group' => 'attendance',
+                            'type' => 'json',
+                            'is_public' => true,
+                        ]
+                    );
                     return response()->json($item, 201);
                 }
 
@@ -1416,6 +1420,7 @@ class GenericApiController extends Controller
         if ($resource === 'settings' && in_array($item->key, ['kts_student_attendance_records', 'kts_holidays', 'examinations_exams', 'kts_student_marks', 'examinations_schedules'])) {
             $this->syncSettingToTables($item->key, $data['value'] ?? '');
             $item->value = $data['value'] ?? '';
+            $item->save();
             return response()->json($item);
         }
 
@@ -1456,6 +1461,17 @@ class GenericApiController extends Controller
             }
         }
 
+        // Revoke tokens if setting user to inactive
+        if (($resource === 'faculty' || $resource === 'users') && isset($data['status']) && strtolower($data['status']) === 'inactive') {
+            try {
+                if (method_exists($item, 'tokens')) {
+                    $item->tokens()->delete();
+                }
+            } catch (\Throwable $e) {
+                \Log::warn('Failed to revoke tokens on update inactive: ' . $e->getMessage());
+            }
+        }
+
         // Attach subject pivot
         if (($resource === 'faculty' || $resource === 'users') && $request->has('subject_id_to_attach')) {
             $item->subjects()->sync([$request->input('subject_id_to_attach')]);
@@ -1491,6 +1507,16 @@ class GenericApiController extends Controller
         if ($resource === 'batches') {
             if ($item->students()->count() > 0) {
                 return response()->json(['error' => 'Cannot delete this section because it has enrolled students.'], 400);
+            }
+        }
+
+        if ($resource === 'faculty' || $resource === 'users') {
+            try {
+                if (method_exists($item, 'tokens')) {
+                    $item->tokens()->delete();
+                }
+            } catch (\Throwable $e) {
+                \Log::warn('Failed to revoke tokens on destroy: ' . $e->getMessage());
             }
         }
 
@@ -1696,6 +1722,10 @@ class GenericApiController extends Controller
 
         // ── 2. ATTENDANCE ────────────────────────────────────────────────
         if ($key === 'kts_student_attendance_records') {
+            $existing = \App\Models\Setting::where('key', 'kts_student_attendance_records')->first();
+            if ($existing && !empty($existing->value) && $existing->value !== '[]') {
+                return $existing->value;
+            }
             $attendances = \App\Models\Attendance::with(['student', 'batch', 'markedBy'])->get();
             $mapped = [];
             foreach ($attendances as $a) {
@@ -1705,7 +1735,7 @@ class GenericApiController extends Controller
                     'roll' => $a->student->roll ?? '',
                     'className' => $a->batch->name ?? '8A',
                     'date' => $a->attendance_date ? (\Carbon\Carbon::parse($a->attendance_date)->toDateString()) : '',
-                    'session' => 'Morning',
+                    'session' => 'first_period',
                     'status' => $a->status ?? 'present',
                     'markedBy' => $a->markedBy->name ?? 'Teacher',
                     'markedById' => (string)($a->marked_by ?? '1'),

@@ -49,9 +49,9 @@ export function StaffAccess() {
     fetchRoles();
   }, []);
 
-  // Load staff list
+  // Load staff list & sync DB access state
   useEffect(() => {
-    async function fetchStaff() {
+    async function fetchStaffAndUsers() {
       const savedStaffStr = localStorage.getItem('kts_staff_members');
       let loadedStaff: StaffMember[] = [];
       if (savedStaffStr) {
@@ -88,13 +88,43 @@ export function StaffAccess() {
 
       setStaffList(loadedStaff);
 
+      // Synchronize accessRecords with database users
+      try {
+        const dbUsers = await api.getResources('users');
+        if (Array.isArray(dbUsers)) {
+          setAccessRecords((prev) => {
+            const updated = { ...prev };
+            loadedStaff.forEach((s) => {
+              const matched = dbUsers.find(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (u: any) =>
+                  (s.email && u.email?.toLowerCase() === s.email.toLowerCase()) ||
+                  (s.name && u.name?.toLowerCase() === s.name.toLowerCase()) ||
+                  (u.id && String(u.id) === String(s.id))
+              );
+              if (matched) {
+                updated[s.id] = {
+                  staffId: s.id,
+                  email: matched.email,
+                  isActive: (matched.status || 'active').toLowerCase() !== 'inactive',
+                  hasAccess: true,
+                };
+              }
+            });
+            return updated;
+          });
+        }
+      } catch (err) {
+        console.error('Error syncing DB users in StaffAccess:', err);
+      }
+
       // Set first category as default
       const cats = Array.from(new Set(loadedStaff.map((s) => s.category || 'Teaching')));
       if (cats.length > 0) {
         setSelectedCategory((prev) => cats.includes(prev) ? prev : cats[0]);
       }
     }
-    fetchStaff();
+    fetchStaffAndUsers();
   }, []);
 
   // Sync access records to localStorage
@@ -113,35 +143,52 @@ export function StaffAccess() {
     return accessRecords[staffId] || { staffId, email: '', isActive: false, hasAccess: false };
   };
 
-  // Force logout a staff member by marking them inactive on the backend
-  // and writing a force-logout flag to localStorage (picked up by AuthContext poll)
+  // Force logout a staff member by calling backend force-logout endpoint (revoking tokens)
+  // and writing a force-logout flag to localStorage
   const forceLogout = async (staffId: string) => {
+    const staff = staffList.find((s) => s.id === staffId);
     const record = accessRecords[staffId];
-    if (!record || !record.email) return;
+    const targetEmail = (record?.email || staff?.email || '').trim();
 
     try {
       const existingUsers = await api.getResources('users');
-      const matchedUser = existingUsers.find(
-
-        (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
-      );
+      const matchedUser = Array.isArray(existingUsers) ? existingUsers.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (u: any) =>
+          (targetEmail && u.email?.toLowerCase() === targetEmail.toLowerCase()) ||
+          (staff?.name && u.name?.toLowerCase() === staff.name.toLowerCase()) ||
+          (u.id && String(u.id) === String(staffId))
+      ) : null;
 
       if (matchedUser) {
-        // Mark inactive so the 15-s AuthContext poll logs them out automatically
-        await api.updateResource('faculty', matchedUser.id, { status: 'inactive' });
+        // Call backend force-logout endpoint (revokes tokens + sets status to inactive)
+        await api.forceLogoutUser(matchedUser.id);
+      } else if (targetEmail) {
+        // Fallback update
+        await api.updateResource('faculty', staffId, { status: 'inactive' });
       }
 
-      // Write a per-email flag so any tab the staff has open will detect forced logout
-      const flagKey = `kts_force_logout_${record.email.toLowerCase()}`;
-      localStorage.setItem(flagKey, String(Date.now()));
+      // Write per-email flag so any tab the staff has open on the same machine detects forced logout
+      if (targetEmail) {
+        const flagKey = `kts_force_logout_${targetEmail.toLowerCase()}`;
+        localStorage.setItem(flagKey, String(Date.now()));
+      }
 
-      // Also update local access record to reflect inactive state
+      // Update local access record state
       setAccessRecords((prev) => ({
         ...prev,
-        [staffId]: { ...prev[staffId], isActive: false },
+        [staffId]: {
+          staffId,
+          email: targetEmail || prev[staffId]?.email || '',
+          isActive: false,
+          hasAccess: true,
+        },
       }));
 
-      await alert(`Force logout triggered for ${record.email}. They will be logged out within 15 seconds.`, "Force Logout");
+      await alert(
+        `Force logout triggered for ${targetEmail || staff?.name || 'staff member'}. User tokens revoked and active sessions terminated.`,
+        "Force Logout"
+      );
     } catch (err) {
       await alert('Failed to force logout: ' + ((err as Error).message || err), "Error");
     }
@@ -149,37 +196,42 @@ export function StaffAccess() {
 
   // Toggle active / inactive state
   const toggleAccessActive = async (staffId: string) => {
+    const staff = staffList.find((s) => s.id === staffId);
     const record = accessRecords[staffId];
-    if (!record || !record.hasAccess) return;
+    const targetEmail = record?.email || staff?.email || '';
+    const currentIsActive = record?.isActive ?? true;
+    const newActiveState = !currentIsActive;
 
     try {
-      const newActiveState = !record.isActive;
-
-      // Update backend user status
       const existingUsers = await api.getResources('users');
-
-      const matchedUser = existingUsers.find(
+      const matchedUser = Array.isArray(existingUsers) ? existingUsers.find(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
-      );
+        (u: any) =>
+          (targetEmail && u.email?.toLowerCase() === targetEmail.toLowerCase()) ||
+          (staff?.name && u.name?.toLowerCase() === staff.name.toLowerCase()) ||
+          (u.id && String(u.id) === String(staffId))
+      ) : null;
 
       if (matchedUser) {
-        await api.updateResource('faculty', matchedUser.id, {
-          status: newActiveState ? 'active' : 'inactive',
-        });
+        if (!newActiveState) {
+          await api.forceLogoutUser(matchedUser.id);
+        } else {
+          await api.updateResource('faculty', matchedUser.id, { status: 'active' });
+        }
       }
 
-      // If setting to inactive, also force logout the staff member
-      if (!newActiveState && record.email) {
-        const flagKey = `kts_force_logout_${record.email.toLowerCase()}`;
+      if (!newActiveState && targetEmail) {
+        const flagKey = `kts_force_logout_${targetEmail.toLowerCase()}`;
         localStorage.setItem(flagKey, String(Date.now()));
       }
 
       setAccessRecords((prev) => ({
         ...prev,
         [staffId]: {
-          ...record,
+          staffId,
+          email: targetEmail,
           isActive: newActiveState,
+          hasAccess: true,
         },
       }));
     } catch (err) {
@@ -194,12 +246,11 @@ export function StaffAccess() {
 
     try {
       // Check if user already exists in DB
-
       const existingUsers = await api.getResources('users');
-      const matchedUser = existingUsers.find(
+      const matchedUser = Array.isArray(existingUsers) ? existingUsers.find(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) => u.email.toLowerCase() === inputEmail.toLowerCase()
-      );
+      ) : null;
 
       const userData = {
         name: modalStaff.name,
@@ -224,7 +275,7 @@ export function StaffAccess() {
         [modalStaff.id]: {
           staffId: modalStaff.id,
           email: inputEmail,
-          isActive: prev[modalStaff.id]?.isActive ?? true,
+          isActive: true,
           hasAccess: true,
         },
       }));
@@ -238,26 +289,29 @@ export function StaffAccess() {
 
   // Remove credentials
   const removeAccess = async (staffId: string) => {
+    const staff = staffList.find((s) => s.id === staffId);
     const record = accessRecords[staffId];
-    if (!record) return;
+    const targetEmail = record?.email || staff?.email || '';
 
     if (await confirm('Are you sure you want to remove login access for this staff member? This will also force logout any active session.', 'Remove Access', true)) {
       try {
-        // Force logout before deleting so any active session is killed
-        if (record.email) {
-          const flagKey = `kts_force_logout_${record.email.toLowerCase()}`;
-          localStorage.setItem(flagKey, String(Date.now()));
-        }
-
-
         const existingUsers = await api.getResources('users');
-        const matchedUser = existingUsers.find(
+        const matchedUser = Array.isArray(existingUsers) ? existingUsers.find(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (u: any) => u.email.toLowerCase() === record.email.toLowerCase()
-        );
+          (u: any) =>
+            (targetEmail && u.email?.toLowerCase() === targetEmail.toLowerCase()) ||
+            (staff?.name && u.name?.toLowerCase() === staff.name.toLowerCase()) ||
+            (u.id && String(u.id) === String(staffId))
+        ) : null;
 
         if (matchedUser) {
+          await api.forceLogoutUser(matchedUser.id).catch(() => {});
           await api.deleteResource('faculty', matchedUser.id);
+        }
+
+        if (targetEmail) {
+          const flagKey = `kts_force_logout_${targetEmail.toLowerCase()}`;
+          localStorage.setItem(flagKey, String(Date.now()));
         }
 
         setAccessRecords((prev) => {
