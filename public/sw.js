@@ -1,11 +1,9 @@
-const CACHE_NAME = 'kts-admin-cache-v2';
+const CACHE_NAME = 'kts-admin-cache-v3';
 
 // Static assets to cache
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
-  // Normally we would list hashed CSS/JS files here, but since Vite handles hashing,
-  // we will just implement a network-first strategy for all navigation and JS/CSS.
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,22 +29,37 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests
+  // Only handle GET requests
   if (event.request.method !== 'GET') {
     return;
   }
   
-  // API requests: Network only, do not cache.
-  // In a real PWA we might use BackgroundSync for POST requests.
+  // API requests and non-http(s)
   if (event.request.url.includes('/api/') || !(event.request.url.startsWith('http:') || event.request.url.startsWith('https:'))) {
     return;
   }
 
-  // Network First, fallback to cache for HTML/JS/CSS (App Shell)
+  // SPA navigation requests (e.g. /dashboard)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.ok) {
+            return response;
+          }
+          return caches.match('/index.html').then((cached) => cached || fetch('/index.html'));
+        })
+        .catch(() => {
+          return caches.match('/index.html').then((cached) => cached || fetch('/index.html'));
+        })
+    );
+    return;
+  }
+
+  // Network First, fallback to cache for other assets
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone and update cache
         if (response && response.status === 200 && response.type === 'basic') {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -55,15 +68,11 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => {
-        // Fallback to cache if offline
-        return caches.match(event.request).then((response) => {
-          if (response) return response;
-          // Return index.html for SPA routing if offline and navigation request
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-        });
+      .catch(async () => {
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) return cachedResponse;
+        return new Response('Network error', { status: 408, headers: { 'Content-Type': 'text/plain' } });
       })
   );
 });
+
