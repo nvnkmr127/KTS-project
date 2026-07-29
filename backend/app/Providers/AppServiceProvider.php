@@ -188,12 +188,6 @@ class AppServiceProvider extends ServiceProvider
                 PingCheck::new()->name('Internet Connection')->url('https://google.com'),
             ]);
         }
-
-        // Define Log Viewer gate for production authorization
-        \Illuminate\Support\Facades\Gate::define('viewLogViewer', function ($user = null) {
-            // Allow access in local dev environment, or for logged-in admin/super-admin users in production
-            return app()->environment('local') || ($user && ($user->hasRole(['admin', 'super-admin']) || ($user->is_admin ?? false)));
-        });
     }
 
     /**
