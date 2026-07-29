@@ -295,9 +295,10 @@ export function Timetable() {
       const fullTimetableStr = JSON.stringify(timetable);
       localStorage.setItem('kts_school_timetable', fullTimetableStr);
       try {
-        const existing = await api.getResources('settings', { key: 'kts_school_timetable' });
-        if (Array.isArray(existing) && existing.length > 0) {
-          await api.updateResource('settings', String(existing[0].id), { value: fullTimetableStr });
+        const settings = await api.getResources('settings').catch(() => []);
+        const existing = Array.isArray(settings) ? settings.find((s: any) => s.key === 'kts_school_timetable') : null;
+        if (existing) {
+          await api.updateResource('settings', String(existing.id), { key: 'kts_school_timetable', value: fullTimetableStr });
         } else {
           await api.createResource('settings', {
             key: 'kts_school_timetable',
