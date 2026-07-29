@@ -97,9 +97,22 @@ export function TeacherDashboard() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
+  const isTeacherMatch = (slot: any, u: any) => {
+    if (!slot || !u) return false;
+    if (slot.teacherId && u.id && String(slot.teacherId) === String(u.id)) return true;
+    if (slot.teacherId && u.staffId && String(slot.teacherId) === String(u.staffId)) return true;
+    if (slot.teacherId && u.user_id && String(slot.teacherId) === String(u.user_id)) return true;
+    if (slot.teacher && u.name) {
+      const cleanSlot = slot.teacher.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanUser = u.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanSlot === cleanUser || cleanSlot.includes(cleanUser) || cleanUser.includes(cleanSlot)) return true;
+    }
+    return false;
+  };
+
   const teacherClasses = Object.keys(timetable).filter(className => {
     return Object.values(timetable[className] || {}).some(daySlots => {
-      return Object.values(daySlots).some(slot => slot && String(slot.teacherId) === String(user?.id));
+      return Object.values(daySlots).some(slot => isTeacherMatch(slot, user));
     });
   });
 
@@ -110,7 +123,7 @@ export function TeacherDashboard() {
     periodTimings.forEach((timing, p) => {
       if (timing.isBreak) return;
       const slot = daySlots[p];
-      if (slot && String(slot.teacherId) === String(user?.id)) {
+      if (slot && isTeacherMatch(slot, user)) {
         let status: ClassStatus;
         if (p < currentPeriod) status = 'Completed';
         else if (p === currentPeriod) status = 'In Progress';
@@ -140,7 +153,8 @@ export function TeacherDashboard() {
   const pendingAttendanceClasses: string[] = [];
 
   todayClasses.forEach(cls => {
-    if (cls.periodIndex === 0 || cls.periodIndex === firstPeriodAfterLunchIdx) {
+    const isAfternoonPeriod = firstPeriodAfterLunchIdx !== -1 ? cls.periodIndex >= firstPeriodAfterLunchIdx : cls.periodIndex >= 6;
+    if (cls.periodIndex === 0 || isAfternoonPeriod) {
       classesToMarkAttendance++;
       const sessionName = cls.periodIndex === 0 ? 'first_period' : 'lunch_period';
       const isMarked = attendanceRecords.some(r =>

@@ -213,7 +213,20 @@ export function Timetable() {
 
   const classTimetable = timetable[selectedClass] ?? {};
 
+  useEffect(() => {
+    const handleSync = () => {
+      refreshTimetable();
+    };
+    window.addEventListener('kts:timetable_updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('kts:timetable_updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
+  }, [refreshTimetable]);
+
   const openEdit = (day: string, period: number) => {
+    if (!isAdmin) return;
     const cell = classTimetable[day]?.[period] ?? null;
     setEditCell({ day, period, current: cell });
     setEditSubject(cell?.subject ?? 'Mathematics');
@@ -279,6 +292,25 @@ export function Timetable() {
         }
       }
 
+      const fullTimetableStr = JSON.stringify(timetable);
+      localStorage.setItem('kts_school_timetable', fullTimetableStr);
+      try {
+        const existing = await api.getResources('settings', { key: 'kts_school_timetable' });
+        if (Array.isArray(existing) && existing.length > 0) {
+          await api.updateResource('settings', String(existing[0].id), { value: fullTimetableStr });
+        } else {
+          await api.createResource('settings', {
+            key: 'kts_school_timetable',
+            value: fullTimetableStr,
+            group: 'timetable',
+            type: 'json',
+            is_public: true,
+          });
+        }
+      } catch (sErr) {
+        console.error('Error saving timetable setting to DB:', sErr);
+      }
+
       await api.createResource('timetable', {
         batch_name: selectedClass,
         academic_year_id: selectedAcademicYearId,
@@ -286,6 +318,9 @@ export function Timetable() {
       });
 
       await refreshTimetable();
+
+      window.dispatchEvent(new CustomEvent('kts:timetable_updated'));
+      window.dispatchEvent(new Event('storage'));
 
       setHasUnsavedChanges(false);
       setSavedMsg(true);
@@ -458,6 +493,7 @@ export function Timetable() {
                     </td>
                     {TIMETABLE_DAYS.map((day) => {
                       const cell = classTimetable[day]?.[p];
+                      const teacherDisplayName = cell ? (cell.teacher || teachers.find(t => String(t.id) === String(cell.teacherId))?.name || '') : '';
                       return (
                         <td key={day} className="px-1.5 py-1.5 border-b border-[var(--b)] border-l border-[var(--b)] align-top">
                           <button
@@ -478,7 +514,7 @@ export function Timetable() {
                                   {cell.subject}
                                 </div>
                                 <div className="text-[11px] mt-0.5" style={{ color: getSubjectText(cell.subject) ?? 'var(--tx2)' }}>
-                                  {cell.teacher}
+                                  {teacherDisplayName}
                                 </div>
                                 <div className="text-[10.5px] mt-0.5" style={{ color: getSubjectText(cell.subject) ?? 'var(--tx3)' }}>
                                   {cell.room}

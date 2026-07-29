@@ -245,9 +245,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               // Explicitly load period timings state if present
               if (setting.key === 'timetable_period_timings') {
                 try {
-                  setPeriodTimings(JSON.parse(setting.value));
+                  const parsed = JSON.parse(setting.value);
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    setPeriodTimings(parsed);
+                  }
                 } catch (e) {
                   console.error('Failed to parse timetable_period_timings:', e);
+                }
+              }
+              if (setting.key === 'kts_school_timetable') {
+                try {
+                  const parsed = JSON.parse(setting.value);
+                  if (parsed && typeof parsed === 'object') {
+                    setTimetable(prev => ({ ...prev, ...parsed }));
+                  }
+                } catch (e) {
+                  console.error('Failed to parse kts_school_timetable:', e);
                 }
               }
             }
@@ -259,8 +272,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // Fetch timetable from database
       try {
-        const timetableData = await api.getResources('timetable', { limit: '1000' });
-        if (timetableData && timetableData.length > 0) {
+        const timetableData = await api.getResources('timetable', { limit: '1000' }).catch(() => []);
+        const savedJson = localStorage.getItem('kts_school_timetable');
+        const localTimetable: SchoolTimetable = savedJson ? JSON.parse(savedJson) : {};
+        const loadedTimetable: SchoolTimetable = { ...buildDefaultTimetable(), ...localTimetable };
+
+        if (Array.isArray(timetableData) && timetableData.length > 0) {
           const dayMap: Record<string, string> = {
             '2026-06-01': 'Monday',
             '2026-06-02': 'Tuesday',
@@ -269,30 +286,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             '2026-06-05': 'Friday',
             '2026-06-06': 'Saturday',
           };
-          
-          const loadedTimetable: SchoolTimetable = {};
-          const classes = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
-           
-          for (const cls of classes) {
-            loadedTimetable[cls] = {};
-            for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
-              loadedTimetable[cls][day] = {};
-              for (let p = 0; p < 12; p++) {
-                loadedTimetable[cls][day][p] = null;
-              }
-            }
-          }
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           timetableData.forEach((slot: any) => {
-            const rawCls = slot.batch_name;
+            const rawCls = slot.batch_name || slot.class_name;
             if (!rawCls) return;
             
             const cls = rawCls.trim();
             const day = slot.day || dayMap[slot.date];
-            const p = slot.period;
-            if (day && p !== undefined && p >= 0 && p < 12) {
-              // Dynamically initialize class and day structures if not present
+            const p = Number(slot.period);
+            if (day && !isNaN(p) && p >= 0 && p < 12) {
               if (!loadedTimetable[cls]) {
                 loadedTimetable[cls] = {};
               }
@@ -303,16 +306,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
               }
 
+              const teacherName = slot.teacher || slot.teacher_name || slot.faculty_name || slot.staff_name || '';
+              const teacherId = String(slot.teacherId ?? slot.teacher_id ?? slot.user_id ?? '');
+
               loadedTimetable[cls][day][p] = {
-                subject: slot.subject,
-                teacher: slot.teacher,
-                teacherId: String(slot.teacherId),
-                room: slot.room,
+                subject: slot.subject || '',
+                teacher: teacherName,
+                teacherId: teacherId,
+                room: slot.room || 'Room 12',
               };
             }
           });
-          setTimetable(loadedTimetable);
         }
+        setTimetable(loadedTimetable);
       } catch (tErr) {
         console.error('Error loading timetable in AppContext:', tErr);
       }
@@ -624,12 +630,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error('Error saving period timings to DB:', err);
     }
+    window.dispatchEvent(new CustomEvent('kts:timetable_updated'));
+    window.dispatchEvent(new Event('storage'));
   };
 
   const refreshTimetable = async () => {
     try {
-      const timetableData = await api.getResources('timetable', { limit: '1000' });
-      if (timetableData && Array.isArray(timetableData)) {
+      const savedTimings = localStorage.getItem('timetable_period_timings');
+      if (savedTimings) {
+        try { setPeriodTimings(JSON.parse(savedTimings)); } catch (e) {}
+      }
+
+      const timetableData = await api.getResources('timetable', { limit: '1000' }).catch(() => []);
+      const savedJson = localStorage.getItem('kts_school_timetable');
+      const localTimetable: SchoolTimetable = savedJson ? JSON.parse(savedJson) : {};
+      const loadedTimetable: SchoolTimetable = { ...buildDefaultTimetable(), ...localTimetable };
+
+      if (Array.isArray(timetableData) && timetableData.length > 0) {
         const dayMap: Record<string, string> = {
           '2026-06-01': 'Monday',
           '2026-06-02': 'Tuesday',
@@ -638,29 +655,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           '2026-06-05': 'Friday',
           '2026-06-06': 'Saturday',
         };
-        
-        const loadedTimetable: SchoolTimetable = {};
-        const classes = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
-         
-        for (const cls of classes) {
-          loadedTimetable[cls] = {};
-          for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
-            loadedTimetable[cls][day] = {};
-            for (let p = 0; p < 12; p++) {
-              loadedTimetable[cls][day][p] = null;
-            }
-          }
-        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         timetableData.forEach((slot: any) => {
-          const rawCls = slot.batch_name;
+          const rawCls = slot.batch_name || slot.class_name;
           if (!rawCls) return;
           
           const cls = rawCls.trim();
           const day = slot.day || dayMap[slot.date];
-          const p = slot.period;
-          if (day && p !== undefined && p >= 0 && p < 12) {
+          const p = Number(slot.period);
+          if (day && !isNaN(p) && p >= 0 && p < 12) {
             if (!loadedTimetable[cls]) {
               loadedTimetable[cls] = {};
             }
@@ -671,16 +675,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               }
             }
 
+            const teacherName = slot.teacher || slot.teacher_name || slot.faculty_name || slot.staff_name || '';
+            const teacherId = String(slot.teacherId ?? slot.teacher_id ?? slot.user_id ?? '');
+
             loadedTimetable[cls][day][p] = {
-              subject: slot.subject,
-              teacher: slot.teacher,
-              teacherId: String(slot.teacherId),
-              room: slot.room,
+              subject: slot.subject || '',
+              teacher: teacherName,
+              teacherId: teacherId,
+              room: slot.room || 'Room 12',
             };
           }
         });
-        setTimetable(loadedTimetable);
       }
+      setTimetable(loadedTimetable);
     } catch (tErr) {
       console.error('Error refreshing timetable in AppContext:', tErr);
     }

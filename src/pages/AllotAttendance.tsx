@@ -240,22 +240,36 @@ export function AllotAttendance() {
 
   const lunchPeriodIndex = getLunchPeriodIndex();
 
+  const isTeacherMatch = (slot: any, u: any) => {
+    if (!slot || !u) return false;
+    if (slot.teacherId && u.id && String(slot.teacherId) === String(u.id)) return true;
+    if (slot.teacherId && u.staffId && String(slot.teacherId) === String(u.staffId)) return true;
+    if (slot.teacherId && u.user_id && String(slot.teacherId) === String(u.user_id)) return true;
+    if (slot.teacher && u.name) {
+      const cleanSlot = slot.teacher.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanUser = u.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanSlot === cleanUser || cleanSlot.includes(cleanUser) || cleanUser.includes(cleanSlot)) return true;
+    }
+    return false;
+  };
+
   // Determine teacher access: which classes can they take attendance for today?
   const allowedClasses = batches.filter(batch => {
     // 1. Is class teacher? (First period access)
     const isClassTeacher = String(batch.class_teacher_id) === String(user?.id) ||
-      (batch.class_teacher_name && batch.class_teacher_name.toLowerCase() === user?.name?.toLowerCase());
+      (batch.class_teacher_name && user?.name && isTeacherMatch({ teacher: batch.class_teacher_name }, user));
 
-    // 2. Teaches first period after lunch today? (Lunch period access)
+    // 2. Teaches ANY period after lunch today? (Afternoon session access)
     const classTimetable = timetable[batch.name] ?? {};
     const todaySlots = classTimetable[dayOfWeek] ?? {};
 
-    // Find the slot for the first period after lunch (no offset subtraction since lunchPeriodIndex is the raw slot index)
-    const lunchSlot = todaySlots[lunchPeriodIndex];
-    const teachesAfterLunch = lunchSlot && (
-      String(lunchSlot.teacherId) === String(user?.id) ||
-      (lunchSlot.teacher && user?.name && lunchSlot.teacher.toLowerCase().trim() === user.name.toLowerCase().trim())
-    );
+    const teachesAfterLunch = Object.keys(todaySlots).some(pStr => {
+      const p = Number(pStr);
+      if (p >= lunchPeriodIndex) {
+        return isTeacherMatch(todaySlots[p], user);
+      }
+      return false;
+    });
 
     // 3. Is substitute teacher for the first period of this batch today?
     const isSubstituteFirstPeriod = substituteAssignments.some(sa =>
@@ -263,10 +277,10 @@ export function AllotAttendance() {
       (sa.timetable?.time_slot_id - 1) === 0
     );
 
-    // 4. Is substitute teacher for the first period after lunch of this batch today?
+    // 4. Is substitute teacher for any period after lunch of this batch today?
     const isSubstituteAfterLunch = substituteAssignments.some(sa =>
       sa.timetable?.batch?.name === batch.name &&
-      (sa.timetable?.time_slot_id - 1) === lunchPeriodIndex
+      (sa.timetable?.time_slot_id - 1) >= lunchPeriodIndex
     );
 
     return isClassTeacher || teachesAfterLunch || isSubstituteFirstPeriod || isSubstituteAfterLunch;
@@ -283,16 +297,18 @@ export function AllotAttendance() {
   const selectedBatchObj = batches.find(b => b.name === selectedClass);
   const isClassTeacherForSelected = selectedBatchObj && (
     String(selectedBatchObj.class_teacher_id) === String(user?.id) ||
-    (selectedBatchObj.class_teacher_name && selectedBatchObj.class_teacher_name.toLowerCase() === user?.name?.toLowerCase())
+    (selectedBatchObj.class_teacher_name && isTeacherMatch({ teacher: selectedBatchObj.class_teacher_name }, user))
   );
 
   const classTimetable = timetable[selectedClass] ?? {};
   const todaySlots = classTimetable[dayOfWeek] ?? {};
-  const lunchSlot = todaySlots[lunchPeriodIndex];
-  const teachesAfterLunchForSelected = lunchSlot && (
-    String(lunchSlot.teacherId) === String(user?.id) ||
-    (lunchSlot.teacher && user?.name && lunchSlot.teacher.toLowerCase().trim() === user.name.toLowerCase().trim())
-  );
+  const teachesAfterLunchForSelected = Object.keys(todaySlots).some(pStr => {
+    const p = Number(pStr);
+    if (p >= lunchPeriodIndex) {
+      return isTeacherMatch(todaySlots[p], user);
+    }
+    return false;
+  });
 
   const isSubstituteFirstPeriodForSelected = substituteAssignments.some(sa =>
     sa.timetable?.batch?.name === selectedClass &&
@@ -301,7 +317,7 @@ export function AllotAttendance() {
 
   const isSubstituteAfterLunchForSelected = substituteAssignments.some(sa =>
     sa.timetable?.batch?.name === selectedClass &&
-    (sa.timetable?.time_slot_id - 1) === lunchPeriodIndex
+    (sa.timetable?.time_slot_id - 1) >= lunchPeriodIndex
   );
 
   useEffect(() => {
