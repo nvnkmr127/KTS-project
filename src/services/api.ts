@@ -666,38 +666,40 @@ export const api = {
 
   // ── Biometric e-TimeOffice Integration ────────────────────────────────
   async biometricStatus() {
-    return request('/biometric/status');
+    return request('/biometric/status', { timeoutMs: 20000 });
   },
 
   async biometricTestConnection(credentials?: { corporate_id?: string; username?: string; password?: string }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params = credentials ? new URLSearchParams(credentials as any).toString() : '';
-    return request(params ? `/biometric/test-connection?${params}` : '/biometric/test-connection');
+    return request(params ? `/biometric/test-connection?${params}` : '/biometric/test-connection', { timeoutMs: 35000 });
   },
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async biometricSaveCredentials(credentials: any) {
     return request('/biometric/credentials', {
       method: 'POST',
-      body: JSON.stringify(credentials)
+      body: JSON.stringify(credentials),
+      timeoutMs: 20000
     });
   },
 
   async biometricSyncInOut(fromDate: string, toDate: string, empcode = 'ALL') {
-    return request(`/biometric/sync/in-out?from_date=${fromDate}&to_date=${toDate}&empcode=${empcode}`);
+    return request(`/biometric/sync/in-out?from_date=${fromDate}&to_date=${toDate}&empcode=${empcode}`, { timeoutMs: 40000 });
   },
 
   async biometricSyncPunch(fromDate: string, toDate: string, empcode = 'ALL') {
-    return request(`/biometric/sync/punch?from_date=${fromDate}&to_date=${toDate}&empcode=${empcode}`);
+    return request(`/biometric/sync/punch?from_date=${fromDate}&to_date=${toDate}&empcode=${empcode}`, { timeoutMs: 40000 });
   },
 
   async biometricSyncIncremental(empcode = 'ALL', reset = false) {
-    return request(`/biometric/sync/incremental?empcode=${empcode}&reset=${reset ? '1' : '0'}`);
+    return request(`/biometric/sync/incremental?empcode=${empcode}&reset=${reset ? '1' : '0'}`, { timeoutMs: 40000 });
   },
 
   async biometricResetCursor() {
     return request('/biometric/reset-cursor', {
-      method: 'POST'
+      method: 'POST',
+      timeoutMs: 20000
     });
   },
 

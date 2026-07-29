@@ -236,10 +236,14 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         { key: 'early_entry_cutoff', value: earlyEntryCutoff },
       ];
 
+      const allSettings = await api.getResources('settings').catch(() => []);
+      const settingsArray = Array.isArray(allSettings) ? allSettings : (allSettings?.data || []);
+
       await Promise.all(keys.map(async (item) => {
-        const existing = await api.getResources('settings', { key: item.key });
-        if (Array.isArray(existing) && existing.length > 0) {
-          await api.updateResource('settings', String(existing[0].id), { value: item.value });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const existing = settingsArray.find((s: any) => s.key === item.key);
+        if (existing) {
+          await api.updateResource('settings', String(existing.id), { value: item.value });
         } else {
           await api.createResource('settings', {
             key: item.key,
