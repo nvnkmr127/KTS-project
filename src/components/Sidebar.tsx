@@ -113,6 +113,7 @@ const TEACHER_SECTIONS: NavSection[] = [
   {
     label: 'Academics',
     items: [
+      { icon: <Grid3X3 size={14} />, label: 'Timetable', page: 'timetable' },
       { icon: <GraduationCap size={14} />, label: 'Examinations', page: 'exams' },
       { icon: <BarChart2 size={14} />, label: 'Performance', page: 'performance' },
     ],

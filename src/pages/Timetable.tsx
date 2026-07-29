@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useApp, TIMETABLE_DAYS } from '../context/AppContext';
 import type { TimetablePeriod, PeriodTiming } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { STAFF } from './StaffManagement';
 
@@ -60,6 +61,8 @@ interface EditCell {
 }
 
 export function Timetable() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.roles?.includes('admin') || user?.roles?.includes('super-admin');
   const { timetable, setTimetablePeriod, periodTimings, savePeriodTimings, refreshTimetable, setHasUnsavedChanges, selectedAcademicYearId } = useApp();
   const [selectedClass, setSelectedClass] = useState('8A');
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
@@ -103,14 +106,14 @@ export function Timetable() {
 
         if (activeTeachers.length === 0) {
           try {
-            const facultyData = await api.getResources('faculty');
+            const facultyData = await api.getResources('faculty').catch(() => []);
             const facultyList = Array.isArray(facultyData) ? facultyData : (facultyData?.data || []);
             activeTeachers = facultyList.filter((t: any) => {
               if ((t.status || '').toLowerCase() === 'inactive') return false;
               if (t.name && resignedNames.has(t.name.toLowerCase().trim())) return false;
               const cat = (t.category || 'Teaching').toString().trim().toLowerCase();
               return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
-            });
+            }).map((t: any) => ({ id: String(t.id || t.user_id), name: t.name }));
           } catch { /* empty */ }
         }
 
@@ -382,18 +385,24 @@ export function Timetable() {
             >
               <Printer size={12} /> Print
             </button>
-            <button
-              onClick={() => { setTempTimings([...periodTimings]); setShowEditTimings(true); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
-            >
-              <Clock size={12} /> Edit Timings
-            </button>
-            <button
-              onClick={handleSaveAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90"
-            >
-              <Save size={12} /> Save Timetable
-            </button>
+            {isAdmin ? (
+              <>
+                <button
+                  onClick={() => { setTempTimings([...periodTimings]); setShowEditTimings(true); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg cursor-pointer hover:border-[var(--blue)] hover:text-[var(--blue-tx)]"
+                >
+                  <Clock size={12} /> Edit Timings
+                </button>
+                <button
+                  onClick={handleSaveAll}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90"
+                >
+                  <Save size={12} /> Save Timetable
+                </button>
+              </>
+            ) : (
+              <Badge variant="teal">Read Only View</Badge>
+            )}
           </div>
           <div className="text-[11px] text-[var(--tx2)] mr-1 mt-0.5">
             Class Teacher: <span className="font-medium text-[var(--tx)]">{classTeachers[selectedClass] || 'not alloted'}</span>
@@ -453,7 +462,9 @@ export function Timetable() {
                         <td key={day} className="px-1.5 py-1.5 border-b border-[var(--b)] border-l border-[var(--b)] align-top">
                           <button
                             onClick={() => openEdit(day, p)}
-                            className="w-full min-h-[52px] rounded-lg p-1.5 text-left transition-all cursor-pointer border border-transparent hover:border-[var(--blue)] group/cell"
+                            className={`w-full min-h-[52px] rounded-lg p-1.5 text-left transition-all border border-transparent ${
+                              isAdmin ? 'cursor-pointer hover:border-[var(--blue)] group/cell' : 'cursor-default'
+                            }`}
                             style={{
                               background: cell ? getSubjectColor(cell.subject) ?? 'var(--surf2)' : 'var(--surf2)',
                             }}
@@ -474,9 +485,15 @@ export function Timetable() {
                                 </div>
                               </>
                             ) : (
-                              <div className="text-[11px] text-[var(--tx2)] opacity-0 group-hover/cell:opacity-100 transition-opacity pt-1 text-center">
-                                + Add
-                              </div>
+                              isAdmin ? (
+                                <div className="text-[11px] text-[var(--tx2)] opacity-0 group-hover/cell:opacity-100 transition-opacity pt-1 text-center">
+                                  + Add
+                                </div>
+                              ) : (
+                                <div className="text-[10.5px] text-[var(--tx3)] opacity-40 pt-1 text-center font-medium">
+                                  Free
+                                </div>
+                              )
                             )}
                           </button>
                         </td>

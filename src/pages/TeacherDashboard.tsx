@@ -385,7 +385,18 @@ export function TeacherDashboard() {
         <div className="space-y-2.5">
           {/* Today's Schedule */}
           <Card>
-            <CardHeader title={`Today's Classes — ${today}`} icon={<CalendarCheck size={14} />} />
+            <CardHeader 
+              title={`Today's Classes — ${today}`} 
+              icon={<CalendarCheck size={14} />} 
+              action={
+                <button 
+                  onClick={() => navigate(PAGE_TO_PATH['timetable'])}
+                  className="text-[11.5px] font-medium text-[var(--blue-tx)] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  View Timetable <ArrowRight size={12} />
+                </button>
+              }
+            />
             {todayClasses.length === 0 ? (
               <div className="text-center py-8 text-[12px] text-[var(--tx3)]">
                 No classes scheduled for today. Enjoy your free time!
