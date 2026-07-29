@@ -259,11 +259,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'access dashboard',
             'take attendance',
             'view attendance',
+            'manage attendance',
             'view students',
             'view timetable',
             'view leaves',
             'view calendar',
             'view events',
+            'view financials',
+            'view analytics',
         ]);
 
         // Faculty Role - Alternative name for staff (for compatibility)
@@ -278,11 +281,14 @@ class RolesAndPermissionsSeeder extends Seeder
             'access dashboard',
             'take attendance',
             'view attendance',
+            'manage attendance',
             'view students',
             'view timetable',
             'view leaves',
             'view calendar',
             'view events',
+            'view financials',
+            'view analytics',
         ]);
 
         // Accountant Role - Financial management
