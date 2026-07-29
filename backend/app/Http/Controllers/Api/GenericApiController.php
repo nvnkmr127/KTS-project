@@ -886,12 +886,20 @@ class GenericApiController extends Controller
         }
 
         // Custom bulk save / creation for Timetable
+        // Custom bulk save / creation for Timetable
         if ($resource === 'timetable') {
             try {
                 $batchName = $request->input('batch_name') ?? $request->input('class_name') ?? $request->input('batch') ?? '8A';
+                $academicYearId = $request->input('academic_year_id');
 
-                $academicYear = \App\Models\AcademicYear::where('is_current', true)->first() 
-                    ?? \App\Models\AcademicYear::first();
+                $academicYear = null;
+                if ($academicYearId) {
+                    $academicYear = \App\Models\AcademicYear::find($academicYearId);
+                }
+                if (!$academicYear) {
+                    $academicYear = \App\Models\AcademicYear::where('is_current', true)->first() 
+                        ?? \App\Models\AcademicYear::first();
+                }
                 if (!$academicYear) {
                     $academicYear = \App\Models\AcademicYear::create([
                         'name' => '2026-2027',
@@ -952,7 +960,7 @@ class GenericApiController extends Controller
                         if (!$timeString) return null;
                         try {
                             return \Carbon\Carbon::parse($timeString)->format('H:i:s');
-                        } catch (\Exception $e) {
+                        } catch (\Throwable $e) {
                             return null;
                         }
                     };
@@ -963,23 +971,37 @@ class GenericApiController extends Controller
                     $periodIndex = intval($slot['period'] ?? 0);
                     $timeSlotId = $periodIndex + 1;
                     
+                    // Guarantee time_slot row with exact ID = $timeSlotId
                     $timeSlot = \App\Models\TimeSlot::find($timeSlotId);
                     if (!$timeSlot) {
-                        $timeSlot = \App\Models\TimeSlot::create([
-                            'id' => $timeSlotId,
-                            'start_time' => $startTime,
-                            'end_time' => $endTime,
-                        ]);
+                        try {
+                            \DB::table('time_slots')->insert([
+                                'id' => $timeSlotId,
+                                'start_time' => $startTime,
+                                'end_time' => $endTime,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        } catch (\Throwable $ex) {
+                            $timeSlot = \App\Models\TimeSlot::firstOrCreate(
+                                ['start_time' => $startTime, 'end_time' => $endTime]
+                            );
+                            $timeSlotId = $timeSlot->id;
+                        }
                     } else {
                         if ($timeSlot->start_time !== $startTime || $timeSlot->end_time !== $endTime) {
-                            $timeSlot->update([
-                                'start_time' => $startTime,
-                                'end_time' => $endTime
-                            ]);
+                            try {
+                                $timeSlot->update([
+                                    'start_time' => $startTime,
+                                    'end_time' => $endTime
+                                ]);
+                            } catch (\Throwable $ex) {
+                                // ignore minor update error
+                            }
                         }
                     }
                     
-                    // Safe user/teacher resolution
+                    // Robust user / teacher resolution
                     $userId = null;
                     $rawTeacherId = $slot['teacherId'] ?? null;
                     $teacherName = !empty($slot['teacher']) ? trim($slot['teacher']) : null;
@@ -991,26 +1013,50 @@ class GenericApiController extends Controller
                         }
                     }
 
+                    if (!$userId && !empty($rawTeacherId)) {
+                        $userByCode = \App\Models\User::where('employee_id', $rawTeacherId)
+                            ->orWhere('biometric_employee_code', $rawTeacherId)
+                            ->first();
+                        if ($userByCode) {
+                            $userId = $userByCode->id;
+                        }
+                    }
+
                     if (!$userId && $teacherName) {
                         $foundUser = \App\Models\User::where('name', $teacherName)->first();
                         if ($foundUser) {
                             $userId = $foundUser->id;
                         } else {
                             $cleanEmailName = strtolower(preg_replace('/[^A-Za-z0-9]/', '', $teacherName));
-                            $email = ($cleanEmailName ? $cleanEmailName : 'teacher') . '_' . Str::random(5) . '@krishnaveni.edu';
-                            $newUser = \App\Models\User::create([
-                                'name' => $teacherName,
-                                'email' => $email,
-                                'password' => bcrypt('password'),
-                                'role' => 'staff',
-                            ]);
-                            $userId = $newUser->id;
+                            $email = ($cleanEmailName ? $cleanEmailName : 'teacher') . '_' . \Illuminate\Support\Str::random(5) . '@school.com';
+                            try {
+                                $newUser = \App\Models\User::create([
+                                    'name' => $teacherName,
+                                    'email' => $email,
+                                    'password' => bcrypt('password'),
+                                    'status' => 'active',
+                                ]);
+                                $userId = $newUser->id;
+                            } catch (\Throwable $e) {
+                                \Log::warning("Could not create user for teacher {$teacherName}: " . $e->getMessage());
+                            }
                         }
                     }
 
+                    // GUARANTEED fallback to a real existing user in the users table
                     if (!$userId) {
                         $fallbackUser = auth('sanctum')->user() ?? \App\Models\User::first();
-                        $userId = $fallbackUser ? $fallbackUser->id : 1;
+                        if ($fallbackUser) {
+                            $userId = $fallbackUser->id;
+                        } else {
+                            $newUser = \App\Models\User::create([
+                                'name' => 'Default Staff',
+                                'email' => 'staff_' . \Illuminate\Support\Str::random(5) . '@school.com',
+                                'password' => bcrypt('password'),
+                                'status' => 'active',
+                            ]);
+                            $userId = $newUser->id;
+                        }
                     }
                     
                     // Store day_of_week directly (e.g., 'Monday', 'Tuesday')
@@ -1021,7 +1067,7 @@ class GenericApiController extends Controller
                         'subject_id' => $subject->id,
                         'user_id' => $userId,
                         'classroom_id' => $classroom->id,
-                        'time_slot_id' => $timeSlot->id,
+                        'time_slot_id' => $timeSlotId,
                         'day_of_week' => $dayOfWeek,
                         'schedule_date' => '2026-06-01', // Keep for compatibility
                         'academic_year_id' => $academicYear->id,

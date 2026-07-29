@@ -60,7 +60,7 @@ interface EditCell {
 }
 
 export function Timetable() {
-  const { timetable, setTimetablePeriod, periodTimings, savePeriodTimings, setHasUnsavedChanges, selectedAcademicYearId } = useApp();
+  const { timetable, setTimetablePeriod, periodTimings, savePeriodTimings, refreshTimetable, setHasUnsavedChanges, selectedAcademicYearId } = useApp();
   const [selectedClass, setSelectedClass] = useState('8A');
   const [teachers, setTeachers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
@@ -278,8 +278,11 @@ export function Timetable() {
 
       await api.createResource('timetable', {
         batch_name: selectedClass,
+        academic_year_id: selectedAcademicYearId,
         slots: slots
       });
+
+      await refreshTimetable();
 
       setHasUnsavedChanges(false);
       setSavedMsg(true);
