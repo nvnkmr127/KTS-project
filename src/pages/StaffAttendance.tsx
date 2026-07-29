@@ -454,6 +454,8 @@ export function StaffAttendance() {
   // Sync biometric IN/OUT data for the selected date from the real API
   const syncBiometric = useCallback((silent = false) => {
     if (syncInProgress.current) return;
+    if (silent && connectionStatus === 'disconnected') return;
+
     syncInProgress.current = true;
     setIsSyncing(true);
     if (!silent) setLastSyncMsg(null);
@@ -509,23 +511,32 @@ export function StaffAttendance() {
       })
       .catch((err: any) => {
         setConnectionStatus('disconnected');
-        if (!silent) setLastSyncMsg('✗ Sync failed — check biometric credentials in Settings.');
+        const errStr = String(err?.message || err || '');
+        const isTimeout = errStr.includes('ERR_CONNECTION_TIMED_OUT') || errStr.includes('timed out') || errStr.includes('Unable to connect');
+        if (!silent) {
+          setLastSyncMsg(
+            isTimeout
+              ? '✗ Server connection timed out (ERR_CONNECTION_TIMED_OUT). Please check backend server status or network connection.'
+              : '✗ Sync failed — check biometric credentials in Settings.'
+          );
+        }
         fetchLocalBiometricLogs();
       })
       .finally(() => {
         syncInProgress.current = false;
         setIsSyncing(false);
       });
-  }, [date, staffList, fetchLocalBiometricLogs]);
+  }, [date, staffList, fetchLocalBiometricLogs, connectionStatus]);
 
   // Sync biometric raw punch logs (DownloadPunchData) every second during school hours
   const syncBiometricPunches = useCallback((silent = false) => {
     if (syncPunchesInProgress.current) return;
+    if (silent && connectionStatus === 'disconnected') return;
+
     syncPunchesInProgress.current = true;
     setIsSyncingPunches(true);
 
     api.biometricSyncPunch(date, date, 'ALL')
-       
       .then((result) => {
         if (result?.success) {
           fetchLocalBiometricLogs();
@@ -533,9 +544,16 @@ export function StaffAttendance() {
         }
       })
       .catch((err) => {
-        if (err?.message && err.message.includes('Biometric credentials not configured')) {
-          // Silently ignore to avoid console spam
-        } else {
+        setConnectionStatus('disconnected');
+        const errStr = String(err?.message || err || '');
+        const isExpectedOfflineErr =
+          errStr.includes('Biometric credentials not configured') ||
+          errStr.includes('ERR_CONNECTION_TIMED_OUT') ||
+          errStr.includes('timed out') ||
+          errStr.includes('Unable to connect') ||
+          errStr.includes('Failed to fetch');
+
+        if (!isExpectedOfflineErr) {
           console.error('Error syncing biometric raw punches:', err);
         }
       })
@@ -543,7 +561,7 @@ export function StaffAttendance() {
         syncPunchesInProgress.current = false;
         setIsSyncingPunches(false);
       });
-  }, [date, fetchLocalBiometricLogs]);
+  }, [date, fetchLocalBiometricLogs, connectionStatus]);
 
   // Ref to hold the latest function reference for the 1s local-DB poll below
   const fetchLocalBiometricLogsRef = useRef(fetchLocalBiometricLogs);
@@ -948,16 +966,18 @@ export function StaffAttendance() {
               </button>
             </div>
 
-            {/* Sync Button */}
             {attendanceMode === 'biometric' && (
               <button
                 type="button"
-                onClick={() => syncBiometric(false)}
-                disabled={isSyncing}
+                onClick={() => {
+                  syncBiometricPunches(false);
+                  syncBiometric(false);
+                }}
+                disabled={isSyncing || isSyncingPunches}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
               >
-                <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
-                {isSyncing ? 'Syncing…' : 'Sync Now'}
+                <RefreshCw size={12} className={(isSyncing || isSyncingPunches) ? 'animate-spin' : ''} />
+                {(isSyncing || isSyncingPunches) ? 'Syncing…' : 'Sync Now'}
               </button>
             )}
           </div>

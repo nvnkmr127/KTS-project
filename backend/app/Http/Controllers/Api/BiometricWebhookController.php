@@ -73,21 +73,7 @@ class BiometricWebhookController extends Controller
                         'direction' => $direction,
                     ]);
 
-                    $schoolEndTimeStr = Setting::where('key', 'school_end_time')->value('value') ?? '17:00';
-                    $schoolEndTime = Carbon::parse($carbonDate->toDateString() . ' ' . $schoolEndTimeStr);
 
-                    if ($carbonDate->gt($schoolEndTime)) {
-                        Log::info('Faculty biometric scan ignored (after school end time)', [
-                            'faculty_name' => $faculty->name,
-                            'biometric_code' => $biometricCode,
-                        ]);
-
-                        return response()->json([
-                            'Result' => 'OK',
-                            'Status' => 'Success',
-                            'Message' => "Faculty punch ignored because it is after school end time ({$schoolEndTimeStr})",
-                        ], 200);
-                    }
 
                     // Log the scan in database for biometric salary calculation
                     try {

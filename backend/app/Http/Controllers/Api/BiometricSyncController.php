@@ -244,14 +244,7 @@ class BiometricSyncController extends Controller
                         continue;
                     }
 
-                    if ($staff) {
-                        $schoolEndTimeStr = Setting::where('key', 'school_end_time')->value('value') ?? '17:00';
-                        $schoolEndTime = Carbon::parse($carbonDate->toDateString() . ' ' . $schoolEndTimeStr);
-                        if ($carbonDate->gt($schoolEndTime)) {
-                            Log::info("BiometricSync: Ignored staff punch after school end time", ['empcode' => $empCode, 'time' => $carbonDate->toTimeString()]);
-                            continue;
-                        }
-                    }
+
 
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
@@ -358,14 +351,7 @@ class BiometricSyncController extends Controller
                         continue;
                     }
 
-                    if ($staff) {
-                        $schoolEndTimeStr = Setting::where('key', 'school_end_time')->value('value') ?? '17:00';
-                        $schoolEndTime = Carbon::parse($carbonDate->toDateString() . ' ' . $schoolEndTimeStr);
-                        if ($carbonDate->gt($schoolEndTime)) {
-                            Log::info("BiometricSync: Ignored staff incremental punch after school end time", ['empcode' => $empCode, 'time' => $carbonDate->toTimeString()]);
-                            continue;
-                        }
-                    }
+
 
                     BiometricLog::updateOrCreate(
                         ['employee_code' => $empCode, 'scan_datetime' => $carbonDate],
@@ -498,30 +484,7 @@ class BiometricSyncController extends Controller
                     continue;
                 }
 
-                if ($staff) {
-                    $schoolEndTimeStr = Setting::where('key', 'school_end_time')->value('value') ?? '17:00';
-                    $schoolEndTime = Carbon::parse($scanDate . ' ' . $schoolEndTimeStr);
-                    // Clear the OUT time if it's after school end time so it isn't recorded
-                    if ($outTime && $outTime !== '--:--') {
-                        $candidateOut = Carbon::parse("{$scanDate} {$outTime}:00");
-                        if ($candidateOut->gt($schoolEndTime)) {
-                            $outTime = '--:--';
-                            $record['OUTTime'] = '--:--';
-                        }
-                    }
-                    // Also ignore IN time if it's after school end time
-                    if ($inTime && $inTime !== '--:--') {
-                        $candidateIn = Carbon::parse("{$scanDate} {$inTime}:00");
-                        if ($candidateIn->gt($schoolEndTime)) {
-                            $inTime = '--:--';
-                            $record['INTime'] = '--:--';
-                        }
-                    }
-                    if ($inTime === '--:--' && $outTime === '--:--') {
-                        Log::info("BiometricSync: Ignored staff in/out record entirely because both times are after school end time", ['empcode' => $empCode, 'date' => $scanDate]);
-                        continue;
-                    }
-                }
+
 
                 // If there's no punch at all, we don't need a BiometricLog
                 $biometricLog = null;
