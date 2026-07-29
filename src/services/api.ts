@@ -55,11 +55,13 @@ export function clearApiCache(resource?: string) {
 export class ApiError extends Error {
   status: number;
   isAuthError: boolean;
+  isNetworkError: boolean;
   constructor(message: string, status: number) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.isAuthError = status === 401 || status === 403;
+    this.isNetworkError = status === 0;
   }
 }
 
@@ -67,8 +69,8 @@ export class ApiError extends Error {
 
 const activeRequests = new Map<string, Promise<any>>();
 
-async function request(path: string, options: RequestInit & { silent?: boolean } = {}) {
-  const { silent = false, ...fetchOptions } = options;
+async function request(path: string, options: RequestInit & { silent?: boolean; timeoutMs?: number } = {}) {
+  const { silent = false, timeoutMs = 15000, ...fetchOptions } = options;
   const method = fetchOptions.method || 'GET';
 
   // Cache GET requests (excluding real-time/dynamic resources like settings, attendance, and activity logs)
@@ -96,6 +98,9 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
   }
 
   const performRequest = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       const token = storage.getItem<string>('token');
       const headers = {
@@ -111,7 +116,10 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
       const response = await fetch(`${BASE_URL}${path}`, {
         ...fetchOptions,
         headers,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         if (response.status === 401 && !silent) {
@@ -141,6 +149,18 @@ async function request(path: string, options: RequestInit & { silent?: boolean }
       }
 
       return result;
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err instanceof ApiError) {
+        throw err;
+      }
+      if (err.name === 'AbortError') {
+        throw new ApiError('Server connection timed out (ERR_CONNECTION_TIMED_OUT). Please check your backend server status or network connection.', 0);
+      }
+      if (err instanceof TypeError || err.message?.includes('Failed to fetch')) {
+        throw new ApiError('Unable to connect to the backend server (ERR_CONNECTION_TIMED_OUT). Please verify backend server status.', 0);
+      }
+      throw err;
     } finally {
       if (method === 'GET' && !bypassCache) {
         activeRequests.delete(path);

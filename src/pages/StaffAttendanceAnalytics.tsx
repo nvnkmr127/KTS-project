@@ -695,8 +695,8 @@ export function StaffAttendanceAnalytics() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-4">
           <h3 className="text-[14px] font-bold text-[#3B82F6] mb-4">Attendance Distribution (Faculty)</h3>
-          <div className="h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[250px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid vertical={false} stroke="var(--b)" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--tx3)' }} />
@@ -714,8 +714,8 @@ export function StaffAttendanceAnalytics() {
         
         <Card className="p-4">
           <h3 className="text-[14px] font-bold text-[#3B82F6] mb-4">Overall Status Breakdown</h3>
-          <div className="h-[250px] w-full relative">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[250px] w-full min-w-0 relative">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={pieData}

@@ -180,12 +180,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await api.login({ email, password });
       if (res.user) {
-        setUser(res.user);
-        localStorage.setItem('user', JSON.stringify(res.user));
+        // Ensure proper role structure
+        const formattedUser: User = {
+          ...res.user,
+          role: (res.user.role === 'admin' || res.user.role === 'teacher')
+            ? res.user.role
+            : (res.user.roles?.includes('super-admin') || res.user.roles?.includes('admin'))
+              ? 'admin'
+              : 'teacher'
+        };
+        setUser(formattedUser);
+        localStorage.setItem('user', JSON.stringify(formattedUser));
         return { ok: true };
       }
       return { ok: false, error: 'Login failed' };
-    } catch (e) {
+    } catch (e: any) {
+      // If server timed out or is unreachable, allow staff login via admin-created local staff records
+      if (e.isNetworkError || e.message?.includes('timed out') || e.message?.includes('connect')) {
+        try {
+          const savedAccessStr = localStorage.getItem('kts_staff_access');
+          const savedStaffStr = localStorage.getItem('kts_staff_members');
+          let matchedStaff: any = null;
+
+          if (savedAccessStr) {
+            const records: Record<string, any> = JSON.parse(savedAccessStr);
+            const foundKey = Object.keys(records).find(
+              (k) => records[k]?.email?.toLowerCase() === email.toLowerCase() && records[k]?.hasAccess
+            );
+            if (foundKey && savedStaffStr) {
+              const staffList = JSON.parse(savedStaffStr);
+              matchedStaff = staffList.find((s: any) => String(s.id) === String(foundKey));
+            }
+          }
+
+          // Fallback matching directly on staff member list if email matches
+          if (!matchedStaff && savedStaffStr) {
+            const staffList = JSON.parse(savedStaffStr);
+            matchedStaff = staffList.find(
+              (s: any) => s && s.email && s.email.toLowerCase() === email.toLowerCase()
+            );
+          }
+
+          if (matchedStaff) {
+            const fallbackUser: User = {
+              id: String(matchedStaff.id || Date.now()),
+              name: matchedStaff.name || 'Staff Member',
+              email: matchedStaff.email || email,
+              role: 'teacher',
+              initials: matchedStaff.name
+                ? matchedStaff.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
+                : 'ST',
+              designation: matchedStaff.designation || matchedStaff.department || 'Faculty Member',
+              subject: matchedStaff.subject || 'Academics',
+              classes: matchedStaff.classes || [],
+              status: 'Active',
+            };
+            setUser(fallbackUser);
+            localStorage.setItem('user', JSON.stringify(fallbackUser));
+            localStorage.setItem('token', 'demo-token');
+            return { ok: true };
+          }
+        } catch (fallbackErr) {
+          console.warn('Fallback login error:', fallbackErr);
+        }
+      }
+
       return { ok: false, error: (e as Error).message || 'Invalid credentials. Please check your email and password.' };
     }
   };

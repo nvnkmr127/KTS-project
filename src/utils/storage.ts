@@ -28,6 +28,12 @@ export function updateSettingsCache(settings: any[]) {
   }
 }
 
+function handleUnauthorized() {
+  originalRemoveItem.call(localStorage, 'token');
+  originalRemoveItem.call(localStorage, 'user');
+  window.dispatchEvent(new Event('kts:unauthorized'));
+}
+
 /**
  * Background DB synchronization helper for setting key/value pairs
  */
@@ -46,6 +52,10 @@ async function syncSettingToDb(key: string, value: string) {
           'Authorization': `Bearer ${token}`
         }
       });
+      if (getRes.status === 401) {
+        handleUnauthorized();
+        return;
+      }
       if (getRes.ok) {
         const data = await getRes.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -65,6 +75,11 @@ async function syncSettingToDb(key: string, value: string) {
         },
         body: JSON.stringify({ key, value })
       });
+
+      if (putRes.status === 401) {
+        handleUnauthorized();
+        return;
+      }
 
       // If the cached ID no longer exists (404), clear stale cache and create fresh
       if (putRes.status === 404) {
@@ -94,6 +109,10 @@ async function syncSettingToDb(key: string, value: string) {
           is_encrypted: false
         })
       });
+      if (createRes.status === 401) {
+        handleUnauthorized();
+        return;
+      }
       if (createRes.ok) {
         const data = await createRes.json();
         if (data && data.id) {
@@ -123,6 +142,10 @@ async function deleteSettingFromDb(key: string) {
           'Authorization': `Bearer ${token}`
         }
       });
+      if (getRes.status === 401) {
+        handleUnauthorized();
+        return;
+      }
       if (getRes.ok) {
         const data = await getRes.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -140,6 +163,10 @@ async function deleteSettingFromDb(key: string) {
           'Authorization': `Bearer ${token}`
         }
       });
+      if (delRes.status === 401) {
+        handleUnauthorized();
+        return;
+      }
       // Always clear local cache regardless of response
       delete settingsCache[key];
       if (delRes.status === 404) {
