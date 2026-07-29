@@ -98,41 +98,41 @@ const TEACHER_SECTIONS: NavSection[] = [
   {
     label: 'Overview',
     items: [
-      { icon: <LayoutDashboard size={14} />, label: 'My Dashboard', page: 'teacher-dashboard', permission: 'access dashboard' },
+      { icon: <LayoutDashboard size={14} />, label: 'My Dashboard', page: 'teacher-dashboard' },
     ],
   },
   {
     label: 'Teaching',
     items: [
-      { icon: <CalendarCheck size={14} />, label: 'Attendance', page: 'attendance', permission: 'take attendance' },
-      { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary', permission: 'view events' },
-      { icon: <ClipboardList size={14} />, label: 'Homework', page: 'homework', permission: 'view students' },
-      { icon: <CalendarCheck size={14} />, label: 'Allot Attendance', page: 'allot-attendance', permission: 'manage attendance' },
+      { icon: <CalendarCheck size={14} />, label: 'Attendance', page: 'attendance' },
+      { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary' },
+      { icon: <ClipboardList size={14} />, label: 'Homework', page: 'homework' },
+      { icon: <CalendarCheck size={14} />, label: 'Allot Attendance', page: 'allot-attendance' },
     ],
   },
   {
     label: 'Academics',
     items: [
-      { icon: <GraduationCap size={14} />, label: 'Examinations', page: 'exams', permission: 'view students' },
-      { icon: <BarChart2 size={14} />, label: 'Performance', page: 'performance', permission: 'view students' },
+      { icon: <GraduationCap size={14} />, label: 'Examinations', page: 'exams' },
+      { icon: <BarChart2 size={14} />, label: 'Performance', page: 'performance' },
     ],
   },
   {
     label: 'Leave',
     items: [
-      { icon: <Calendar size={14} />, label: 'Leave & Holiday Calendar', page: 'leave', permission: 'view leaves' },
+      { icon: <Calendar size={14} />, label: 'Leave & Holiday Calendar', page: 'leave' },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { icon: <Wallet size={14} />, label: 'My Salary', page: 'my-salary', permission: 'view financials' },
+      { icon: <Wallet size={14} />, label: 'My Salary', page: 'my-salary' },
     ],
   },
   {
     label: 'Analytics',
     items: [
-      { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs', permission: 'view analytics' },
+      { icon: <Activity size={14} />, label: 'Activity Logs', page: 'activity-logs' },
     ],
   },
 ];
@@ -157,12 +157,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return {
       ...section,
       items: section.items.filter(item => {
+        // Always show all Teacher Portal items for non-admin Faculty/Teacher users
+        if (!isAdmin) {
+          return true;
+        }
+
         // Bypass permission checks for admins
         if (roles.includes('super-admin') || roles.includes('admin') || isAdmin) {
           return true;
         }
 
-        // Verify permissions for non-admin users
+        // Verify permissions for non-admin users if specified
         if (item.permission) {
           return userPermissions.includes(item.permission);
         }
