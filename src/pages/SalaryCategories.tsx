@@ -171,6 +171,8 @@ export function SalaryCategories() {
     setComponents(newComps);
     localStorage.setItem('salary_components', JSON.stringify(newComps));
     saveSettingToDb('salary_components', JSON.stringify(newComps));
+    window.dispatchEvent(new CustomEvent('kts:salary_updated'));
+    window.dispatchEvent(new Event('storage'));
   };
 
   // Trigger opening modal
@@ -278,6 +280,8 @@ export function SalaryCategories() {
     setStaffSalaries(updated);
     localStorage.setItem('staff_salaries', JSON.stringify(updated));
     saveSettingToDb('staff_salaries', JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('kts:salary_updated'));
+    window.dispatchEvent(new Event('storage'));
     setEditingStaff(null);
   };
 

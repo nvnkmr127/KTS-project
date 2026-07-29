@@ -10,7 +10,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 
 import { STAFF } from './StaffManagement';
-import { generateMonths, getYearMonth, calculateLeaveAccrual } from '../utils/salaryHelpers';
+import { generateMonths, getYearMonth, calculateLeaveAccrual, hasJoinedBy } from '../utils/salaryHelpers';
 
 interface PayslipRecord {
   id: string;
@@ -40,17 +40,18 @@ const getComponentAmt = (
   salaries: Record<string, number>,
   basicAmt: number,
   fallbackAmt: number,
-  lop: number = 0
+  lop: number = 0,
+  monthKey?: string
 ) => {
   if (comp.id === 'basic') return basicAmt;
-  const val = salaries[comp.id];
+  const val = (monthKey && salaries[monthKey] !== undefined) ? salaries[monthKey] : salaries[comp.id];
   if (val !== undefined) {
     if (comp.calculationType === 'percentage') {
       return Math.round((val / 100) * basicAmt) + (comp.id === 'deductions' ? lop : 0);
     }
     return val + (comp.id === 'deductions' ? lop : 0);
   }
-  return fallbackAmt;
+  return fallbackAmt + (comp.id === 'deductions' ? lop : 0);
 };
 
 const getFallbackAmt = (
@@ -213,12 +214,12 @@ export function MySalary() {
       setMyStaffRecord(staffRecord);
 
       // Fetch payslips from backend API
-      const data = await api.getResources('payslips');
+      const data = await api.getResources('payslips').catch(() => []);
        
-      const apiSlips = data
+      const apiSlips: PayslipRecord[] = (Array.isArray(data) ? data : [])
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((p: any) => String(p.user_id) === String(user.id))
-        .map((p: any) => {
+        .map((p: any): PayslipRecord => {
           const gross = Number(p.gross_salary) || 0;
           const deductions = Number(p.total_deductions) || 0;
           const net = Number(p.net_salary) || 0;
@@ -226,6 +227,8 @@ export function MySalary() {
           const basic = userSalaries['basic'] !== undefined ? userSalaries['basic'] : Math.round(gross * 0.65);
           const hra = userSalaries['hra'] !== undefined ? userSalaries['hra'] : Math.round(gross * 0.20);
           const allowances = userSalaries['allowances'] !== undefined ? userSalaries['allowances'] : gross - basic - hra;
+
+          const statusVal: PayslipRecord['status'] = p.status?.toLowerCase() === 'paid' ? 'Paid' : 'Pending';
 
           return {
             id: String(p.id),
@@ -237,7 +240,7 @@ export function MySalary() {
             deductions,
             gross,
             net,
-            status: p.status?.toLowerCase() === 'paid' ? 'Paid' : 'Pending',
+            status: statusVal,
             month: `${p.month} ${p.year}`,
           };
         });
@@ -276,12 +279,29 @@ export function MySalary() {
         };
       }
 
-      // Standard months list to match admin panel's filters
-      const targetMonths = generateMonths();
+      const joinDateStr = staffRecord?.join_date || staffRecord?.joinDate || user?.join_date || user?.joinDate || '';
 
-      // Ensure that for each target month, there is a payslip. If not, generate a virtual one.
+      // Standard months list filtered by user's joining date
+      const allMonths = generateMonths();
+      const targetMonths = joinDateStr
+        ? allMonths.filter(m => {
+            const ym = getYearMonth(m);
+            return !ym || hasJoinedBy(joinDateStr, ym);
+          })
+        : allMonths;
+
+      // Filter merged slips so no months before joining date are shown
+      const validMerged = merged.filter(s => {
+        const ym = getYearMonth(s.month);
+        if (joinDateStr && ym) {
+          return hasJoinedBy(joinDateStr, ym);
+        }
+        return true;
+      });
+
+      // Ensure that for each target month from joining date, there is a payslip. If not, generate a virtual one.
       targetMonths.forEach((month) => {
-        const hasSlip = merged.some((s) => s.month === month);
+        const hasSlip = validMerged.some((s) => s.month === month);
         if (!hasSlip && staffRecord) {
           const basic = userSalaries['basic'] !== undefined ? userSalaries['basic'] : (staffRecord.salary ? Math.round(staffRecord.salary * 0.65) : 25000);
           const hra = userSalaries['hra'] !== undefined ? userSalaries['hra'] : (staffRecord.salary ? Math.round(staffRecord.salary * 0.20) : 8000);
@@ -310,7 +330,7 @@ export function MySalary() {
           });
           const net = Math.max(0, gross - totalDeductions);
 
-          merged.push({
+          validMerged.push({
             id: `virtual-${staffRecord.id}-${month}`,
             userId: staffRecord.id,
             name: staffRecord.name,
@@ -328,7 +348,7 @@ export function MySalary() {
       
       // Deduplicate by month if both exist
       const uniqueSlipsMap: Record<string, PayslipRecord> = {};
-      merged.forEach(s => {
+      validMerged.forEach(s => {
         uniqueSlipsMap[s.month] = s;
       });
       
@@ -344,7 +364,30 @@ export function MySalary() {
     if (dbSyncCompleted) {
       loadPayslips();
     }
-  }, [user, dbSyncCompleted]);
+  }, [user, dbSyncCompleted, staffSalaries, components]);
+
+  useEffect(() => {
+    const handleSalaryUpdate = () => {
+      const savedComps = localStorage.getItem('salary_components');
+      if (savedComps) {
+        try { setComponents(JSON.parse(savedComps)); } catch (e) {}
+      }
+      const savedSalaries = localStorage.getItem('staff_salaries');
+      if (savedSalaries) {
+        try { setStaffSalaries(JSON.parse(savedSalaries)); } catch (e) {}
+      }
+      loadPayslips();
+    };
+
+    window.addEventListener('kts:salary_updated', handleSalaryUpdate);
+    window.addEventListener('kts:salary_components_updated', handleSalaryUpdate);
+    window.addEventListener('storage', handleSalaryUpdate);
+    return () => {
+      window.removeEventListener('kts:salary_updated', handleSalaryUpdate);
+      window.removeEventListener('kts:salary_components_updated', handleSalaryUpdate);
+      window.removeEventListener('storage', handleSalaryUpdate);
+    };
+  }, [user, dbSyncCompleted, myStaffRecord]);
 
   const handlePrint = () => {
     const printContent = document.getElementById('printable-payslip');
@@ -510,9 +553,17 @@ export function MySalary() {
             className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
           >
             <option value="All">All Months</option>
-            {generateMonths().map(m => (
-              <option key={m} value={m}>{m}</option>
-            ))}
+            {(() => {
+              const joinDate = myStaffRecord?.join_date || myStaffRecord?.joinDate || user?.join_date || user?.joinDate || '';
+              const allM = generateMonths();
+              const validM = joinDate ? allM.filter(m => {
+                const ym = getYearMonth(m);
+                return !ym || hasJoinedBy(joinDate, ym);
+              }) : allM;
+              return validM.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ));
+            })()}
           </select>
         </div>
       </div>

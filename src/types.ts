@@ -25,6 +25,8 @@ export interface User {
   roles?: string[];
   permissions?: string[];
   status?: string;
+  join_date?: string;
+  joinDate?: string;
 }
 
 export interface Student {
