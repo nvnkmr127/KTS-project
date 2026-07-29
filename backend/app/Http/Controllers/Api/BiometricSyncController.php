@@ -571,7 +571,9 @@ class BiometricSyncController extends Controller
                     );
 
                     Log::info("STEP 6: Successfully created/updated Attendance ID: {$attendance->id} for Student ID: {$student->id}");
-                    $biometricLog->update(['attendance_id' => $attendance->id]);
+                    if ($biometricLog) {
+                        $biometricLog->update(['attendance_id' => $attendance->id]);
+                    }
                 } else {
                     Log::info("STEP 5 (Staff Check): Searching staff database for empcode: {$empCode}");
                     $staff = \App\Models\User::whereHas('roles', function ($q) {
@@ -586,14 +588,17 @@ class BiometricSyncController extends Controller
 
                     if ($staff) {
                         Log::info("STEP 6 (Staff Found): Staff punch recorded for Name: {$staff->name}");
-                        // Append to the existing notes so we don't lose the WorkTime/Remark info
-                        $existingNotes = $biometricLog->processing_notes;
-                        $biometricLog->update(['processing_notes' => "{$existingNotes} | Staff punch for: {$staff->name}"]);
+                        if ($biometricLog) {
+                            $existingNotes = $biometricLog->processing_notes;
+                            $biometricLog->update(['processing_notes' => "{$existingNotes} | Staff punch for: {$staff->name}"]);
+                        }
                     } else {
                         Log::warning('BiometricSync: Employee/Student not found for empcode', ['empcode' => $empCode]);
                         Log::info("STEP 6 (Failed): Neither student nor staff found for empcode: {$empCode}");
-                        $existingNotes = $biometricLog->processing_notes;
-                        $biometricLog->update(['processing_notes' => "{$existingNotes} | Not found in system: {$empCode}"]);
+                        if ($biometricLog) {
+                            $existingNotes = $biometricLog->processing_notes;
+                            $biometricLog->update(['processing_notes' => "{$existingNotes} | Not found in system: {$empCode}"]);
+                        }
                     }
                 }
                 $saved++;
