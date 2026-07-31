@@ -813,8 +813,8 @@ export function Students() {
     
     if (penNum) {
       const cleanedPen = penNum.replace(/\s+/g, '');
-      if (!/^\d{12,14}$/.test(cleanedPen)) {
-         errors.student_pen_no = 'PEN must be 12 to 14 digits (e.g. 36 1204 1002 045)';
+      if (!/^\d{11,14}$/.test(cleanedPen)) {
+         errors.student_pen_no = 'PEN must be 11 to 14 digits (e.g. 36 1204 1002 045)';
       }
     }
 
@@ -2192,10 +2192,20 @@ export function Students() {
                   <input
                     name="student_pen_no"
                     defaultValue={selected?.student_pen_no}
-                    onChange={() => setHasUnsavedChanges(true)}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
-                    placeholder="Student PEN Number"
+                    onChange={(e) => {
+                      setHasUnsavedChanges(true);
+                      if (formErrors.student_pen_no) {
+                        setFormErrors(prev => {
+                          const copy = { ...prev };
+                          delete copy.student_pen_no;
+                          return copy;
+                        });
+                      }
+                    }}
+                    className={`w-full bg-[var(--surf2)] border ${formErrors.student_pen_no ? 'border-[var(--red-tx)]' : 'border-[var(--b)]'} rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]`}
+                    placeholder="Student PEN Number (11 to 14 digits)"
                   />
+                  {formErrors.student_pen_no && <span className="text-[10px] text-[var(--red-tx)] mt-1 block">{formErrors.student_pen_no}</span>}
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3085,8 +3095,8 @@ const validateStudent = (s: MappedStudent) => {
     errors.push('Student PEN NO. is required');
   } else {
     const cleanedPen = s.student_pen_no.replace(/\s+/g, '');
-    if (!/^\d{12,14}$/.test(cleanedPen)) {
-      errors.push('PEN must be 12 to 14 digits');
+    if (!/^\d{11,14}$/.test(cleanedPen)) {
+      errors.push('PEN must be 11 to 14 digits');
     }
   }
   if (!s.aadhar_number?.trim()) {
@@ -3828,7 +3838,8 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                             <input
                               value={s.student_pen_no || ''}
                               onChange={(e) => updateStudentField(s.id, 'student_pen_no', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.student_pen_no ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={`w-full bg-[var(--surf2)] border ${!s.student_pen_no || !/^\d{11,14}$/.test(s.student_pen_no.replace(/\s+/g, '')) ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              placeholder="11-14 digits"
                             />
                           </td>
                           <td className="px-1 py-1.5">
