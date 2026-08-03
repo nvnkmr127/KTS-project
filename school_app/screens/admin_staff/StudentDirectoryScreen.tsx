@@ -180,6 +180,118 @@ const EXAMPLE_ROW_DATA = [
   'Andhra Pradesh', 'Hindu', 'BC-B', 'Yadav', 'TC-9988'
 ];
 
+export interface ParsedStudentRow {
+  id: string;
+  firstName: string;
+  lastName: string;
+  className: string;
+  section: string;
+  gender: 'Male' | 'Female';
+  dob: string;
+  admissionNo: string;
+  admissionDate: string;
+  penNo: string;
+  aadharNo: string;
+  fatherName: string;
+  fatherMobile: string;
+  fatherOccupation: string;
+  motherName: string;
+  motherMobile: string;
+  motherOccupation: string;
+  address: string;
+  motherTongue: string;
+  nationality: string;
+  state: string;
+  religion: string;
+  caste: string;
+  subCaste: string;
+  tcNo: string;
+}
+
+const DEFAULT_PARSED_ROWS: ParsedStudentRow[] = [
+  {
+    id: 'p1',
+    firstName: 'Ravi',
+    lastName: 'Teja',
+    className: 'Class 9',
+    section: 'Section B',
+    gender: 'Male',
+    dob: '15-05-2012',
+    admissionNo: 'UV-2026-101',
+    admissionDate: '01-06-2026',
+    penNo: '36 1204 1002 045',
+    aadharNo: '123456789012',
+    fatherName: 'Nageswara Rao',
+    fatherMobile: '9876543210',
+    fatherOccupation: 'Farmer',
+    motherName: 'Laxmi',
+    motherMobile: '9876543211',
+    motherOccupation: 'Homemaker',
+    address: 'Nizamabad Main Street',
+    motherTongue: 'Telugu',
+    nationality: 'Indian',
+    state: 'Andhra Pradesh',
+    religion: 'Hindu',
+    caste: 'BC-B',
+    subCaste: 'Yadav',
+    tcNo: 'TC-9988'
+  },
+  {
+    id: 'p2',
+    firstName: 'Anjali',
+    lastName: 'Devi',
+    className: 'Class 10',
+    section: 'Section A',
+    gender: 'Female',
+    dob: '22-09-2011',
+    admissionNo: 'UV-2026-102',
+    admissionDate: '01-06-2026',
+    penNo: '36 1204 1002 046',
+    aadharNo: '234567890123',
+    fatherName: 'Srinivas',
+    fatherMobile: '9848022338',
+    fatherOccupation: 'Teacher',
+    motherName: 'Rani',
+    motherMobile: '9848022340',
+    motherOccupation: 'Government Employee',
+    address: 'Housing Board Colony',
+    motherTongue: 'Telugu',
+    nationality: 'Indian',
+    state: 'Andhra Pradesh',
+    religion: 'Hindu',
+    caste: 'OC',
+    subCaste: 'Reddy',
+    tcNo: 'TC-9989'
+  },
+  {
+    id: 'p3',
+    firstName: 'Arun',
+    lastName: 'Kumar',
+    className: 'Class 8',
+    section: 'Section C',
+    gender: 'Male',
+    dob: '10-03-2013',
+    admissionNo: 'UV-2026-103',
+    admissionDate: '01-06-2026',
+    penNo: '36 1204 1002 047',
+    aadharNo: '345678901234',
+    fatherName: 'Ramesh',
+    fatherMobile: '9700123456',
+    fatherOccupation: 'Business',
+    motherName: 'Latha',
+    motherMobile: '9700123458',
+    motherOccupation: 'Homemaker',
+    address: 'Old Town, Nizamabad',
+    motherTongue: 'Telugu',
+    nationality: 'Indian',
+    state: 'Telangana',
+    religion: 'Hindu',
+    caste: 'BC-D',
+    subCaste: 'Goud',
+    tcNo: 'TC-9990'
+  }
+];
+
 export const StudentDirectoryScreen: React.FC<any> = ({ route, navigation }) => {
   const [studentsList, setStudentsList] = useState<StudentItem[]>(MOCK_STUDENTS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -188,6 +300,20 @@ export const StudentDirectoryScreen: React.FC<any> = ({ route, navigation }) => 
   // Import Modal & File Picker States
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<{ name: string; size: string; uri: string } | null>(null);
+  const [parsedRows, setParsedRows] = useState<ParsedStudentRow[]>([]);
+
+  // Custom Toast Modal State
+  const [toastData, setToastData] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type?: 'success' | 'warning' | 'info';
+    onConfirm?: () => void;
+  }>({ visible: false, title: '', message: '', type: 'success' });
+
+  const showToast = (title: string, message: string, type: 'success' | 'warning' | 'info' = 'success', onConfirm?: () => void) => {
+    setToastData({ visible: true, title, message, type, onConfirm });
+  };
 
   const handleBrowseFiles = async () => {
     try {
@@ -209,7 +335,7 @@ export const StudentDirectoryScreen: React.FC<any> = ({ route, navigation }) => 
         const file = result.assets[0];
         const fileSizeMB = file.size ? file.size / (1024 * 1024) : 0;
         if (fileSizeMB > 10) {
-          Alert.alert('File Too Large', 'Please select a file smaller than 10MB limit.');
+          showToast('File Too Large', 'Please select a file smaller than 10MB limit.', 'warning');
           return;
         }
         setSelectedFile({
@@ -217,25 +343,79 @@ export const StudentDirectoryScreen: React.FC<any> = ({ route, navigation }) => 
           size: fileSizeMB > 0 ? `${fileSizeMB.toFixed(2)} MB` : 'Under 10MB',
           uri: file.uri
         });
+        // Populate parsed rows preview (matching web interface)
+        setParsedRows(DEFAULT_PARSED_ROWS);
       }
     } catch (error) {
       console.error('Error picking document:', error);
     }
   };
 
+  const handleUpdateParsedField = (id: string, field: keyof ParsedStudentRow, value: string) => {
+    setParsedRows(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
+
+  const handleRemoveParsedRow = (id: string) => {
+    setParsedRows(prev => prev.filter(r => r.id !== id));
+  };
+
+  const handleAddParsedRow = () => {
+    const newRow: ParsedStudentRow = {
+      id: `p_${Date.now()}`,
+      firstName: '',
+      lastName: '',
+      className: 'Class 9',
+      section: 'Section A',
+      gender: 'Male',
+      dob: '10-10-2012',
+      admissionNo: `UV-2026-10${parsedRows.length + 1}`,
+      admissionDate: '01-06-2026',
+      penNo: '',
+      aadharNo: '',
+      fatherName: '',
+      fatherMobile: '',
+      fatherOccupation: '',
+      motherName: '',
+      motherMobile: '',
+      motherOccupation: '',
+      address: '',
+      motherTongue: 'Telugu',
+      nationality: 'Indian',
+      state: 'Andhra Pradesh',
+      religion: 'Hindu',
+      caste: '',
+      subCaste: '',
+      tcNo: ''
+    };
+    setParsedRows(prev => [...prev, newRow]);
+  };
+
   const handleDownloadTemplate = async (format: 'excel' | 'csv') => {
     try {
-      const csvHeader = 'First Name,Last Name,Class,Section,Gender,Date of Birth,Admission Number,Admission Date,Student PEN NO.,Aadhar Number of Student,Father Name,Father Mobile Number,Father Occupation,Mother Name,Mother Mobile Number,Mother Occupation,Address,Mother Tongue,Nationality,State,Religion,Caste,Sub Caste,TC Number\n';
-      const sampleRows =
-        `Ravi,Teja,9,B,Male,15-05-2012,2026-101,01-06-2026,36 1204 1002 045,123456789012,Nageswara Rao,9876543210,Farmer,Laxmi,9876543211,Homemaker,Nizamabad Main Street,Telugu,Indian,Andhra Pradesh,Hindu,BC-B,Yadav,TC-9988
-Anjali,Devi,10,A,Female,22-09-2011,2026-102,01-06-2026,36 1204 1002 046,234567890123,Srinivas,9848022338,Teacher,Rani,9848022340,Government Employee,Housing Board Colony,Telugu,Indian,Andhra Pradesh,Hindu,OC,Reddy,TC-9989
-Arun,Kumar,8,C,Male,10-03-2013,2026-103,01-06-2026,36 1204 1002 047,345678901234,Ramesh,9700123456,Business,Latha,9700123458,Homemaker,"Old Town, Nizamabad",Telugu,Indian,Telangana,Hindu,BC-D,Goud,TC-9990`;
+      const headers = [
+        'First Name', 'Last Name', 'Class', 'Section', 'Gender',
+        'Date of Birth', 'Admission Number', 'Admission Date', 'Student PEN NO.', 'Aadhar Number of Student',
+        'Father Name', 'Father Mobile Number', 'Father Occupation', 'Mother Name', 'Mother Mobile Number',
+        'Mother Occupation', 'Address', 'Mother Tongue', 'Nationality', 'State',
+        'Religion', 'Caste', 'Sub Caste', 'TC Number'
+      ];
 
-      const fullContent = csvHeader + sampleRows;
-      const fileName = `Student_Import_Template.${format === 'excel' ? 'csv' : 'csv'}`;
-      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      const sampleRows = [
+        ['Ravi', 'Teja', '9', 'B', 'Male', '15-05-2012', 'UV-2026-101', '01-06-2026', '36 1204 1002 045', '123456789012', 'Nageswara Rao', '9876543210', 'Farmer', 'Laxmi', '9876543211', 'Homemaker', 'Nizamabad Main Street', 'Telugu', 'Indian', 'Andhra Pradesh', 'Hindu', 'BC-B', 'Yadav', 'TC-9988'],
+        ['Anjali', 'Devi', '10', 'A', 'Female', '22-09-2011', 'UV-2026-102', '01-06-2026', '36 1204 1002 046', '234567890123', 'Srinivas', '9848022338', 'Teacher', 'Rani', '9848022340', 'Government Employee', 'Housing Board Colony', 'Telugu', 'Indian', 'Andhra Pradesh', 'Hindu', 'OC', 'Reddy', 'TC-9989'],
+        ['Arun', 'Kumar', '8', 'C', 'Male', '10-03-2013', 'UV-2026-103', '01-06-2026', '36 1204 1002 047', '345678901234', 'Ramesh', '9700123456', 'Business', 'Latha', '9700123458', 'Homemaker', 'Old Town Nizamabad', 'Telugu', 'Indian', 'Telangana', 'Hindu', 'BC-D', 'Goud', 'TC-9990']
+      ];
 
-      await FileSystem.writeAsStringAsync(fileUri, fullContent, { encoding: 'utf8' });
+      // Add UTF-8 Byte Order Mark (BOM) so Excel, Google Sheets, Drive and native mobile file viewers open and preview columns instantly
+      const BOM = '\uFEFF';
+      const csvHeader = headers.join(',') + '\n';
+      const csvRows = sampleRows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+      const fullContent = BOM + csvHeader + csvRows;
+
+      const fileName = `KTS_Student_Import_Template_${format.toUpperCase()}.csv`;
+      const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+
+      await FileSystem.writeAsStringAsync(fileUri, fullContent, { encoding: FileSystem.EncodingType.UTF8 });
 
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(fileUri, {
@@ -244,31 +424,56 @@ Arun,Kumar,8,C,Male,10-03-2013,2026-103,01-06-2026,36 1204 1002 047,345678901234
           UTI: 'public.comma-separated-values-text'
         });
       } else {
-        Alert.alert('Template Generated', `Template saved to ${fileName}`);
+        showToast('Template Saved', `File saved to ${fileName}`, 'success');
       }
     } catch (error) {
       console.error('Error generating template:', error);
-      Alert.alert('Error', 'Unable to generate download template.');
+      showToast('Error', 'Unable to generate download template.', 'warning');
     }
   };
 
   const handleConfirmImport = () => {
-    if (!selectedFile) {
-      Alert.alert('No File Selected', 'Please click "Browse Files" to select a file before importing.');
+    if (parsedRows.length === 0) {
+      showToast('No Records to Import', 'Please select a file or add student rows before importing.', 'warning');
       return;
     }
-    Alert.alert(
+    
+    // Check validation errors
+    const invalidRows = parsedRows.filter(r => !r.firstName.trim() || !r.lastName.trim());
+    if (invalidRows.length > 0) {
+      showToast('Validation Error', `${invalidRows.length} rows are missing required First Name or Last Name. Please fix them before importing.`, 'warning');
+      return;
+    }
+
+    // Convert parsed rows to StudentItem
+    const newStudents: StudentItem[] = parsedRows.map((r, idx) => ({
+      id: `imported_${Date.now()}_${idx}`,
+      name: `${r.firstName} ${r.lastName}`.trim(),
+      gender: r.gender,
+      dob: r.dob,
+      admissionNo: r.admissionNo || `STDDe20260${studentsList.length + idx + 1}`,
+      penNo: r.penNo || 'N/A',
+      className: `${r.className} — ${r.section.replace('Section ', '')}`,
+      academicYear: '2026-2027',
+      parentName: r.fatherName || r.motherName || 'Parent',
+      phone: r.fatherMobile || r.motherMobile || '+91 9876543210',
+      feeStatus: 'Paid',
+      status: 'Active',
+      initials: ((r.firstName[0] || 'S') + (r.lastName[0] || 'T')).toUpperCase(),
+      avatarColor: '#00f1a1'
+    }));
+
+    setStudentsList(prev => [...newStudents, ...prev]);
+
+    showToast(
       'Import Successful!',
-      `Successfully uploaded ${selectedFile.name}.\n\n24 columns verified against template. Student directory data updated.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            setIsImportModalOpen(false);
-            setSelectedFile(null);
-          }
-        }
-      ]
+      `Successfully imported ${newStudents.length} student records into directory.`,
+      'success',
+      () => {
+        setIsImportModalOpen(false);
+        setSelectedFile(null);
+        setParsedRows([]);
+      }
     );
   };
 
@@ -794,89 +999,223 @@ Arun,Kumar,8,C,Male,10-03-2013,2026-103,01-06-2026,36 1204 1002 047,345678901234
               </View>
 
               <ScrollView className="p-5" showsVerticalScrollIndicator={false}>
-                {/* Dropzone Container */}
-                <View className="border border-dashed border-[#00f1a1]/40 bg-[#00f1a1]/5 rounded-2xl p-6 items-center justify-center mb-5">
-                  <View className="w-14 h-14 rounded-2xl bg-[#00f1a1]/20 items-center justify-center mb-3 border border-[#00f1a1]/30">
-                    <UploadCloud size={30} color="#00f1a1" />
-                  </View>
-
-                  <Text className="text-white font-bold text-base mb-1 text-center">Drag and drop file here</Text>
-                  <Text className="text-white/50 text-xs mb-4 text-center">
-                    Limit 10MB per file · PDF, DOCX, XLSX, XLS, CSV
-                  </Text>
-
-                  <Pressable
-                    onPress={handleBrowseFiles}
-                    className="bg-[#00f1a1] px-6 py-2.5 rounded-full flex-row items-center shadow-[0_0_15px_rgba(0,241,161,0.4)]"
-                  >
-                    <FileText size={16} color="#101415" className="mr-2" />
-                    <Text className="text-[#101415] font-bold text-sm">Browse Files</Text>
-                  </Pressable>
-
-                  {/* Selected File Card */}
-                  {selectedFile && (
-                    <View className="mt-4 bg-[#121817] border border-[#00f1a1]/50 p-3 rounded-xl flex-row items-center justify-between w-full">
-                      <View className="flex-row items-center flex-1 mr-2">
-                        <CheckCircle2 size={18} color="#00f1a1" className="mr-2.5" />
-                        <View className="flex-1">
-                          <Text className="text-white text-xs font-bold" numberOfLines={1}>{selectedFile.name}</Text>
-                          <Text className="text-white/50 text-[10px]">{selectedFile.size}</Text>
-                        </View>
+                {parsedRows.length > 0 ? (
+                  <View className="flex-1">
+                    {/* Top Bar with title & Add Row button */}
+                    <View className="flex-row justify-between items-center mb-3">
+                      <View>
+                        <Text className="text-white text-sm font-bold">Parsed Records Preview ({parsedRows.length} rows)</Text>
+                        <Text className="text-white/50 text-[11px]">Review & edit extracted columns before importing</Text>
                       </View>
-                      <Pressable onPress={() => setSelectedFile(null)} className="p-1">
-                        <X size={16} color="rgba(255,255,255,0.6)" />
+                      <Pressable
+                        onPress={handleAddParsedRow}
+                        className="bg-[#00f1a1]/20 border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center"
+                      >
+                        <Plus size={14} color="#00f1a1" className="mr-1" />
+                        <Text className="text-[#00f1a1] text-xs font-bold">+ Add Row</Text>
                       </Pressable>
                     </View>
-                  )}
-                </View>
 
-                {/* Required Column Order Box */}
-                <View className="bg-[#191e1d] border border-white/10 p-4 rounded-2xl mb-5">
-                  <View className="flex-row items-center mb-1">
-                    <FileCheck size={16} color="#00f1a1" className="mr-2" />
-                    <Text className="text-white font-bold text-xs">Required column order in your file</Text>
+                    {/* Scrollable list of parsed rows cards */}
+                    {parsedRows.map((row, index) => {
+                      const isValid = Boolean(row.firstName.trim() && row.lastName.trim());
+                      return (
+                        <View key={row.id} className="bg-white/5 border border-white/10 p-3.5 rounded-2xl mb-3">
+                          {/* Card Header */}
+                          <View className="flex-row justify-between items-center mb-2.5 pb-2 border-b border-white/10">
+                            <View className="flex-row items-center">
+                              {isValid ? (
+                                <View className="flex-row items-center bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/40">
+                                  <CheckCircle2 size={12} color="#00f1a1" className="mr-1" />
+                                  <Text className="text-[#00f1a1] text-[10px] font-bold">Valid Row #{index + 1}</Text>
+                                </View>
+                              ) : (
+                                <View className="flex-row items-center bg-rose-500/20 px-2.5 py-0.5 rounded-full border border-rose-500/40">
+                                  <AlertCircle size={12} color="#ff516a" className="mr-1" />
+                                  <Text className="text-[#ff516a] text-[10px] font-bold">Missing Required Fields</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Pressable onPress={() => handleRemoveParsedRow(row.id)} className="p-1">
+                              <Trash2 size={14} color="#ff516a" />
+                            </Pressable>
+                          </View>
+
+                          {/* Inputs Grid */}
+                          <View className="flex-row mb-2" style={{ gap: 8 }}>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">First Name *</Text>
+                              <TextInput
+                                value={row.firstName}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'firstName', val)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">Last Name *</Text>
+                              <TextInput
+                                value={row.lastName}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'lastName', val)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                          </View>
+
+                          <View className="flex-row mb-2" style={{ gap: 8 }}>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">Class</Text>
+                              <TextInput
+                                value={row.className}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'className', val)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">Section</Text>
+                              <TextInput
+                                value={row.section}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'section', val)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">Gender</Text>
+                              <TextInput
+                                value={row.gender}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'gender', val as any)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                          </View>
+
+                          <View className="flex-row mb-2" style={{ gap: 8 }}>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">Date of Birth</Text>
+                              <TextInput
+                                value={row.dob}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'dob', val)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">Admission No</Text>
+                              <TextInput
+                                value={row.admissionNo}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'admissionNo', val)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                          </View>
+
+                          <View className="flex-row mb-2" style={{ gap: 8 }}>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">Father Name</Text>
+                              <TextInput
+                                value={row.fatherName}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'fatherName', val)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-white/60 text-[10px] mb-0.5">Father Mobile</Text>
+                              <TextInput
+                                value={row.fatherMobile}
+                                onChangeText={(val) => handleUpdateParsedField(row.id, 'fatherMobile', val)}
+                                className="bg-black/40 border border-white/15 rounded-lg text-white px-2 py-1 text-xs"
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
-                  <Text className="text-white/40 text-[11px] mb-3">
-                    Columns must appear in this order (header names are flexible)
-                  </Text>
+                ) : (
+                  <>
+                    {/* Dropzone Container */}
+                    <View className="border border-dashed border-[#00f1a1]/40 bg-[#00f1a1]/5 rounded-2xl p-6 items-center justify-center mb-5">
+                      <View className="w-14 h-14 rounded-2xl bg-[#00f1a1]/20 items-center justify-center mb-3 border border-[#00f1a1]/30">
+                        <UploadCloud size={30} color="#00f1a1" />
+                      </View>
 
-                  {/* 24 Columns Badges */}
-                  <View className="flex-row flex-wrap mb-4" style={{ gap: 6 }}>
-                    {IMPORT_COLUMNS.map((col) => (
-                      <View
-                        key={col.num}
-                        className="bg-white/5 border border-white/15 px-2.5 py-1 rounded-xl flex-row items-center"
+                      <Text className="text-white font-bold text-base mb-1 text-center">Drag and drop file here</Text>
+                      <Text className="text-white/50 text-xs mb-4 text-center">
+                        Limit 10MB per file · PDF, DOCX, XLSX, XLS, CSV
+                      </Text>
+
+                      <Pressable
+                        onPress={handleBrowseFiles}
+                        className="bg-[#00f1a1] px-6 py-2.5 rounded-full flex-row items-center shadow-[0_0_15px_rgba(0,241,161,0.4)]"
                       >
-                        <Text className="text-[#00f1a1] text-[10px] font-bold mr-1">{col.num}.</Text>
-                        <Text className="text-white/90 text-[11px] font-medium">
-                          {col.name} {col.tag ? <Text className="text-white/40">{col.tag}</Text> : ''}
+                        <FileText size={16} color="#101415" className="mr-2" />
+                        <Text className="text-[#101415] font-bold text-sm">Browse Files</Text>
+                      </Pressable>
+
+                      {/* Selected File Card */}
+                      {selectedFile && (
+                        <View className="mt-4 bg-[#121817] border border-[#00f1a1]/50 p-3 rounded-xl flex-row items-center justify-between w-full">
+                          <View className="flex-row items-center flex-1 mr-2">
+                            <CheckCircle2 size={18} color="#00f1a1" className="mr-2.5" />
+                            <View className="flex-1">
+                              <Text className="text-white text-xs font-bold" numberOfLines={1}>{selectedFile.name}</Text>
+                              <Text className="text-white/50 text-[10px]">{selectedFile.size}</Text>
+                            </View>
+                          </View>
+                          <Pressable onPress={() => { setSelectedFile(null); setParsedRows([]); }} className="p-1">
+                            <X size={16} color="rgba(255,255,255,0.6)" />
+                          </Pressable>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Required Column Order Box */}
+                    <View className="bg-[#191e1d] border border-white/10 p-4 rounded-2xl mb-5">
+                      <View className="flex-row items-center mb-1">
+                        <FileCheck size={16} color="#00f1a1" className="mr-2" />
+                        <Text className="text-white font-bold text-xs">Required column order in your file</Text>
+                      </View>
+                      <Text className="text-white/40 text-[11px] mb-3">
+                        Columns must appear in this order (header names are flexible)
+                      </Text>
+
+                      {/* 24 Columns Badges */}
+                      <View className="flex-row flex-wrap mb-4" style={{ gap: 6 }}>
+                        {IMPORT_COLUMNS.map((col) => (
+                          <View
+                            key={col.num}
+                            className="bg-white/5 border border-white/15 px-2.5 py-1 rounded-xl flex-row items-center"
+                          >
+                            <Text className="text-[#00f1a1] text-[10px] font-bold mr-1">{col.num}.</Text>
+                            <Text className="text-white/90 text-[11px] font-medium">
+                              {col.name} {col.tag ? <Text className="text-white/40">{col.tag}</Text> : ''}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {/* EXAMPLE ROW Box */}
+                      <Text className="text-white/50 text-[10px] font-bold tracking-wider uppercase mb-1.5">EXAMPLE ROW</Text>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-black/30 p-2.5 rounded-xl mb-3">
+                        <View className="flex-row" style={{ gap: 8 }}>
+                          {EXAMPLE_ROW_DATA.map((val, idx) => (
+                            <View key={idx} className="bg-white/10 border border-white/15 px-2.5 py-1 rounded-lg">
+                              <Text className="text-white text-xs font-mono">{val}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </ScrollView>
+
+                      {/* Stats Footer */}
+                      <View className="pt-2 border-t border-white/10">
+                        <Text className="text-[#00f1a1] text-[11px] font-bold mb-1">
+                          ● 24 columns available (23 are required, 1 is optional)
+                        </Text>
+                        <Text className="text-white/40 text-[10px]">
+                          Dates accepted as: DD-MM-YYYY · DD/MM/YYYY · YYYY-MM-DD
                         </Text>
                       </View>
-                    ))}
-                  </View>
-
-                  {/* EXAMPLE ROW Box */}
-                  <Text className="text-white/50 text-[10px] font-bold tracking-wider uppercase mb-1.5">EXAMPLE ROW</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-black/30 p-2.5 rounded-xl mb-3">
-                    <View className="flex-row" style={{ gap: 8 }}>
-                      {EXAMPLE_ROW_DATA.map((val, idx) => (
-                        <View key={idx} className="bg-white/10 border border-white/15 px-2.5 py-1 rounded-lg">
-                          <Text className="text-white text-xs font-mono">{val}</Text>
-                        </View>
-                      ))}
                     </View>
-                  </ScrollView>
-
-                  {/* Stats Footer */}
-                  <View className="flex-row justify-between items-center pt-2 border-t border-white/10">
-                    <Text className="text-[#00f1a1] text-[11px] font-bold">
-                      ● 24 columns available (23 are required, 1 is optional)
-                    </Text>
-                    <Text className="text-white/40 text-[10px]">
-                      Dates: DD-MM-YYYY · DD/MM/YYYY · YYYY-MM-DD
-                    </Text>
-                  </View>
-                </View>
+                  </>
+                )}
               </ScrollView>
 
               {/* Footer Action Bar */}
@@ -910,13 +1249,45 @@ Arun,Kumar,8,C,Male,10-03-2013,2026-103,01-06-2026,36 1204 1002 047,345678901234
                     onPress={handleConfirmImport}
                     className="bg-[#00f1a1] px-4 py-2 rounded-xl shadow-[0_0_10px_rgba(0,241,161,0.3)]"
                   >
-                    <Text className="text-[#101415] font-bold text-xs">Import Data</Text>
+                    <Text className="text-[#101415] font-bold text-xs">
+                      {parsedRows.length > 0 ? `Import ${parsedRows.length} Students` : 'Import Data'}
+                    </Text>
                   </Pressable>
                 </View>
               </View>
             </View>
           </View>
         </Modal>
+
+      {/* CUSTOM ADMIN STAFF NOTIFICATION TOAST MODAL */}
+      <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => { setToastData(prev => ({ ...prev, visible: false })); if (toastData.onConfirm) toastData.onConfirm(); }}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+              {toastData.type === 'warning' ? (
+                <AlertCircle size={28} color="#f59e0b" />
+              ) : (
+                <CheckCircle2 size={28} color="#00f1a1" />
+              )}
+            </View>
+
+            <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
+            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
+
+            <Pressable
+              onPress={() => {
+                const cb = toastData.onConfirm;
+                setToastData(prev => ({ ...prev, visible: false }));
+                if (cb) cb();
+              }}
+              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+            >
+              <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 };
