@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fee Payment - Parent Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neumorphic-button {
+            box-shadow: 0 0 24px rgba(244, 63, 94, 0.4);
+            transition: all 0.3s ease;
+        }
+        .neumorphic-button:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 12px rgba(244, 63, 94, 0.2);
+        }
+        .bg-gradient-main {
+            background: linear-gradient(135deg, #1F0A16 0%, #3D0A1E 100%);
+            min-height: 100vh;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(244, 63, 94, 0.3);
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#ffd9dc",
+                        "error-container": "#93000a",
+                        "surface-container-low": "#2b1421",
+                        "secondary-fixed": "#ffd9e1",
+                        "surface-dim": "#210c18",
+                        "secondary-container": "#703347",
+                        "surface-container-lowest": "#1b0713",
+                        "on-primary-container": "#5b0017",
+                        "secondary-fixed-dim": "#ffb1c6",
+                        "outline": "#aa888a",
+                        "outline-variant": "#5b4041",
+                        "inverse-surface": "#ffd8e9",
+                        "on-secondary-container": "#ef9eb4",
+                        "surface-container": "#2f1825",
+                        "primary-fixed": "#ffdadb",
+                        "tertiary-fixed-dim": "#ffb2ba",
+                        "on-primary": "#67001b",
+                        "background": "#210c18",
+                        "surface": "#210c18",
+                        "inverse-primary": "#bc0b3b",
+                        "on-primary-fixed-variant": "#92002a",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed-variant": "#861e35",
+                        "tertiary-container": "#e6687b",
+                        "surface-tint": "#ffb2b7",
+                        "on-surface-variant": "#e3bdbf",
+                        "primary-fixed-dim": "#ffb2b7",
+                        "on-error": "#690005",
+                        "on-secondary-fixed-variant": "#703347",
+                        "on-tertiary-fixed": "#400010",
+                        "primary-container": "#ff516a",
+                        "on-primary-fixed": "#40000d",
+                        "on-tertiary-container": "#5b001b",
+                        "on-secondary": "#541d30",
+                        "surface-container-high": "#3b222f",
+                        "surface-bright": "#4c313f",
+                        "tertiary": "#ffb2ba",
+                        "inverse-on-surface": "#422936",
+                        "on-tertiary": "#660220",
+                        "on-secondary-fixed": "#3a071b",
+                        "secondary": "#ffb1c6",
+                        "on-error-container": "#ffdad6",
+                        "primary": "#ffb2b7",
+                        "surface-variant": "#472d3a",
+                        "on-surface": "#ffd8e9",
+                        "on-background": "#ffd8e9",
+                        "surface-container-highest": "#472d3a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "16px",
+                        "xs": "8px",
+                        "container-padding": "20px",
+                        "md": "24px",
+                        "gutter": "12px",
+                        "base": "4px",
+                        "lg": "32px",
+                        "xl": "48px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-xl-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-xl": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-xl-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-gradient-main text-on-surface font-body-md overflow-x-hidden custom-scrollbar">
+<!-- WebGL Background Overlay for Ethereal Effect -->
+
+<!-- Header / TopAppBar -->
+<header class="flex justify-between items-center px-container-padding py-sm w-full top-0 sticky z-50 backdrop-blur-md bg-surface/10 border-b border-white/10">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-white/20">
+<img alt="Parent Profile" class="w-full h-full object-cover" data-alt="A professional and friendly portrait of a father in his late 30s, smiling warmly. He is dressed in a smart casual charcoal grey sweater. The background is a soft, blurred modern interior with warm ambient lighting. The overall mood is nurturing, professional, and sophisticated, consistent with a high-end school parent portal." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxMSrDt6N0klCxbtdCQwWn1a3ITjjrjQw94i-bEGOJJCesZWqIzHUS2tH5a-Bxm5W0k1TSkd05p8OCohUOyykl4watr7KAjA-yPet4b8MJ73LwDwpCp3vAl5UbOoi66uSf1R44TMHaXXxvBZzcURitGtTwwugzvjv9x3GnxEboMTpJiv3H3Q5Z8hZP6VDK5plWIdiB1Acma0lDESl259-L95q8cHF3Pdn5-iitZxdn_U4uHvFhbvpUSEvejJdPq-h17_sSXUe87OUI"/>
+</div>
+<div>
+<h1 class="font-headline-md-mobile text-headline-md-mobile font-bold text-on-surface">Good Morning, Ramesh 👋</h1>
+<p class="font-label-md text-label-md text-on-surface-variant/70">Vamshi's Fees | Class 8-A | 2025-26</p>
+</div>
+</div>
+<button class="text-primary hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications</span>
+</button>
+</header>
+<!-- Main Content -->
+<main class="px-container-padding pt-sm pb-xl max-w-2xl mx-auto space-y-lg">
+<!-- Summary Cards Horizontal Scroll -->
+<section class="space-y-sm">
+<h2 class="font-headline-md-mobile text-headline-md-mobile text-primary px-1">Payment Timeline</h2>
+<div class="flex gap-sm overflow-x-auto pb-base no-scrollbar">
+<!-- Paid Term -->
+<div class="glass-card min-w-[280px] p-sm rounded-xl space-y-md">
+<div class="flex justify-between items-start">
+<span class="bg-green-500/20 text-green-400 px-xs py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">✅ PAID</span>
+<span class="text-on-surface-variant/50 font-label-md text-label-md">Term 1</span>
+</div>
+<div>
+<p class="font-headline-lg-mobile text-headline-lg-mobile font-bold">₹18,000</p>
+<p class="text-on-surface-variant text-body-sm font-body-sm">Cleared on Aug 12, 2024</p>
+</div>
+<button class="w-full py-xs border border-white/10 rounded-lg text-body-sm font-semibold flex items-center justify-center gap-xs hover:bg-white/5 transition-colors">
+<span class="material-symbols-outlined text-[18px]">download</span>
+                        Download Receipt
+                    </button>
+</div>
+<!-- Due Term -->
+<div class="glass-card min-w-[280px] p-sm rounded-xl space-y-md border-primary/30 relative overflow-hidden">
+<div class="absolute -right-4 -top-4 w-24 h-24 bg-primary/10 blur-3xl"></div>
+<div class="flex justify-between items-start">
+<span class="bg-amber-500/20 text-amber-400 px-xs py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">⚠️ DUE</span>
+<span class="text-on-surface-variant/50 font-label-md text-label-md">Term 2</span>
+</div>
+<div>
+<p class="font-headline-lg-mobile text-headline-lg-mobile font-bold">₹18,000</p>
+<p class="text-amber-400/80 text-body-sm font-body-sm">Due by Jan 15, 2025</p>
+</div>
+<button class="w-full py-xs bg-primary-container text-white rounded-lg text-body-sm font-bold neumorphic-button flex items-center justify-center gap-xs" onclick="document.getElementById('payment-modal').classList.remove('hidden')">
+<span class="material-symbols-outlined text-[18px]">payments</span>
+                        Pay Now
+                    </button>
+</div>
+<!-- Upcoming Term -->
+<div class="glass-card min-w-[280px] p-sm rounded-xl space-y-md opacity-60">
+<div class="flex justify-between items-start">
+<span class="bg-on-surface-variant/20 text-on-surface-variant px-xs py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">🔒 UPCOMING</span>
+<span class="text-on-surface-variant/50 font-label-md text-label-md">Term 3</span>
+</div>
+<div>
+<p class="font-headline-lg-mobile text-headline-lg-mobile font-bold">₹18,000</p>
+<p class="text-on-surface-variant text-body-sm font-body-sm">Opening April 2025</p>
+</div>
+<div class="h-[34px] flex items-center justify-center text-on-surface-variant/40 italic text-body-sm">
+                        Unavailable
+                    </div>
+</div>
+</div>
+</section>
+<!-- Fee Structure Accordion -->
+<section class="space-y-sm">
+<h2 class="font-headline-md-mobile text-headline-md-mobile text-primary px-1">Fee Breakdown</h2>
+<div class="glass-card rounded-xl overflow-hidden divide-y divide-white/5">
+<div class="p-sm flex justify-between items-center bg-white/5">
+<span class="font-semibold">Academic Year 2025-26</span>
+<span class="material-symbols-outlined text-primary">expand_more</span>
+</div>
+<div class="p-sm space-y-xs">
+<div class="flex justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant">Tuition Fee</span>
+<span class="font-medium">₹12,000</span>
+</div>
+<div class="flex justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant">Transport</span>
+<span class="font-medium">₹3,500</span>
+</div>
+<div class="flex justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant">Activity Fee</span>
+<span class="font-medium">₹2,500</span>
+</div>
+<div class="flex justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant">Exam Fee</span>
+<span class="font-medium">₹500</span>
+</div>
+<div class="flex justify-between text-body-sm font-body-sm">
+<span class="text-on-surface-variant">Library Fee</span>
+<span class="font-medium">₹500</span>
+</div>
+<div class="pt-sm mt-sm border-t border-white/10 flex justify-between">
+<span class="font-bold text-primary">Total Amount</span>
+<span class="font-bold text-primary">₹18,000</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Insights / Visual Aid Section -->
+<section class="grid grid-cols-2 gap-sm">
+<div class="glass-card p-sm rounded-xl flex flex-col items-center justify-center text-center space-y-xs">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">history</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant">Payment History</p>
+<p class="font-bold">4 Records</p>
+</div>
+<div class="glass-card p-sm rounded-xl flex flex-col items-center justify-center text-center space-y-xs">
+<div class="w-12 h-12 rounded-full bg-secondary-container/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">savings</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant">Scholarship Applied</p>
+<p class="font-bold">15% Off</p>
+</div>
+</section>
+</main>
+<!-- Payment Overlay / Modal -->
+<div class="hidden fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm p-sm" id="payment-modal">
+<div class="glass-card w-full max-w-md rounded-t-3xl sm:rounded-3xl p-lg space-y-lg relative animate-in slide-in-from-bottom duration-300">
+<button class="absolute right-4 top-4 text-on-surface-variant hover:text-white" onclick="document.getElementById('payment-modal').classList.add('hidden')">
+<span class="material-symbols-outlined">close</span>
+</button>
+<div class="text-center space-y-xs">
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-primary">Complete Payment</h3>
+<p class="text-on-surface-variant font-body-sm">Term 2 Fee for Vamshi</p>
+<div class="text-[32px] font-bold text-white mt-sm">₹18,000</div>
+</div>
+<div class="space-y-sm">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest px-1">Select Payment Method</p>
+<!-- UPI -->
+<label class="glass-card flex items-center gap-md p-sm rounded-xl cursor-pointer hover:border-primary/50 transition-all active:scale-95 group">
+<input class="accent-primary w-5 h-5" name="payment" type="radio"/>
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+</div>
+<div>
+<p class="font-semibold">UPI</p>
+<p class="text-[10px] text-on-surface-variant">Google Pay, PhonePe, BHIM</p>
+</div>
+</div>
+</label>
+<!-- Cards -->
+<label class="glass-card flex items-center gap-md p-sm rounded-xl cursor-pointer hover:border-primary/50 transition-all active:scale-95 group">
+<input class="accent-primary w-5 h-5" name="payment" type="radio"/>
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary">credit_card</span>
+</div>
+<div>
+<p class="font-semibold">Debit/Credit Card</p>
+<p class="text-[10px] text-on-surface-variant">Visa, Mastercard, RuPay</p>
+</div>
+</div>
+</label>
+<!-- Net Banking -->
+<label class="glass-card flex items-center gap-md p-sm rounded-xl cursor-pointer hover:border-primary/50 transition-all active:scale-95 group">
+<input class="accent-primary w-5 h-5" name="payment" type="radio"/>
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary">account_balance</span>
+</div>
+<div>
+<p class="font-semibold">Net Banking</p>
+<p class="text-[10px] text-on-surface-variant">All major Indian banks</p>
+</div>
+</div>
+</label>
+</div>
+<button class="w-full py-md bg-primary text-white rounded-xl font-bold neumorphic-button text-lg flex items-center justify-center gap-sm">
+                Pay ₹18,000
+                <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<p class="text-center text-[10px] text-on-surface-variant/50">
+                Secured by 256-bit SSL encryption
+            </p>
+</div>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-6 left-0 right-0 mx-auto w-[92%] max-w-md z-50 flex justify-around items-center py-xs px-sm backdrop-blur-[30px] border border-white/15 bg-surface/10 rounded-full shadow-[0_0_24px_rgba(244,63,94,0.2)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md mt-1">Academics</span>
+</a>
+<!-- Active State: Fees -->
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-full px-4 py-1 shadow-[0_0_12px_rgba(244,63,94,0.4)] scale-95 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-label-md text-label-md mt-0.5">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">directions_bus</span>
+<span class="font-label-md text-label-md mt-1">Bus</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-md text-label-md mt-1">Messages</span>
+</a>
+</nav>
+<!-- Micro-interactions Script -->
+<script>
+        // Simple script to handle modal backdrop close
+        window.onclick = function(event) {
+            const modal = document.getElementById('payment-modal');
+            if (event.target == modal) {
+                modal.classList.add('hidden');
+            }
+        }
+    </script>
+</body></html>

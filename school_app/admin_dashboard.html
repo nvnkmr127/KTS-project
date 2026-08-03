@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduVision Admin - Operational Efficiency</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#081c32",
+                    "background": "#121414",
+                    "on-tertiary-fixed-variant": "#204f3f",
+                    "on-secondary-container": "#a4b6d3",
+                    "inverse-primary": "#006b55",
+                    "on-primary-fixed": "#002118",
+                    "secondary-container": "#364860",
+                    "on-surface": "#e2e2e2",
+                    "on-tertiary-container": "#255343",
+                    "surface-container-lowest": "#0c0f0f",
+                    "primary-fixed-dim": "#28dfb5",
+                    "secondary-fixed": "#d2e4ff",
+                    "on-surface-variant": "#bacac2",
+                    "on-primary-container": "#005643",
+                    "secondary-fixed-dim": "#b5c8e5",
+                    "surface-tint": "#28dfb5",
+                    "secondary": "#b5c8e5",
+                    "surface": "#121414",
+                    "primary": "#46f1c5",
+                    "tertiary-container": "#95c6b1",
+                    "on-tertiary": "#033829",
+                    "inverse-on-surface": "#2f3131",
+                    "inverse-surface": "#e2e2e2",
+                    "outline-variant": "#3b4a44",
+                    "error-container": "#93000a",
+                    "on-error-container": "#ffdad6",
+                    "on-secondary": "#1f3148",
+                    "outline": "#85948d",
+                    "on-error": "#690005",
+                    "on-primary-fixed-variant": "#00513f",
+                    "on-tertiary-fixed": "#002117",
+                    "primary-fixed": "#55fcd0",
+                    "surface-container-low": "#1a1c1c",
+                    "on-secondary-fixed-variant": "#364860",
+                    "on-primary": "#00382b",
+                    "surface-dim": "#121414",
+                    "surface-bright": "#37393a",
+                    "tertiary-fixed": "#bbedd7",
+                    "tertiary": "#b0e2cc",
+                    "surface-variant": "#333535",
+                    "surface-container-highest": "#333535",
+                    "surface-container-high": "#282a2b",
+                    "error": "#ffb4ab",
+                    "primary-container": "#00d4aa",
+                    "tertiary-fixed-dim": "#a0d1bc",
+                    "on-background": "#e2e2e2",
+                    "surface-container": "#1e2020"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "glass-margin": "12px",
+                    "stack-gap-lg": "24px",
+                    "container-padding": "20px",
+                    "stack-gap-sm": "8px",
+                    "stack-gap-md": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "label-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "stats-display": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-md": ["22px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-lg": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "label-md": ["11px", {"lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "stats-display": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background: linear-gradient(180deg, #0d2a24 0%, #121414 100%);
+            min-height: 100vh;
+            color: #e2e2e2;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .emerald-glow {
+            box-shadow: 0 0 24px rgba(0, 212, 170, 0.25);
+        }
+
+        .neumorphic-button {
+            background: rgba(255, 255, 255, 0.05);
+            box-shadow: 4px 4px 8px rgba(0,0,0,0.3), -2px -2px 6px rgba(255,255,255,0.05);
+            transition: all 0.2s ease;
+        }
+
+        .neumorphic-button:active {
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5), inset -1px -1px 3px rgba(255,255,255,0.05);
+            transform: scale(0.98);
+        }
+
+        .emerald-button {
+            background: #00D4AA;
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.4);
+            color: #002118;
+        }
+
+        @keyframes pulse-emerald {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+
+        .glow-pulse {
+            animation: pulse-emerald 3s infinite ease-in-out;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md pb-32">
+<!-- Top App Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-padding h-16 bg-surface/60 backdrop-blur-[20px] border-b border-white/15 shadow-xl">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-primary/30">
+<img alt="Staff Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a female administrative officer in her early 30s, smiling warmly. She is wearing a modern professional blazer, set against a blurred educational office background with soft cinematic lighting. The aesthetic is clean, high-end, and authoritative, matching the emerald and dark teal color scheme of the app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXcPe5GzIRMxGZ6KB-bai-iNElhhBr-vqS2XuitV5665F7_4wqrbBe8ntl9gymbRkqPKdSjX-kksZETOaLN6AWNsL0jSdWO9jsuspN7opZtPJ4Zn3VKifVBi_8CFbh65nnxyL6t_hQHr8NZSHpomSqSkd-TcqyXCZaQkG4jHiojQmISaccbD2NcuI00N5KcQ50C4GfF6a7EoDvrHBAXvvzkq8RCzrBf72TuoMrYTjo8k3ehJbS0jN7-BGytmiurYFATmAw4AbjRcOQ"/>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md-mobile text-on-surface font-bold tracking-tight">Admin Panel</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary text-2xl hover:bg-white/10 p-2 rounded-full transition-colors">search</button>
+</div>
+</header>
+<main class="mt-20 px-container-padding space-y-stack-gap-lg">
+<!-- Greeting Section -->
+<section class="space-y-1">
+<h2 class="font-headline-lg text-headline-lg-mobile text-on-surface">Welcome, Sarah</h2>
+<p class="font-body-md text-on-surface-variant">Good morning! Here's the overview for today.</p>
+</section>
+<!-- Stats Grid -->
+<section class="grid grid-cols-2 gap-stack-gap-md">
+<!-- Students Enrolled -->
+<div class="glass-panel emerald-glow rounded-xl p-4 flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-lg text-on-surface-variant">STUDENTS</span>
+<span class="material-symbols-outlined text-primary text-xl">group</span>
+</div>
+<div>
+<div class="font-stats-display text-primary">1248</div>
+<div class="w-full h-1 bg-white/10 rounded-full mt-2 overflow-hidden">
+<div class="h-full bg-primary w-3/4 rounded-full"></div>
+</div>
+</div>
+</div>
+<!-- Fee Due -->
+<div class="glass-panel rounded-xl p-4 flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-lg text-on-surface-variant">FEES DUE</span>
+<span class="material-symbols-outlined text-primary text-xl">payments</span>
+</div>
+<div>
+<div class="font-stats-display text-on-surface">₹2.3L</div>
+<div class="flex items-center gap-1 text-[10px] text-primary mt-1">
+<span class="material-symbols-outlined text-[12px]">trending_up</span>
+<span>12% vs last month</span>
+</div>
+</div>
+</div>
+<!-- Pending Leaves -->
+<div class="glass-panel rounded-xl p-4 flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-lg text-on-surface-variant">LEAVES</span>
+<span class="material-symbols-outlined text-primary text-xl">event_busy</span>
+</div>
+<div>
+<div class="font-stats-display text-on-surface">5</div>
+<span class="font-label-md text-on-surface-variant">Awaiting Approval</span>
+</div>
+</div>
+<!-- Active Bus Routes -->
+<div class="glass-panel rounded-xl p-4 flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="font-label-lg text-on-surface-variant">BUS ROUTES</span>
+<span class="material-symbols-outlined text-primary text-xl">directions_bus</span>
+</div>
+<div>
+<div class="font-stats-display text-on-surface">8</div>
+<div class="flex items-center gap-1 text-[10px] text-primary mt-1">
+<span class="w-2 h-2 rounded-full bg-primary glow-pulse"></span>
+<span>All on track</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Quick Actions -->
+<section class="space-y-stack-gap-md">
+<h3 class="font-label-lg text-on-surface-variant px-1">QUICK ACTIONS</h3>
+<div class="grid grid-cols-4 gap-stack-gap-sm">
+<button class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-2xl glass-panel neumorphic-button flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">person_search</span>
+</div>
+<span class="text-[10px] text-center leading-tight">Student Profiles</span>
+</button>
+<button class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-2xl glass-panel neumorphic-button flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">account_balance_wallet</span>
+</div>
+<span class="text-[10px] text-center leading-tight">Fee Collection</span>
+</button>
+<button class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-2xl glass-panel neumorphic-button flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">calendar_add_on</span>
+</div>
+<span class="text-[10px] text-center leading-tight">Timetable Builder</span>
+</button>
+<button class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-2xl glass-panel neumorphic-button flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">description</span>
+</div>
+<span class="text-[10px] text-center leading-tight">Exam Schedule</span>
+</button>
+<button class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-2xl glass-panel neumorphic-button flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">how_to_reg</span>
+</div>
+<span class="text-[10px] text-center leading-tight">Staff Attendance</span>
+</button>
+<button class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-2xl glass-panel neumorphic-button flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">swap_horiz</span>
+</div>
+<span class="text-[10px] text-center leading-tight">Substitution Assign</span>
+</button>
+<button class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-2xl glass-panel neumorphic-button flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">campaign</span>
+</div>
+<span class="text-[10px] text-center leading-tight">Circulars</span>
+</button>
+<button class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 rounded-2xl glass-panel neumorphic-button flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-2xl">record_voice_over</span>
+</div>
+<span class="text-[10px] text-center leading-tight">Enquiry Leads</span>
+</button>
+</div>
+</section>
+<!-- Pending Tasks - Fee Defaulters -->
+<section class="space-y-stack-gap-md">
+<div class="flex justify-between items-center px-1">
+<h3 class="font-label-lg text-on-surface-variant">FEE DEFAULTERS</h3>
+<button class="text-primary text-[11px] font-bold">VIEW ALL</button>
+</div>
+<div class="glass-panel rounded-2xl divide-y divide-white/5 overflow-hidden">
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center font-bold text-primary">AG</div>
+<div>
+<div class="font-body-md font-semibold">Aman Gupta <span class="text-on-surface-variant font-normal text-xs">(10-A)</span></div>
+<div class="text-error text-xs font-medium">₹4,500 overdue</div>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full neumorphic-button flex items-center justify-center">
+<img alt="WhatsApp" class="w-5 h-5 opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDe546UN_DNAB80Q5jhkMpBYaRrb5WydjvKb8CeCgihsMW_PGhbhQEP742A3xFUVUFpV6YMgau7zq5btGt76vbCOyACYuR8lh0shJEHhWjIYACzSrkkgix69rLUXHQQqmkhbnl8msNb6MQZNOtB2r3ONgPpE25wuBgITsMPIkCOTk2luma32D9HLPJLNXIMYnfX3E36BTbdVhlN2ev0Lk_J2Ht99EgvGVvDD_rDNwna54pY1__3Co9EbACT7IMiTgZ7eWjPI2yhA4ZK"/>
+</button>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center font-bold text-primary">RS</div>
+<div>
+<div class="font-body-md font-semibold">Riya Sen <span class="text-on-surface-variant font-normal text-xs">(8-B)</span></div>
+<div class="text-error text-xs font-medium">₹1,200 overdue</div>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full neumorphic-button flex items-center justify-center">
+<img alt="WhatsApp" class="w-5 h-5 opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdFajRxrRr4YxkfHui2nP-acKCtQt5pbDXjfkjedWjGHicXHqRVfhoy64UqtTrUI0A5ik6f5nI01lIU6D6tt9V4vxUp1RIgFVk0ZOWzQSwSu_EFsTybtla2Ep_fdJh1inEjjQ3lC8sdmG6DZ1xuL19Vkw2mkAa9uswEGbZQQsllHQAW49O5R26jw-6vgPZHkpTe-z5kKZFHM-mldiQcr3Bn7C3VJT1gKYr52Wx-eyDWzAJ2y9bjZQinvzNXs97Uk4qisZ43rIcyy0x"/>
+</button>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center font-bold text-primary">KP</div>
+<div>
+<div class="font-body-md font-semibold">Kevin Peters <span class="text-on-surface-variant font-normal text-xs">(12-C)</span></div>
+<div class="text-error text-xs font-medium">₹8,900 overdue</div>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full neumorphic-button flex items-center justify-center">
+<img alt="WhatsApp" class="w-5 h-5 opacity-80" src="https://lh3.googleusercontent.com/aida-public/AB6AXuANWLwpuBvIp-dm2Jb_LLQwCVWHBYq3qjR98qUwdHnKVR6cRbIcXqjIaFkBZ80_AbVZm68GNB0jWfLLIq6aAYbDlhqd9FIEWsC5UDs823HrUSSZAqYUrnSr30IbCFxL60s3fmPCT_xyBx1mfCPM4d6jyuk4iPxZUulg4y6qgV0b74c6wiHrXcKBe_aNRv4YM_EV2vhgHYoZMzz6PNPXytO6IaGpbtAY7WWMgvSdHLgfUoEwEWQ_U7wrtKviyhL1SxvSq8fCxSTDJjSi"/>
+</button>
+</div>
+</div>
+</section>
+<!-- Leave Requests -->
+<section class="space-y-stack-gap-md">
+<div class="flex justify-between items-center px-1">
+<h3 class="font-label-lg text-on-surface-variant">LEAVE REQUESTS</h3>
+</div>
+<div class="space-y-3">
+<div class="glass-panel p-4 rounded-2xl flex items-center justify-between border-l-4 border-l-primary-container">
+<div>
+<div class="font-body-md font-semibold">Mrs. Anita Sharma</div>
+<div class="text-xs text-on-surface-variant">Sick Leave • 24 Oct - 26 Oct</div>
+</div>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full bg-error/20 text-error flex items-center justify-center transition-transform active:scale-90">
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center transition-transform active:scale-90">
+<span class="material-symbols-outlined text-sm">check</span>
+</button>
+</div>
+</div>
+<div class="glass-panel p-4 rounded-2xl flex items-center justify-between border-l-4 border-l-primary-container">
+<div>
+<div class="font-body-md font-semibold">Mr. Rajesh Kumar</div>
+<div class="text-xs text-on-surface-variant">Casual Leave • 25 Oct</div>
+</div>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full bg-error/20 text-error flex items-center justify-center transition-transform active:scale-90">
+<span class="material-symbols-outlined text-sm">close</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center transition-transform active:scale-90">
+<span class="material-symbols-outlined text-sm">check</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface/60 backdrop-blur-[20px] rounded-t-xl border-t border-white/15 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full px-4 py-1 shadow-[0_0_24px_rgba(0,212,170,0.4)] scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">Students</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-md text-label-md">Schedule</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<div class="relative">
+<span class="material-symbols-outlined">chat</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-primary-container rounded-full"></span>
+</div>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for buttons
+        document.querySelectorAll('.neumorphic-button').forEach(button => {
+            button.addEventListener('touchstart', function() {
+                this.classList.add('scale-95');
+            });
+            button.addEventListener('touchend', function() {
+                this.classList.remove('scale-95');
+            });
+        });
+
+        // Simple animation for numbers (Optional micro-interaction)
+        function animateValue(obj, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // Delay start of number animation for a high-end feel
+        setTimeout(() => {
+            const studentCount = document.querySelector('.font-stats-display');
+            if(studentCount && studentCount.innerText === "1248") {
+                animateValue(studentCount, 1200, 1248, 1500);
+            }
+        }, 500);
+    </script>
+</body></html>

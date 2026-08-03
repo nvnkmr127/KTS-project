@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Faculty Showcase | EduVision</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #101415;
+            color: #e0e3e5;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            box-shadow: 0 0 24px rgba(123, 208, 255, 0.4);
+            transform: translateY(-4px);
+            border-color: #8ed5ff;
+        }
+        .glow-pulse {
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 12px rgba(123, 208, 255, 0.2); }
+            50% { box-shadow: 0 0 24px rgba(123, 208, 255, 0.5); }
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#d7e3fc",
+                      "error": "#ffb4ab",
+                      "surface-container-highest": "#323537",
+                      "on-primary-container": "#004965",
+                      "error-container": "#93000a",
+                      "on-secondary-container": "#a1bae1",
+                      "on-primary-fixed": "#001e2c",
+                      "primary-fixed-dim": "#7bd0ff",
+                      "secondary-container": "#314a6c",
+                      "primary-fixed": "#c4e7ff",
+                      "background": "#101415",
+                      "surface-container-lowest": "#0b0f10",
+                      "tertiary": "#c2cde6",
+                      "on-primary-fixed-variant": "#004c69",
+                      "on-primary": "#00354a",
+                      "on-secondary-fixed-variant": "#2f4869",
+                      "on-secondary-fixed": "#001c3a",
+                      "inverse-surface": "#e0e3e5",
+                      "surface": "#101415",
+                      "on-tertiary-fixed": "#101c2e",
+                      "inverse-primary": "#00668a",
+                      "on-error-container": "#ffdad6",
+                      "primary-container": "#38bdf8",
+                      "surface-container": "#1d2022",
+                      "outline": "#87929a",
+                      "outline-variant": "#3e484f",
+                      "on-tertiary-fixed-variant": "#3c475b",
+                      "on-tertiary-container": "#394459",
+                      "secondary-fixed-dim": "#afc8f0",
+                      "secondary-fixed": "#d4e3ff",
+                      "surface-container-low": "#191c1e",
+                      "surface-bright": "#363a3b",
+                      "secondary": "#afc8f0",
+                      "tertiary-container": "#a6b2ca",
+                      "inverse-on-surface": "#2d3133",
+                      "primary": "#8ed5ff",
+                      "on-surface": "#e0e3e5",
+                      "tertiary-fixed-dim": "#bbc7df",
+                      "surface-variant": "#323537",
+                      "on-tertiary": "#253144",
+                      "surface-dim": "#101415",
+                      "on-secondary": "#173151",
+                      "on-background": "#e0e3e5",
+                      "on-surface-variant": "#bdc8d1",
+                      "surface-container-high": "#272a2c",
+                      "surface-tint": "#7bd0ff",
+                      "on-error": "#690005"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "margin-desktop": "64px",
+                      "gutter": "24px",
+                      "unit": "8px",
+                      "margin-mobile": "20px",
+                      "section-gap": "120px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Plus Jakarta Sans"],
+                      "label-md": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "body-sm": ["Inter"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"],
+                      "headline-sm": ["Plus Jakarta Sans"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-lg": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "display-lg": ["56px", {"lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                      "headline-sm": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- Background Shader -->
+
+<!-- TopAppBar from JSON -->
+<header class="fixed top-0 w-full bg-white/12 backdrop-blur-[20px] border-b border-white/20 z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-3xl">school</span>
+<span class="font-display-lg text-headline-sm font-bold text-on-surface">EduVision</span>
+</div>
+<nav class="hidden md:flex gap-8">
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Courses</a>
+<a class="font-label-lg text-primary font-bold" href="#">Faculty</a>
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Admissions</a>
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">About</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary hover:scale-110 transition-transform">contact_support</button>
+<button class="bg-primary text-on-primary-fixed px-6 py-2 rounded-full font-label-lg hover:shadow-[0_0_24px_rgba(123,208,255,0.4)] transition-all">Portal</button>
+</div>
+</header>
+<main class="pt-32 pb-40 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+<!-- Hero Section -->
+<section class="mb-section-gap text-center">
+<h1 class="font-display-lg text-headline-lg-mobile md:text-display-lg mb-6 text-on-surface">Meet the <span class="text-primary">Visionaries</span></h1>
+<p class="font-body-lg text-on-surface-variant max-w-2xl mx-auto">Our world-class faculty members combine academic excellence with deep industry experience to guide the next generation of leaders.</p>
+</section>
+<!-- Department Filter Chips -->
+<section class="mb-12">
+<div class="flex flex-wrap justify-center gap-4">
+<button class="px-6 py-2 rounded-full glass-card text-primary border-primary font-label-lg shadow-[0_0_12px_rgba(123,208,255,0.3)]">All Departments</button>
+<button class="px-6 py-2 rounded-full glass-card text-on-surface-variant font-label-lg hover:text-primary">Sciences</button>
+<button class="px-6 py-2 rounded-full glass-card text-on-surface-variant font-label-lg hover:text-primary">Humanities</button>
+<button class="px-6 py-2 rounded-full glass-card text-on-surface-variant font-label-lg hover:text-primary">Engineering</button>
+<button class="px-6 py-2 rounded-full glass-card text-on-surface-variant font-label-lg hover:text-primary">Design</button>
+<button class="px-6 py-2 rounded-full glass-card text-on-surface-variant font-label-lg hover:text-primary">Business</button>
+</div>
+</section>
+<!-- Faculty Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Faculty Member 1 -->
+<div class="glass-card p-8 rounded-[24px] text-center flex flex-col items-center group">
+<div class="relative mb-6">
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity"></div>
+<img alt="Dr. Sarah Jenkins" class="w-32 h-32 rounded-full object-cover border-2 border-primary/40 relative z-10" data-alt="A professional headshot of a middle-aged female professor with a confident smile, wearing a professional blazer. She is set against a blurred academic background with cool-toned lighting, reflecting a premium Midnight Navy and Sky Blue institutional aesthetic. High contrast, sharp focus, editorial photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgLMF7kKCQOINwGCptlsid4XVzIJeE9lpseMUas9wyYR6mTEp6twKJKwWKCZi_Xm7VU43G5nvYneTmGBC0GaC2Ku8VW6md1jdhdVPgYTU_zX8oPKK7C9vYKpk2yKAsZDIS_cSKVnrIQoecH0QDfwohseAd7w5zX5-6P2wKzS-DBhwqUpgKv0IxLPR7CNGdPv1iYhSS-b59a1QCCoE1v34DxLtntva3bGY14l-t-0XoV6VlOszMO4kGTrDieo-3bomuvw2FVDhCX1Lr"/>
+</div>
+<h3 class="font-headline-sm text-on-surface mb-1">Dr. Sarah Jenkins</h3>
+<p class="font-label-lg text-primary mb-4">Head of Science</p>
+<div class="space-y-2 mb-6">
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">school</span>
+<span class="font-body-sm">Ph.D in Astrophysics</span>
+</div>
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">history_edu</span>
+<span class="font-body-sm">15+ Years Experience</span>
+</div>
+</div>
+<button class="mt-auto font-label-lg text-primary border border-primary/30 px-6 py-2 rounded-full hover:bg-primary hover:text-on-primary-fixed transition-all">View Research</button>
+</div>
+<!-- Faculty Member 2 -->
+<div class="glass-card p-8 rounded-[24px] text-center flex flex-col items-center group">
+<div class="relative mb-6">
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity"></div>
+<img alt="Prof. David Chen" class="w-32 h-32 rounded-full object-cover border-2 border-primary/40 relative z-10" data-alt="Close-up portrait of a senior male professor with grey hair and glasses, projecting wisdom and authority. The lighting is dramatic with soft blue rim light against a dark, atmospheric navy background. Professional scholarly portraiture with high detail and visionary mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmN2Z_SmkrCLQLcas1U2Q9pDL7uTa0sdz6brm3obLPsA3dYdAavs49CBLJ2RVzsJtuc7946QRGKKE9URm_PCu5-r--F74K4nt95u-tYHWtuu5pcePJpizQDwOQ8u-1C7jNs69nzf3T0KU7cV9fXcnbXTmOeKO_nhltSCaYNoah-l7VLyE-f3TMRNLDY5SbmddBotIvMfOKbkJjauouszfnwUa1DJmfdf_TG0_yRYlvBnKkigkuFDStAGqYd3-nBC1A492aQNZsqhzD"/>
+</div>
+<h3 class="font-headline-sm text-on-surface mb-1">Prof. David Chen</h3>
+<p class="font-label-lg text-primary mb-4">Lead Quantitative Researcher</p>
+<div class="space-y-2 mb-6">
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">school</span>
+<span class="font-body-sm">Ph.D in Applied Mathematics</span>
+</div>
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">history_edu</span>
+<span class="font-body-sm">22+ Years Experience</span>
+</div>
+</div>
+<button class="mt-auto font-label-lg text-primary border border-primary/30 px-6 py-2 rounded-full hover:bg-primary hover:text-on-primary-fixed transition-all">View Research</button>
+</div>
+<!-- Faculty Member 3 -->
+<div class="glass-card p-8 rounded-[24px] text-center flex flex-col items-center group">
+<div class="relative mb-6">
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity"></div>
+<img alt="Ms. Elena Rodriguez" class="w-32 h-32 rounded-full object-cover border-2 border-primary/40 relative z-10" data-alt="A portrait of a young, innovative female design professor with a creative aura. She is wearing modern apparel and has a friendly expression. The scene is lit with ethereal sky-blue lighting that highlights her features against an immersive dark navy environment. Cinematic and visionary vibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCETrkOtbrWqxfoot50KfYxkpbPrgKCHv4EWXsXcnaWw-y188f2kNX37I9b7TnccaW8S0MyqMst9o_PQxsCD5yJoZv_4vtbPooR70CjT1PnpMNjfK7dZY-7ltMJca5j18CawpRLkJDyOu5qNRVAY4yAp7ThvxTNz1QyZAYAU2rgLy-MKntoC-weSNEtINKXqsYvHAa9qx63CNrSqsMNwOGtr-wm-_woLRDTqr-XWy8pjNLL1gpFvlcJpTFwHNfV8Wo0gs8e76dNF0yI"/>
+</div>
+<h3 class="font-headline-sm text-on-surface mb-1">Elena Rodriguez</h3>
+<p class="font-label-lg text-primary mb-4">Senior Design Architect</p>
+<div class="space-y-2 mb-6">
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">school</span>
+<span class="font-body-sm">M.Arch from Harvard GSD</span>
+</div>
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">history_edu</span>
+<span class="font-body-sm">12+ Years Experience</span>
+</div>
+</div>
+<button class="mt-auto font-label-lg text-primary border border-primary/30 px-6 py-2 rounded-full hover:bg-primary hover:text-on-primary-fixed transition-all">View Research</button>
+</div>
+<!-- Faculty Member 4 -->
+<div class="glass-card p-8 rounded-[24px] text-center flex flex-col items-center group">
+<div class="relative mb-6">
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity"></div>
+<img alt="Dr. Robert Vance" class="w-32 h-32 rounded-full object-cover border-2 border-primary/40 relative z-10" data-alt="Middle-aged male business professor in a crisp white shirt and navy vest, looking engaged and professional. Soft ambient lighting in a high-end corporate campus lounge. The image follows a cool-toned institutional aesthetic with deep navy shadows and bright sky-blue highlights. Clear, high-definition photography." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSxRUcRuHyMela1NpdKa6hFIlpFfs3Q6K02v23mgULo2zJBDqVlMEiK07H_gSN2Cu1jCG4XXmyPScTjOrjkJCvG4k-VU9QfZdUiok2D0-KP4FtwHD15MovOV0odIKFYJ25DMNzKpyyGNYJ99wx5Ar6Y_1c_N9SC0rw2dQQkKsY0IUCkcrDPHB0Y9wZ-GdfLMPjkMxi-4S1qfj2R0LEy4zyEBcVSfcRg8Q5BSAV4riQRQsOSxkDaannFII2HCWkMIiH10l9r1vGl6jA"/>
+</div>
+<h3 class="font-headline-sm text-on-surface mb-1">Dr. Robert Vance</h3>
+<p class="font-label-lg text-primary mb-4">Director of Economics</p>
+<div class="space-y-2 mb-6">
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">school</span>
+<span class="font-body-sm">Ph.D in Global Economics</span>
+</div>
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">history_edu</span>
+<span class="font-body-sm">18+ Years Experience</span>
+</div>
+</div>
+<button class="mt-auto font-label-lg text-primary border border-primary/30 px-6 py-2 rounded-full hover:bg-primary hover:text-on-primary-fixed transition-all">View Research</button>
+</div>
+<!-- Faculty Member 5 -->
+<div class="glass-card p-8 rounded-[24px] text-center flex flex-col items-center group">
+<div class="relative mb-6">
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity"></div>
+<img alt="Dr. Amelia Thorne" class="w-32 h-32 rounded-full object-cover border-2 border-primary/40 relative z-10" data-alt="A refined female professor of literature with an intellectual gaze. Photographed in a library with soft focus on books in the background. The color palette is grounded in deep midnight navy with ethereal light blue accents. Premium academic portraiture, visionary and trustworthy feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBzah9qLyA7Q6eup5IcL9apOALyGP0mQJCcah-Vt-LbrT6EEz7YLmRsmBZ8aHd_oEEMyj8hdrA3f60PzkpbKiXl52N_cJbVet_FlhS1SLet87QZAQsm-JGD52yhs0jvDYpbGMVTqFDLfV6KJPub66WzEupaI964HBTot0v7KzjEdHtHCsxQ55HFwkOxXWfxGhT1vktnS5oCOIBu4LYSkDnQq4yMpT3TiOPGR94ROMfKkLWuLUAS80vg-4-EKmOdvkUXrp1kZ0bURmL"/>
+</div>
+<h3 class="font-headline-sm text-on-surface mb-1">Dr. Amelia Thorne</h3>
+<p class="font-label-lg text-primary mb-4">Head of Humanities</p>
+<div class="space-y-2 mb-6">
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">school</span>
+<span class="font-body-sm">Ph.D in Literature</span>
+</div>
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">history_edu</span>
+<span class="font-body-sm">20+ Years Experience</span>
+</div>
+</div>
+<button class="mt-auto font-label-lg text-primary border border-primary/30 px-6 py-2 rounded-full hover:bg-primary hover:text-on-primary-fixed transition-all">View Research</button>
+</div>
+<!-- Faculty Member 6 -->
+<div class="glass-card p-8 rounded-[24px] text-center flex flex-col items-center group">
+<div class="relative mb-6">
+<div class="absolute inset-0 bg-primary opacity-0 group-hover:opacity-20 blur-xl rounded-full transition-opacity"></div>
+<img alt="Marcus Thompson" class="w-32 h-32 rounded-full object-cover border-2 border-primary/40 relative z-10" data-alt="Dynamic portrait of a male computer science instructor with a tech-savvy appearance. High-key lighting with glowing blue accents that suggest innovation and digital expertise. Immersive dark navy background with clean lines. Professional and accessible, representing futuristic education." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZwtN7l0GsJD76fvA-qp-3OD38v9uB3JwKhHg5y-9TJfSoHX0s1cE9TT3Adu7CW-r9q86eOrgaeOJKhi1elrFKQP4q-oQdgk47nvSjAu52-I47opMJPBYX9qSDixPU2QujYAaomMV5XhDdMxQsXNjDcwQHLM0G2-YLjl_l3a19-mudQFhOdzT7IB42gkF2Mnpu8d0LTIPz9s8T4Q_aT4S9tygod893zNe707ydO2oFs_eUZkNaQbbfY_NpkwZjj5ydOnzMOcJH4DXo"/>
+</div>
+<h3 class="font-headline-sm text-on-surface mb-1">Marcus Thompson</h3>
+<p class="font-label-lg text-primary mb-4">Lead AI Research</p>
+<div class="space-y-2 mb-6">
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">school</span>
+<span class="font-body-sm">M.S. in Machine Learning</span>
+</div>
+<div class="flex items-center justify-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">history_edu</span>
+<span class="font-body-sm">10+ Years Experience</span>
+</div>
+</div>
+<button class="mt-auto font-label-lg text-primary border border-primary/30 px-6 py-2 rounded-full hover:bg-primary hover:text-on-primary-fixed transition-all">View Research</button>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="mt-section-gap glass-card rounded-[32px] p-12 text-center relative overflow-hidden">
+<div class="relative z-10">
+<h2 class="font-display-lg text-headline-md md:text-headline-lg mb-4">Join Our Prestigious <span class="text-primary">Faculty</span></h2>
+<p class="font-body-lg text-on-surface-variant mb-8 max-w-xl mx-auto">We are always looking for visionary educators to join our global campus.</p>
+<button class="bg-primary text-on-primary-fixed px-8 py-3 rounded-full font-label-lg glow-pulse hover:scale-105 transition-all">Submit Application</button>
+</div>
+<div class="absolute -right-20 -bottom-20 w-80 h-80 bg-primary/10 blur-[100px] rounded-full"></div>
+<div class="absolute -left-20 -top-20 w-60 h-60 bg-secondary/10 blur-[100px] rounded-full"></div>
+</section>
+</main>
+<!-- BottomNavBar from JSON -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-center py-6 px-margin-mobile md:px-margin-desktop bg-white/12 backdrop-blur-[20px] border-t border-primary shadow-[0_0_24px_rgba(123,208,255,0.4)]">
+<div class="flex items-center gap-2 cursor-pointer group hover:bg-white/20 px-6 py-2 rounded-full transition-all">
+<span class="font-label-lg text-label-lg text-primary font-bold">Register to unlock attendance, marks &amp; full features →</span>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</div>
+</footer>
+<script>
+        // Micro-interactions for chips
+        document.querySelectorAll('.glass-card button, .glass-card').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('scale-95');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('scale-95');
+            });
+            el.addEventListener('mouseleave', () => {
+                el.classList.remove('scale-95');
+            });
+        });
+
+        // Filter chip logic (visual only)
+        const chips = document.querySelectorAll('.flex.flex-wrap button');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => {
+                    c.classList.remove('text-primary', 'border-primary', 'shadow-[0_0_12px_rgba(123,208,255,0.3)]');
+                    c.classList.add('text-on-surface-variant');
+                });
+                chip.classList.add('text-primary', 'border-primary', 'shadow-[0_0_12px_rgba(123,208,255,0.3)]');
+                chip.classList.remove('text-on-surface-variant');
+            });
+        });
+    </script>
+</body></html>

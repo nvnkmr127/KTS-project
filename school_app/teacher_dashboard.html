@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCommand | Teacher Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@700;800&amp;family=Geist:wght@400;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Inter:wght@100..900&amp;family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neomorph-raised {
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3), -2px -2px 8px rgba(255, 255, 255, 0.05);
+        }
+        .neomorph-inset {
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.4), inset -2px -2px 6px rgba(255, 255, 255, 0.05);
+        }
+        .violet-glow {
+            filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.35));
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                "surface-container-lowest": "#0b0f10",
+                "inverse-surface": "#e0e3e5",
+                "tertiary-fixed": "#eedcff",
+                "on-error": "#690005",
+                "surface-variant": "#323537",
+                "tertiary-fixed-dim": "#d4beec",
+                "on-secondary-fixed": "#1e055a",
+                "on-error-container": "#ffdad6",
+                "surface-container-highest": "#323537",
+                "error-container": "#93000a",
+                "primary-fixed": "#f0dbff",
+                "on-tertiary-fixed-variant": "#503f66",
+                "primary": "#ddb7ff",
+                "on-secondary": "#33226f",
+                "surface-dim": "#101415",
+                "error": "#ffb4ab",
+                "on-surface": "#e0e3e5",
+                "on-tertiary-fixed": "#231437",
+                "inverse-primary": "#842bd2",
+                "background": "#101415",
+                "tertiary-container": "#9c88b4",
+                "outline-variant": "#4d4354",
+                "surface-container-low": "#191c1e",
+                "secondary-fixed": "#e7deff",
+                "secondary-fixed-dim": "#cbbeff",
+                "on-primary": "#490080",
+                "surface-container-high": "#272a2c",
+                "tertiary": "#d4beec",
+                "on-tertiary": "#39294e",
+                "inverse-on-surface": "#2d3133",
+                "on-primary-container": "#400071",
+                "surface-container": "#1d2022",
+                "secondary-container": "#4a3a87",
+                "surface-bright": "#363a3b",
+                "primary-fixed-dim": "#ddb7ff",
+                "surface-tint": "#ddb7ff",
+                "outline": "#988d9f",
+                "surface": "#101415",
+                "on-primary-fixed": "#2c0051",
+                "on-primary-fixed-variant": "#6900b3",
+                "secondary": "#cbbeff",
+                "on-tertiary-container": "#322247",
+                "on-surface-variant": "#cfc2d6",
+                "on-background": "#e0e3e5",
+                "on-secondary-fixed-variant": "#4a3a87",
+                "on-secondary-container": "#baa9ff",
+                "primary-container": "#b76dff"
+              },
+              "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+              },
+              "spacing": {
+                "gutter": "24px",
+                "margin-mobile": "16px",
+                "margin-desktop": "40px",
+                "base": "8px",
+                "max-width": "1440px"
+              },
+              "fontFamily": {
+                "label-sm": ["Geist"],
+                "headline-lg-mobile": ["Plus Jakarta Sans"],
+                "headline-xl": ["Plus Jakarta Sans"],
+                "headline-lg": ["Plus Jakarta Sans"],
+                "body-md": ["Inter"]
+              },
+              "fontSize": {
+                "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen selection:bg-primary/30">
+<!-- Animated Shader Background -->
+
+<!-- Top App Bar -->
+<header class="w-full sticky top-0 z-50 bg-white/10 dark:bg-surface-container/10 backdrop-blur-xl border-b border-white/20 shadow-xl flex items-center justify-between px-margin-mobile py-4">
+<div class="flex items-center gap-3">
+<div class="relative group">
+<img alt="Teacher Profile Portrait" class="w-10 h-10 rounded-full border-2 border-primary shadow-lg transform group-hover:scale-105 transition-transform" data-alt="A professional portrait of an educator in her late 30s with a warm and confident expression. She is wearing a modern teal blazer over a white shirt, set against a blurred, sophisticated office background. The lighting is soft and cinematic, with a high-end commercial feel. The image uses a rich, deep color palette with subtle violet highlights to match a premium glassmorphism UI aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdKwHym5gZeNiLqVVa4ks9Q5UDBk5lEVEiCexqe0r8NepW1O-8ohIF84o_K5nZ7Pd34b-8mD60WoM2E2PZOx4i5QjcMJ-fA9N4ErtGqPy_ncAGWVjDAtnwjEUglBOo8yMrGiXdw9yIGSb76O7YExgmBUplhDw3kCZyayfNNPGjRXosxcp_CuuGW_60jSL1FCfhEaoCDN2SvwRhlxmw_hDpnsWX6iUBJNw2D3WP62SRRhaSM7QyLScstqggjqg-kwr6lZpUjAWNd6px"/>
+<div class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-surface rounded-full"></div>
+</div>
+<div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">Ms. Priya Reddy</h1>
+<p class="text-[10px] font-label-sm uppercase tracking-widest text-on-surface-variant/80">Class Teacher: 8-A</p>
+</div>
+</div>
+<button class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-on-surface-variant hover:bg-white/10 transition-colors active:scale-90">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<main class="relative z-10 px-margin-mobile pt-6 pb-32 space-y-8 max-w-lg mx-auto">
+<!-- Leave Balance Chips -->
+<section class="flex gap-3 overflow-x-auto hide-scrollbar">
+<div class="glass-card px-4 py-2 rounded-full flex items-center gap-2 border-white/10 flex-shrink-0 neomorph-raised">
+<span class="w-2 h-2 rounded-full bg-primary violet-glow"></span>
+<span class="font-label-sm text-label-sm text-on-surface">CL 8</span>
+</div>
+<div class="glass-card px-4 py-2 rounded-full flex items-center gap-2 border-white/10 flex-shrink-0">
+<span class="w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.5)]"></span>
+<span class="font-label-sm text-label-sm text-on-surface">SL 5</span>
+</div>
+<div class="glass-card px-4 py-2 rounded-full flex items-center gap-2 border-white/10 flex-shrink-0">
+<span class="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]"></span>
+<span class="font-label-sm text-label-sm text-on-surface">EL 12</span>
+</div>
+</section>
+<!-- Today's Timetable -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Today's Timetable</h2>
+<span class="font-label-sm text-label-sm text-primary">View All</span>
+</div>
+<div class="flex gap-4 overflow-x-auto pb-4 hide-scrollbar -mx-margin-mobile px-margin-mobile">
+<!-- Period 1 -->
+<div class="glass-card min-w-[160px] p-5 rounded-2xl border-white/20 relative group active:scale-95 transition-transform overflow-hidden">
+<div class="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+<span class="material-symbols-outlined text-4xl">functions</span>
+</div>
+<span class="text-primary font-bold text-lg">P1</span>
+<h3 class="font-headline-lg-mobile text-on-surface mt-1">Maths</h3>
+<div class="mt-4 space-y-1">
+<p class="text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 08:30 AM
+                        </p>
+<p class="text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">meeting_room</span> Room 402
+                        </p>
+</div>
+</div>
+<!-- Period 2 -->
+<div class="glass-card min-w-[160px] p-5 rounded-2xl border-white/20 relative group active:scale-95 transition-transform overflow-hidden border-primary/30 ring-1 ring-primary/20">
+<div class="absolute -top-4 -right-4 w-12 h-12 bg-primary/20 blur-xl"></div>
+<span class="text-primary font-bold text-lg">P2</span>
+<h3 class="font-headline-lg-mobile text-on-surface mt-1">Physics</h3>
+<div class="mt-4 space-y-1">
+<p class="text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 09:20 AM
+                        </p>
+<p class="text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">meeting_room</span> Lab A
+                        </p>
+</div>
+<div class="mt-3">
+<span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase font-bold tracking-tighter">Ongoing</span>
+</div>
+</div>
+<!-- Period 3 -->
+<div class="glass-card min-w-[160px] p-5 rounded-2xl border-white/20 relative group active:scale-95 transition-transform overflow-hidden">
+<span class="text-primary font-bold text-lg">P3</span>
+<h3 class="font-headline-lg-mobile text-on-surface mt-1">English</h3>
+<div class="mt-4 space-y-1">
+<p class="text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span> 10:10 AM
+                        </p>
+<p class="text-xs text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">meeting_room</span> Room 402
+                        </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Action Grid 3x2 -->
+<section class="grid grid-cols-3 gap-4">
+<button class="group flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-2xl glass-card flex items-center justify-center neomorph-raised group-active:neomorph-inset transition-all">
+<span class="material-symbols-outlined text-primary text-3xl transition-transform group-hover:scale-110">fact_check</span>
+</div>
+<span class="text-[11px] font-label-sm text-center text-on-surface-variant leading-tight">Mark Attendance</span>
+</button>
+<button class="group flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-2xl glass-card flex items-center justify-center neomorph-raised group-active:neomorph-inset transition-all">
+<span class="material-symbols-outlined text-primary text-3xl transition-transform group-hover:scale-110">assignment</span>
+</div>
+<span class="text-[11px] font-label-sm text-center text-on-surface-variant leading-tight">Add Homework</span>
+</button>
+<button class="group flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-2xl glass-card flex items-center justify-center neomorph-raised group-active:neomorph-inset transition-all">
+<span class="material-symbols-outlined text-primary text-3xl transition-transform group-hover:scale-110">grade</span>
+</div>
+<span class="text-[11px] font-label-sm text-center text-on-surface-variant leading-tight">Enter Marks</span>
+</button>
+<button class="group flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-2xl glass-card flex items-center justify-center neomorph-raised group-active:neomorph-inset transition-all">
+<span class="material-symbols-outlined text-primary text-3xl transition-transform group-hover:scale-110">upload_file</span>
+</div>
+<span class="text-[11px] font-label-sm text-center text-on-surface-variant leading-tight">Upload Material</span>
+</button>
+<button class="group flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-2xl glass-card flex items-center justify-center neomorph-raised group-active:neomorph-inset transition-all">
+<span class="material-symbols-outlined text-primary text-3xl transition-transform group-hover:scale-110">campaign</span>
+</div>
+<span class="text-[11px] font-label-sm text-center text-on-surface-variant leading-tight">Post Notice</span>
+</button>
+<button class="group flex flex-col items-center gap-2">
+<div class="w-16 h-16 rounded-2xl glass-card flex items-center justify-center neomorph-raised group-active:neomorph-inset transition-all">
+<span class="material-symbols-outlined text-primary text-3xl transition-transform group-hover:scale-110">chat</span>
+</div>
+<span class="text-[11px] font-label-sm text-center text-on-surface-variant leading-tight">Message Parents</span>
+</button>
+</section>
+<!-- Homework to Review -->
+<section class="space-y-4">
+<div class="flex justify-between items-end">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Review Pending</h2>
+<span class="font-label-sm text-label-sm text-on-surface-variant">4 Total</span>
+</div>
+<div class="space-y-3">
+<!-- Card 1 -->
+<div class="glass-card p-4 rounded-2xl border-white/10 flex items-center justify-between hover:bg-white/15 transition-colors">
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<h4 class="font-bold text-on-surface">Quadratic Equations</h4>
+<span class="text-[10px] px-2 py-0.5 rounded bg-error/20 text-error font-bold">URGENT</span>
+</div>
+<p class="text-xs text-on-surface-variant">Class 8-A • Maths</p>
+<div class="flex items-center gap-4 mt-2">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full border border-surface bg-surface-container-high flex items-center justify-center text-[8px] font-bold">AB</div>
+<div class="w-6 h-6 rounded-full border border-surface bg-primary/20 flex items-center justify-center text-[8px] font-bold">MK</div>
+<div class="w-6 h-6 rounded-full border border-surface bg-secondary/20 flex items-center justify-center text-[8px] font-bold">+28</div>
+</div>
+<span class="text-xs font-medium text-primary">32 / 40 Submitted</span>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full glass-card flex items-center justify-center border-white/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary">chevron_right</span>
+</button>
+</div>
+<!-- Card 2 -->
+<div class="glass-card p-4 rounded-2xl border-white/10 flex items-center justify-between hover:bg-white/15 transition-colors">
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<h4 class="font-bold text-on-surface">Newton's Laws</h4>
+<span class="text-[10px] px-2 py-0.5 rounded bg-white/10 text-on-surface-variant font-bold">DUE TODAY</span>
+</div>
+<p class="text-xs text-on-surface-variant">Class 8-B • Physics</p>
+<div class="flex items-center gap-4 mt-2">
+<div class="flex -space-x-2">
+<div class="w-6 h-6 rounded-full border border-surface bg-surface-container-high flex items-center justify-center text-[8px] font-bold">SJ</div>
+<div class="w-6 h-6 rounded-full border border-surface bg-primary/20 flex items-center justify-center text-[8px] font-bold">RP</div>
+<div class="w-6 h-6 rounded-full border border-surface bg-secondary/20 flex items-center justify-center text-[8px] font-bold">+12</div>
+</div>
+<span class="text-xs font-medium text-primary">15 / 38 Submitted</span>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full glass-card flex items-center justify-center border-white/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary">chevron_right</span>
+</button>
+</div>
+<!-- Card 3 -->
+<div class="glass-card p-4 rounded-2xl border-white/10 flex items-center justify-between hover:bg-white/15 transition-colors opacity-80">
+<div class="space-y-1">
+<div class="flex items-center gap-2">
+<h4 class="font-bold text-on-surface">Periodic Table</h4>
+<span class="text-[10px] px-2 py-0.5 rounded bg-white/10 text-on-surface-variant font-bold">DUE MON</span>
+</div>
+<p class="text-xs text-on-surface-variant">Class 7-C • Chemistry</p>
+<div class="flex items-center gap-4 mt-2">
+<span class="text-xs font-medium text-on-surface-variant/60 italic">Review window opens tomorrow</span>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full glass-card flex items-center justify-center border-white/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-primary">lock</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-white/12 dark:bg-surface-container-highest/12 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(168,85,247,0.15)] flex justify-around items-center px-4 py-3 pb-safe rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-primary drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] font-bold bg-white/10 rounded-xl px-3 py-1 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-label-sm text-label-sm">Attendance</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-label-sm text-label-sm">Homework</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">grade</span>
+<span class="font-label-sm text-label-sm">Marks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">event_busy</span>
+<span class="font-label-sm text-label-sm">Leave</span>
+</a>
+</nav>
+<!-- Floating Action Button for Contextual Quick Task -->
+<button class="fixed right-6 bottom-24 w-14 h-14 rounded-2xl bg-primary text-on-primary flex items-center justify-center shadow-2xl shadow-primary/40 hover:scale-110 active:scale-90 transition-all z-40 violet-glow">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+<script>
+        // Micro-interactions for glass cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            });
+        });
+
+        // Simple animation logic for the horizontal scroll
+        const scrollContainer = document.querySelector('.overflow-x-auto');
+        let isDown = false;
+        let startX;
+        let scrollLeft;
+
+        scrollContainer.addEventListener('mousedown', (e) => {
+            isDown = true;
+            startX = e.pageX - scrollContainer.offsetLeft;
+            scrollLeft = scrollContainer.scrollLeft;
+        });
+        scrollContainer.addEventListener('mouseleave', () => {
+            isDown = false;
+        });
+        scrollContainer.addEventListener('mouseup', () => {
+            isDown = false;
+        });
+        scrollContainer.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - scrollContainer.offsetLeft;
+            const walk = (x - startX) * 2;
+            scrollContainer.scrollLeft = scrollLeft - walk;
+        });
+    </script>
+</body></html>

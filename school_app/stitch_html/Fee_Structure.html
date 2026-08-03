@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#d7e3fc",
+                    "error": "#ffb4ab",
+                    "surface-container-highest": "#323537",
+                    "on-primary-container": "#004965",
+                    "error-container": "#93000a",
+                    "on-secondary-container": "#a1bae1",
+                    "on-primary-fixed": "#001e2c",
+                    "primary-fixed-dim": "#7bd0ff",
+                    "secondary-container": "#314a6c",
+                    "primary-fixed": "#c4e7ff",
+                    "background": "#101415",
+                    "surface-container-lowest": "#0b0f10",
+                    "tertiary": "#c2cde6",
+                    "on-primary-fixed-variant": "#004c69",
+                    "on-primary": "#00354a",
+                    "on-secondary-fixed-variant": "#2f4869",
+                    "on-secondary-fixed": "#001c3a",
+                    "inverse-surface": "#e0e3e5",
+                    "surface": "#101415",
+                    "on-tertiary-fixed": "#101c2e",
+                    "inverse-primary": "#00668a",
+                    "on-error-container": "#ffdad6",
+                    "primary-container": "#38bdf8",
+                    "surface-container": "#1d2022",
+                    "outline": "#87929a",
+                    "outline-variant": "#3e484f",
+                    "on-tertiary-fixed-variant": "#3c475b",
+                    "on-tertiary-container": "#394459",
+                    "secondary-fixed-dim": "#afc8f0",
+                    "secondary-fixed": "#d4e3ff",
+                    "surface-container-low": "#191c1e",
+                    "surface-bright": "#363a3b",
+                    "secondary": "#afc8f0",
+                    "tertiary-container": "#a6b2ca",
+                    "inverse-on-surface": "#2d3133",
+                    "primary": "#8ed5ff",
+                    "on-surface": "#e0e3e5",
+                    "tertiary-fixed-dim": "#bbc7df",
+                    "surface-variant": "#323537",
+                    "on-tertiary": "#253144",
+                    "surface-dim": "#101415",
+                    "on-secondary": "#173151",
+                    "on-background": "#e0e3e5",
+                    "on-surface-variant": "#bdc8d1",
+                    "surface-container-high": "#272a2c",
+                    "surface-tint": "#7bd0ff",
+                    "on-error": "#690005"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-max": "1280px",
+                    "margin-desktop": "64px",
+                    "gutter": "24px",
+                    "unit": "8px",
+                    "margin-mobile": "20px",
+                    "section-gap": "120px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "headline-sm": ["Plus Jakarta Sans"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "display-lg": ["56px", {"lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "headline-sm": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #101415;
+            color: #e0e3e5;
+            overflow-x: hidden;
+        }
+        .glass-effect {
+            backdrop-filter: blur(20px);
+            background-color: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .glow-active {
+            box-shadow: 0px 0px 24px rgba(123, 208, 255, 0.4);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #8ed5ff;
+            border-radius: 10px;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full h-20 z-50 bg-white/12 backdrop-blur-[20px] border-b border-white/20 flex justify-between items-center px-margin-mobile md:px-margin-desktop">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-headline-sm" data-icon="school">school</span>
+<h1 class="font-display-lg text-headline-sm font-bold text-on-surface">EduVision</h1>
+</div>
+<div class="flex items-center gap-6">
+<nav class="hidden md:flex gap-8">
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Overview</a>
+<a class="font-label-lg text-primary font-bold transition-colors" href="#">Fee Structure</a>
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Admissions</a>
+</nav>
+<span class="material-symbols-outlined text-primary cursor-pointer active:scale-95 transition-transform" data-icon="contact_support">contact_support</span>
+</div>
+</header>
+<!-- Background Decoration -->
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+<div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-primary/10 blur-[120px]"></div>
+<div class="absolute top-[40%] -right-[5%] w-[30%] h-[30%] rounded-full bg-secondary-container/20 blur-[100px]"></div>
+</div>
+<main class="pt-32 pb-40 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+<!-- Hero Section & Disclaimer -->
+<div class="mb-12 space-y-4">
+<h2 class="font-display-lg text-headline-lg-mobile md:text-display-lg">Annual Fee Structure</h2>
+<p class="font-body-lg text-on-surface-variant max-w-2xl">
+                Transparent investment for a visionary education. Explore our breakdown for the upcoming academic session.
+            </p>
+<div class="glass-effect rounded-xl p-4 flex items-center gap-3 max-w-fit">
+<span class="material-symbols-outlined text-primary" data-icon="info">info</span>
+<span class="font-label-lg text-primary">Indicative only — contact school for exact fees</span>
+</div>
+</div>
+<!-- Fees Bento Grid / Table -->
+<div class="glass-effect rounded-2xl overflow-hidden shadow-2xl">
+<div class="overflow-x-auto custom-scrollbar">
+<table class="w-full text-left border-collapse">
+<thead class="bg-primary/5">
+<tr class="border-b border-white/10">
+<th class="py-6 px-8 font-headline-sm text-primary">Grade / Class</th>
+<th class="py-6 px-8 font-headline-sm text-primary">Tuition Fees</th>
+<th class="py-6 px-8 font-headline-sm text-primary">Transport</th>
+<th class="py-6 px-8 font-headline-sm text-primary">Activity Fees</th>
+<th class="py-6 px-8 font-headline-sm text-primary text-right">Total Per Annum</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<!-- Class Rows (1 to 12) -->
+<script>
+                            const grades = [
+                                { class: "Class 1", tuition: 4500, transport: 1200, activity: 800 },
+                                { class: "Class 2", tuition: 4500, transport: 1200, activity: 800 },
+                                { class: "Class 3", tuition: 4800, transport: 1200, activity: 900 },
+                                { class: "Class 4", tuition: 4800, transport: 1200, activity: 900 },
+                                { class: "Class 5", tuition: 5200, transport: 1400, activity: 1000 },
+                                { class: "Class 6", tuition: 5500, transport: 1400, activity: 1100 },
+                                { class: "Class 7", tuition: 5500, transport: 1400, activity: 1100 },
+                                { class: "Class 8", tuition: 6000, transport: 1600, activity: 1200 },
+                                { class: "Class 9", tuition: 6800, transport: 1600, activity: 1500 },
+                                { class: "Class 10", tuition: 7200, transport: 1600, activity: 1500 },
+                                { class: "Class 11", tuition: 8500, transport: 1800, activity: 2000 },
+                                { class: "Class 12", tuition: 9000, transport: 1800, activity: 2200 }
+                            ];
+
+                            grades.forEach(g => {
+                                const total = g.tuition + g.transport + g.activity;
+                                document.write(`
+                                    <tr class="hover:bg-white/5 transition-colors group cursor-default">
+                                        <td class="py-5 px-8 font-label-lg group-hover:text-primary transition-colors">${g.class}</td>
+                                        <td class="py-5 px-8 font-body-md text-on-surface-variant">$${g.tuition.toLocaleString()}</td>
+                                        <td class="py-5 px-8 font-body-md text-on-surface-variant">$${g.transport.toLocaleString()}</td>
+                                        <td class="py-5 px-8 font-body-md text-on-surface-variant">$${g.activity.toLocaleString()}</td>
+                                        <td class="py-5 px-8 font-label-lg text-primary text-right group-hover:drop-shadow-[0_0_8px_rgba(142,213,255,0.4)]">$${total.toLocaleString()}</td>
+                                    </tr>
+                                `);
+                            });
+                        </script>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Call to Action Section -->
+<section class="mt-section-gap grid md:grid-cols-2 gap-8 items-center">
+<div class="glass-effect rounded-2xl p-10 relative overflow-hidden">
+<div class="relative z-10 space-y-6">
+<h3 class="font-headline-lg text-white">Need a customized quote?</h3>
+<p class="font-body-md text-on-surface-variant">
+                        Our administrative team is available for one-on-one consultations to discuss sibling discounts, installment plans, and scholarship opportunities.
+                    </p>
+<button class="bg-primary text-on-primary-fixed px-8 py-4 rounded-full font-label-lg hover:glow-active transition-all active:scale-95">
+                        Download Prospectus
+                    </button>
+</div>
+<div class="absolute -bottom-12 -right-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl"></div>
+</div>
+<div class="grid grid-cols-2 gap-4 h-full">
+<div class="glass-effect rounded-2xl p-6 flex flex-col justify-between hover:border-primary/40 transition-colors">
+<span class="material-symbols-outlined text-primary text-headline-sm" data-icon="account_balance">account_balance</span>
+<div class="mt-4">
+<p class="font-label-lg text-white">Bank Transfers</p>
+<p class="font-body-sm text-on-surface-variant">Zero processing fees for direct wire transfers.</p>
+</div>
+</div>
+<div class="glass-effect rounded-2xl p-6 flex flex-col justify-between hover:border-primary/40 transition-colors">
+<span class="material-symbols-outlined text-primary text-headline-sm" data-icon="credit_card">credit_card</span>
+<div class="mt-4">
+<p class="font-label-lg text-white">Smart Installments</p>
+<p class="font-body-sm text-on-surface-variant">Spread the cost across 10 interest-free months.</p>
+</div>
+</div>
+<div class="glass-effect rounded-2xl p-6 flex flex-col justify-between hover:border-primary/40 transition-colors">
+<span class="material-symbols-outlined text-primary text-headline-sm" data-icon="verified">verified</span>
+<div class="mt-4">
+<p class="font-label-lg text-white">Merit Rewards</p>
+<p class="font-body-sm text-on-surface-variant">Up to 40% reduction for exceptional performance.</p>
+</div>
+</div>
+<div class="glass-effect rounded-2xl p-6 flex flex-col justify-between hover:border-primary/40 transition-colors">
+<span class="material-symbols-outlined text-primary text-headline-sm" data-icon="family_history">family_history</span>
+<div class="mt-4">
+<p class="font-label-lg text-white">Sibling Policy</p>
+<p class="font-body-sm text-on-surface-variant">15% discount for the second child onwards.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar / Transactional Bar -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-center py-6 px-margin-mobile md:px-margin-desktop bg-white/12 backdrop-blur-[20px] border-t border-primary shadow-[0_0_24px_rgba(123,208,255,0.4)]">
+<a class="flex items-center gap-4 group" href="#">
+<span class="font-label-lg text-primary text-label-lg font-bold">Register to unlock attendance, marks &amp; full features →</span>
+<div class="bg-primary text-on-primary p-2 rounded-full group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined align-middle" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</a>
+</footer>
+<!-- Interactive script for glass card subtle parallax or hover -->
+<script>
+        document.addEventListener('mousemove', (e) => {
+            const glow = document.querySelectorAll('.hover\\:glow-active');
+            // Logic for mouse tracking glow could be added here for extra polish
+        });
+    </script>
+</body></html>

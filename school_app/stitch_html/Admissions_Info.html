@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#d7e3fc",
+                    "error": "#ffb4ab",
+                    "surface-container-highest": "#323537",
+                    "on-primary-container": "#004965",
+                    "error-container": "#93000a",
+                    "on-secondary-container": "#a1bae1",
+                    "on-primary-fixed": "#001e2c",
+                    "primary-fixed-dim": "#7bd0ff",
+                    "secondary-container": "#314a6c",
+                    "primary-fixed": "#c4e7ff",
+                    "background": "#101415",
+                    "surface-container-lowest": "#0b0f10",
+                    "tertiary": "#c2cde6",
+                    "on-primary-fixed-variant": "#004c69",
+                    "on-primary": "#00354a",
+                    "on-secondary-fixed-variant": "#2f4869",
+                    "on-secondary-fixed": "#001c3a",
+                    "inverse-surface": "#e0e3e5",
+                    "surface": "#101415",
+                    "on-tertiary-fixed": "#101c2e",
+                    "inverse-primary": "#00668a",
+                    "on-error-container": "#ffdad6",
+                    "primary-container": "#38bdf8",
+                    "surface-container": "#1d2022",
+                    "outline": "#87929a",
+                    "outline-variant": "#3e484f",
+                    "on-tertiary-fixed-variant": "#3c475b",
+                    "on-tertiary-container": "#394459",
+                    "secondary-fixed-dim": "#afc8f0",
+                    "secondary-fixed": "#d4e3ff",
+                    "surface-container-low": "#191c1e",
+                    "surface-bright": "#363a3b",
+                    "secondary": "#afc8f0",
+                    "tertiary-container": "#a6b2ca",
+                    "inverse-on-surface": "#2d3133",
+                    "primary": "#8ed5ff",
+                    "on-surface": "#e0e3e5",
+                    "tertiary-fixed-dim": "#bbc7df",
+                    "surface-variant": "#323537",
+                    "on-tertiary": "#253144",
+                    "surface-dim": "#101415",
+                    "on-secondary": "#173151",
+                    "on-background": "#e0e3e5",
+                    "on-surface-variant": "#bdc8d1",
+                    "surface-container-high": "#272a2c",
+                    "surface-tint": "#7bd0ff",
+                    "on-error": "#690005"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-max": "1280px",
+                    "margin-desktop": "64px",
+                    "gutter": "24px",
+                    "unit": "8px",
+                    "margin-mobile": "20px",
+                    "section-gap": "120px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Inter"],
+                    "label-lg": ["Inter"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "headline-sm": ["Plus Jakarta Sans"],
+                    "body-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "display-lg": ["56px", {"lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "headline-sm": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #101415;
+            color: #e0e3e5;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            box-shadow: 0 0 24px rgba(123, 208, 255, 0.4);
+            transform: translateY(-4px);
+        }
+        .lume-glow {
+            box-shadow: 0 0 24px rgba(123, 208, 255, 0.4);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .step-line::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, #8ed5ff, transparent);
+            z-index: -1;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md selection:bg-primary/30">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 bg-white/12 backdrop-blur-[20px] border-b border-white/20 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="school">school</span>
+<span class="font-display-lg text-headline-sm font-bold text-on-surface">EduVision</span>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="font-label-lg text-primary font-bold" href="#">Admissions</a>
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Academics</a>
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Campus</a>
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Contact</a>
+</nav>
+<button class="material-symbols-outlined text-primary p-2 hover:bg-white/10 rounded-full transition-all" data-icon="contact_support">contact_support</button>
+</header>
+<main class="pt-32 pb-40 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+<!-- Hero Section -->
+<section class="mb-section-gap text-center md:text-left">
+<h1 class="font-display-lg text-headline-lg-mobile md:text-display-lg mb-6 text-on-surface">Join the Future of <span class="text-primary">Learning</span></h1>
+<p class="font-body-lg text-on-surface-variant max-w-2xl">A seamless, visionary admissions journey designed to empower your educational aspirations. From initial inquiry to final enrollment, we guide you every step of the way.</p>
+</section>
+<!-- Admissions Process Steps -->
+<section class="mb-section-gap">
+<div class="flex items-center gap-4 mb-12">
+<div class="h-px w-12 bg-primary"></div>
+<h2 class="font-headline-md text-on-surface uppercase tracking-widest text-sm">The Journey</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter relative">
+<!-- Step 1 -->
+<div class="glass-card rounded-xl p-8 flex flex-col items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-lg lume-glow">01</div>
+<span class="material-symbols-outlined text-primary text-4xl" data-icon="chat_bubble_outline">chat_bubble_outline</span>
+<h3 class="font-headline-sm text-on-surface">Enquiry</h3>
+<p class="font-body-sm text-on-surface-variant">Connect with our counselors to discuss your goals and understand our visionary curriculum.</p>
+</div>
+<!-- Step 2 -->
+<div class="glass-card rounded-xl p-8 flex flex-col items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-lg lume-glow">02</div>
+<span class="material-symbols-outlined text-primary text-4xl" data-icon="explore">explore</span>
+<h3 class="font-headline-sm text-on-surface">Visit</h3>
+<p class="font-body-sm text-on-surface-variant">Experience our state-of-the-art campus firsthand with a personalized guided tour.</p>
+</div>
+<!-- Step 3 -->
+<div class="glass-card rounded-xl p-8 flex flex-col items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-lg lume-glow">03</div>
+<span class="material-symbols-outlined text-primary text-4xl" data-icon="description">description</span>
+<h3 class="font-headline-sm text-on-surface">Form</h3>
+<p class="font-body-sm text-on-surface-variant">Complete our digital-first application process via the integrated EduVision portal.</p>
+</div>
+<!-- Step 4 -->
+<div class="glass-card rounded-xl p-8 flex flex-col items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-lg lume-glow">04</div>
+<span class="material-symbols-outlined text-primary text-4xl" data-icon="verified">verified</span>
+<h3 class="font-headline-sm text-on-surface">Admission</h3>
+<p class="font-body-sm text-on-surface-variant">Receive your visionary welcome kit and join our elite community of global learners.</p>
+</div>
+</div>
+</section>
+<!-- Eligibility & Dates & Documents (Asymmetric Bento) -->
+<section class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Eligibility Criteria -->
+<div class="md:col-span-8 glass-card rounded-xl p-10 relative overflow-hidden group">
+<div class="relative z-10">
+<h3 class="font-headline-md text-on-surface mb-8">Eligibility Criteria</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="terminal">terminal</span>
+<div>
+<h4 class="font-label-lg text-primary">Academic Excellence</h4>
+<p class="font-body-sm text-on-surface-variant">Minimum 75% aggregate in prerequisite examinations or international equivalent.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="language">language</span>
+<div>
+<h4 class="font-label-lg text-primary">Language Proficiency</h4>
+<p class="font-body-sm text-on-surface-variant">IELTS 6.5+ or TOEFL iBT 90+ for international non-native English speakers.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="psychology">psychology</span>
+<div>
+<h4 class="font-label-lg text-primary">Aptitude Testing</h4>
+<p class="font-body-sm text-on-surface-variant">Successful completion of the EduVision Visionary Thinking Assessment.</p>
+</div>
+</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-primary" data-icon="diversity_3">diversity_3</span>
+<div>
+<h4 class="font-label-lg text-primary">Interview Round</h4>
+<p class="font-body-sm text-on-surface-variant">Holistic review through a digital panel discussion with faculty leads.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute -right-20 -bottom-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-all duration-700"></div>
+</div>
+<!-- Important Dates -->
+<div class="md:col-span-4 glass-card rounded-xl p-10 bg-primary/5">
+<h3 class="font-headline-md text-on-surface mb-8">Critical Dates</h3>
+<div class="space-y-6">
+<div class="flex justify-between items-center border-b border-white/10 pb-4">
+<span class="font-body-md text-on-surface-variant">Early Access</span>
+<span class="font-label-lg text-primary">Oct 15, 2024</span>
+</div>
+<div class="flex justify-between items-center border-b border-white/10 pb-4">
+<span class="font-body-md text-on-surface-variant">Regular Batch</span>
+<span class="font-label-lg text-primary">Jan 20, 2025</span>
+</div>
+<div class="flex justify-between items-center border-b border-white/10 pb-4">
+<span class="font-body-md text-on-surface-variant">Scholarship Exam</span>
+<span class="font-label-lg text-primary">Feb 12, 2025</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-md text-on-surface-variant">Commencement</span>
+<span class="font-label-lg text-primary">Sep 05, 2025</span>
+</div>
+</div>
+<div class="mt-8">
+<button class="w-full py-4 bg-primary text-on-primary font-bold rounded-lg lume-glow active:scale-95 transition-all">Add to Calendar</button>
+</div>
+</div>
+<!-- Documents Required -->
+<div class="md:col-span-12 glass-card rounded-xl p-10 flex flex-col md:flex-row gap-12 items-center">
+<div class="flex-1">
+<h3 class="font-headline-md text-on-surface mb-6">Required Documentation</h3>
+<p class="font-body-md text-on-surface-variant mb-8">Please ensure high-resolution digital copies of the following are ready for your application portal upload.</p>
+<ul class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-body-sm text-on-surface">Official Academic Transcripts</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-body-sm text-on-surface">Valid Government Identity Card</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-body-sm text-on-surface">Letter of Recommendation</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-body-sm text-on-surface">Statement of Purpose (Video/Text)</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-body-sm text-on-surface">Recent Passport Photograph</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-body-sm text-on-surface">Extracurricular Certificates</span>
+</li>
+</ul>
+</div>
+<div class="w-full md:w-1/3 aspect-video md:aspect-square relative rounded-xl overflow-hidden glass-card">
+<img alt="Document organization" class="w-full h-full object-cover" data-alt="A clean, minimalist close-up of a high-end digital tablet displaying educational documents and application forms. The screen glows softly with a sky blue interface, reflecting on a polished glass desk. In the background, a modern campus library with architectural glass walls and soft focus greenery creates an atmosphere of academic prestige and visionary clarity. The lighting is bright and ethereal, using a palette of midnight navy and luminous blue tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpNTROKaRE41itWrCi4phhmkb40GBGHvHQPQ1Qs77Xkg0kQtP0W0WEK4PNYIZA-Q7oVjdqXN9GXDKQbcLwvVjR2oxYtbCAUsjN8g9lgwd-9bnBtAiHxRBjNOg1TsKk2YfXGVMg6yCkn2pmHXZ-9MdsQHPbfPbuzZ010L9O-4G7VRBTxk70ri0nNBA4kFAUbX60KW4ZOgooMSeCwnGN-sGuotDzQgSQQGgZsi5Nr9V5o9ao_3gsHVHlHLEPF2iZxLrARzKlCsdTmH1Q"/>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Contextual) -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-center py-6 px-margin-mobile md:px-margin-desktop bg-white/12 backdrop-blur-[20px] border-t border-primary shadow-[0_0_24px_rgba(123,208,255,0.4)]">
+<a class="flex items-center gap-4 hover:bg-white/20 transition-all px-8 py-2 rounded-full group" href="#">
+<span class="font-label-lg text-label-lg text-primary font-bold">Register to unlock attendance, marks &amp; full features →</span>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-2 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</footer>
+<!-- Background Decoration -->
+<div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+<div class="absolute top-1/4 -left-20 w-96 h-96 bg-primary/10 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-1/4 -right-20 w-96 h-96 bg-secondary/10 rounded-full blur-[120px]"></div>
+
+</div>
+<script>
+        // Micro-interaction for hover glow pulse
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.borderColor = 'rgba(123, 208, 255, 0.4)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            });
+        });
+    </script>
+</body></html>

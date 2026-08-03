@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCommand | Student Performance Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Geist:wght@400;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Inter:wght@100..900&amp;family=Plus+Jakarta+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neo-raised {
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3), -2px -2px 8px rgba(255, 255, 255, 0.05);
+        }
+        .neo-pressed {
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.4), inset -2px -2px 6px rgba(255, 255, 255, 0.05);
+        }
+        .glow-violet {
+            box-shadow: 0 0 24px rgba(168, 85, 247, 0.4);
+        }
+        body {
+            background: radial-gradient(circle at top left, #2c0051 0%, #101415 60%, #0b0f10 100%);
+            min-height: 100vh;
+            color: #e0e3e5;
+        }
+        .chart-bar {
+            transition: height 1s ease-out;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#0b0f10",
+                        "inverse-surface": "#e0e3e5",
+                        "tertiary-fixed": "#eedcff",
+                        "on-error": "#690005",
+                        "surface-variant": "#323537",
+                        "tertiary-fixed-dim": "#d4beec",
+                        "on-secondary-fixed": "#1e055a",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#323537",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#f0dbff",
+                        "on-tertiary-fixed-variant": "#503f66",
+                        "primary": "#ddb7ff",
+                        "on-secondary": "#33226f",
+                        "surface-dim": "#101415",
+                        "error": "#ffb4ab",
+                        "on-surface": "#e0e3e5",
+                        "on-tertiary-fixed": "#231437",
+                        "inverse-primary": "#842bd2",
+                        "background": "#101415",
+                        "tertiary-container": "#9c88b4",
+                        "outline-variant": "#4d4354",
+                        "surface-container-low": "#191c1e",
+                        "secondary-fixed": "#e7deff",
+                        "secondary-fixed-dim": "#cbbeff",
+                        "on-primary": "#490080",
+                        "surface-container-high": "#272a2c",
+                        "tertiary": "#d4beec",
+                        "on-tertiary": "#39294e",
+                        "inverse-on-surface": "#2d3133",
+                        "on-primary-container": "#400071",
+                        "surface-container": "#1d2022",
+                        "secondary-container": "#4a3a87",
+                        "surface-bright": "#363a3b",
+                        "primary-fixed-dim": "#ddb7ff",
+                        "surface-tint": "#ddb7ff",
+                        "outline": "#988d9f",
+                        "surface": "#101415",
+                        "on-primary-fixed": "#2c0051",
+                        "on-primary-fixed-variant": "#6900b3",
+                        "secondary": "#cbbeff",
+                        "on-tertiary-container": "#322247",
+                        "on-surface-variant": "#cfc2d6",
+                        "on-background": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#4a3a87",
+                        "on-secondary-container": "#baa9ff",
+                        "primary-container": "#b76dff"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Geist"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="pb-32">
+<!-- Top Navigation Bar -->
+<header class="w-full sticky top-0 z-50 bg-white/10 dark:bg-surface-container/10 backdrop-blur-xl border-b border-white/20 shadow-xl flex items-center justify-between px-margin-mobile md:px-margin-desktop py-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/40 neo-raised">
+<img alt="Teacher Profile" class="w-full h-full object-cover" data-alt="A professional studio portrait of a teacher in her late 30s with a confident and warm expression. She has short dark hair and is wearing a sleek, modern charcoal blazer. The background is a soft, out-of-focus educational setting with glowing violet accent lights, reflecting a high-tech and sophisticated command center environment. The lighting is crisp, emphasizing a sense of calm authority and pedagogical expertise." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYzUp_yMvdWbdUnhOjJm6qHTz3KwZfshqKNOdPZaONHF0PNhywYq94xhHFdFvb9RZcyXDBs4havt6pLKHDhHif2jPWtDXR90emHbJxpch-XV4Xxs___sPVAt2uv3jRSKNXLn1RYU4a5qo62Q1AB73bRZd7d1Gl5-WKzpKA3VwgIGf1LPs346W8g6rR3bm0OU32aDgSNroCHOflCvVXrizhI7C4wvg8EhDrWfN6VvuupMVz75gU_gvZJjiCUdkpk4GxOgZK-ytCyAGq"/>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">EduCommand</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl glass-panel hover:bg-white/5 transition-colors scale-95 active:scale-90">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+</header>
+<main class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop py-8">
+<!-- Student Selector & Header Section -->
+<section class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Student Performance</h2>
+<p class="font-body-md text-body-md text-on-surface-variant/80">Deep dive into individual academic metrics and trends.</p>
+</div>
+<div class="relative group">
+<div class="glass-panel neo-raised rounded-2xl flex items-center px-4 py-3 min-w-[280px] gap-3 cursor-pointer hover:border-primary/40 transition-all">
+<img alt="Student Thumbnail" class="w-10 h-10 rounded-full border-2 border-primary/20" data-alt="A close-up portrait of a teenage boy with an attentive and curious expression, suggesting academic engagement. He is wearing a simple navy blue crew neck sweater. The portrait is set against a clean, minimalist background with subtle violet bokeh effects. The lighting is natural and soft, fitting perfectly into a modern, high-end educational user interface with a sophisticated dark-mode aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDTJlA_4kVcJ3_-VkDD1X9BZqYGz_65jIntodSsSraDrYBxd53eIIuasAM8ciJlaNWRcUHHGnWu9PWkcwBUz7tZ-YB7bRzXcXTMvb5nemDa3zuMHHPvg_JPYjxuC_Tygtsjy8obBQkMZpyLOuomvfL-cciMvNOVv9F_JtXYjeq0milrcZm2gBIgxenhdnceEoO7kix0i_Hgg23OG3sSFjD2BwyVOSKRsNUTTOcE3nmVomiLL8jUxD-Td92U_EgiwkRSJUHhnYbKyIJj"/>
+<div class="flex-1">
+<p class="font-label-sm text-label-sm text-primary">SELECT STUDENT</p>
+<p class="font-body-md text-body-md font-semibold text-on-surface">Julian Sterling</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</div>
+<!-- Dropdown indicator (visual only for static) -->
+<div class="absolute top-full left-0 right-0 mt-2 bg-surface-container-highest/90 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden hidden group-hover:block z-10 shadow-2xl">
+<div class="px-4 py-3 hover:bg-white/5 cursor-pointer border-b border-white/5 font-body-md">Sarah Jenkins</div>
+<div class="px-4 py-3 hover:bg-white/5 cursor-pointer border-b border-white/5 font-body-md">Leo Maxwell</div>
+<div class="px-4 py-3 hover:bg-white/5 cursor-pointer font-body-md">Elena Rodriguez</div>
+</div>
+</div>
+</section>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Subject-wise Performance (Bar Chart) -->
+<div class="md:col-span-8 glass-panel neo-raised rounded-[32px] p-8 flex flex-col h-full min-h-[400px]">
+<div class="flex justify-between items-start mb-10">
+<div>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Subject Mastery</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant/60 uppercase tracking-widest">Current Semester Score %</p>
+</div>
+<div class="glass-panel neo-pressed rounded-full px-4 py-1 flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary glow-violet"></div>
+<span class="font-label-sm text-label-sm text-primary">Live Data</span>
+</div>
+</div>
+<div class="flex-1 flex items-end justify-between gap-4 px-4">
+<!-- Bar 1: Math -->
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-white/5 rounded-t-xl relative overflow-hidden h-[180px] flex items-end">
+<div class="chart-bar w-full bg-gradient-to-t from-primary/80 to-primary glow-violet rounded-t-xl" style="height: 92%;"></div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+<span class="font-bold text-primary">92%</span>
+</div>
+</div>
+<p class="mt-4 font-label-sm text-label-sm text-on-surface-variant">MATH</p>
+</div>
+<!-- Bar 2: Physics -->
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-white/5 rounded-t-xl relative overflow-hidden h-[180px] flex items-end">
+<div class="chart-bar w-full bg-gradient-to-t from-primary/80 to-primary glow-violet rounded-t-xl" style="height: 78%;"></div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+<span class="font-bold text-primary">78%</span>
+</div>
+</div>
+<p class="mt-4 font-label-sm text-label-sm text-on-surface-variant">PHYS</p>
+</div>
+<!-- Bar 3: Biology -->
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-white/5 rounded-t-xl relative overflow-hidden h-[180px] flex items-end">
+<div class="chart-bar w-full bg-gradient-to-t from-primary/80 to-primary glow-violet rounded-t-xl" style="height: 85%;"></div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+<span class="font-bold text-primary">85%</span>
+</div>
+</div>
+<p class="mt-4 font-label-sm text-label-sm text-on-surface-variant">BIOL</p>
+</div>
+<!-- Bar 4: History -->
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-white/5 rounded-t-xl relative overflow-hidden h-[180px] flex items-end">
+<div class="chart-bar w-full bg-gradient-to-t from-primary/80 to-primary glow-violet rounded-t-xl" style="height: 64%;"></div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+<span class="font-bold text-primary">64%</span>
+</div>
+</div>
+<p class="mt-4 font-label-sm text-label-sm text-on-surface-variant">HIST</p>
+</div>
+<!-- Bar 5: Literature -->
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-white/5 rounded-t-xl relative overflow-hidden h-[180px] flex items-end">
+<div class="chart-bar w-full bg-gradient-to-t from-primary/80 to-primary glow-violet rounded-t-xl" style="height: 94%;"></div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+<span class="font-bold text-primary">94%</span>
+</div>
+</div>
+<p class="mt-4 font-label-sm text-label-sm text-on-surface-variant">LIT</p>
+</div>
+<!-- Bar 6: Chemistry -->
+<div class="flex-1 flex flex-col items-center group">
+<div class="w-full bg-white/5 rounded-t-xl relative overflow-hidden h-[180px] flex items-end">
+<div class="chart-bar w-full bg-gradient-to-t from-primary/80 to-primary glow-violet rounded-t-xl" style="height: 72%;"></div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+<span class="font-bold text-primary">72%</span>
+</div>
+</div>
+<p class="mt-4 font-label-sm text-label-sm text-on-surface-variant">CHEM</p>
+</div>
+</div>
+</div>
+<!-- Rank Trend Line Graph -->
+<div class="md:col-span-4 glass-panel neo-raised rounded-[32px] p-8 flex flex-col relative overflow-hidden">
+
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-2 z-10">Rank Trend</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant/60 mb-8 z-10 uppercase">Global Classroom Position</p>
+<div class="flex-1 flex flex-col justify-center gap-12 z-10 px-2">
+<div class="relative h-32 w-full">
+<!-- Simulated SVG Line Graph -->
+<svg class="w-full h-full drop-shadow-[0_0_8px_rgba(221,183,255,0.8)]" viewbox="0 0 400 100">
+<path d="M 0 80 Q 50 70 100 40 T 200 60 T 300 20 T 400 30" fill="none" stroke="#ddb7ff" stroke-linecap="round" stroke-width="4"></path>
+<circle cx="100" cy="40" fill="#ddb7ff" r="6"></circle>
+<circle cx="200" cy="60" fill="#ddb7ff" r="6"></circle>
+<circle cx="300" cy="20" fill="#ddb7ff" r="6"></circle>
+<circle cx="400" cy="30" fill="#ddb7ff" r="6"></circle>
+</svg>
+<div class="absolute -bottom-8 w-full flex justify-between font-label-sm text-on-surface-variant/50">
+<span>Ex. 01</span>
+<span>Ex. 02</span>
+<span>Ex. 03</span>
+<span>Latest</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-4 border-t border-white/5">
+<div class="text-center">
+<p class="font-label-sm text-on-surface-variant/60">Current Rank</p>
+<p class="font-headline-lg text-primary">#04</p>
+</div>
+<div class="flex items-center text-emerald-400 gap-1 bg-emerald-400/10 px-3 py-1 rounded-full">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+<span class="font-label-sm">+2</span>
+</div>
+</div>
+</div>
+</div>
+<!-- vs Class Average Comparison -->
+<div class="md:col-span-7 glass-panel neo-raised rounded-[32px] p-8">
+<div class="flex items-center justify-between mb-8">
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Benchmarking</h3>
+<div class="flex items-center gap-4 text-label-sm">
+<div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-emerald-400"></div> Above</div>
+<div class="flex items-center gap-1"><div class="w-2 h-2 rounded-full bg-error"></div> Below</div>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+<div class="neo-pressed bg-white/5 p-4 rounded-2xl flex flex-col gap-2">
+<span class="font-label-sm text-on-surface-variant">Mathematics</span>
+<div class="flex items-center justify-between">
+<span class="text-primary font-bold">+12%</span>
+<div class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-label-sm">Above Avg</div>
+</div>
+</div>
+<div class="neo-pressed bg-white/5 p-4 rounded-2xl flex flex-col gap-2">
+<span class="font-label-sm text-on-surface-variant">Physics</span>
+<div class="flex items-center justify-between">
+<span class="text-primary font-bold">+05%</span>
+<div class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-label-sm">Above Avg</div>
+</div>
+</div>
+<div class="neo-pressed bg-white/5 p-4 rounded-2xl flex flex-col gap-2 border border-error/20">
+<span class="font-label-sm text-on-surface-variant">History</span>
+<div class="flex items-center justify-between">
+<span class="text-error font-bold">-08%</span>
+<div class="px-2 py-0.5 rounded-md bg-error/20 text-error font-label-sm">Below Avg</div>
+</div>
+</div>
+<div class="neo-pressed bg-white/5 p-4 rounded-2xl flex flex-col gap-2">
+<span class="font-label-sm text-on-surface-variant">Biology</span>
+<div class="flex items-center justify-between">
+<span class="text-primary font-bold">+02%</span>
+<div class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-label-sm">Above Avg</div>
+</div>
+</div>
+<div class="neo-pressed bg-white/5 p-4 rounded-2xl flex flex-col gap-2">
+<span class="font-label-sm text-on-surface-variant">Literature</span>
+<div class="flex items-center justify-between">
+<span class="text-primary font-bold">+18%</span>
+<div class="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-label-sm">Above Avg</div>
+</div>
+</div>
+<div class="neo-pressed bg-white/5 p-4 rounded-2xl flex flex-col gap-2 border border-error/20">
+<span class="font-label-sm text-on-surface-variant">Chemistry</span>
+<div class="flex items-center justify-between">
+<span class="text-error font-bold">-04%</span>
+<div class="px-2 py-0.5 rounded-md bg-error/20 text-error font-label-sm">Below Avg</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Weak Subject Flags & Action Plan -->
+<div class="md:col-span-5 flex flex-col gap-gutter">
+<div class="glass-panel neo-raised rounded-[32px] p-6 border-l-4 border-error overflow-hidden relative">
+<div class="absolute -right-4 -top-4 opacity-10">
+<span class="material-symbols-outlined text-8xl text-error">warning</span>
+</div>
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">error</span>
+<h4 class="font-bold text-error">Priority: History</h4>
+</div>
+<p class="font-body-md text-on-surface-variant mb-6">Julian is struggling with chronological timelines and cause-effect analysis in 19th-century modules.</p>
+<div class="flex flex-col gap-2">
+<p class="font-label-sm text-on-surface-variant/40 uppercase">SUGGESTED ACTION</p>
+<div class="glass-panel bg-error/5 p-4 rounded-xl text-sm italic border border-error/10">
+                            "Schedule a 15-minute sync to review the Napoleonic Era mind-map. Assign visual timeline exercises for homework."
+                        </div>
+</div>
+<button class="mt-6 w-full py-3 rounded-xl bg-error/10 hover:bg-error/20 text-error font-bold transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">mail</span>
+                        Nudge Guardian
+                    </button>
+</div>
+<div class="glass-panel neo-raised rounded-[32px] p-6 border-l-4 border-tertiary-container overflow-hidden relative">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">tips_and_updates</span>
+<h4 class="font-bold text-tertiary">Progress Note: Chemistry</h4>
+</div>
+<p class="font-body-md text-on-surface-variant mb-4">Steady improvement in stoichiometric calculations, but conceptual gaps remain in organic bonding.</p>
+<div class="flex items-center justify-between bg-white/5 p-3 rounded-xl">
+<span class="font-label-sm">Interactive Quiz Score</span>
+<span class="font-bold text-primary">74%</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-white/12 dark:bg-surface-container-highest/12 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(168,85,247,0.15)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-label-sm text-label-sm">Attendance</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-label-sm text-label-sm">Homework</span>
+</a>
+<!-- Active: Marks -->
+<a class="flex flex-col items-center justify-center text-primary drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] font-bold bg-white/10 rounded-xl px-3 py-1 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grade</span>
+<span class="font-label-sm text-label-sm">Marks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">event_busy</span>
+<span class="font-label-sm text-label-sm">Leave</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for bar charts
+        document.addEventListener('DOMContentLoaded', () => {
+            const bars = document.querySelectorAll('.chart-bar');
+            bars.forEach(bar => {
+                const height = bar.style.height;
+                bar.style.height = '0';
+                setTimeout(() => {
+                    bar.style.height = height;
+                }, 200);
+            });
+        });
+    </script>
+</body></html>

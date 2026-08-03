@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCommand | Homework Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500&amp;family=Geist:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neo-button-raised {
+            background: #1d2022;
+            box-shadow: 4px 4px 8px rgba(0,0,0,0.4), -2px -2px 6px rgba(255,255,255,0.05);
+        }
+        .neo-button-pressed {
+            box-shadow: inset 4px 4px 8px rgba(0,0,0,0.4), inset -2px -2px 6px rgba(255,255,255,0.05);
+        }
+        .glow-violet {
+            box-shadow: 0 0 24px rgba(168, 85, 247, 0.3);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background: radial-gradient(circle at top left, #2c0051, #101415 60%);
+            min-height: 100vh;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(221, 183, 255, 0.2); border-radius: 10px; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#0b0f10",
+                      "inverse-surface": "#e0e3e5",
+                      "tertiary-fixed": "#eedcff",
+                      "on-error": "#690005",
+                      "surface-variant": "#323537",
+                      "tertiary-fixed-dim": "#d4beec",
+                      "on-secondary-fixed": "#1e055a",
+                      "on-error-container": "#ffdad6",
+                      "surface-container-highest": "#323537",
+                      "error-container": "#93000a",
+                      "primary-fixed": "#f0dbff",
+                      "on-tertiary-fixed-variant": "#503f66",
+                      "primary": "#ddb7ff",
+                      "on-secondary": "#33226f",
+                      "surface-dim": "#101415",
+                      "error": "#ffb4ab",
+                      "on-surface": "#e0e3e5",
+                      "on-tertiary-fixed": "#231437",
+                      "inverse-primary": "#842bd2",
+                      "background": "#101415",
+                      "tertiary-container": "#9c88b4",
+                      "outline-variant": "#4d4354",
+                      "surface-container-low": "#191c1e",
+                      "secondary-fixed": "#e7deff",
+                      "secondary-fixed-dim": "#cbbeff",
+                      "on-primary": "#490080",
+                      "surface-container-high": "#272a2c",
+                      "tertiary": "#d4beec",
+                      "on-tertiary": "#39294e",
+                      "inverse-on-surface": "#2d3133",
+                      "on-primary-container": "#400071",
+                      "surface-container": "#1d2022",
+                      "secondary-container": "#4a3a87",
+                      "surface-bright": "#363a3b",
+                      "primary-fixed-dim": "#ddb7ff",
+                      "surface-tint": "#ddb7ff",
+                      "outline": "#988d9f",
+                      "surface": "#101415",
+                      "on-primary-fixed": "#2c0051",
+                      "on-primary-fixed-variant": "#6900b3",
+                      "secondary": "#cbbeff",
+                      "on-tertiary-container": "#322247",
+                      "on-surface-variant": "#cfc2d6",
+                      "on-background": "#e0e3e5",
+                      "on-secondary-fixed-variant": "#4a3a87",
+                      "on-secondary-container": "#baa9ff",
+                      "primary-container": "#b76dff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "40px",
+                      "base": "8px",
+                      "max-width": "1440px"
+              },
+              "fontFamily": {
+                      "label-sm": ["Geist"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"],
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface">
+<!-- Top App Bar -->
+<header class="w-full sticky top-0 z-50 bg-white/10 dark:bg-surface-container/10 backdrop-blur-xl border-b border-white/20 shadow-xl flex items-center justify-between px-margin-mobile py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-primary/30">
+<img alt="Teacher Profile Portrait" class="w-full h-full object-cover" data-alt="A professional close-up portrait of a friendly female teacher in her late 30s with a warm smile, wearing modern glasses and professional attire. The background is a softly blurred modern office environment with hints of purple and blue lighting to match the command center UI aesthetic. High-quality lighting highlights the facial features with a clean, cinematic focus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCp0sLRH-U5FVJmRsmfjvmrEHkeVGOzxBeusu52SVBdEcafKR7fCCEEl4wJkBAK4lob4Kb91XCmzYbv2BkhluK46RRpCwmLKeEMMJ6fE4ywVHMRYbdJlBGfTKFwlNpyHdmu0wHpbJdrrsW4V-V-3sEa4h5nacjb86gt-kEJ4Ds8qxn3M8mZwvfReg5mv-ILusTX3nPRRNqiuhFhQIdmMpahaobBRdWQVlKbKRpjgWQG34w4nuFnaMSP6980O46ZY4Zg5q5qv7jO1KJx"/>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">EduCommand</h1>
+</div>
+<button class="material-symbols-outlined text-primary scale-95 active:scale-90 transition-transform">notifications</button>
+</header>
+<main class="px-margin-mobile pb-32 max-w-2xl mx-auto mt-6">
+<!-- Tab Navigation -->
+<div class="flex p-1 mb-8 rounded-xl glass-card w-full">
+<button class="flex-1 py-2 rounded-lg font-label-sm text-label-sm transition-all neo-button-pressed text-primary bg-white/5" id="tab-active" onclick="switchTab('active')">Active</button>
+<button class="flex-1 py-2 rounded-lg font-label-sm text-label-sm transition-all text-on-surface-variant hover:bg-white/5" id="tab-submitted" onclick="switchTab('submitted')">Submitted</button>
+<button class="flex-1 py-2 rounded-lg font-label-sm text-label-sm transition-all text-on-surface-variant hover:bg-white/5" id="tab-overdue" onclick="switchTab('overdue')">Overdue</button>
+</div>
+<!-- Section Title & Reminder Toggle -->
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-headline-lg text-headline-lg-mobile text-on-surface">Homework Dashboard</h2>
+<div class="flex items-center gap-3">
+<span class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider">Auto-Reminder</span>
+<button class="w-12 h-6 rounded-full bg-primary/20 relative transition-colors duration-300" id="reminder-toggle" onclick="toggleReminder()">
+<div class="absolute top-1 left-7 w-4 h-4 bg-primary rounded-full transition-all duration-300 glow-violet" id="toggle-knob"></div>
+</button>
+</div>
+</div>
+<!-- Assignment Grid/List -->
+<div class="space-y-4">
+<!-- Assignment Card 1 -->
+<div class="glass-card p-6 rounded-2xl cursor-pointer hover:border-primary/40 transition-all group" onclick="openSubmissions('Advanced Calculus - Set 4')">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary font-label-sm text-[10px] uppercase border border-primary/20 mb-2">Mathematics</span>
+<h3 class="font-headline-lg-mobile text-lg text-on-surface group-hover:text-primary transition-colors">Advanced Calculus - Set 4</h3>
+</div>
+<div class="text-right">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">calendar_today</span>
+<p class="font-label-sm text-label-sm text-error">24 Oct, 2023</p>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Completion Rate</span>
+<span>28/42 submitted</span>
+</div>
+<div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-inverse-primary w-[66%] glow-violet"></div>
+</div>
+</div>
+</div>
+<!-- Assignment Card 2 -->
+<div class="glass-card p-6 rounded-2xl cursor-pointer hover:border-primary/40 transition-all group" onclick="openSubmissions('Elizabethan Era Analysis')">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="inline-block px-3 py-1 rounded-full bg-secondary-container/30 text-secondary font-label-sm text-[10px] uppercase border border-secondary/20 mb-2">English Lit</span>
+<h3 class="font-headline-lg-mobile text-lg text-on-surface group-hover:text-primary transition-colors">Elizabethan Era Analysis</h3>
+</div>
+<div class="text-right">
+<span class="material-symbols-outlined text-on-surface-variant block mb-1">calendar_today</span>
+<p class="font-label-sm text-label-sm text-on-surface-variant">27 Oct, 2023</p>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-label-sm text-label-sm text-on-surface-variant">
+<span>Completion Rate</span>
+<span>12/35 submitted</span>
+</div>
+<div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-inverse-primary w-[34%] glow-violet"></div>
+</div>
+</div>
+</div>
+<!-- Assignment Card 3 (Simulating a New Card) -->
+<div class="glass-card p-6 rounded-2xl border-dashed border-white/10 opacity-60">
+<div class="flex items-center gap-4 text-on-surface-variant py-4">
+<span class="material-symbols-outlined text-3xl">auto_stories</span>
+<p class="font-body-md text-body-md">Drafting next assignment: Physics Lab Report...</p>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB for New Assignment -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-[60] glow-violet" onclick="toggleModal('create-assignment-modal')">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+<!-- Modal: Create Assignment -->
+<div class="fixed inset-0 z-[100] hidden" id="create-assignment-modal">
+<div class="absolute inset-0 bg-background/80 backdrop-blur-md" onclick="toggleModal('create-assignment-modal')"></div>
+<div class="absolute bottom-0 w-full max-w-2xl left-1/2 -translate-x-1/2 glass-card rounded-t-[32px] p-8 shadow-2xl animate-slide-up">
+<div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-8"></div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-primary mb-6">Create New Assignment</h2>
+<form class="space-y-5">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">Title</label>
+<input class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-on-surface focus:border-primary outline-none transition-all" placeholder="e.g. World War II Impact" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">Subject</label>
+<select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-on-surface focus:border-primary outline-none">
+<option>Mathematics</option>
+<option>History</option>
+<option>Physics</option>
+</select>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">Class/Section</label>
+<select class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-on-surface focus:border-primary outline-none">
+<option>Grade 10-A</option>
+<option>Grade 10-B</option>
+<option>Grade 11-C</option>
+</select>
+</div>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">Due Date</label>
+<input class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-on-surface focus:border-primary outline-none" type="date"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm text-on-surface-variant mb-2">Instructions</label>
+<textarea class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-on-surface focus:border-primary outline-none resize-none" placeholder="Describe the task..." rows="3"></textarea>
+</div>
+<div class="p-4 border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center gap-2 hover:bg-white/5 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-primary">attach_file</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Attach supporting materials</span>
+</div>
+<button class="w-full bg-primary text-on-primary font-bold py-4 rounded-xl shadow-lg hover:scale-[1.02] active:scale-95 transition-all" onclick="toggleModal('create-assignment-modal')" type="button">Publish Assignment</button>
+</form>
+</div>
+</div>
+<!-- Modal: Submission List View -->
+<div class="fixed inset-0 z-[100] hidden" id="submission-list-modal">
+<div class="absolute inset-0 bg-background/90 backdrop-blur-xl" onclick="toggleModal('submission-list-modal')"></div>
+<div class="absolute inset-x-0 bottom-0 top-12 max-w-3xl mx-auto glass-card rounded-t-[32px] flex flex-col overflow-hidden">
+<div class="p-6 border-b border-white/10 flex justify-between items-center">
+<div>
+<h2 class="font-headline-lg-mobile text-xl text-primary" id="modal-assignment-title">Submissions</h2>
+<p class="font-label-sm text-label-sm text-on-surface-variant">28 items to review</p>
+</div>
+<button class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center" onclick="toggleModal('submission-list-modal')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-3">
+<!-- Student Row 1 -->
+<div class="p-4 rounded-xl bg-white/5 border border-white/10">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">AS</div>
+<div>
+<p class="font-body-md font-bold">Aidan Smith</p>
+<span class="px-2 py-0.5 rounded-md bg-green-500/20 text-green-400 text-[10px] font-bold uppercase">Submitted</span>
+</div>
+</div>
+<p class="text-[10px] text-on-surface-variant">Oct 22, 11:45 AM</p>
+</div>
+<div class="grid grid-cols-5 gap-3">
+<input class="col-span-1 bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-sm text-center focus:border-primary outline-none" placeholder="Marks" type="text" value="85"/>
+<input class="col-span-4 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:border-primary outline-none" placeholder="Add a private comment..." type="text"/>
+</div>
+</div>
+<!-- Student Row 2 -->
+<div class="p-4 rounded-xl bg-white/5 border border-white/10">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-bold">JL</div>
+<div>
+<p class="font-body-md font-bold">Jane Lawrence</p>
+<span class="px-2 py-0.5 rounded-md bg-yellow-500/20 text-yellow-400 text-[10px] font-bold uppercase">Pending</span>
+</div>
+</div>
+</div>
+<div class="opacity-40 pointer-events-none grid grid-cols-5 gap-3">
+<input class="col-span-1 bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-sm text-center" placeholder="Marks" type="text"/>
+<input class="col-span-4 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm" placeholder="Assignment not yet uploaded" type="text"/>
+</div>
+</div>
+<!-- Student Row 3 -->
+<div class="p-4 rounded-xl bg-white/10 border-l-4 border-error">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-error/20 flex items-center justify-center text-error font-bold">RK</div>
+<div>
+<p class="font-body-md font-bold">Robert King</p>
+<span class="px-2 py-0.5 rounded-md bg-error/20 text-error text-[10px] font-bold uppercase">Overdue</span>
+</div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="flex-1 bg-error/20 text-error text-[10px] py-2 rounded-lg font-bold uppercase hover:bg-error/30 transition-colors">Send Nudge</button>
+<button class="flex-1 bg-white/5 text-on-surface-variant text-[10px] py-2 rounded-lg font-bold uppercase">View Profile</button>
+</div>
+</div>
+</div>
+<div class="p-6 bg-surface-container-high border-t border-white/10">
+<button class="w-full bg-primary text-on-primary py-4 rounded-xl font-bold shadow-lg">Save All Marks</button>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-white/12 dark:bg-surface-container-highest/12 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(168,85,247,0.15)] rounded-t-xl flex justify-around items-center px-4 py-3 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-label-sm text-label-sm">Attendance</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] font-bold bg-white/10 rounded-xl px-3 py-1 scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-label-sm text-label-sm">Homework</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">grade</span>
+<span class="font-label-sm text-label-sm">Marks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">event_busy</span>
+<span class="font-label-sm text-label-sm">Leave</span>
+</a>
+</nav>
+<script>
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } else {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        function openSubmissions(title) {
+            document.getElementById('modal-assignment-title').innerText = title;
+            toggleModal('submission-list-modal');
+        }
+
+        let reminderOn = true;
+        function toggleReminder() {
+            reminderOn = !reminderOn;
+            const toggle = document.getElementById('reminder-toggle');
+            const knob = document.getElementById('toggle-knob');
+            
+            if (reminderOn) {
+                toggle.classList.replace('bg-surface-variant', 'bg-primary/20');
+                knob.style.left = '1.75rem';
+                knob.classList.add('glow-violet');
+                knob.classList.replace('bg-on-surface-variant', 'bg-primary');
+            } else {
+                toggle.classList.replace('bg-primary/20', 'bg-surface-variant');
+                knob.style.left = '0.25rem';
+                knob.classList.remove('glow-violet');
+                knob.classList.replace('bg-primary', 'bg-on-surface-variant');
+            }
+        }
+
+        function switchTab(type) {
+            const tabs = ['active', 'submitted', 'overdue'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === type) {
+                    btn.classList.add('neo-button-pressed', 'text-primary', 'bg-white/5');
+                    btn.classList.remove('text-on-surface-variant');
+                } else {
+                    btn.classList.remove('neo-button-pressed', 'text-primary', 'bg-white/5');
+                    btn.classList.add('text-on-surface-variant');
+                }
+            });
+        }
+    </script>
+</body></html>

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Exam Schedule &amp; Invigilation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#081c32",
+                    "background": "#121414",
+                    "on-tertiary-fixed-variant": "#204f3f",
+                    "on-secondary-container": "#a4b6d3",
+                    "inverse-primary": "#006b55",
+                    "on-primary-fixed": "#002118",
+                    "secondary-container": "#364860",
+                    "on-surface": "#e2e2e2",
+                    "on-tertiary-container": "#255343",
+                    "surface-container-lowest": "#0c0f0f",
+                    "primary-fixed-dim": "#28dfb5",
+                    "secondary-fixed": "#d2e4ff",
+                    "on-surface-variant": "#bacac2",
+                    "on-primary-container": "#005643",
+                    "secondary-fixed-dim": "#b5c8e5",
+                    "surface-tint": "#28dfb5",
+                    "secondary": "#b5c8e5",
+                    "surface": "#121414",
+                    "primary": "#46f1c5",
+                    "tertiary-container": "#95c6b1",
+                    "on-tertiary": "#033829",
+                    "inverse-on-surface": "#2f3131",
+                    "inverse-surface": "#e2e2e2",
+                    "outline-variant": "#3b4a44",
+                    "error-container": "#93000a",
+                    "on-error-container": "#ffdad6",
+                    "on-secondary": "#1f3148",
+                    "outline": "#85948d",
+                    "on-error": "#690005",
+                    "on-primary-fixed-variant": "#00513f",
+                    "on-tertiary-fixed": "#002117",
+                    "primary-fixed": "#55fcd0",
+                    "surface-container-low": "#1a1c1c",
+                    "on-secondary-fixed-variant": "#364860",
+                    "on-primary": "#00382b",
+                    "surface-dim": "#121414",
+                    "surface-bright": "#37393a",
+                    "tertiary-fixed": "#bbedd7",
+                    "tertiary": "#b0e2cc",
+                    "surface-variant": "#333535",
+                    "surface-container-highest": "#333535",
+                    "surface-container-high": "#282a2b",
+                    "error": "#ffb4ab",
+                    "primary-container": "#00d4aa",
+                    "tertiary-fixed-dim": "#a0d1bc",
+                    "on-background": "#e2e2e2",
+                    "surface-container": "#1e2020"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "glass-margin": "12px",
+                    "stack-gap-lg": "24px",
+                    "container-padding": "20px",
+                    "stack-gap-sm": "8px",
+                    "stack-gap-md": "16px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "label-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Plus Jakarta Sans"],
+                    "stats-display": ["Plus Jakarta Sans"],
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-md": ["22px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "label-lg": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "label-md": ["11px", {"lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "stats-display": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background: radial-gradient(circle at top right, #1f3148, #121414);
+            min-height: 100vh;
+            color: #e2e2e2;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neumorphic-btn {
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3), -2px -2px 6px rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+        .neumorphic-btn:active {
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.4), inset -2px -2px 6px rgba(255, 255, 255, 0.05);
+            transform: scale(0.98);
+        }
+        .emerald-glow {
+            box-shadow: 0 0 24px rgba(0, 212, 170, 0.4);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #00D4AA;
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md overflow-x-hidden pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-padding h-16 bg-surface/60 backdrop-blur-[20px] border-b border-white/15 shadow-xl">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border border-primary/30 overflow-hidden">
+<img alt="Staff Profile Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a female school administrator with a warm smile and modern eyewear. She is wearing a smart navy blazer over a crisp white shirt, set against a blurred academic office background. The image has a clean, high-key lighting style with a soft glow, consistent with a premium educational management software aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCOHMO7bneh2mW4V2ShSVe_fJUicMN50tJs_kC6fYs3Fr9nijiw05Z16VNBuLWYiyH6vSP_PP64vPWhcQAJy3FJSXyg6JwJ8K2Yl5nUGRZExDqLercCpQTaOObW3CVuIjkxghAoCwrgPaUJXGwIEDQykC4Slfbe4woTqiQ8YZ5CPoKTnNuZKti2-s6lLCpKgqz64Wr3pO_LTSWgiYN2BuTZGaFWMBoZ3aRPm3AnP38hQUWNGTxbG-l_mgYneHRyw9ocWXB_k5yKyy8"/>
+</div>
+<h1 class="font-headline-md text-headline-md-mobile md:text-headline-md font-bold text-on-surface">Admin Panel</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-primary">search</span>
+</button>
+</header>
+<!-- Background Shader -->
+<div class="fixed inset-0 -z-10 opacity-30">
+
+</div>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-container-padding space-y-glass-margin max-w-2xl mx-auto">
+<!-- Header Actions -->
+<div class="flex justify-between items-end mb-6">
+<div>
+<span class="text-primary font-label-lg uppercase tracking-wider">Academic Year 2024</span>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg">Exam Schedule</h2>
+</div>
+<button class="neumorphic-btn h-11 px-4 rounded-xl flex items-center gap-2 text-primary" onclick="window.print()">
+<span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+<span class="font-label-lg">Export PDF</span>
+</button>
+</div>
+<!-- Exam Card 1: Mid-Term -->
+<section class="glass-card rounded-2xl p-5 space-y-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-3">
+<div class="px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+<span class="text-primary font-label-md">UPCOMING</span>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[28px]">description</span>
+</div>
+<div>
+<h3 class="font-headline-md text-on-surface">Mid-Term Exam</h3>
+<p class="text-on-surface-variant font-body-md">Class 10 — Science &amp; Mathematics</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-y-4 gap-x-2 pt-2">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">calendar_today</span>
+<div>
+<p class="text-on-surface-variant font-label-md">DATE</p>
+<p class="text-on-surface font-body-md">Oct 24, 2024</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">schedule</span>
+<div>
+<p class="text-on-surface-variant font-label-md">TIME</p>
+<p class="text-on-surface font-body-md">09:00 AM (3 hrs)</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">domain</span>
+<div>
+<p class="text-on-surface-variant font-label-md">VENUE</p>
+<p class="text-on-surface font-body-md">Main Auditorium</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">grade</span>
+<div>
+<p class="text-on-surface-variant font-label-md">TOTAL MARKS</p>
+<p class="text-on-surface font-body-md">100 Points</p>
+</div>
+</div>
+</div>
+<!-- Invigilation Subsection -->
+<div class="mt-6 pt-4 border-t border-white/10">
+<div class="flex justify-between items-center mb-4">
+<h4 class="font-label-lg text-on-surface-variant uppercase">Invigilation Duty</h4>
+<button class="text-primary font-label-md flex items-center gap-1 hover:underline" onclick="toggleModal('assign-modal')">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+                        Assign Teacher
+                    </button>
+</div>
+<div class="flex -space-x-3 overflow-hidden">
+<img alt="Invigilator 1" class="inline-block h-10 w-10 rounded-full ring-2 ring-surface" data-alt="A portrait of a male teacher in a classroom setting, wearing a modern turtleneck and glasses, looking focused and authoritative. The lighting is sophisticated, with a teal tint on the highlights to match the emerald operational suite's aesthetic. High-quality digital art style for educational professional avatars." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD66Uhgv27IYT4DHG11dFMkyOfig0v_m0tl6jpcUW_jZT4Qw8ZwRA2FXNr0hT5vXJxHo2ZHFkcAiO6Vra_3Ej1xBaNIWIVsCbrOzC5kJ2bCZAwPrzugdMP2IJBOnojpl1cSP23cePvius8asi4Q0FKehwsrgzvtXvz9C7G33hrsKc7WqOxgu079ZNRyRvUe06CeqWFBDCADBZ9y27gdwgdlNIBq352nEEpYT8VsEVfTpZCmSG0Xtmm3Ww6EdZ5fYHaDSEszMoqZrYZx"/>
+<img alt="Invigilator 2" class="inline-block h-10 w-10 rounded-full ring-2 ring-surface" data-alt="A portrait of a female teacher in a library, wearing a smart grey blazer and a friendly expression. Soft, warm background bokeh complements the modern glassmorphism UI design. The lighting is clear and professional, with a focus on high-density data management roles." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCklpN853c5wh_BShnIc66auG7zfVGIizzRxwO1APxRyxXz6lhMC0pOLD90KyNoG0IwNv0OQmGa9HJ1EcgV6MW5WWZB-vnO1Zzvvn30gBDVMXgtVxGzOpa9wIVp_lcqGTefBlLbFnN9yZ9orf13IiJs6AwkUqXA6bPb4ym18GMMM9Cr0iaQL1mk9ywNjxPro9x-736TQvCE_r3E2ibNjS8dVoms6SlMafHOFfphDLRhVMqzCs_MO9bMfXC4-FTSDlKDa_9ync3fULHf"/>
+<div class="flex items-center justify-center h-10 w-10 rounded-full ring-2 ring-surface bg-surface-container text-primary font-label-lg">+2</div>
+</div>
+</div>
+</section>
+<!-- Exam Card 2: Final Assessment -->
+<section class="glass-card rounded-2xl p-5 space-y-4">
+<div class="absolute top-0 right-0 p-3">
+<div class="px-3 py-1 bg-secondary-container/20 border border-secondary/20 rounded-full">
+<span class="text-secondary font-label-md">DRAFT</span>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 bg-secondary/20 rounded-xl flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[28px]">assessment</span>
+</div>
+<div>
+<h3 class="font-headline-md text-on-surface">Final Assessment</h3>
+<p class="text-on-surface-variant font-body-md">Class 12 — Economics &amp; Humanities</p>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-y-4 gap-x-2 pt-2 opacity-80">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">calendar_today</span>
+<div>
+<p class="text-on-surface-variant font-label-md">DATE</p>
+<p class="text-on-surface font-body-md">Nov 12, 2024</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">schedule</span>
+<div>
+<p class="text-on-surface-variant font-label-md">TIME</p>
+<p class="text-on-surface font-body-md">02:00 PM (2 hrs)</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">domain</span>
+<div>
+<p class="text-on-surface-variant font-label-md">VENUE</p>
+<p class="text-on-surface font-body-md">Block C - Hall 4</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">grade</span>
+<div>
+<p class="text-on-surface-variant font-label-md">TOTAL MARKS</p>
+<p class="text-on-surface font-body-md">80 Points</p>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-white/10">
+<div class="flex justify-between items-center mb-4">
+<h4 class="font-label-lg text-on-surface-variant uppercase">Invigilation Duty</h4>
+<button class="text-primary font-label-md flex items-center gap-1 hover:underline" onclick="toggleModal('assign-modal')">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+                        Assign Teacher
+                    </button>
+</div>
+<p class="text-on-surface-variant text-body-md italic opacity-60">No teachers assigned yet</p>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface/60 backdrop-blur-[20px] rounded-t-xl border-t border-white/15 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">Students</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full px-4 py-1 shadow-[0_0_24px_rgba(0,212,170,0.4)] scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-md text-label-md">Schedule</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<!-- Assign Teacher Search Modal -->
+<div class="fixed inset-0 z-[100] hidden" id="assign-modal">
+<div class="absolute inset-0 bg-background/80 backdrop-blur-md" onclick="toggleModal('assign-modal')"></div>
+<div class="absolute bottom-0 left-0 w-full h-[707px] glass-card rounded-t-[32px] p-6 shadow-2xl transition-transform duration-300 translate-y-0 flex flex-col">
+<div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6"></div>
+<h3 class="font-headline-md text-on-surface mb-4">Assign Invigilator</h3>
+<div class="relative mb-6">
+<input class="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-12 focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-on-surface" placeholder="Search teacher by name or ID..." type="text"/>
+<span class="material-symbols-outlined absolute left-4 top-4 text-on-surface-variant">search</span>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2">
+<!-- Teacher Item 1 -->
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group">
+<div class="flex items-center gap-4">
+<img alt="Teacher" class="h-12 w-12 rounded-full border border-primary/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNeuMYGvPvYx5psRqndm8ssCHgNg0c4cx7qEWP0-4ZZwwRB9gWDFfR0bisqBrjbo5iOEK1xg1mgNQMDuhIa_y4DvLs8YZzSDrQ4-8UGUndy16rmkSH0gKJWnmA3rEx-8uKKjcQTsPIgdT2fuKnWIkk53RuPv5RU_QIdoHKgmHiHNmNruIgEyV6CliEec2dzB8PRNzRzKjaC1iD7VtzbRFpicT1B90o0_odcRp1Fx6lRkqD81oLeKlFdh1lwdpPsyM8dRk2o-U_F4oV"/>
+<div>
+<p class="text-on-surface font-body-lg font-bold">Dr. Robert Sterling</p>
+<p class="text-on-surface-variant font-label-md">Physics Department • Senior Faculty</p>
+</div>
+</div>
+<button class="neumorphic-btn w-10 h-10 rounded-full flex items-center justify-center text-primary group-hover:scale-110">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<!-- Teacher Item 2 -->
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group">
+<div class="flex items-center gap-4">
+<img alt="Teacher" class="h-12 w-12 rounded-full border border-primary/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC58S16-N6LBPYfbdKzOBq8fZAO82FcnmlUKRZN60cQRNUfWrAUWdQol9zmu8SgT3D__xRqpHHdmWgSQnABb2lEmm_8Ft6A_Kibrhpwr2QiMRm-3uB0iYy-UniqTbP86Vuwn2Vw9af6TFb5wx9WweSoYq0WC9sh_S9JrGvK-e5o7qRKwn1E_AEGuTBIu_rCEyUV9OFk5KwxPH38tz6h4ux08ysNUh9fdbS_Y07Ajtq5MSYtImk6HRjAxs5p7b3IF7HYRxQOD1fY7vlT"/>
+<div>
+<p class="text-on-surface font-body-lg font-bold">Ms. Elena Gilbert</p>
+<p class="text-on-surface-variant font-label-md">Mathematics • Junior Faculty</p>
+</div>
+</div>
+<button class="neumorphic-btn w-10 h-10 rounded-full flex items-center justify-center text-primary group-hover:scale-110">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<!-- Teacher Item 3 -->
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer border border-transparent hover:border-white/10 group">
+<div class="flex items-center gap-4">
+<img alt="Teacher" class="h-12 w-12 rounded-full border border-primary/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCZu32eg6E-WJF6wrg05mZyhgzi-oD2Lw3bDUgt7R1ngpDCkRyaWix1NWQdTwJp5ygbUKDKu5pQAuw5DPqT6JyGZzwjhXaGFrQ_tUvg2l1GLXbitmDnI_KFKTUZRnn4nLd14wlXNkpA0ljCrWNKbcQ1cfXqj0ukf5w9dbAaNjKAnDeJ9VHAmOKmNTaxt0Xk_zPhlSxhhQ3_nrPzGXU4rYnyjj5xQu0DUJDF_cH7rixoB9UGPezOHotWt8nkj99n5GUAdTPMi837cpXn"/>
+<div>
+<p class="text-on-surface font-body-lg font-bold">Prof. Alan Turing</p>
+<p class="text-on-surface-variant font-label-md">Computer Science • HOD</p>
+</div>
+</div>
+<button class="neumorphic-btn w-10 h-10 rounded-full flex items-center justify-center text-primary group-hover:scale-110">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+<button class="w-full h-14 mt-6 bg-primary text-on-primary font-bold rounded-2xl emerald-glow active:scale-95 transition-transform" onclick="toggleModal('assign-modal')">
+                Confirm Assignments
+            </button>
+</div>
+</div>
+<script>
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            } else {
+                modal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Add subtle parallax to glass cards on scroll
+        window.addEventListener('scroll', () => {
+            const cards = document.querySelectorAll('.glass-card');
+            cards.forEach((card, index) => {
+                const speed = (index + 1) * 0.05;
+                const yPos = window.scrollY * speed;
+                card.style.transform = `translateY(${-yPos}px)`;
+            });
+        });
+    </script>
+</body></html>

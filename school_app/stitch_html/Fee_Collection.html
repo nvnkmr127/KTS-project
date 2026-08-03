@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fee Collection - EduVision Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-secondary-fixed": "#081c32",
+            "background": "#121414",
+            "on-tertiary-fixed-variant": "#204f3f",
+            "on-secondary-container": "#a4b6d3",
+            "inverse-primary": "#006b55",
+            "on-primary-fixed": "#002118",
+            "secondary-container": "#364860",
+            "on-surface": "#e2e2e2",
+            "on-tertiary-container": "#255343",
+            "surface-container-lowest": "#0c0f0f",
+            "primary-fixed-dim": "#28dfb5",
+            "secondary-fixed": "#d2e4ff",
+            "on-surface-variant": "#bacac2",
+            "on-primary-container": "#005643",
+            "secondary-fixed-dim": "#b5c8e5",
+            "surface-tint": "#28dfb5",
+            "secondary": "#b5c8e5",
+            "surface": "#121414",
+            "primary": "#46f1c5",
+            "tertiary-container": "#95c6b1",
+            "on-tertiary": "#033829",
+            "inverse-on-surface": "#2f3131",
+            "inverse-surface": "#e2e2e2",
+            "outline-variant": "#3b4a44",
+            "error-container": "#93000a",
+            "on-error-container": "#ffdad6",
+            "on-secondary": "#1f3148",
+            "outline": "#85948d",
+            "on-error": "#690005",
+            "on-primary-fixed-variant": "#00513f",
+            "on-tertiary-fixed": "#002117",
+            "primary-fixed": "#55fcd0",
+            "surface-container-low": "#1a1c1c",
+            "on-secondary-fixed-variant": "#364860",
+            "on-primary": "#00382b",
+            "surface-dim": "#121414",
+            "surface-bright": "#37393a",
+            "tertiary-fixed": "#bbedd7",
+            "tertiary": "#b0e2cc",
+            "surface-variant": "#333535",
+            "surface-container-highest": "#333535",
+            "surface-container-high": "#282a2b",
+            "error": "#ffb4ab",
+            "primary-container": "#00d4aa",
+            "tertiary-fixed-dim": "#a0d1bc",
+            "on-background": "#e2e2e2",
+            "surface-container": "#1e2020"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "glass-margin": "12px",
+            "stack-gap-lg": "24px",
+            "container-padding": "20px",
+            "stack-gap-sm": "8px",
+            "stack-gap-md": "16px"
+          },
+          "fontFamily": {
+            "headline-md": ["Plus Jakarta Sans"],
+            "label-lg": ["Plus Jakarta Sans"],
+            "label-md": ["Plus Jakarta Sans"],
+            "stats-display": ["Plus Jakarta Sans"],
+            "body-lg": ["Plus Jakarta Sans"],
+            "headline-lg": ["Plus Jakarta Sans"],
+            "body-md": ["Plus Jakarta Sans"]
+          },
+          "fontSize": {
+            "headline-md": ["22px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "label-lg": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+            "label-md": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "stats-display": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    body {
+      background: radial-gradient(circle at top left, #004d40, #121414 60%);
+      min-height: 100vh;
+      color: #e2e2e2;
+      overflow-x: hidden;
+    }
+
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .neumorphic-inset {
+      background: rgba(18, 20, 20, 0.4);
+      box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.5), 
+                  inset -1px -1px 3px rgba(255, 255, 255, 0.05);
+    }
+
+    .emerald-glow {
+      box-shadow: 0 0 24px rgba(0, 212, 170, 0.4);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    .accordion-item.active .accordion-content {
+      max-height: 200px;
+    }
+    .accordion-item.active .chevron {
+      transform: rotate(180deg);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-body-md antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-padding h-16 bg-surface/60 backdrop-blur-[20px] border-b border-white/15 shadow-xl">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-primary/30">
+<img alt="Staff Profile Avatar" class="w-full h-full object-cover" data-alt="A professional headshot of a male school administrator in a sharp suit, with a soft-focus modern office background. The lighting is crisp and cool, featuring emerald and deep sea green accents to align with a high-end educational management interface. The aesthetic is sophisticated and trustworthy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjG9qAiwzEL5bZopr3MfTmaIWQgDJgmJdI8LcADurpDcpFJZ7lRYycHUg9CazRNo0-1selTRw8xytbKxek6DLohDKIW0DOKoFPLJe8qqMbjBH37_Y_t3WPNP5KrjI7NkTSZatVdUAmH3f_3URaaZRexh1tT5SV41Kcq4lfuQILd-pIDlUqK8gDma4nOTBqn9hbgA0ND79JoFOrt6ZcZM6tbH5fDk6d6S3CH7WSjrM0Cy55ZNVRISMe7E1WzRPh2nphBp3ybwHhNhab"/>
+</div>
+<h1 class="font-headline-md text-headline-md-mobile md:text-headline-md font-bold text-on-surface">Admin Panel</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary">search</span>
+</button>
+</header>
+<main class="pt-24 pb-32 px-container-padding max-w-2xl mx-auto space-y-stack-gap-lg">
+<!-- Search Glass Bar -->
+<section class="relative">
+<div class="glass-panel rounded-full px-5 py-3 flex items-center gap-3 shadow-lg">
+<span class="material-symbols-outlined text-on-surface-variant">person_search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full text-body-lg font-body-lg placeholder:text-on-surface-variant/50" placeholder="Search student by name or ID..." type="text"/>
+<div class="w-px h-6 bg-white/10 mx-1"></div>
+<button class="text-primary material-symbols-outlined">filter_list</button>
+</div>
+</section>
+<!-- Selected Student Card -->
+<section class="glass-panel rounded-xl p-5 shadow-2xl relative overflow-hidden">
+<div class="absolute top-0 right-0 p-4 opacity-10">
+<span class="material-symbols-outlined text-[80px]" style="font-variation-settings: 'FILL' 1;">school</span>
+</div>
+<div class="flex items-start justify-between mb-6">
+<div>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface">Aman Gupta</h2>
+<p class="text-on-surface-variant font-label-lg text-label-lg tracking-widest uppercase">Class 10-A • Roll #24</p>
+</div>
+<div class="bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+<span class="text-primary font-label-md text-label-md">ACADEMIC YEAR 24-25</span>
+</div>
+</div>
+<div class="space-y-1">
+<p class="text-on-surface-variant font-label-md text-label-md">TOTAL OUTSTANDING BALANCE</p>
+<div class="flex items-baseline gap-2">
+<span class="font-stats-display text-stats-display text-[#FFB300] drop-shadow-[0_0_10px_rgba(255,179,0,0.3)]">₹12,450</span>
+<span class="text-on-surface-variant text-body-md line-through opacity-40">₹18,000</span>
+</div>
+</div>
+</section>
+<!-- Fee Breakdown Accordion -->
+<section class="space-y-stack-gap-sm">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant px-1 mb-2 tracking-widest uppercase">FEE BREAKDOWN (TERM 1)</h3>
+<div class="glass-panel rounded-xl overflow-hidden divide-y divide-white/10">
+<!-- Item 1 -->
+<div class="accordion-item" onclick="this.classList.toggle('active')">
+<button class="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-fixed-dim">menu_book</span>
+<span class="font-body-lg text-body-lg">Tuition Fee</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md">₹8,000</span>
+<span class="material-symbols-outlined chevron transition-transform duration-300">expand_more</span>
+</div>
+</button>
+<div class="accordion-content bg-white/5 px-4 text-on-surface-variant">
+<div class="py-3 flex justify-between border-t border-white/5">
+<span>Standard tuition charges for Q1 &amp; Q2.</span>
+<span class="text-primary">Paid: ₹0</span>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="accordion-item" onclick="this.classList.toggle('active')">
+<button class="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-fixed-dim">directions_bus</span>
+<span class="font-body-lg text-body-lg">Transport Fee</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md">₹2,500</span>
+<span class="material-symbols-outlined chevron transition-transform duration-300">expand_more</span>
+</div>
+</button>
+<div class="accordion-content bg-white/5 px-4 text-on-surface-variant">
+<div class="py-3 flex justify-between border-t border-white/5">
+<span>Route #12 (Sector 4 to Campus)</span>
+<span class="text-primary">Paid: ₹0</span>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="accordion-item" onclick="this.classList.toggle('active')">
+<button class="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary-fixed-dim">sports_basketball</span>
+<span class="font-body-lg text-body-lg">Activity &amp; Library</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md">₹1,950</span>
+<span class="material-symbols-outlined chevron transition-transform duration-300">expand_more</span>
+</div>
+</button>
+<div class="accordion-content bg-white/5 px-4 text-on-surface-variant">
+<div class="py-3 space-y-1 border-t border-white/5">
+<div class="flex justify-between"><span>Annual Sports Membership</span><span>₹1,200</span></div>
+<div class="flex justify-between"><span>Library Resource Access</span><span>₹750</span></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Record Payment Section -->
+<section class="glass-panel rounded-xl p-6 shadow-2xl space-y-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">payments</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Record Cash Payment</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Amount to Pay</label>
+<div class="neumorphic-inset rounded-lg p-1 flex items-center border border-white/5 focus-within:border-primary/50 transition-all">
+<span class="pl-3 font-bold text-primary">₹</span>
+<input class="w-full bg-transparent border-none focus:ring-0 text-body-lg text-on-surface py-2" placeholder="12450" type="number"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Receipt Number</label>
+<div class="neumorphic-inset rounded-lg p-1 border border-white/5 focus-within:border-primary/50 transition-all">
+<input class="w-full bg-transparent border-none focus:ring-0 text-body-lg text-on-surface py-2 px-3" placeholder="RCPT-99231" type="text"/>
+</div>
+</div>
+<div class="md:col-span-2 space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Transaction Date</label>
+<div class="neumorphic-inset rounded-lg p-1 border border-white/5 focus-within:border-primary/50 transition-all flex items-center px-3">
+<input class="w-full bg-transparent border-none focus:ring-0 text-body-lg text-on-surface py-2 [color-scheme:dark]" type="date" value="2023-10-27"/>
+<span class="material-symbols-outlined text-on-surface-variant">calendar_today</span>
+</div>
+</div>
+</div>
+<button class="w-full bg-primary-container text-on-primary font-bold py-4 rounded-xl emerald-glow hover:scale-[1.02] active:scale-95 transition-all duration-200 flex items-center justify-center gap-3">
+<span class="material-symbols-outlined">print</span>
+        Save &amp; Print Receipt
+      </button>
+</section>
+<!-- Daily Collection Summary -->
+<section class="glass-panel rounded-xl p-5 border-primary/20 flex items-center justify-between shadow-lg">
+<div class="space-y-1">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase">Today</p>
+<p class="font-headline-md text-headline-md text-primary">₹48,500</p>
+</div>
+<div class="w-px h-10 bg-white/10"></div>
+<div class="space-y-1 text-right">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase">This Month</p>
+<p class="font-headline-md text-headline-md text-on-surface">₹3.2L</p>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface/60 backdrop-blur-[20px] border-t border-white/15 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] rounded-t-xl md:hidden">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<!-- Students -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">Students</span>
+</a>
+<!-- Fees (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full px-4 py-1 shadow-[0_0_24px_rgba(0,212,170,0.4)] scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-label-md text-label-md">Fees</span>
+</a>
+<!-- Schedule -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-md text-label-md">Schedule</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<script>
+    // Micro-interaction for input focus glow
+    const inputs = document.querySelectorAll('input');
+    inputs.forEach(input => {
+      input.addEventListener('focus', () => {
+        input.parentElement.classList.add('shadow-[0_0_15px_rgba(70,241,197,0.2)]');
+      });
+      input.addEventListener('blur', () => {
+        input.parentElement.classList.remove('shadow-[0_0_15px_rgba(70,241,197,0.2)]');
+      });
+    });
+
+    // Ripple effect for button
+    const printBtn = document.querySelector('button.emerald-glow');
+    printBtn.addEventListener('click', (e) => {
+      let ripple = document.createElement('span');
+      ripple.classList.add('absolute', 'bg-white/20', 'rounded-full', 'pointer-events-none');
+      const rect = printBtn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      ripple.style.width = ripple.style.height = `${size}px`;
+      ripple.style.left = `${e.clientX - rect.left - size/2}px`;
+      ripple.style.top = `${e.clientY - rect.top - size/2}px`;
+      ripple.style.transform = 'scale(0)';
+      ripple.style.transition = 'transform 0.5s ease-out, opacity 0.5s ease-out';
+      
+      printBtn.classList.add('relative', 'overflow-hidden');
+      printBtn.appendChild(ripple);
+      
+      requestAnimationFrame(() => {
+        ripple.style.transform = 'scale(2.5)';
+        ripple.style.opacity = '0';
+      });
+
+      setTimeout(() => ripple.remove(), 600);
+    });
+  </script>
+</body></html>

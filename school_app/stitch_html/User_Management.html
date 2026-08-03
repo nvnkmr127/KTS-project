@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduVision | User Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Geist:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#ffe08b",
+                        "on-secondary": "#00382b",
+                        "primary": "#ffe5a0",
+                        "on-tertiary-fixed-variant": "#6900b3",
+                        "surface-dim": "#101415",
+                        "error": "#ffb4ab",
+                        "surface-container-lowest": "#0b0f10",
+                        "inverse-surface": "#e0e3e5",
+                        "tertiary-fixed": "#f0dbff",
+                        "on-error": "#690005",
+                        "tertiary-fixed-dim": "#ddb7ff",
+                        "surface-variant": "#323537",
+                        "error-container": "#93000a",
+                        "surface-container-highest": "#323537",
+                        "on-secondary-fixed": "#002118",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#2d3133",
+                        "secondary-container": "#00d1a7",
+                        "surface-container": "#1d2022",
+                        "on-primary-container": "#695200",
+                        "surface-tint": "#f0c110",
+                        "primary-fixed-dim": "#f0c110",
+                        "surface-bright": "#363a3b",
+                        "surface": "#101415",
+                        "on-primary-fixed": "#241a00",
+                        "on-primary-fixed-variant": "#584400",
+                        "outline": "#9a9078",
+                        "on-tertiary-container": "#7a1cc8",
+                        "secondary": "#41eec2",
+                        "on-surface-variant": "#d1c5ac",
+                        "on-background": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#00513f",
+                        "on-secondary-container": "#005441",
+                        "primary-container": "#f5c518",
+                        "on-surface": "#e0e3e5",
+                        "inverse-primary": "#745b00",
+                        "on-tertiary-fixed": "#2c0051",
+                        "tertiary-container": "#e0bdff",
+                        "background": "#101415",
+                        "surface-container-low": "#191c1e",
+                        "outline-variant": "#4e4633",
+                        "secondary-fixed-dim": "#28dfb5",
+                        "secondary-fixed": "#55fcd0",
+                        "on-primary": "#3d2f00",
+                        "surface-container-high": "#272a2c",
+                        "tertiary": "#f3e0ff",
+                        "on-tertiary": "#490080"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "24px",
+                        "unit": "8px",
+                        "section-gap": "48px",
+                        "gutter": "16px",
+                        "glass-padding": "20px"
+                    },
+                    "fontFamily": {
+                        "h2": ["Plus Jakarta Sans"],
+                        "h1-mobile": ["Plus Jakarta Sans"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Geist"],
+                        "h1": ["Plus Jakarta Sans"],
+                        "h3": ["Plus Jakarta Sans"],
+                        "h2-mobile": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "h2": ["32px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "h1-mobile": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600"}],
+                        "h1": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "h3": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                        "h2-mobile": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .inner-shadow-neomorphic {
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.4), inset -2px -2px 6px rgba(255, 255, 255, 0.05);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .gold-glow {
+            box-shadow: 0 0 30px rgba(245, 197, 24, 0.25);
+        }
+        body {
+            background: radial-gradient(circle at top right, #1a1f24, #101415);
+            min-height: 100vh;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background font-body-md">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/10 dark:bg-surface/10 backdrop-blur-xl border-b border-white/15 shadow-[0_0_20px_rgba(245,197,24,0.3)] flex justify-between items-center px-container-padding py-unit">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">school</span>
+</div>
+<span class="font-h2 text-h2-mobile md:text-h2 text-primary-container tracking-tighter">EduVision</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-white/10 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined">emergency</span>
+</button>
+<div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+<span class="w-2 h-2 rounded-full bg-secondary-container animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">SYSTEM LIVE</span>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-container-padding max-w-5xl mx-auto">
+<!-- Header Actions & Search -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+<div class="relative flex-1 group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50 group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/5 border border-white/15 focus:border-primary focus:ring-0 focus:outline-none backdrop-blur-xl inner-shadow-neomorphic text-body-md text-on-surface placeholder:text-on-surface-variant/40 transition-all" placeholder="Search elite personnel..." type="text"/>
+</div>
+<button class="bg-primary-container text-on-primary-container px-6 py-4 rounded-2xl font-label-caps text-label-caps flex items-center justify-center gap-2 gold-glow hover:scale-[1.02] active:scale-95 transition-all">
+<span class="material-symbols-outlined">person_add</span>
+                ADD USER
+            </button>
+</div>
+<!-- Filter Chips -->
+<div class="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar mb-6">
+<button class="px-5 py-2 rounded-full font-label-caps text-label-caps bg-primary-container text-on-primary-container shadow-lg transition-all">ALL</button>
+<button class="px-5 py-2 rounded-full font-label-caps text-label-caps bg-white/5 text-on-surface-variant border border-white/10 hover:bg-white/10 transition-all">TEACHERS</button>
+<button class="px-5 py-2 rounded-full font-label-caps text-label-caps bg-white/5 text-on-surface-variant border border-white/10 hover:bg-white/10 transition-all">ADMIN STAFF</button>
+<button class="px-5 py-2 rounded-full font-label-caps text-label-caps bg-white/5 text-on-surface-variant border border-white/10 hover:bg-white/10 transition-all">PARENTS</button>
+<button class="px-5 py-2 rounded-full font-label-caps text-label-caps bg-white/5 text-on-surface-variant border border-white/10 hover:bg-white/10 transition-all">STUDENTS</button>
+</div>
+<!-- Scrollable User List -->
+<div class="space-y-3">
+<!-- User Row 1 -->
+<div class="glass-card p-4 rounded-3xl flex items-center justify-between group cursor-pointer hover:bg-white/15 active:scale-[0.98] transition-all" onclick="openModal('Dr. Aris Thorne', 'Super Admin', 'Active')">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img alt="Avatar" class="w-14 h-14 rounded-2xl object-cover border border-white/10" data-alt="A professional studio portrait of a sophisticated senior educator with salt and pepper hair, wearing a high-end tailored dark suit. The lighting is dramatic and moody with a subtle gold rim light, set against a dark, minimalist architectural background in a futuristic premium aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7FczfnKSVZ91VRiIfuBtOEhmA6JLz4YPSk40CQrAgXsqPb5NWWdCqqmzVpJNDpnxQSdecTP5pe54DRMCbFkMlfR4K5JBMwr9Z9rd-f_05dfhdy0ThMgGq6naYJfCjz3amVCvWhbnfwiSLhYOXSuGF55kpWsfljF4nv2FiNP_5euYTdpm0iAi6VVUFf6QUENV0LTmHNXvfAU9c2xBiXHTKJ_79usdMqTNH6H7v68K2SpfvOTvVJlisZuBp-236LvhLC0HnSYL9q8Sc"/>
+<span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-secondary-container border-4 border-surface shadow-lg"></span>
+</div>
+<div>
+<h4 class="font-h3 text-[18px] text-on-surface leading-tight">Dr. Aris Thorne</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-primary-container/10 text-primary-container text-[10px] font-label-caps border border-primary-container/20">SUPER ADMIN</span>
+<span class="text-[12px] text-on-surface-variant/60">ID: ED-001</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<!-- User Row 2 -->
+<div class="glass-card p-4 rounded-3xl flex items-center justify-between group cursor-pointer hover:bg-white/15 active:scale-[0.98] transition-all" onclick="openModal('Elena Vance', 'Faculty Lead', 'Active')">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img alt="Avatar" class="w-14 h-14 rounded-2xl object-cover border border-white/10" data-alt="A portrait of a young professional woman with a confident expression, dressed in modern business attire. The environment is a blurred high-tech classroom with blue and gold ambient lighting, creating a prestigious and institutional atmosphere. High-resolution digital photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAbIIb4sf36g4piMdrvBNVB1flfK5K4fvpkp2tU5bPRSk8zfl2WZ0_1u48KaVT-3_ddiHuw_L0VKjKiLGdUkACDp51MHvn7-ZTKkHfmZCfxeAsconMBJiqfLyflTSp4atRos77YiCx_WIh-U8_mO0KxP-fCMMqdY0MErnSL_BFX43rWECs46mYJuZxHP3Lc-jd6TwoIGOA8JMO2acJZa5YEwl6Zkpt7LBEWYWk2LQhz8-BHtPxMXepa5Daw4Jme8b4r61tmMRyls4B"/>
+<span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-secondary-container border-4 border-surface shadow-lg"></span>
+</div>
+<div>
+<h4 class="font-h3 text-[18px] text-on-surface leading-tight">Elena Vance</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-tertiary-container/10 text-tertiary-container text-[10px] font-label-caps border border-tertiary-container/20">FACULTY LEAD</span>
+<span class="text-[12px] text-on-surface-variant/60">ID: ED-042</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<!-- User Row 3 -->
+<div class="glass-card p-4 rounded-3xl flex items-center justify-between group cursor-pointer hover:bg-white/15 active:scale-[0.98] transition-all" onclick="openModal('Julian Cross', 'Maintenance', 'Inactive')">
+<div class="flex items-center gap-4">
+<div class="relative opacity-60">
+<img alt="Avatar" class="w-14 h-14 rounded-2xl object-cover border border-white/10" data-alt="A headshot of a middle-aged man with a kind face, wearing a professional work uniform. The background is a soft-focus tech facility with deep shadows and subtle metallic textures, adhering to a premium dark-mode UI aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRaycB-Wyu41EKOMMtmM3YWEFrVdojgfU3_5qSmpOHS8GRlo5CBaQzfsbFcnkr2tDmNH_pJXERl_yljGxB5Q2xNkvSX-b-OlbYNg4SudoGa1kDIe93_zetttzF7uLG1ZqM4ZjgOzhMqUISyawr-YCxw3N7191XeK_dzKPHwFchEqQwZH42aftmYx9JYVR0n_ARHDmD9UeYkClAm3z1C0ndeQ2DwbSvkaK9A00JZmQ3dTdp9i0-62M4jNN0QHDDm9_Q34b-s5vuF8n6"/>
+<span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-error border-4 border-surface shadow-lg"></span>
+</div>
+<div>
+<h4 class="font-h3 text-[18px] text-on-surface leading-tight">Julian Cross</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-on-surface-variant/10 text-on-surface-variant text-[10px] font-label-caps border border-white/10">MAINTENANCE</span>
+<span class="text-[12px] text-on-surface-variant/60">ID: ED-119</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<!-- User Row 4 -->
+<div class="glass-card p-4 rounded-3xl flex items-center justify-between group cursor-pointer hover:bg-white/15 active:scale-[0.98] transition-all">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img alt="Avatar" class="w-14 h-14 rounded-2xl object-cover border border-white/10" data-alt="A professional portrait of a woman in her late 30s, looking focused and capable. She is wearing a modern tech blazer. The background consists of geometric glass panels with golden light refractions, symbolizing high-level educational administration." src="https://lh3.googleusercontent.com/aida-public/AB6AXuATGx8K-AMlbETqeD1LJDxRj1StJ7Hosbnah3FKl7sA7ixCU6ViCJ9ujHoGZZt_ITi-ivQ0kTlsWSmP5rpEr96u3hDVNqTD2-FYSxcUJUijYB9g62JjQj22VzmqmzRp8pYQHRDic745h6RZcsVB6RNQp_FlLrybM5B3_kkPSdl11syt5HQwetav4LkaZm-BhCy4IoUth1LGvRXt2UL5lQzm4MwwOJuFuaJI8uINO4AL_ci_QOi1K-Y0WxPcLxhdiO5ejvWUb9yNgC-Q"/>
+<span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-secondary-container border-4 border-surface shadow-lg"></span>
+</div>
+<div>
+<h4 class="font-h3 text-[18px] text-on-surface leading-tight">Sarah Miller</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-secondary-container/10 text-secondary-container text-[10px] font-label-caps border border-secondary-container/20">IT STAFF</span>
+<span class="text-[12px] text-on-surface-variant/60">ID: ED-088</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+<!-- User Row 5 -->
+<div class="glass-card p-4 rounded-3xl flex items-center justify-between group cursor-pointer hover:bg-white/15 active:scale-[0.98] transition-all">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img alt="Avatar" class="w-14 h-14 rounded-2xl object-cover border border-white/10" data-alt="A portrait of a male student leader, late teens, with an ambitious expression. He is wearing a modern school uniform with a futuristic crest. The background is a clean, glass-and-steel architecture illuminated by soft, premium amber light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAndwa0JtwR8W_27didVnmC9PrLPiL350lGvC9yHH9dKTtsry4veG7zNtHXFU8KSBiTYmzKFGXBu9U4EfP96PCjPpZrc4K3K3fW7zQuAsbXBeV92AKeWrYXQsa1cuaCIMFsejBWTS76em22m3o9ws3h5pSORTkou6e7zsApA0iYI5gCRSswn5vBiD-A1z0VKRD5r300bhBhIKYJoGBP5JSFUkEbS4ImPuzJpE_kExhhiwkQI42EE6dSyzdv3RZDBRRgy8OaixcSJSGh"/>
+<span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-secondary-container border-4 border-surface shadow-lg"></span>
+</div>
+<div>
+<h4 class="font-h3 text-[18px] text-on-surface leading-tight">Dorian Black</h4>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-primary-container/10 text-primary-container text-[10px] font-label-caps border border-primary-container/20">PREFECT</span>
+<span class="text-[12px] text-on-surface-variant/60">ID: ED-412</span>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-8 left-0 right-0 z-50 flex justify-around items-center mx-auto bg-surface/20 dark:bg-surface/20 backdrop-blur-3xl border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.5)] w-[90%] max-w-md rounded-full px-6 py-3">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-all active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-[10px] mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-all active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-caps text-[10px] mt-1">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary-container after:rounded-full active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-caps text-[10px] mt-1">Users</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-all active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-label-caps text-[10px] mt-1">Broadcast</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-all active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-caps text-[10px] mt-1">Settings</span>
+</a>
+</nav>
+<!-- User Profile Modal -->
+<div class="fixed inset-0 z-[100] hidden flex items-end justify-center sm:items-center bg-black/80 backdrop-blur-sm p-4" id="userModal">
+<div class="glass-card w-full max-w-lg rounded-[2.5rem] overflow-hidden animate-in slide-in-from-bottom duration-300">
+<div class="p-8">
+<div class="flex justify-between items-start mb-6">
+<div class="w-24 h-24 rounded-3xl bg-white/5 border border-white/20 p-1">
+<img alt="Profile" class="w-full h-full rounded-2xl object-cover" data-alt="A close-up studio headshot of an institutional leader. High-end aesthetic with gold and navy blue color tones. The character exudes authority and wisdom, set against a blurred high-tech interface background." id="modalAvatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPsa6ME7EF_FOOV0OA-r0tl5l1vCLciEgfZ9GsgQpaGCXV9_AAGeMN5k8ixCQ6-b7cOJBZ_Oy3hKcXc90vJJUVSPnAVsVEDpPBXlUPt6UJ3EhQvdtjdX-dTnFO8Sx56GZWKvXw6LVlQoGrEuvx-gC4kGaXEBIbVDC6lLQJz7zpJxSZOGWYTqyDqeycvh0SjxnbPmON_4vJqMBnmq1-GQalNJmOlNLX4p7jj80e66xlxlF_r3H-QLVSlEYNSlTa6goOJ-9B8qYegiaI"/>
+</div>
+<button class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/20 transition-all" onclick="closeModal()">
+<span class="material-symbols-outlined text-on-surface">close</span>
+</button>
+</div>
+<div class="mb-8">
+<h2 class="font-h1 text-h2 text-on-surface mb-1" id="modalName">User Name</h2>
+<p class="font-label-caps text-primary tracking-widest text-[14px]" id="modalRole">ROLE TITLE</p>
+<div class="flex items-center gap-2 mt-3">
+<span class="w-2 h-2 rounded-full bg-secondary-container" id="modalStatusDot"></span>
+<span class="text-on-surface-variant text-sm" id="modalStatusText">System Status: Secure</span>
+</div>
+</div>
+<!-- Action Grid -->
+<div class="grid grid-cols-2 gap-4">
+<button class="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left">
+<span class="material-symbols-outlined text-primary">edit</span>
+<div>
+<p class="font-label-caps text-[10px] text-on-surface-variant">MANAGE</p>
+<p class="font-semibold text-sm">Edit Profile</p>
+</div>
+</button>
+<button class="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left">
+<span class="material-symbols-outlined text-primary">lock_reset</span>
+<div>
+<p class="font-label-caps text-[10px] text-on-surface-variant">SECURITY</p>
+<p class="font-semibold text-sm">Reset Pass</p>
+</div>
+</button>
+<button class="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-left">
+<span class="material-symbols-outlined text-primary">verified_user</span>
+<div>
+<p class="font-label-caps text-[10px] text-on-surface-variant">ACCESS</p>
+<p class="font-semibold text-sm">Assign Role</p>
+</div>
+</button>
+<button class="flex items-center gap-3 p-4 rounded-2xl bg-error/10 border border-error/20 hover:bg-error/20 transition-all text-left group">
+<span class="material-symbols-outlined text-error">delete</span>
+<div>
+<p class="font-label-caps text-[10px] text-error/60">DANGER</p>
+<p class="font-semibold text-sm text-error">Delete User</p>
+</div>
+</button>
+</div>
+</div>
+<div class="p-6 bg-white/5 border-t border-white/10 flex items-center justify-between">
+<span class="text-xs text-on-surface-variant/40">Last access: Today at 09:42 AM</span>
+<button class="px-6 py-2 rounded-full border border-primary text-primary font-label-caps text-[12px] hover:bg-primary hover:text-on-primary transition-all" onclick="closeModal()">VIEW LOGS</button>
+</div>
+</div>
+</div>
+<script>
+        function openModal(name, role, status) {
+            const modal = document.getElementById('userModal');
+            document.getElementById('modalName').textContent = name;
+            document.getElementById('modalRole').textContent = role.toUpperCase();
+            
+            const statusDot = document.getElementById('modalStatusDot');
+            const statusText = document.getElementById('modalStatusText');
+            
+            if (status === 'Active') {
+                statusDot.classList.remove('bg-error');
+                statusDot.classList.add('bg-secondary-container');
+                statusText.textContent = 'System Status: Active';
+            } else {
+                statusDot.classList.remove('bg-secondary-container');
+                statusDot.classList.add('bg-error');
+                statusText.textContent = 'System Status: Suspended';
+            }
+
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('userModal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close on backdrop click
+        document.getElementById('userModal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body></html>

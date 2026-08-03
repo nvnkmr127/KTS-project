@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCommand | Leave Application</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Geist:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #101415 100%);
+            min-height: 100vh;
+            color: #e0e3e5;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .neomorph-button {
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3), -2px -2px 6px rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+        .neomorph-button:active {
+            box-shadow: inset 4px 4px 10px rgba(0, 0, 0, 0.3), inset -2px -2px 6px rgba(255, 255, 255, 0.05);
+            transform: scale(0.98);
+        }
+        .neomorph-inset {
+            box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.4), inset -1px -1px 4px rgba(255, 255, 255, 0.05);
+        }
+        .glow-violet {
+            filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.4));
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#0b0f10",
+                        "inverse-surface": "#e0e3e5",
+                        "tertiary-fixed": "#eedcff",
+                        "on-error": "#690005",
+                        "surface-variant": "#323537",
+                        "tertiary-fixed-dim": "#d4beec",
+                        "on-secondary-fixed": "#1e055a",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#323537",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#f0dbff",
+                        "on-tertiary-fixed-variant": "#503f66",
+                        "primary": "#ddb7ff",
+                        "on-secondary": "#33226f",
+                        "surface-dim": "#101415",
+                        "error": "#ffb4ab",
+                        "on-surface": "#e0e3e5",
+                        "on-tertiary-fixed": "#231437",
+                        "inverse-primary": "#842bd2",
+                        "background": "#101415",
+                        "tertiary-container": "#9c88b4",
+                        "outline-variant": "#4d4354",
+                        "surface-container-low": "#191c1e",
+                        "secondary-fixed": "#e7deff",
+                        "secondary-fixed-dim": "#cbbeff",
+                        "on-primary": "#490080",
+                        "surface-container-high": "#272a2c",
+                        "tertiary": "#d4beec",
+                        "on-tertiary": "#39294e",
+                        "inverse-on-surface": "#2d3133",
+                        "on-primary-container": "#400071",
+                        "surface-container": "#1d2022",
+                        "secondary-container": "#4a3a87",
+                        "surface-bright": "#363a3b",
+                        "primary-fixed-dim": "#ddb7ff",
+                        "surface-tint": "#ddb7ff",
+                        "outline": "#988d9f",
+                        "surface": "#101415",
+                        "on-primary-fixed": "#2c0051",
+                        "on-primary-fixed-variant": "#6900b3",
+                        "secondary": "#cbbeff",
+                        "on-tertiary-container": "#322247",
+                        "on-surface-variant": "#cfc2d6",
+                        "on-background": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#4a3a87",
+                        "on-secondary-container": "#baa9ff",
+                        "primary-container": "#b76dff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px",
+                        "base": "8px",
+                        "max-width": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Geist"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="pb-24">
+<!-- Top AppBar -->
+<header class="w-full sticky top-0 z-50 bg-white/10 dark:bg-surface-container/10 backdrop-blur-xl border-b border-white/20 shadow-xl flex items-center justify-between px-margin-mobile py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/30">
+<img alt="Teacher Profile Portrait" data-alt="A professional portrait of a female teacher in her late 30s with a warm smile, wearing modern glasses and a blazer. The background is a soft-focus classroom with natural light filtering through windows. The image has a high-end cinematic feel with deep purples and soft violet highlights consistent with a premium command center UI aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuACR8cnlxK0qlPOl6qbQ0kcfITzQErIDc65wLI7Zw5kgQkB1LLqvg23XjYIGpShIlv42_pH8KImlAmic_lD8zI5NO6bU5Pz9dh_VbMMsVnHBxe-qJNLEzbA4kL3TnGM7AMrQjMgnJq-gIa9Qy6iCY_-fbNCh-84_HpzVzkXh_kogW2Z1T_-jl25nhOJdoYC2D86bgAldDaBux39fNbV8JBQ4JtGvrufUXEV7iz8KSyE_K6MiOXb8He0Oy3ETl0_vCYNy7ftVizSQOo7"/>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">EduCommand</h1>
+</div>
+<button class="material-symbols-outlined text-primary scale-95 active:scale-90 transition-transform">notifications</button>
+</header>
+<main class="max-w-max-width mx-auto px-margin-mobile pt-6 flex flex-col gap-8 md:px-margin-desktop">
+<!-- Welcome & Balance Section -->
+<section class="flex flex-col gap-4">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Leave Command Center</h2>
+<div class="grid grid-cols-3 gap-3 md:grid-cols-3 md:gap-gutter">
+<!-- CL Balance -->
+<div class="glass-card rounded-xl p-4 flex flex-col items-center justify-center text-center gap-1 group hover:border-primary/40 transition-all">
+<span class="font-label-sm text-label-sm text-on-surface-variant/70">Casual (CL)</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold">04</span>
+<span class="text-[10px] text-on-surface-variant/50 uppercase tracking-widest">Days Left</span>
+</div>
+<!-- SL Balance -->
+<div class="glass-card rounded-xl p-4 flex flex-col items-center justify-center text-center gap-1 group hover:border-primary/40 transition-all">
+<span class="font-label-sm text-label-sm text-on-surface-variant/70">Sick (SL)</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-secondary font-bold">08</span>
+<span class="text-[10px] text-on-surface-variant/50 uppercase tracking-widest">Days Left</span>
+</div>
+<!-- EL Balance -->
+<div class="glass-card rounded-xl p-4 flex flex-col items-center justify-center text-center gap-1 group hover:border-primary/40 transition-all">
+<span class="font-label-sm text-label-sm text-on-surface-variant/70">Earned (EL)</span>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-tertiary font-bold">12</span>
+<span class="text-[10px] text-on-surface-variant/50 uppercase tracking-widest">Days Left</span>
+</div>
+</div>
+</section>
+<!-- Application Form -->
+<section class="glass-card rounded-2xl p-6 flex flex-col gap-6 shadow-2xl relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -z-10"></div>
+<div class="flex items-center gap-2 border-b border-white/10 pb-4">
+<span class="material-symbols-outlined text-primary">edit_calendar</span>
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile font-bold">Apply for Leave</h3>
+</div>
+<form class="flex flex-col gap-6" id="leaveForm">
+<!-- Leave Type Pills -->
+<div class="flex flex-col gap-3">
+<label class="font-label-sm text-label-sm text-on-surface-variant">Select Leave Type</label>
+<div class="flex gap-3">
+<button class="px-6 py-2 rounded-full glass-card border-primary/40 text-primary font-bold text-label-sm transition-all neomorph-inset" onclick="selectType(this)" type="button">CL</button>
+<button class="px-6 py-2 rounded-full glass-card border-white/10 text-on-surface-variant text-label-sm transition-all" onclick="selectType(this)" type="button">SL</button>
+<button class="px-6 py-2 rounded-full glass-card border-white/10 text-on-surface-variant text-label-sm transition-all" onclick="selectType(this)" type="button">EL</button>
+</div>
+</div>
+<!-- Date Range -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">From Date</label>
+<input class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all" id="fromDate" onchange="calculateDays()" type="date" value="2024-11-20"/>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">To Date</label>
+<input class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all" id="toDate" onchange="calculateDays()" type="date" value="2024-11-22"/>
+</div>
+</div>
+<!-- Auto-calc Display -->
+<div class="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">info</span>
+<span class="font-body-md text-body-md text-on-surface-variant">Calculated working days:</span>
+</div>
+<span class="font-headline-lg-mobile text-headline-lg-mobile text-primary font-bold" id="workingDays">3</span>
+</div>
+<!-- Reason Field -->
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">Reason for Leave</label>
+<textarea class="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-on-surface focus:ring-2 focus:ring-primary outline-none transition-all min-h-[100px] placeholder:text-on-surface-variant/30" placeholder="Please provide a brief reason for your absence..."></textarea>
+</div>
+<!-- File Upload -->
+<div class="flex flex-col gap-2">
+<label class="font-label-sm text-label-sm text-on-surface-variant">Supporting Document (Optional)</label>
+<label class="group cursor-pointer flex flex-col items-center justify-center p-6 border-2 border-dashed border-white/10 rounded-xl hover:border-primary/40 hover:bg-white/5 transition-all">
+<span class="material-symbols-outlined text-primary mb-2 text-3xl group-hover:scale-110 transition-transform">cloud_upload</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-primary">Click to upload or drag &amp; drop</span>
+<span class="text-[10px] text-on-surface-variant/50 mt-1">PDF, JPG, or PNG (Max 5MB)</span>
+<input class="hidden" type="file"/>
+</label>
+</div>
+<!-- Submit CTA -->
+<button class="w-full py-4 bg-primary text-on-primary font-bold rounded-xl neomorph-button glow-violet hover:brightness-110 transition-all flex items-center justify-center gap-2" type="submit">
+                    Submit Leave Application
+                    <span class="material-symbols-outlined">send</span>
+</button>
+</form>
+</section>
+<!-- History List -->
+<section class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile font-bold">Leave History</h3>
+<button class="text-primary font-label-sm text-label-sm flex items-center gap-1">
+                    View All <span class="material-symbols-outlined text-sm">open_in_new</span>
+</button>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Item 1: Pending -->
+<div class="glass-card rounded-2xl p-5 flex items-center justify-between group">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-bold">Nov 12 - Nov 14</span>
+<span class="px-2 py-0.5 rounded bg-white/10 text-on-surface-variant text-[10px] uppercase font-bold tracking-tighter">CL</span>
+</div>
+<span class="text-[12px] text-on-surface-variant/60 italic truncate max-w-[200px]">Family emergency travel</span>
+</div>
+<div class="flex flex-col items-end gap-2">
+<span class="px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-[11px] font-bold border border-yellow-500/20 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span> Pending
+                        </span>
+<span class="text-[10px] text-on-surface-variant/40">Applied: Nov 10</span>
+</div>
+</div>
+<!-- Item 2: Approved -->
+<div class="glass-card rounded-2xl p-5 flex items-center justify-between">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-bold">Oct 28 - Oct 28</span>
+<span class="px-2 py-0.5 rounded bg-white/10 text-on-surface-variant text-[10px] uppercase font-bold tracking-tighter">SL</span>
+</div>
+<span class="text-[12px] text-on-surface-variant/60 italic">Doctor appointment</span>
+</div>
+<div class="flex flex-col items-end gap-2">
+<span class="px-3 py-1 rounded-full bg-green-500/10 text-green-400 text-[11px] font-bold border border-green-500/20">Approved</span>
+<span class="text-[10px] text-on-surface-variant/40">By: Admin Ross</span>
+</div>
+</div>
+<!-- Item 3: Rejected -->
+<div class="glass-card rounded-2xl p-5 flex flex-col gap-4 border-error/20">
+<div class="flex items-center justify-between">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-body-md text-body-md font-bold">Oct 15 - Oct 17</span>
+<span class="px-2 py-0.5 rounded bg-white/10 text-on-surface-variant text-[10px] uppercase font-bold tracking-tighter">EL</span>
+</div>
+</div>
+<span class="px-3 py-1 rounded-full bg-error/10 text-error text-[11px] font-bold border border-error/20">Rejected</span>
+</div>
+<div class="bg-error/5 p-3 rounded-lg border-l-2 border-error">
+<p class="text-[11px] text-error/90 font-medium">Admin Remark: High student absenteeism during these dates. Please reschedule if possible.</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-white/12 dark:bg-surface-container-highest/12 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(168,85,247,0.15)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-label-sm text-label-sm">Attendance</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-label-sm text-label-sm">Homework</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined">grade</span>
+<span class="font-label-sm text-label-sm">Marks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] font-bold bg-white/10 rounded-xl px-3 py-1 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">event_busy</span>
+<span class="font-label-sm text-label-sm">Leave</span>
+</a>
+</nav>
+<script>
+        function selectType(btn) {
+            // Reset all buttons
+            const buttons = btn.parentElement.querySelectorAll('button');
+            buttons.forEach(b => {
+                b.className = 'px-6 py-2 rounded-full glass-card border-white/10 text-on-surface-variant text-label-sm transition-all';
+            });
+            // Set active button
+            btn.className = 'px-6 py-2 rounded-full glass-card border-primary/40 text-primary font-bold text-label-sm transition-all neomorph-inset';
+        }
+
+        function calculateDays() {
+            const start = new Date(document.getElementById('fromDate').value);
+            const end = new Date(document.getElementById('toDate').value);
+            
+            if (end < start) {
+                document.getElementById('workingDays').textContent = '0';
+                return;
+            }
+
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            // Simulating a calculation that skips Sundays (just for UI flavor)
+            let count = 0;
+            let current = new Date(start);
+            while (current <= end) {
+                if (current.getDay() !== 0) count++;
+                current.setDate(current.getDate() + 1);
+            }
+            
+            document.getElementById('workingDays').textContent = count;
+        }
+
+        // Initialize calc
+        calculateDays();
+    </script>
+</body></html>

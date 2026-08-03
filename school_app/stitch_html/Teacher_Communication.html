@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Teacher Messages - Parent Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#ffd9dc",
+                    "error-container": "#93000a",
+                    "surface-container-low": "#2b1421",
+                    "secondary-fixed": "#ffd9e1",
+                    "surface-dim": "#210c18",
+                    "secondary-container": "#703347",
+                    "surface-container-lowest": "#1b0713",
+                    "on-primary-container": "#5b0017",
+                    "secondary-fixed-dim": "#ffb1c6",
+                    "outline": "#aa888a",
+                    "outline-variant": "#5b4041",
+                    "inverse-surface": "#ffd8e9",
+                    "on-secondary-container": "#ef9eb4",
+                    "surface-container": "#2f1825",
+                    "primary-fixed": "#ffdadb",
+                    "tertiary-fixed-dim": "#ffb2ba",
+                    "on-primary": "#67001b",
+                    "background": "#210c18",
+                    "surface": "#210c18",
+                    "inverse-primary": "#bc0b3b",
+                    "on-primary-fixed-variant": "#92002a",
+                    "error": "#ffb4ab",
+                    "on-tertiary-fixed-variant": "#861e35",
+                    "tertiary-container": "#e6687b",
+                    "surface-tint": "#ffb2b7",
+                    "on-surface-variant": "#e3bdbf",
+                    "primary-fixed-dim": "#ffb2b7",
+                    "on-error": "#690005",
+                    "on-secondary-fixed-variant": "#703347",
+                    "on-tertiary-fixed": "#400010",
+                    "primary-container": "#ff516a",
+                    "on-primary-fixed": "#40000d",
+                    "on-tertiary-container": "#5b001b",
+                    "on-secondary": "#541d30",
+                    "surface-container-high": "#3b222f",
+                    "surface-bright": "#4c313f",
+                    "tertiary": "#ffb2ba",
+                    "inverse-on-surface": "#422936",
+                    "on-tertiary": "#660220",
+                    "on-secondary-fixed": "#3a071b",
+                    "secondary": "#ffb1c6",
+                    "on-error-container": "#ffdad6",
+                    "primary": "#ffb2b7",
+                    "surface-variant": "#472d3a",
+                    "on-surface": "#ffd8e9",
+                    "on-background": "#ffd8e9",
+                    "surface-container-highest": "#472d3a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "16px",
+                    "xs": "8px",
+                    "container-padding": "20px",
+                    "md": "24px",
+                    "gutter": "12px",
+                    "base": "4px",
+                    "lg": "32px",
+                    "xl": "48px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-xl-mobile": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-xl": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-xl-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background: linear-gradient(135deg, #1F0A16 0%, #3D0A1E 100%);
+            min-height: 100vh;
+            color: #ffd8e9;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .message-incoming {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom-left-radius: 4px;
+        }
+        .message-outgoing {
+            background: #f43f5e;
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.3);
+            border-bottom-right-radius: 4px;
+        }
+        .neumorphic-inset {
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.4), inset -2px -2px 5px rgba(255,255,255,0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen font-body-md text-body-md overflow-hidden">
+
+<header class="flex justify-between items-center px-container-padding py-sm w-full top-0 sticky z-50 backdrop-blur-md bg-surface/10 border-b border-white/10 md:hidden">
+<h1 class="font-headline-md-mobile text-headline-md-mobile font-bold text-on-surface">Messages</h1>
+<div class="w-10 h-10 rounded-full border-2 border-primary/30 overflow-hidden">
+<img alt="Parent Profile" class="w-full h-full object-cover" data-alt="A professional close-up portrait of a caring female educator with a warm smile, set against a soft-focus classroom background with warm atmospheric lighting. The image captures a sense of professional excellence and nurturing support, aligned with a premium digital sanctuary aesthetic using deep rose and mahogany tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaA8p6ImsA3E3u0Q4Jay0jKZJawoGC8DoobCJgb2RegDBY-DntFUEgjk8TbfFcJSM-XfFEurPb0UuDj03hqDh2KYQlBtIvUWHhjRlYUUog_78AS6xV1SbBKYJd4seFf3jOEmnf8V1Aa1fiwlmSWej9ENb6qxwitoV5q80R0XHp-D97aEA_AdsPxkFZohIAB7colXDNTipPNH9iuDRTnONZgzusvGFDOE7S8k1MIQh_QFgr_7fr4De59ner25Zb4QFtHYJB9JXjS_s4"/>
+</div>
+</header>
+<aside class="hidden md:flex flex-col w-80 border-r border-white/5 h-full z-10 bg-surface-container-lowest/40 backdrop-blur-xl">
+<div class="p-lg">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-lg">Chat</h2>
+<div class="relative mb-md">
+<input class="w-full neumorphic-inset rounded-xl py-xs px-md pl-10 border-none text-body-sm focus:ring-1 focus:ring-primary/50 text-on-surface-variant" placeholder="Search teachers..." type="text"/>
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[18px]">search</span>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto custom-scrollbar px-sm">
+<div class="space-y-xs">
+<button class="w-full glass-card p-sm rounded-xl flex items-center gap-md border-primary/20 bg-primary-container/10 transition-all duration-300">
+<div class="relative">
+<img alt="Ms. Priya" class="w-12 h-12 rounded-full object-cover border-2 border-primary" data-alt="A portrait of Ms. Priya, a friendly class teacher with an approachable and knowledgeable expression. She is in a modern, sophisticated library setting with soft amber lighting. The visual style is premium and cinematic, incorporating warm rose-tinted depth and a professional atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-yhtcqyX6pCviK3UJUQB8r418UeyA6P0x1PnTwAyPOxcsp5J055KGoyUEL1Losre-CR3Wyhs61EY-nAxzVAQ3TL_MU05lsFwpED0jyvK5k0wrv4BqQ9db2jW1OgiszuSEPVkwXCs2GrGsLSUSg0DQto4AvJ0ROMog-SQ12qxRtOhT7oVLFDHX2sB756Za_QKZFMjIPTon2lvac4MUv5qj3_4g0Gb2zh_ZN-ayk8qviM8B8WYY9iCOQlYAOxBR_qIxnnPCzonzaLsp"/>
+<div class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#1b0713]"></div>
+</div>
+<div class="text-left">
+<p class="font-bold text-on-surface text-body-md">Ms. Priya</p>
+<p class="text-label-md text-primary font-medium">Class Teacher</p>
+</div>
+</button>
+<button class="w-full p-sm rounded-xl flex items-center gap-md hover:bg-white/5 transition-all">
+<img alt="Mr. Sharma" class="w-12 h-12 rounded-full object-cover opacity-80" data-alt="A portrait of Mr. Sharma, a distinguished math teacher with a confident and kind demeanor. He is photographed in a high-end educational environment with soft-focus architectural details. The lighting is warm and atmospheric, with subtle rose-gold highlights to match the nurturing premium brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDzHf0ZMBaBUDymbWwXB9jWQgmJH_Dq30YTJ8DKY02NP2yjATw3Xh3GXK1I1GSaWZN31K06scUju7j04oAOq9aD1P4s0Bp2ALDsPH_wpQy2YzK7PFXn-O2KCFYxSaq22MCUX_Mm67dGvhwadGaMr_zmV2SYkUDM8WhljB2bx7N851o6MuwORCC5hF7jZVcWhIxyg_Wo0dYD6kEFbf6ObRw0KXK5S0iYnEwoDE5hgfI5WBGuRSJV63Ve1OIYBhSTyzf8JKTeWDJRAOV"/>
+<div class="text-left">
+<p class="font-medium text-on-surface-variant text-body-md">Mr. Sharma</p>
+<p class="text-label-md text-on-surface-variant/60">Mathematics</p>
+</div>
+</button>
+<button class="w-full p-sm rounded-xl flex items-center gap-md hover:bg-white/5 transition-all">
+<img alt="Mrs. Kapoor" class="w-12 h-12 rounded-full object-cover opacity-80" data-alt="A professional portrait of a science teacher in a brightly lit, modern laboratory setting. The image uses a palette of deep jewel tones and soft glowing highlights. The mood is sophisticated and educational, maintaining a consistent high-end aesthetic across the educator profiles." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDLKtfPtxHf2bfAQSKSpKGmOX4sUzT5EZ493ZtxRD4GULCayQfTrk0CxbPE2rp7heR1RHtZs3OBOpZXLpP7JTEuO58ny7z0KDYLeD6Cp-JOiebnumQP0FBn5QY9oH7eP6DzYDkqIslXKv85WE-AahuQWWedM_kgfRtRV5pVtHaPtXpoA_KM8AfD0H2RmyW4NisF1clizK8uz7aMbQkte2chYtwedaKGTW2uA1A-dYnk4WlgUvrJx_WVQ7YExtXaERChTnidEl2qf6kn"/>
+<div class="text-left">
+<p class="font-medium text-on-surface-variant text-body-md">Mrs. Kapoor</p>
+<p class="text-label-md text-on-surface-variant/60">Science</p>
+</div>
+</button>
+</div>
+</nav>
+</aside>
+<main class="flex-1 flex flex-col h-full relative z-10">
+<div class="p-container-padding py-sm flex justify-between items-center glass-card border-x-0 border-t-0 rounded-none z-20">
+<div class="flex items-center gap-md">
+<button class="md:hidden text-on-surface-variant">
+<span class="material-symbols-outlined">arrow_back_ios</span>
+</button>
+<div class="relative">
+<img alt="Ms. Priya" class="w-10 h-10 rounded-full object-cover border border-white/20" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwZ_Pd6kEU-CTZ_b_0P2sREtd4X1O5kPyhWb1ATzy01RBM275InEZNA_oUOAZEu3UdpaAdfZDQzlFOA8AvUipmWFGwaM-4nZQ0Zt0hM0SEmW0IjZTQsWSY96GTg2hwYfVLerDB2kJAJxoDJhFjJBLVR6T78Mg9UKWRQiQ0hBrvLsK_6WjW1eLgt_G12tuNoV74YKgkgOBCBKnCwIv4XObcPcioqpehGoR-7KYntlLrgQ8xaKKMxTd5j6-YGfCmPCHGljOy0bp7ox1N"/>
+<div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#1b0713]"></div>
+</div>
+<div>
+<h3 class="font-bold text-on-surface text-body-md leading-tight">Ms. Priya</h3>
+<p class="text-label-md text-green-400">Online</p>
+</div>
+</div>
+<div class="flex gap-sm">
+<button class="p-xs hover:bg-white/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">videocam</span>
+</button>
+<button class="p-xs hover:bg-white/10 rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">call</span>
+</button>
+</div>
+</div>
+<section class="flex-1 overflow-y-auto custom-scrollbar p-container-padding space-y-md" id="chat-window">
+<div class="flex justify-center my-lg">
+<span class="px-md py-1 rounded-full glass-card text-label-md text-on-surface-variant/70 border-white/5">Today</span>
+</div>
+<div class="flex flex-col gap-xs max-w-[85%]">
+<div class="message-incoming p-sm rounded-2xl rounded-bl-none text-on-surface">
+<p class="text-body-sm">Good morning, Mr. Ramesh. I wanted to update you on Aryan's progress in English class. He has shown great improvement in his creative writing!</p>
+</div>
+<span class="text-[10px] text-on-surface-variant/50 ml-1">09:15 AM</span>
+</div>
+<div class="flex flex-col items-end gap-xs max-w-[85%] ml-auto">
+<div class="message-outgoing p-sm rounded-2xl rounded-br-none text-white">
+<p class="text-body-sm">That's wonderful to hear, Ms. Priya. We've been encouraging him to read more at home as well. Thank you for the update!</p>
+</div>
+<span class="text-[10px] text-on-surface-variant/50 mr-1">09:18 AM</span>
+</div>
+<div class="flex flex-col gap-xs max-w-[85%]">
+<div class="message-incoming p-sm rounded-2xl rounded-bl-none text-on-surface">
+<p class="text-body-sm">You're welcome! Also, just a reminder about the science project submission this Friday. Does he need any additional resources from my end?</p>
+</div>
+<span class="text-[10px] text-on-surface-variant/50 ml-1">09:20 AM</span>
+</div>
+<div class="flex flex-col items-end gap-xs max-w-[85%] ml-auto">
+<div class="message-outgoing p-sm rounded-2xl rounded-br-none text-white">
+<p class="text-body-sm">He's almost finished. I think he might need some help with the volcano model structure. If you have any diagrams, that would be helpful.</p>
+</div>
+<span class="text-[10px] text-on-surface-variant/50 mr-1">09:22 AM</span>
+</div>
+</section>
+<div class="p-container-padding pb-32 md:pb-8">
+<div class="glass-card p-xs rounded-full flex items-center gap-xs px-sm shadow-xl">
+<button class="p-xs text-on-surface-variant/60 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<button class="p-xs text-on-surface-variant/60 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-on-surface text-body-sm placeholder:text-on-surface-variant/40 py-2" placeholder="Type a message..." type="text"/>
+<button class="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center shadow-[0_0_12px_rgba(244,63,94,0.4)] hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+</main>
+<nav class="fixed bottom-6 left-0 right-0 mx-auto w-[92%] max-w-md z-50 flex justify-around items-center py-xs px-sm bg-surface/10 backdrop-blur-[30px] border border-white/15 rounded-full shadow-[0_0_24px_rgba(244,63,94,0.2)] md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">Academics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">directions_bus</span>
+<span class="font-label-md text-label-md">Bus</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-full px-4 py-1 shadow-[0_0_12px_rgba(244,63,94,0.4)] transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">chat</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<script>
+        const chatWindow = document.getElementById('chat-window');
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('scale-95');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('scale-95');
+            });
+            el.addEventListener('mouseleave', () => {
+                el.classList.remove('scale-95');
+            });
+        });
+    </script>
+</body></html>

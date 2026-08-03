@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduVision | Facilities</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glow-pulse:active {
+            animation: glow-pulse-animation 0.6s ease-out;
+        }
+        @keyframes glow-pulse-animation {
+            0% { box-shadow: 0 0 0px rgba(123, 208, 255, 0); }
+            50% { box-shadow: 0 0 30px rgba(123, 208, 255, 0.6); }
+            100% { box-shadow: 0 0 0px rgba(123, 208, 255, 0); }
+        }
+        .glass-card {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            border-color: #8ed5ff;
+            box-shadow: 0 0 24px rgba(123, 208, 255, 0.4);
+            transform: translateY(-8px);
+        }
+        body {
+            background-color: #101415;
+            color: #e0e3e5;
+            overflow-x: hidden;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#d7e3fc",
+                      "error": "#ffb4ab",
+                      "surface-container-highest": "#323537",
+                      "on-primary-container": "#004965",
+                      "error-container": "#93000a",
+                      "on-secondary-container": "#a1bae1",
+                      "on-primary-fixed": "#001e2c",
+                      "primary-fixed-dim": "#7bd0ff",
+                      "secondary-container": "#314a6c",
+                      "primary-fixed": "#c4e7ff",
+                      "background": "#101415",
+                      "surface-container-lowest": "#0b0f10",
+                      "tertiary": "#c2cde6",
+                      "on-primary-fixed-variant": "#004c69",
+                      "on-primary": "#00354a",
+                      "on-secondary-fixed-variant": "#2f4869",
+                      "on-secondary-fixed": "#001c3a",
+                      "inverse-surface": "#e0e3e5",
+                      "surface": "#101415",
+                      "on-tertiary-fixed": "#101c2e",
+                      "inverse-primary": "#00668a",
+                      "on-error-container": "#ffdad6",
+                      "primary-container": "#38bdf8",
+                      "surface-container": "#1d2022",
+                      "outline": "#87929a",
+                      "outline-variant": "#3e484f",
+                      "on-tertiary-fixed-variant": "#3c475b",
+                      "on-tertiary-container": "#394459",
+                      "secondary-fixed-dim": "#afc8f0",
+                      "secondary-fixed": "#d4e3ff",
+                      "surface-container-low": "#191c1e",
+                      "surface-bright": "#363a3b",
+                      "secondary": "#afc8f0",
+                      "tertiary-container": "#a6b2ca",
+                      "inverse-on-surface": "#2d3133",
+                      "primary": "#8ed5ff",
+                      "on-surface": "#e0e3e5",
+                      "tertiary-fixed-dim": "#bbc7df",
+                      "surface-variant": "#323537",
+                      "on-tertiary": "#253144",
+                      "surface-dim": "#101415",
+                      "on-secondary": "#173151",
+                      "on-background": "#e0e3e5",
+                      "on-surface-variant": "#bdc8d1",
+                      "surface-container-high": "#272a2c",
+                      "surface-tint": "#7bd0ff",
+                      "on-error": "#690005"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "margin-desktop": "64px",
+                      "gutter": "24px",
+                      "unit": "8px",
+                      "margin-mobile": "20px",
+                      "section-gap": "120px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Plus Jakarta Sans"],
+                      "label-md": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "body-sm": ["Inter"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"],
+                      "headline-sm": ["Plus Jakarta Sans"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-lg": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "display-lg": ["56px", {"lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                      "headline-sm": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full bg-white/12 backdrop-blur-[20px] border-b border-white/20 z-50">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20 w-full max-w-[1440px] mx-auto">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="school">school</span>
+<h1 class="font-display-lg text-headline-sm font-bold text-on-surface">EduVision</h1>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="text-on-surface-variant font-label-lg hover:text-primary transition-colors" href="#">Campus</a>
+<a class="text-primary font-bold font-label-lg" href="#">Facilities</a>
+<a class="text-on-surface-variant font-label-lg hover:text-primary transition-colors" href="#">Programs</a>
+<a class="text-on-surface-variant font-label-lg hover:text-primary transition-colors" href="#">Admission</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors Active: scale-95 transition-transform" data-icon="contact_support">contact_support</button>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-32 pb-section-gap px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto relative overflow-hidden">
+<!-- Background Ambient Glows -->
+<div class="absolute -top-24 -right-24 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="absolute top-1/2 -left-48 w-[600px] h-[600px] bg-secondary/5 rounded-full blur-[150px] pointer-events-none"></div>
+<!-- Section Header -->
+<div class="mb-16">
+<span class="text-primary font-label-lg tracking-widest uppercase mb-4 block">World-Class Infrastructure</span>
+<h2 class="font-display-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-6">Our Facilities</h2>
+<p class="font-body-lg text-on-surface-variant max-w-2xl">Experience an environment designed for innovation, discovery, and personal growth. Our campus features state-of-the-art facilities that empower students to excel in every field.</p>
+</div>
+<!-- Facilities Bento-ish Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+<!-- Labs Card -->
+<div class="glass-card rounded-xl overflow-hidden group">
+<div class="h-64 overflow-hidden">
+<img alt="Advanced Labs" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="A futuristic science laboratory with glowing blue interfaces, sleek white workstations, and high-tech research equipment. The lighting is cool and clinical, utilizing the EduVision midnight navy and sky blue color palette. Professional students in lab coats are subtly blurred in the background, emphasizing a cutting-edge institutional research environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRCdouZ5lDyHLWuxKOiZE_cN_mn6UT6EsQvnGt3ZwJMvUIRqvquiQS6c2IZp4VxCQPx1NZmKHVrUOa59nxnhvuta3ly-R1HMVtW8yRfcwsbz-gx9n2qmUBPz8ncNgvdIvnb4fbfH6iKXtk0LoqLw8Pkqt2C5kLvsJ1C6SsdRN9-U7t7VdwzpA0xyT3OJvKeTxSQ3c_GQQVDzxY7O21E2mZeXDI5J0lrtqOrp4XelAUjCeTh5CI9h4UGsd_QnLBzi8fbqWxMcFrJkr5"/>
+</div>
+<div class="p-8">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="biotech">biotech</span>
+<h3 class="font-headline-sm text-on-surface">Labs</h3>
+</div>
+<p class="font-body-md text-on-surface-variant mb-6">Next-generation research facilities equipped with AI-integrated instrumentation and specialized specialized simulation centers for interdisciplinary discovery.</p>
+<button class="flex items-center gap-2 text-primary font-label-lg group/btn">
+                        Explore Labs 
+                        <span class="material-symbols-outlined text-sm transition-transform group-hover/btn:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Library Card -->
+<div class="glass-card rounded-xl overflow-hidden group">
+<div class="h-64 overflow-hidden">
+<img alt="Digital Library" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="A modern, multi-level library with expansive glass walls looking out onto a lush campus. The interior features glowing sky-blue accent lighting along the bookshelves and minimalist midnight navy seating areas. The atmosphere is quiet, intellectual, and premium, captured with a soft-focus editorial style that highlights the architectural transparency." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0pZ-_LFlJudKoqBz3KHrBi6gAJy0WWcck-2BjW3PQdiXhSZXQLB27nHUPyf0gzheHH0tnuLV6MQOkGea28-rSEHbmF_wgnmX_h3wUnINCcoMpUjYfHcd0cnKP6wy4yqT98DSRPZdC3LWIsMQXCTW-DdPwCO-FhR19IUfQi_MIyKoNVOq0FuC0eoCC2IdhJZzeHtMwIImWQCBygQi2gcSn_0djMMy35JHStwFV7IX9RAlMDBpZ6DEFrv8SaMCXXzd6YpjZIZTX0zKE"/>
+</div>
+<div class="p-8">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="menu_book">menu_book</span>
+<h3 class="font-headline-sm text-on-surface">Library</h3>
+</div>
+<p class="font-body-md text-on-surface-variant mb-6">A vast hybrid repository of digital and physical knowledge, featuring quiet zones, collaborative pods, and 24/7 access to global research databases.</p>
+<button class="flex items-center gap-2 text-primary font-label-lg group/btn">
+                        Virtual Tour 
+                        <span class="material-symbols-outlined text-sm transition-transform group-hover/btn:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Sports Complex Card -->
+<div class="glass-card rounded-xl overflow-hidden group">
+<div class="h-64 overflow-hidden">
+<img alt="Sports Arena" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="A high-end indoor athletic facility with sleek blue running tracks and a large Olympic-sized swimming pool. The lighting is bright and energetic, with sharp reflections on polished surfaces. The design follows a professional sporting aesthetic using the brand's primary sky-blue and deep navy tones, evoking a sense of peak performance and discipline." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9pR1WHhjXrkZz7FeEePWGlX4fls42RDxqj9YUzAiULbjvvYlh5s2ul--CYzZevE_Xq3O6OLoBxofzFp8EhEzAZREdSoO6crCVonmmFvWFl_pNnMKXyOs-iAgNXJvkwTUXsTGm9kMWR3uQv8zp-W1ag2bjyaa4ofC1_2kx74NKYKL9QFHzHdLAYsSEOMUXddGsFN6c5xr4NNOHmnXzNQ9dQLPXiknqkRvnCXE5LFA580K7l3UAOhq2Iw12sZ7jR-bnLJhu8jp_Zbd0"/>
+</div>
+<div class="p-8">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="fitness_center">fitness_center</span>
+<h3 class="font-headline-sm text-on-surface">Sports Complex</h3>
+</div>
+<p class="font-body-md text-on-surface-variant mb-6">Olympic-grade athletic centers including heated pools, professional tracks, and high-performance gyms to foster holistic physical well-being.</p>
+<button class="flex items-center gap-2 text-primary font-label-lg group/btn">
+                        View Amenities 
+                        <span class="material-symbols-outlined text-sm transition-transform group-hover/btn:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Transport Card -->
+<div class="glass-card rounded-xl overflow-hidden group">
+<div class="h-64 overflow-hidden">
+<img alt="Campus Transport" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="A fleet of modern, electric campus shuttle buses parked in a clean, brightly lit transit hub. The buses feature minimalist white and sky-blue livery. The surrounding architecture is metallic and futuristic, emphasizing efficient, safe, and sustainable transportation. The scene is captured at dusk, with the hub's lights casting a cool blue glow." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDC9n-mReQIeKWvNSyd8bb1kTIuEWvIuSB--s1ZgbFjDZB9eaz6BpMHIQ5VxdlwI-DZNBVBxgP3AN8tfPj3UWjn7QOlVAXyWwiBoGk4-Nr5cI1jDIzO0B2Hpx5J9PIHdK-y9_tQH33Cj8H3Yy9WxGyzacB1lAMP_v4_yiq9_tKDnpQYBiVFtTrbAu_SVkluIDyirHuVwx8VXacWIRwME5pmBl6GWeLOlMljdpjWLatjsBhB_gLROK7kSY0FepoPSZoUvyPqqNM-q3le"/>
+</div>
+<div class="p-8">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="directions_bus">directions_bus</span>
+<h3 class="font-headline-sm text-on-surface">Transport</h3>
+</div>
+<p class="font-body-md text-on-surface-variant mb-6">A seamless, eco-friendly transit network connecting the campus to major city nodes with real-time tracking and zero-emission electric shuttles.</p>
+<button class="flex items-center gap-2 text-primary font-label-lg group/btn">
+                        Check Routes 
+                        <span class="material-symbols-outlined text-sm transition-transform group-hover/btn:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Canteen Card -->
+<div class="glass-card rounded-xl overflow-hidden group">
+<div class="h-64 overflow-hidden">
+<img alt="Dining Hall" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="An upscale, glass-walled campus cafeteria with warm wooden accents and midnight navy designer furniture. The space is filled with natural light and features organic plant life. High-quality healthy food options are presented beautifully at a minimalist serving station. The vibe is social, premium, and relaxed, consistent with the visionary institutional brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRaKr8MZmE5byKZqdVZ-CFNxKpIpiw2I-lFan76XbWtLE6X41JkKS87Z24T1yI4fH99RglECg9babwd9JsT0AHF9T_YGANlH8sSU37c4xT81wCdjorHO41GHAEh4B1_sTcaOSyRyRySeYB1vggGvZY9tm8DdxhkcT5onyYEuRSQQxuB2NexAPlfRkEWRam4jyjlsm1zpNSSgSj4b9hDlsIcvlo3YtfcIaayRuuOjn9qxZwQucV71rLXofN6f5n0EBj4QLMnVXwp302"/>
+</div>
+<div class="p-8">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="restaurant">restaurant</span>
+<h3 class="font-headline-sm text-on-surface">Canteen</h3>
+</div>
+<p class="font-body-md text-on-surface-variant mb-6">A gourmet dining experience offering diverse, nutritionally-balanced cuisines in a vibrant, architecturally stunning social hub.</p>
+<button class="flex items-center gap-2 text-primary font-label-lg group/btn">
+                        Menu Highlights 
+                        <span class="material-symbols-outlined text-sm transition-transform group-hover/btn:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Medical Room Card -->
+<div class="glass-card rounded-xl overflow-hidden group">
+<div class="h-64 overflow-hidden">
+<img alt="Health Center" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="A pristine, modern medical consultation room with calming sky-blue walls and soft ergonomic seating. Advanced diagnostic screens are visible, displaying healthcare data in a clean interface. The environment feels safe, professional, and technologically superior, maintaining the midnight navy and sky-blue brand aesthetic through subtle details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAn9Uz76sg9TmgHzzr-L8tCZXFMIWf5WFApZU_a8c8ncaQ9zjpqnOkY7ZiNmaEVFA-0MYRzcfV-JVNsXhrwajCJWHLFxR3R0lxHVJaVO5kqKG2X62wBtI8ANn9ElKvg66N9NYme21h4AoiLl-PJWe4GO6-Jimyo9ELNO8ytk51R25eOYQMWD1F0OE_Rc0VtbMwvXdON-BnBU0svPVNyJzykcGuYzB07p6_Vl4E3bNKQnPqhfwlq6wA_SNSUlaXTmOGWtiinAG6s1U91"/>
+</div>
+<div class="p-8">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="medical_services">medical_services</span>
+<h3 class="font-headline-sm text-on-surface">Medical Room</h3>
+</div>
+<p class="font-body-md text-on-surface-variant mb-6">Fully-equipped 24/7 health center staffed by professional medical practitioners, providing emergency care and mental wellness support.</p>
+<button class="flex items-center gap-2 text-primary font-label-lg group/btn">
+                        Health Services 
+                        <span class="material-symbols-outlined text-sm transition-transform group-hover/btn:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (CTA Variant) -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-center py-6 px-margin-mobile md:px-margin-desktop bg-white/12 backdrop-blur-[20px] border-t border-primary shadow-[0_0_24px_rgba(123,208,255,0.4)]">
+<button class="flex items-center gap-3 text-primary font-bold font-label-lg group glow-pulse">
+<span>Register to unlock attendance, marks &amp; full features</span>
+<span class="material-symbols-outlined transition-transform group-hover:translate-x-2" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</footer>
+<script>
+        // Micro-interactions for glass cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+
+        // Sticky Header scroll effect
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('py-2');
+                header.classList.remove('py-0');
+            } else {
+                header.classList.add('py-0');
+                header.classList.remove('py-2');
+            }
+        });
+    </script>
+</body></html>

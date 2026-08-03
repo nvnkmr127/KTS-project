@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Geist:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background: radial-gradient(circle at top left, #2c0051 0%, #101415 100%);
+            min-height: 100vh;
+            color: #e0e3e5;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neomorphic-pressed {
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.4), inset -2px -2px 5px rgba(255,255,255,0.05);
+        }
+        .neomorphic-raised {
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.3), -2px -2px 10px rgba(255,255,255,0.02);
+        }
+        .glow-violet {
+            box-shadow: 0 0 24px rgba(168, 85, 247, 0.4);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-lowest": "#0b0f10",
+                        "inverse-surface": "#e0e3e5",
+                        "tertiary-fixed": "#eedcff",
+                        "on-error": "#690005",
+                        "surface-variant": "#323537",
+                        "tertiary-fixed-dim": "#d4beec",
+                        "on-secondary-fixed": "#1e055a",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#323537",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#f0dbff",
+                        "on-tertiary-fixed-variant": "#503f66",
+                        "primary": "#ddb7ff",
+                        "on-secondary": "#33226f",
+                        "surface-dim": "#101415",
+                        "error": "#ffb4ab",
+                        "on-surface": "#e0e3e5",
+                        "on-tertiary-fixed": "#231437",
+                        "inverse-primary": "#842bd2",
+                        "background": "#101415",
+                        "tertiary-container": "#9c88b4",
+                        "outline-variant": "#4d4354",
+                        "surface-container-low": "#191c1e",
+                        "secondary-fixed": "#e7deff",
+                        "secondary-fixed-dim": "#cbbeff",
+                        "on-primary": "#490080",
+                        "surface-container-high": "#272a2c",
+                        "tertiary": "#d4beec",
+                        "on-tertiary": "#39294e",
+                        "inverse-on-surface": "#2d3133",
+                        "on-primary-container": "#400071",
+                        "surface-container": "#1d2022",
+                        "secondary-container": "#4a3a87",
+                        "surface-bright": "#363a3b",
+                        "primary-fixed-dim": "#ddb7ff",
+                        "surface-tint": "#ddb7ff",
+                        "outline": "#988d9f",
+                        "surface": "#101415",
+                        "on-primary-fixed": "#2c0051",
+                        "on-primary-fixed-variant": "#6900b3",
+                        "secondary": "#cbbeff",
+                        "on-tertiary-container": "#322247",
+                        "on-surface-variant": "#cfc2d6",
+                        "on-background": "#e0e3e5",
+                        "on-secondary-fixed-variant": "#4a3a87",
+                        "on-secondary-container": "#baa9ff",
+                        "primary-container": "#b76dff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "40px",
+                        "base": "8px",
+                        "max-width": "1440px"
+                    },
+                    fontFamily: {
+                        "label-sm": ["Geist"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-background pb-32">
+<!-- Top AppBar (From JSON logic) -->
+<header class="w-full sticky top-0 z-50 bg-white/10 dark:bg-surface-container/10 backdrop-blur-xl border-b border-white/20 shadow-xl flex items-center justify-between px-margin-mobile py-4">
+<div class="flex items-center gap-3">
+<img alt="Teacher Profile" class="w-10 h-10 rounded-full border border-white/20" data-alt="A professional close-up portrait of a female educator with a friendly expression, wearing modern glasses and a smart-casual blazer. The lighting is soft and cinematic, with a gentle purple ambient glow in the background reflecting a high-tech learning environment. The image is crisp and focused, showcasing a sense of calm authority and approachability in a futuristic academic setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvG4qcIHkPB8W_d0EqhAzys6_Wp8cQ7zMXoqDvj3KyDwkm6WOyjIxYz6OOXRiLWaqC4E7zyteKymJFHvatgDmwbz0zyNm50HZvOssb0BJ2a1Qy7WD4v6vtX7_qX7DAyz211ODROcKYLtGuzfjJTuBDXY8QMBdfTxVRJ-98p8IjrCiLiuraPhtOeb_UaXtAQyNcxkheuYZwob46aisUGbY3CM4wj-BbK5qgTT4JtkVGRjpUMM6iF7Vyzpvay15ykmOuIISV3dsehBYy"/>
+<span class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">EduCommand</span>
+</div>
+<button class="text-primary hover:bg-white/5 transition-colors p-2 rounded-full active:scale-90 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<main class="px-margin-mobile pt-6 max-w-max-width mx-auto">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+<div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-1">Class 8-A | 29 May 2026</h1>
+<p class="text-on-surface-variant font-label-sm text-label-sm uppercase tracking-widest">42 Students Enrolled</p>
+</div>
+<button class="glass-card px-6 py-2 rounded-xl text-primary font-bold active:scale-95 transition-all glow-violet self-start md:self-auto">
+                Mark All Present
+            </button>
+</div>
+<!-- Progress Section -->
+<div class="glass-card p-6 rounded-2xl mb-8">
+<div class="flex justify-between items-center mb-3">
+<span class="text-on-surface font-semibold">Attendance Progress</span>
+<span class="text-primary font-bold">38 / 42 marked</span>
+</div>
+<div class="w-full bg-white/5 rounded-full h-3 overflow-hidden border border-white/10">
+<div class="bg-primary h-full glow-violet transition-all duration-500" style="width: 90.4%"></div>
+</div>
+</div>
+<!-- Search & Filter -->
+<div class="relative mb-8">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none backdrop-blur-md transition-all" placeholder="Search student name or roll no..." type="text"/>
+</div>
+<!-- Student List Container -->
+<div class="flex flex-col gap-4">
+<!-- Student Row (Present State) -->
+<div class="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4 transition-all hover:border-white/30">
+<div class="flex items-center gap-4 w-full md:w-1/3">
+<span class="text-on-surface-variant font-label-sm w-6">01</span>
+<img alt="Student" class="w-12 h-12 rounded-xl object-cover border border-white/20" data-alt="A young student with an engaged expression, sitting in a modern classroom setting with bokeh lights in the background. The aesthetic is clean and academic, featuring soft purple and blue ambient lighting that matches a futuristic digital education platform. The focus is sharp on the student's face, conveying a sense of curiosity and dedication in a high-end school environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgZ9Vfgvbfvg4rQkQYMJSuksW_t5E_1TIIruleVh0kENKdsToztGT8xca3Gou8pIdgKD5jKiQYrn2Omb3i8ai4Q5JEM1qYKPreRSBtSBiDJDO9gpTXrTjRKL3oDyPKheJyrsSA-jsYnPnUA-FHKTbM10nQ22-pD08EVoAOCvzc39AVffnW3CpNcakqDH00HbtiFBqCrsVwaaR-aTMVFGlDJt2N_8JwbSYOUPFGYKEpVDBMzSzp0oguRd8b9VQtGXyWaVpeHnsbgK-b"/>
+<div class="flex flex-col">
+<span class="text-on-surface font-semibold">Aditi Sharma</span>
+<span class="text-on-surface-variant text-xs">Roll No: 8A01</span>
+</div>
+</div>
+<div class="flex-1 flex justify-center w-full">
+<div class="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full max-w-sm">
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all bg-green-500/80 text-white shadow-[0_0_12px_rgba(34,197,94,0.4)]">P</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">A</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">L</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">HD</button>
+</div>
+</div>
+<div class="flex items-center gap-4 w-full md:w-auto justify-end">
+<button class="p-2 rounded-lg hover:bg-white/5 text-on-surface-variant">
+<span class="material-symbols-outlined">notes</span>
+</button>
+</div>
+</div>
+<!-- Student Row (Absent State) -->
+<div class="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4 transition-all hover:border-white/30">
+<div class="flex items-center gap-4 w-full md:w-1/3">
+<span class="text-on-surface-variant font-label-sm w-6">02</span>
+<img alt="Student" class="w-12 h-12 rounded-xl object-cover border border-white/20" data-alt="A portrait of a teenage boy student with a calm expression, wearing a navy school uniform. The background shows a modern, blurred library with subtle purple accent lighting. The overall style is professional and clean, fitting into a premium ed-tech management system dashboard with volumetric lighting effects." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTU9sn6Shm3XH34GjuXQa7MSCF2Koi4Vi0fKDFAaaoMjWBo2uLKFAf4gFoY06ke8TprVh0a_GtAjQmpbyqeM7ueBug8-3V1874BcP3fEj7O8-MDOP2LEGgYKdxVnTNUoOs42VbbptKDVkE-MNcW-d-vo0z44EoXAQpGypQv6k9tn44K9oU7Z-318fY1hQcQ43xGOtyX9ckJXFc02WKvj1GDc24tkP9b35yzR-FqVAYBnkMr_NwyasIsyi1lOLbOY34XAVwlcNxrk6H"/>
+<div class="flex flex-col">
+<span class="text-on-surface font-semibold">Aryan Verma</span>
+<span class="text-on-surface-variant text-xs">Roll No: 8A02</span>
+</div>
+</div>
+<div class="flex-1 flex justify-center w-full">
+<div class="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full max-w-sm">
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">P</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-red-500/80 text-white shadow-[0_0_12px_rgba(239,68,68,0.4)]">A</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">L</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">HD</button>
+</div>
+</div>
+<div class="flex items-center gap-4 w-full md:w-auto justify-end">
+<button class="p-2 rounded-lg hover:bg-white/5 text-red-400">
+<span class="material-symbols-outlined" data-weight="fill">notes</span>
+</button>
+</div>
+</div>
+<!-- Locked State Row -->
+<div class="relative group">
+<div class="absolute inset-0 bg-black/40 backdrop-blur-[2px] rounded-2xl z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-not-allowed">
+<div class="bg-surface-container-high px-4 py-2 rounded-xl border border-white/10 shadow-2xl flex items-center gap-2">
+<span class="material-symbols-outlined text-amber-400 text-sm">lock</span>
+<span class="font-label-sm text-label-sm">Override requires Admin</span>
+</div>
+</div>
+<div class="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4 opacity-50 grayscale-[0.5]">
+<div class="flex items-center gap-4 w-full md:w-1/3">
+<span class="text-on-surface-variant font-label-sm w-6">03</span>
+<img alt="Student" class="w-12 h-12 rounded-xl object-cover border border-white/20" data-alt="A studio portrait of a student girl with a thoughtful expression. The lighting is sophisticated, with a split-tone effect of soft white and deep violet. The composition is minimal and modern, suitable for a high-end school administration application. The texture is smooth and polished with deep contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAcpTH6jaz4-HffD2REy5DI1KbiPhr6v2d9aaPug6_Cjawc2FT4rIjCdgRy5C-uD3ieA1LW1yefm-O_rFOAH1IYziWMwrpTZSJhWG0vuEGoV6Z4W1Ja05OeNgS7znEQlJNnSGCp6p8RvDQkv3eTWFYQ7EjfDoS_zk0tdpx2-y5FxjPzkKDpPN_UeUjEv-hrvkn8hmPzuSELOwA3-LQ_qRiRb9ipbEVmSbzPp8HPmHRqBzZxrZw0dgqHMntNQcHNurhDmAdrPB6Hdt7y"/>
+<div class="flex flex-col">
+<span class="text-on-surface font-semibold">Ishaan Gupta</span>
+<span class="text-on-surface-variant text-xs">Roll No: 8A03</span>
+</div>
+</div>
+<div class="flex-1 flex justify-center w-full">
+<div class="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full max-w-sm">
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-amber-500/80 text-white shadow-[0_0_12px_rgba(245,158,11,0.4)]">L</button>
+</div>
+</div>
+<div class="flex items-center gap-4 w-full md:w-auto justify-end">
+<span class="material-symbols-outlined text-on-surface-variant/30">lock</span>
+</div>
+</div>
+</div>
+<!-- Student Row (Half Day State) -->
+<div class="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center gap-4 transition-all hover:border-white/30">
+<div class="flex items-center gap-4 w-full md:w-1/3">
+<span class="text-on-surface-variant font-label-sm w-6">04</span>
+<img alt="Student" class="w-12 h-12 rounded-xl object-cover border border-white/20" data-alt="A portrait of a male student looking forward with a smart appearance. The background consists of a high-tech school laboratory with glowing digital screens and glass partitions. The lighting is dominated by a cinematic purple and teal palette, creating a futuristic academic atmosphere. High resolution, professional photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRdlyPKuT0faGLvTYKfKXMgE8ir8p8rTOGOOaoHLCXS52tP6rD72RumC1r1GL_NjmZZYt4IkTZoLyYJ-D7-8Gv7vb6-kp46sTvU0QuAri6hsPPM_7Ir34Asfe5kKEW7Nir2Lr7M4OuqD29G8iAyTAfh1K2gOT1bD1bLa3vweEqE0V1IRgVTRdAJJ1hkIIehk3fhKTr6yroF_-PFwi26Ux7yaFtE5hUNMS4YqmWGyEwvKWZqSoz7yk-2EhBHmUJVeCM90AARYsmLKs2"/>
+<div class="flex flex-col">
+<span class="text-on-surface font-semibold">Kavya Nair</span>
+<span class="text-on-surface-variant text-xs">Roll No: 8A04</span>
+</div>
+</div>
+<div class="flex-1 flex justify-center w-full">
+<div class="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full max-w-sm">
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">P</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">A</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all">L</button>
+<button class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-blue-500/80 text-white shadow-[0_0_12px_rgba(59,130,246,0.4)]">HD</button>
+</div>
+</div>
+<div class="flex items-center gap-4 w-full md:w-auto justify-end">
+<button class="p-2 rounded-lg hover:bg-white/5 text-on-surface-variant">
+<span class="material-symbols-outlined">notes</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Fixed CTA -->
+<div class="fixed bottom-24 left-0 w-full px-margin-mobile z-40">
+<button class="w-full max-w-max-width mx-auto py-4 rounded-2xl bg-primary text-on-primary-container font-bold text-lg glow-violet hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-[0_8px_32px_rgba(168,85,247,0.3)]">
+<span class="material-symbols-outlined">done_all</span>
+            Submit Attendance
+        </button>
+</div>
+<!-- Bottom NavBar (From JSON logic) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-white/12 dark:bg-surface-container-highest/12 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(168,85,247,0.15)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] font-bold bg-white/10 rounded-xl px-3 py-1 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-label-sm text-label-sm">Attendance</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-label-sm text-label-sm">Homework</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">grade</span>
+<span class="font-label-sm text-label-sm">Marks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">event_busy</span>
+<span class="font-label-sm text-label-sm">Leave</span>
+</a>
+</nav>
+<!-- Atmospheric Glows -->
+<div class="fixed top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] -z-10 pointer-events-none rounded-full"></div>
+<div class="fixed bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-secondary-container/20 blur-[100px] -z-10 pointer-events-none rounded-full"></div>
+<script>
+        // Micro-interactions for toggle buttons
+        document.querySelectorAll('.flex.bg-white\\/5 button').forEach(button => {
+            button.addEventListener('click', function() {
+                const parent = this.parentElement;
+                parent.querySelectorAll('button').forEach(btn => {
+                    btn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold text-on-surface-variant hover:bg-white/5 transition-all';
+                    btn.style.boxShadow = 'none';
+                });
+
+                const type = this.innerText;
+                let activeClasses = 'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-white ';
+                
+                if (type === 'P') activeClasses += 'bg-green-500/80 shadow-[0_0_12px_rgba(34,197,94,0.4)]';
+                else if (type === 'A') activeClasses += 'bg-red-500/80 shadow-[0_0_12px_rgba(239,68,68,0.4)]';
+                else if (type === 'L') activeClasses += 'bg-amber-500/80 shadow-[0_0_12px_rgba(245,158,11,0.4)]';
+                else if (type === 'HD') activeClasses += 'bg-blue-500/80 shadow-[0_0_12px_rgba(59,130,246,0.4)]';
+
+                this.className = activeClasses;
+            });
+        });
+    </script>
+</body></html>

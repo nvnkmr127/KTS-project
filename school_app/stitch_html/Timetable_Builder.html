@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduVision | Timetable Builder</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at top left, #00513f 0%, #121414 40%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neumorphic-inset {
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.4), inset -1px -1px 3px rgba(255,255,255,0.05);
+        }
+        .emerald-glow {
+            box-shadow: 0 0 24px rgba(0, 212, 170, 0.4);
+        }
+        .timetable-grid {
+            display: grid;
+            grid-template-columns: 60px repeat(6, 1fr);
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                "on-secondary-fixed": "#081c32",
+                "background": "#121414",
+                "on-tertiary-fixed-variant": "#204f3f",
+                "on-secondary-container": "#a4b6d3",
+                "inverse-primary": "#006b55",
+                "on-primary-fixed": "#002118",
+                "secondary-container": "#364860",
+                "on-surface": "#e2e2e2",
+                "on-tertiary-container": "#255343",
+                "surface-container-lowest": "#0c0f0f",
+                "primary-fixed-dim": "#28dfb5",
+                "secondary-fixed": "#d2e4ff",
+                "on-surface-variant": "#bacac2",
+                "on-primary-container": "#005643",
+                "secondary-fixed-dim": "#b5c8e5",
+                "surface-tint": "#28dfb5",
+                "secondary": "#b5c8e5",
+                "surface": "#121414",
+                "primary": "#46f1c5",
+                "tertiary-container": "#95c6b1",
+                "on-tertiary": "#033829",
+                "inverse-on-surface": "#2f3131",
+                "inverse-surface": "#e2e2e2",
+                "outline-variant": "#3b4a44",
+                "error-container": "#93000a",
+                "on-error-container": "#ffdad6",
+                "on-secondary": "#1f3148",
+                "outline": "#85948d",
+                "on-error": "#690005",
+                "on-primary-fixed-variant": "#00513f",
+                "on-tertiary-fixed": "#002117",
+                "primary-fixed": "#55fcd0",
+                "surface-container-low": "#1a1c1c",
+                "on-secondary-fixed-variant": "#364860",
+                "on-primary": "#00382b",
+                "surface-dim": "#121414",
+                "surface-bright": "#37393a",
+                "tertiary-fixed": "#bbedd7",
+                "tertiary": "#b0e2cc",
+                "surface-variant": "#333535",
+                "surface-container-highest": "#333535",
+                "surface-container-high": "#282a2b",
+                "error": "#ffb4ab",
+                "primary-container": "#00d4aa",
+                "tertiary-fixed-dim": "#a0d1bc",
+                "on-background": "#e2e2e2",
+                "surface-container": "#1e2020"
+              },
+              "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+              },
+              "spacing": {
+                "glass-margin": "12px",
+                "stack-gap-lg": "24px",
+                "container-padding": "20px",
+                "stack-gap-sm": "8px",
+                "stack-gap-md": "16px"
+              },
+              "fontFamily": {
+                "headline-md": ["Plus Jakarta Sans"],
+                "label-lg": ["Plus Jakarta Sans"],
+                "label-md": ["Plus Jakarta Sans"],
+                "stats-display": ["Plus Jakarta Sans"],
+                "body-lg": ["Plus Jakarta Sans"],
+                "headline-lg": ["Plus Jakarta Sans"],
+                "body-md": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                "headline-md": ["22px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                "headline-md-mobile": ["20px", {"lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                "label-lg": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                "label-md": ["11px", {"lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                "stats-display": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface pb-24 overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-padding h-16 bg-surface/60 backdrop-blur-[20px] border-b border-white/15 shadow-xl">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden border border-white/10">
+<img alt="Admin Avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRifR0jplZWorwDZvtPmMc6kCC5l5J1SCGmjM2py4rWy8WEQoQ6HjfcW9qjbU78POIS4VGNYe0qt_EZToP7zerIF1gWqTWOIjcGxWVAUO3hfiCv4GjF029EJdhlFGbclFNrQFGxzdEvb9MS56xW2Cnb3B3w5Y5H21gUjTCBThM8HbRpLlLgTZZbkBVVdS1eyoJAAZzmI9L9xaJSgblfNdhnagNOhkQfYD9X6I_mb49jFkE07NAGmKM12ecBWII5zOS_Ul7ijCfJmM7"/>
+</div>
+<h1 class="font-headline-md text-headline-md-mobile md:text-headline-md font-bold text-on-surface">Admin Panel</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined text-primary">search</span>
+</button>
+</header>
+<main class="mt-20 px-container-padding flex flex-col gap-glass-margin">
+<!-- Header & Dropdown -->
+<div class="flex flex-col gap-2 mb-2">
+<h2 class="font-headline-lg text-headline-lg-mobile text-primary">Timetable Builder</h2>
+<div class="relative">
+<select class="w-full h-14 bg-surface/40 backdrop-blur-md border border-white/10 rounded-xl px-4 font-body-lg text-on-surface appearance-none focus:outline-none focus:border-primary transition-all neumorphic-inset">
+<option>Grade 10 - Section A</option>
+<option>Grade 10 - Section B</option>
+<option>Grade 11 - Science</option>
+<option>Grade 11 - Arts</option>
+</select>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+<span class="material-symbols-outlined text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Timetable Interface -->
+<div class="glass-card rounded-2xl overflow-hidden shadow-2xl">
+<div class="flex flex-col">
+<!-- Day Header -->
+<div class="timetable-grid bg-white/5 border-b border-white/10">
+<div class="p-2"></div>
+<div class="p-3 text-center border-l border-white/5 font-label-lg text-on-surface-variant uppercase tracking-widest">Mon</div>
+<div class="p-3 text-center border-l border-white/5 font-label-lg text-on-surface-variant uppercase tracking-widest">Tue</div>
+<div class="p-3 text-center border-l border-white/5 font-label-lg text-on-surface-variant uppercase tracking-widest">Wed</div>
+<div class="p-3 text-center border-l border-white/5 font-label-lg text-on-surface-variant uppercase tracking-widest">Thu</div>
+<div class="p-3 text-center border-l border-white/5 font-label-lg text-on-surface-variant uppercase tracking-widest">Fri</div>
+<div class="p-3 text-center border-l border-white/5 font-label-lg text-on-surface-variant uppercase tracking-widest">Sat</div>
+</div>
+<!-- Periods -->
+<div class="flex flex-col">
+<!-- Period 1 -->
+<div class="timetable-grid border-b border-white/5">
+<div class="flex flex-col items-center justify-center py-4 bg-white/5 font-label-md">
+<span class="text-primary font-bold">P1</span>
+<span class="text-[10px] text-on-surface-variant">08:00</span>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-indigo-500/20 border border-indigo-400/30 p-2 flex flex-col justify-center items-center gap-1 active:scale-95 transition-transform">
+<span class="font-label-md text-indigo-200">PHYS</span>
+<span class="text-[9px] text-indigo-300 opacity-70">R-204</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-sky-500/20 border border-sky-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-sky-200">MATH</span>
+<span class="text-[9px] text-sky-300 opacity-70">R-102</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg neumorphic-inset bg-surface/40 flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">add</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-emerald-500/20 border border-emerald-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-emerald-200">BIO</span>
+<span class="text-[9px] text-emerald-300 opacity-70">LAB-1</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-sky-500/20 border border-sky-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-sky-200">MATH</span>
+<span class="text-[9px] text-sky-300 opacity-70">R-102</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg neumorphic-inset bg-surface/40 flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">add</span>
+</div>
+</div>
+</div>
+<!-- Period 2 -->
+<div class="timetable-grid border-b border-white/5">
+<div class="flex flex-col items-center justify-center py-4 bg-white/5 font-label-md">
+<span class="text-primary font-bold">P2</span>
+<span class="text-[10px] text-on-surface-variant">09:00</span>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-sky-500/20 border border-sky-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-sky-200">MATH</span>
+<span class="text-[9px] text-sky-300 opacity-70">R-102</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg neumorphic-inset bg-surface/40 flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">add</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-indigo-500/20 border border-indigo-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-indigo-200">PHYS</span>
+<span class="text-[9px] text-indigo-300 opacity-70">R-204</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg neumorphic-inset bg-surface/40 flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant">add</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-rose-500/20 border border-rose-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-rose-200">CHEM</span>
+<span class="text-[9px] text-rose-300 opacity-70">LAB-2</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-amber-500/20 border border-amber-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-amber-200">HIST</span>
+<span class="text-[9px] text-amber-300 opacity-70">R-101</span>
+</div>
+</div>
+</div>
+<!-- Period 3 (Empty States Demo) -->
+<div class="timetable-grid border-b border-white/5">
+<div class="flex flex-col items-center justify-center py-4 bg-white/5 font-label-md">
+<span class="text-primary font-bold">P3</span>
+<span class="text-[10px] text-on-surface-variant">10:00</span>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg neumorphic-inset bg-surface/40 flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-opacity cursor-pointer py-6">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">add</span>
+<span class="text-[9px] mt-1 text-on-surface-variant font-label-md">ASSIGN</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-emerald-500/20 border border-emerald-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-emerald-200">BIO</span>
+<span class="text-[9px] text-emerald-300 opacity-70">LAB-1</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-rose-500/20 border border-rose-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-rose-200">CHEM</span>
+<span class="text-[9px] text-rose-300 opacity-70">LAB-2</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg neumorphic-inset bg-surface/40 flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">add</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg bg-indigo-500/20 border border-indigo-400/30 p-2 flex flex-col justify-center items-center gap-1">
+<span class="font-label-md text-indigo-200">PHYS</span>
+<span class="text-[9px] text-indigo-300 opacity-70">R-204</span>
+</div>
+</div>
+<div class="p-1 border-l border-white/5">
+<div class="h-full w-full rounded-lg neumorphic-inset bg-surface/40 flex flex-col items-center justify-center opacity-40 hover:opacity-100 transition-opacity cursor-pointer">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">add</span>
+</div>
+</div>
+</div>
+<!-- Break -->
+<div class="flex items-center justify-center h-10 bg-on-secondary-fixed/30 border-b border-white/5">
+<span class="font-label-lg tracking-widest text-on-secondary-container opacity-50 uppercase">Recess Interval</span>
+</div>
+<!-- Periods 4-8 (Simplified list for mobile view scrollability) -->
+<div class="flex flex-col">
+<div class="timetable-grid border-b border-white/5">
+<div class="flex flex-col items-center justify-center py-4 bg-white/5 font-label-md">
+<span class="text-primary font-bold">P4</span>
+<span class="text-[10px] text-on-surface-variant">11:30</span>
+</div>
+<!-- Repeats the same pattern -->
+<div class="col-span-6 flex items-center justify-center p-2 opacity-30 italic font-body-md text-on-surface-variant">Remaining periods collapsed for preview...</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Legend -->
+<div class="glass-card rounded-xl p-4 mt-2">
+<h3 class="font-label-lg text-on-surface-variant uppercase mb-3 opacity-60">Subject Keys</h3>
+<div class="flex flex-wrap gap-3">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-indigo-400"></div>
+<span class="font-label-md text-on-surface">Physics</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-sky-400"></div>
+<span class="font-label-md text-on-surface">Math</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+<span class="font-label-md text-on-surface">Biology</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-rose-400"></div>
+<span class="font-label-md text-on-surface">Chemistry</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-amber-400"></div>
+<span class="font-label-md text-on-surface">History</span>
+</div>
+</div>
+</div>
+<!-- Action Button -->
+<button class="mt-4 w-full h-14 bg-primary-container text-on-primary font-bold rounded-2xl flex items-center justify-center gap-2 emerald-glow active:scale-95 transition-all">
+<span class="material-symbols-outlined">publish</span>
+<span class="font-headline-md">Publish Timetable</span>
+</button>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface/60 backdrop-blur-[20px] border-t border-white/15 shadow-[0_-4px_20px_rgba(0,0,0,0.3)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">Students</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full px-4 py-1 shadow-[0_0_24px_rgba(0,212,170,0.4)] scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-md text-label-md">Schedule</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<script>
+        // Simple ripple effect or interaction feedback for timetable cells
+        document.querySelectorAll('.neumorphic-inset').forEach(cell => {
+            cell.addEventListener('mousedown', function() {
+                this.classList.add('scale-95');
+            });
+            cell.addEventListener('mouseup', function() {
+                this.classList.remove('scale-95');
+            });
+            cell.addEventListener('mouseleave', function() {
+                this.classList.remove('scale-95');
+            });
+        });
+    </script>
+</body></html>

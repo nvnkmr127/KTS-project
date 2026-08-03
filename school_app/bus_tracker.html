@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Bus Tracking | Parent Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#ffd9dc",
+                    "error-container": "#93000a",
+                    "surface-container-low": "#2b1421",
+                    "secondary-fixed": "#ffd9e1",
+                    "surface-dim": "#210c18",
+                    "secondary-container": "#703347",
+                    "surface-container-lowest": "#1b0713",
+                    "on-primary-container": "#5b0017",
+                    "secondary-fixed-dim": "#ffb1c6",
+                    "outline": "#aa888a",
+                    "outline-variant": "#5b4041",
+                    "inverse-surface": "#ffd8e9",
+                    "on-secondary-container": "#ef9eb4",
+                    "surface-container": "#2f1825",
+                    "primary-fixed": "#ffdadb",
+                    "tertiary-fixed-dim": "#ffb2ba",
+                    "on-primary": "#67001b",
+                    "background": "#210c18",
+                    "surface": "#210c18",
+                    "inverse-primary": "#bc0b3b",
+                    "on-primary-fixed-variant": "#92002a",
+                    "error": "#ffb4ab",
+                    "on-error": "#690005",
+                    "primary-container": "#ff516a",
+                    "on-surface-variant": "#e3bdbf",
+                    "primary": "#ffb2b7",
+                    "on-surface": "#ffd8e9",
+                    "on-background": "#ffd8e9"
+            },
+            "spacing": {
+                    "sm": "16px",
+                    "xs": "8px",
+                    "container-padding": "20px",
+                    "md": "24px",
+                    "lg": "32px",
+                    "xl": "48px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "label-md": ["Inter"],
+                    "headline-md": ["Plus Jakarta Sans"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .glow-rose {
+            box-shadow: 0 0 24px rgba(244, 63, 94, 0.4);
+        }
+        .pulse-rose {
+            animation: pulse-glow 2s infinite;
+        }
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 8px rgba(244, 63, 94, 0.4); }
+            50% { box-shadow: 0 0 24px rgba(244, 63, 94, 0.7); }
+            100% { box-shadow: 0 0 8px rgba(244, 63, 94, 0.4); }
+        }
+        .route-line-animated {
+            stroke-dasharray: 10;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -1000; }
+        }
+        body {
+            background-color: #210c18;
+            color: #ffd8e9;
+            overflow-x: hidden;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-container-padding py-sm w-full top-0 sticky z-50 backdrop-blur-md bg-surface/10 border-b border-white/10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-primary/30">
+<img alt="Parent Profile" data-alt="A professional headshot of a friendly Indian father in his late 30s, wearing a smart casual linen shirt. The portrait is set against a blurred, high-end interior background with soft rose-tinted lighting. The aesthetic is warm, nurturing, and premium, reflecting a sophisticated digital sanctuary environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPuckRiiwpNsj5qVaXT0-hOSPss2EUUTGnmwHzSnZoNV7aAzveT3C0wqJuyoGttj5bCPVWNu3zm1fBju7iO1NQVEGoSr12XOTkKXqvG_wt6pKu6AtS7ov0rnjEHocVYLTrz_uMVVxrx-4V86lDfYuUjls42X7Ey1tAdn3B96uzDZ3F0xyvqQJHhOaWO7uTKUEUxB6ISTMs7dnyT5Ydj0r8rRK6v66ENOueO7vpOQ82gGg1vhCYOVdifYiuz3cnrX49V-H_wzJ5xv9r"/>
+</div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Good Morning, Ramesh 👋</h1>
+</div>
+<button class="text-primary hover:opacity-80 transition-opacity">
+<span class="material-symbols-outlined text-[28px]" data-icon="notifications">notifications</span>
+</button>
+</header>
+<!-- Main Content: Full Screen Map -->
+<main class="relative flex-grow w-full overflow-hidden">
+<!-- Map Canvas Placeholder -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover grayscale opacity-40" data-alt="A cinematic, high-contrast dark mode map of an urban city center like Hyderabad at night. The map features deep charcoal and obsidian streets with glowing neon veins of rose coral and soft pink. No labels are visible, only the intricate geometric patterns of a modern metropolis under a moody, atmospheric lighting scheme consistent with a premium digital dashboard." data-location="Hyderabad" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfFEVZb9ZJYLf0wMtydaEImRRokxSf5Obxyk7SKnvvioXcAJw8QuF52hQOfHl4KV5w2XWR7WCKepxzJp1yEfd4zzVEJYpC8FLPyORqApYb91PuLOcwh5u86Uwb2jhIX0ifIlXfd7_ArtZRQrVv1XARKUKdlzF6YB8XtjBeFB7Yoc2VhlUxz96A7smP3dkm1o2Ei360ZX9Ua5ahbEguChSTWpuzFKXeHCzpzR_9T1enA1AjIOaMormBWpIYrnwoykIrSMAh1CShHbfB"/>
+<!-- Animated Route SVG Overlay -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" fill="none" viewbox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+<path class="route-line-animated opacity-60" d="M100 100C150 150 250 150 300 250C350 350 150 450 100 550C50 650 200 700 250 750" stroke="#F43F5E" stroke-linecap="round" stroke-width="4"></path>
+<!-- Bus Pin -->
+<g class="bus-pin">
+<circle class="pulse-rose" cx="100" cy="100" fill="#F43F5E" r="16"></circle>
+<text fill="white" font-family="Material Symbols Outlined" font-size="18" x="92" y="106">directions_bus</text>
+<animatemotion dur="15s" path="M100 100C150 150 250 150 300 250C350 350 150 450 100 550C50 650 200 700 250 750" repeatcount="indefinite"></animatemotion>
+</g>
+<!-- User Stop Marker -->
+<g transform="translate(130, 580)">
+<circle class="glow-rose" fill="#F43F5E" r="10"></circle>
+<circle fill="white" r="4"></circle>
+</g>
+</svg>
+</div>
+<!-- Floating UI Elements -->
+<div class="relative z-10 p-container-padding space-y-4">
+<!-- Delay Alert Card -->
+<div class="glass-card rounded-xl p-4 flex items-center gap-4 animate-bounce-slow">
+<div class="w-10 h-10 rounded-full bg-error-container/30 flex items-center justify-center text-error">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-error-container font-bold uppercase tracking-wider">Delay Alert</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Bus delayed 20 min — traffic near Hitech City</p>
+</div>
+</div>
+<!-- ETA Status -->
+<div class="inline-flex items-center gap-3 bg-primary-container/20 border border-primary/30 rounded-full px-4 py-2 pulse-rose">
+<span class="material-symbols-outlined text-primary" data-icon="schedule">schedule</span>
+<span class="font-label-md text-label-md text-primary font-bold">🚌 Arriving in 5 minutes</span>
+</div>
+</div>
+<!-- Bottom Sheet Information Card -->
+<div class="absolute bottom-24 left-0 right-0 z-20 px-container-padding pb-6">
+<div class="glass-card rounded-[32px] p-6 space-y-6 shadow-2xl">
+<!-- Handle -->
+<div class="w-12 h-1.5 bg-white/10 rounded-full mx-auto -mt-2 mb-4"></div>
+<!-- Bus Primary Info -->
+<div class="flex justify-between items-start">
+<div class="flex gap-4">
+<div class="w-14 h-14 rounded-2xl bg-primary-container flex items-center justify-center text-white glow-rose">
+<span class="material-symbols-outlined text-3xl" data-icon="directions_bus">directions_bus</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Bus No. 5</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Route: Madhapur → School</p>
+</div>
+</div>
+<button class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary shadow-lg active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="call">call</span>
+</button>
+</div>
+<!-- Driver Info -->
+<div class="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="person">person</span>
+</div>
+<div class="flex-grow">
+<p class="font-label-md text-label-md text-on-surface-variant">Driver</p>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Raju Kumar</p>
+</div>
+<div class="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-[10px] font-bold tracking-tighter uppercase">
+                        Verified
+                    </div>
+</div>
+<!-- Stop List -->
+<div class="relative pl-4 space-y-6">
+<!-- Vertical Line -->
+<div class="absolute left-[23px] top-2 bottom-2 w-0.5 bg-white/10"></div>
+<!-- Stops -->
+<div class="flex items-center gap-4 relative">
+<div class="w-5 h-5 rounded-full bg-primary flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[12px] text-white" data-icon="check">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant/60">Madhapur</span>
+</div>
+<div class="flex items-center gap-4 relative">
+<div class="w-5 h-5 rounded-full bg-primary flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-[12px] text-white" data-icon="check">check</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant/60">Kondapur</span>
+</div>
+<div class="flex items-center gap-4 relative">
+<div class="w-5 h-5 rounded-full border-2 border-primary bg-background flex items-center justify-center z-10 glow-rose">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+</div>
+<span class="font-body-md text-body-md text-primary font-bold">Gachibowli (YOUR STOP)</span>
+</div>
+<div class="flex items-center gap-4 relative">
+<div class="w-5 h-5 rounded-full border-2 border-white/20 bg-background z-10"></div>
+<span class="font-body-sm text-body-sm text-on-surface-variant/60">School</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-6 left-0 right-0 mx-auto w-[92%] max-w-md z-50 flex justify-around items-center py-xs px-sm bg-surface/10 rounded-full backdrop-blur-[30px] border border-white/15 shadow-[0_0_24px_rgba(244,63,94,0.2)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="home">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="font-label-md text-label-md">Academics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label-md text-label-md">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-full px-4 py-1 shadow-[0_0_12px_rgba(244,63,94,0.4)] scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="directions_bus" style="font-variation-settings: 'FILL' 1;">directions_bus</span>
+<span class="font-label-md text-label-md">Bus</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<!-- Background Shader for Atmosphere -->
+
+<script>
+        // Simple micro-interaction for the call button
+        const callBtn = document.querySelector('button .material-symbols-outlined[data-icon="call"]').parentElement;
+        callBtn.addEventListener('click', () => {
+            callBtn.classList.add('scale-90');
+            setTimeout(() => callBtn.classList.remove('scale-90'), 150);
+        });
+    </script>
+</body></html>

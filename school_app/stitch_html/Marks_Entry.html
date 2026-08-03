@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduCommand - Marks Entry</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Geist:wght@400;600&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:wght@100..900&family=Plus+Jakarta+Sans:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#0b0f10",
+                    "inverse-surface": "#e0e3e5",
+                    "tertiary-fixed": "#eedcff",
+                    "on-error": "#690005",
+                    "surface-variant": "#323537",
+                    "tertiary-fixed-dim": "#d4beec",
+                    "on-secondary-fixed": "#1e055a",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-highest": "#323537",
+                    "error-container": "#93000a",
+                    "primary-fixed": "#f0dbff",
+                    "on-tertiary-fixed-variant": "#503f66",
+                    "primary": "#ddb7ff",
+                    "on-secondary": "#33226f",
+                    "surface-dim": "#101415",
+                    "error": "#ffb4ab",
+                    "on-surface": "#e0e3e5",
+                    "on-tertiary-fixed": "#231437",
+                    "inverse-primary": "#842bd2",
+                    "background": "#101415",
+                    "tertiary-container": "#9c88b4",
+                    "outline-variant": "#4d4354",
+                    "surface-container-low": "#191c1e",
+                    "secondary-fixed": "#e7deff",
+                    "secondary-fixed-dim": "#cbbeff",
+                    "on-primary": "#490080",
+                    "surface-container-high": "#272a2c",
+                    "tertiary": "#d4beec",
+                    "on-tertiary": "#39294e",
+                    "inverse-on-surface": "#2d3133",
+                    "on-primary-container": "#400071",
+                    "surface-container": "#1d2022",
+                    "secondary-container": "#4a3a87",
+                    "surface-bright": "#363a3b",
+                    "primary-fixed-dim": "#ddb7ff",
+                    "surface-tint": "#ddb7ff",
+                    "outline": "#988d9f",
+                    "surface": "#101415",
+                    "on-primary-fixed": "#2c0051",
+                    "on-primary-fixed-variant": "#6900b3",
+                    "secondary": "#cbbeff",
+                    "on-tertiary-container": "#322247",
+                    "on-surface-variant": "#cfc2d6",
+                    "on-background": "#e0e3e5",
+                    "on-secondary-fixed-variant": "#4a3a87",
+                    "on-secondary-container": "#baa9ff",
+                    "primary-container": "#b76dff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "40px",
+                    "base": "8px",
+                    "max-width": "1440px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Geist"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background: radial-gradient(circle at top right, #2c0051, #101415);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neo-pressed {
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.4), inset -2px -2px 5px rgba(255,255,255,0.05);
+        }
+        .neo-raised {
+            box-shadow: 4px 4px 12px rgba(0,0,0,0.3), -2px -2px 8px rgba(255,255,255,0.05);
+        }
+        .glow-violet {
+            filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.4));
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.3); border-radius: 10px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface font-body-md overflow-x-hidden">
+<!-- Top AppBar -->
+<header class="w-full sticky top-0 z-50 bg-white/10 dark:bg-surface-container/10 backdrop-blur-xl border-b border-white/20 shadow-xl flex items-center justify-between px-margin-mobile md:px-margin-desktop py-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/30">
+<img alt="Teacher Profile Portrait" class="w-full h-full object-cover" data-alt="A high-quality professional portrait of a modern teacher in a sophisticated educational setting. The lighting is soft and cinematic, with a color palette of deep violets and cool grays that matches the glassmorphism UI. The teacher is smiling warmly, conveying confidence and technological savvy in a high-end school environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjBsa0D5S9VT45W4bQajAX61GvGl3zv2aBgsfWbbf_oM--E9pKPka9exghkU1U0c7RgP8WPQMzhwf_L5qZrjnsh2scgjNdN87w4AbC2JJX0joeFGEv6CbjBCBnC9zYh5DhiYYhvYz2OfKOBACxTLvlQ9879onBgpXbeVS9CFVPubkXRApXPpZRLkjETeHmUKtr-c7Lk_jn0Uf6j65E3rzZj5ahBwBanIR0sFjjzOztpjueBnM4r5T82EK0kWvDYfrxBRlus5mq_2cY"/>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile md:font-headline-lg md:text-headline-lg font-extrabold text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">EduCommand</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 transition-colors text-primary scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<main class="max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop pt-8 pb-32">
+<!-- Header & Filters -->
+<div class="mb-8 space-y-6">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Marks Entry</h2>
+<p class="text-on-surface-variant font-label-sm uppercase tracking-widest mt-1">Academic Year 2023-24 • Grade 10-A</p>
+</div>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-xl font-bold neo-raised hover:scale-105 active:scale-95 transition-all flex items-center gap-2 glow-violet">
+<span class="material-symbols-outlined">save</span>
+                    Save Marks
+                </button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Exam Selector -->
+<div class="glass-card p-4 rounded-2xl flex flex-col gap-2">
+<label class="text-label-sm text-primary/80 uppercase">Select Examination</label>
+<div class="relative">
+<select class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 appearance-none focus:ring-2 focus:ring-primary outline-none">
+<option>Final Term Examination</option>
+<option>Mid-Term Assessment</option>
+<option>Unit Test 2</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Subject Selector -->
+<div class="glass-card p-4 rounded-2xl flex flex-col gap-2">
+<label class="text-label-sm text-primary/80 uppercase">Select Subject</label>
+<div class="relative">
+<select class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 appearance-none focus:ring-2 focus:ring-primary outline-none">
+<option>Advanced Mathematics</option>
+<option>Quantum Physics</option>
+<option>Computational Logic</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Student Marks List -->
+<div class="glass-card rounded-3xl overflow-hidden border border-white/10 mb-8">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-white/5 border-b border-white/10">
+<tr>
+<th class="px-6 py-4 font-label-sm text-primary/60 uppercase">Student</th>
+<th class="px-6 py-4 font-label-sm text-primary/60 uppercase">Roll No</th>
+<th class="px-6 py-4 font-label-sm text-primary/60 uppercase">Marks (/100)</th>
+<th class="px-6 py-4 font-label-sm text-primary/60 uppercase text-center">Grade</th>
+<th class="px-6 py-4 font-label-sm text-primary/60 uppercase text-right">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<!-- Student Row 1 -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border border-primary/20 bg-surface-container overflow-hidden group-hover:scale-110 transition-transform">
+<img alt="John Doe" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjxRMke24nV3R6RDE71jkUmSS9pf_cV3N4384TtqyG7dYkVK6aOMtetB8bv4eDcC4RIzNBpKBJ34CeJRDehMOx5XsHck4rv7ZnlPrJclIBv5cVMH7UfFKwvZR1LGx7oN5z_iZTHgzw7FxelYAnh8BjykAl9iZM8upPuc4CJjx3A-AWjaePlrfP-OR9u6ql9uK8_N9EigV_tQiCAQ1bQ2kNg_nHPxSJEPaYjLGqLQNoU2FlsIc_0u6cvx6dHoAazrCd8vZ42cmUe9Rb"/>
+</div>
+<span class="font-semibold text-on-surface">Johnathan Doe</span>
+</div>
+</td>
+<td class="px-6 py-4 font-label-sm text-on-surface-variant">10A001</td>
+<td class="px-6 py-4">
+<input class="w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-center font-bold focus:ring-2 focus:ring-primary outline-none neo-pressed" oninput="updateGrade(this)" type="number" value="98"/>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="grade-badge font-headline-lg-mobile text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]">A+</span>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-label-sm font-bold shadow-[0_0_10px_rgba(168,85,247,0.2)]">PASS</span>
+</td>
+</tr>
+<!-- Student Row 2 -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border border-primary/20 bg-surface-container overflow-hidden group-hover:scale-110 transition-transform">
+<img alt="Sarah Weaver" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeYo8Z9AChtJqt4VZ_KdSVrcHZsPuYCrYS3QBY5yw0CZtE5ZIwdgDdhfz-UVB2WryrGqtq7qt47DEuAM5rLEaGR4-TjhUxSzbXiA1qN-SCzmcg8MBAwHD-m5dl-NqksdJZUUD5nRbTKO-SMFakZtxECTg2A401_van7PtMJyygmfQiEUc1pAkbRU6_CMERw48mbinjLRb_IZIzkIINrDISETdwzJYLZdeV1aQsYaeVOmzPwjUM2LDLfRdJ9aSk0-A2zdBfw31C9v5G"/>
+</div>
+<span class="font-semibold text-on-surface">Sarah Weaver</span>
+</div>
+</td>
+<td class="px-6 py-4 font-label-sm text-on-surface-variant">10A002</td>
+<td class="px-6 py-4">
+<input class="w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-center font-bold focus:ring-2 focus:ring-primary outline-none neo-pressed" oninput="updateGrade(this)" type="number" value="72"/>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="grade-badge font-headline-lg-mobile text-primary/80">B</span>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-label-sm font-bold">PASS</span>
+</td>
+</tr>
+<!-- Student Row 3 -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border border-primary/20 bg-surface-container overflow-hidden group-hover:scale-110 transition-transform">
+<img alt="Marcus Thorne" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCO-MBq7qKL8Nm1N58XZetnfERiOFPLeu31Jwv3WvNioR8D_jdbQTWi9kzQKapBjXGGVYg67p_wqvkhKbJxTFeWptuPuJe_u1bFEr-Zc94jGFtepybSG-gNHtBu-TDS4e71iaJK83dapThCkF_o0Ugexo-T1bsQX4fBypTWL9zztwmAQ7GsTOSuuUcDCn8wYcPVIVK-JIJqF4Ln-Z-_scKjGXOCTqDveKvG6BFYRghUCYVKOSgf6vjU5akJe2GfFFOS19NMdc6mwMOO"/>
+</div>
+<span class="font-semibold text-on-surface">Marcus Thorne</span>
+</div>
+</td>
+<td class="px-6 py-4 font-label-sm text-on-surface-variant">10A003</td>
+<td class="px-6 py-4">
+<input class="w-20 bg-black/30 border border-error/30 rounded-lg px-3 py-2 text-center font-bold focus:ring-2 focus:ring-error outline-none neo-pressed" oninput="updateGrade(this)" type="number" value="31"/>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="grade-badge font-headline-lg-mobile text-error drop-shadow-[0_0_8px_rgba(255,180,171,0.3)]">F</span>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="bg-error/10 text-error border border-error/30 px-3 py-1 rounded-full text-label-sm font-bold">FAIL</span>
+</td>
+</tr>
+<!-- Student Row 4 -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border border-primary/20 bg-surface-container overflow-hidden group-hover:scale-110 transition-transform">
+<img alt="Luna Aster" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzmG_HRcv42HZA5vUPssb6eWI7e0lEnDqhmEbs8i_EjvuraKhV644X0SqN-LN0ZBAnZrnEFezT1TlGQAlZ3xJkcnpx3og-jiyDmPoM0iVut9bVYgyRGgdeyV44Z2PkNNM8KE0podAvcQyM0F88-DLmTbpJn0ghJz9yYxQk7j7Nzfvwmx4fLHqAV0MFO_hZSVPvAAbFRBfnPR8juokoCk3c-R7QcQTa0TUhQBWULjUuEFldKnYZiSbLQyebnkcBJ0ALuVknWXY0CYFY"/>
+</div>
+<span class="font-semibold text-on-surface">Luna Aster</span>
+</div>
+</td>
+<td class="px-6 py-4 font-label-sm text-on-surface-variant">10A004</td>
+<td class="px-6 py-4">
+<input class="w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-center font-bold focus:ring-2 focus:ring-primary outline-none neo-pressed" oninput="updateGrade(this)" type="number" value="88"/>
+</td>
+<td class="px-6 py-4 text-center">
+<span class="grade-badge font-headline-lg-mobile text-primary/90">A</span>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-label-sm font-bold">PASS</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Class Summary -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="glass-card p-6 rounded-2xl neo-raised border-t border-white/20">
+<p class="text-label-sm text-primary/60 uppercase mb-2">Class Average</p>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-on-surface">72.4</span>
+<span class="text-on-surface-variant font-label-sm">%</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl neo-raised border-t border-white/20">
+<p class="text-label-sm text-primary/60 uppercase mb-2">Highest Score</p>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]">98</span>
+<span class="text-on-surface-variant font-label-sm">/ 100</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl neo-raised border-t border-white/20">
+<p class="text-label-sm text-primary/60 uppercase mb-2">Lowest Score</p>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-error/80">31</span>
+<span class="text-on-surface-variant font-label-sm">/ 100</span>
+</div>
+</div>
+<div class="glass-card p-6 rounded-2xl neo-raised border-t border-white/20 relative overflow-hidden">
+<p class="text-label-sm text-primary/60 uppercase mb-2">Pass Rate</p>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-lg text-on-surface">94</span>
+<span class="text-on-surface-variant font-label-sm">%</span>
+</div>
+<div class="absolute bottom-0 left-0 h-1 bg-primary glow-violet w-[94%]"></div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-white/12 dark:bg-surface-container-highest/12 backdrop-blur-2xl border-t border-white/20 shadow-[0_-4px_24px_rgba(168,85,247,0.15)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-label-sm text-label-sm">Attendance</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">assignment</span>
+<span class="font-label-sm text-label-sm">Homework</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] font-bold bg-white/10 rounded-xl px-3 py-1 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grade</span>
+<span class="font-label-sm text-label-sm">Marks</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">event_busy</span>
+<span class="font-label-sm text-label-sm">Leave</span>
+</a>
+</nav>
+<script>
+        function updateGrade(input) {
+            const row = input.closest('tr');
+            const mark = parseInt(input.value);
+            const gradeSpan = row.querySelector('.grade-badge');
+            const statusBadge = row.querySelector('.px-6.py-4.text-right span');
+            
+            if (isNaN(mark)) return;
+
+            let grade, status;
+            if (mark >= 90) grade = "A+";
+            else if (mark >= 80) grade = "A";
+            else if (mark >= 70) grade = "B";
+            else if (mark >= 60) grade = "C";
+            else if (mark >= 50) grade = "D";
+            else grade = "F";
+
+            status = mark >= 40 ? "PASS" : "FAIL";
+
+            gradeSpan.textContent = grade;
+            statusBadge.textContent = status;
+
+            // Visual feedback
+            if (status === "FAIL") {
+                gradeSpan.className = "grade-badge font-headline-lg-mobile text-error drop-shadow-[0_0_8px_rgba(255,180,171,0.3)]";
+                statusBadge.className = "bg-error/10 text-error border border-error/30 px-3 py-1 rounded-full text-label-sm font-bold";
+                input.className = "w-20 bg-black/30 border border-error/30 rounded-lg px-3 py-2 text-center font-bold focus:ring-2 focus:ring-error outline-none neo-pressed";
+            } else {
+                gradeSpan.className = "grade-badge font-headline-lg-mobile text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.3)]";
+                statusBadge.className = "bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-label-sm font-bold shadow-[0_0_10px_rgba(168,85,247,0.2)]";
+                input.className = "w-20 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-center font-bold focus:ring-2 focus:ring-primary outline-none neo-pressed";
+            }
+        }
+
+        // Add some atmospheric micro-movements to glass elements
+        document.addEventListener('mousemove', (e) => {
+            const cards = document.querySelectorAll('.glass-card');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            cards.forEach(card => {
+                const shiftX = (x - 0.5) * 10;
+                const shiftY = (y - 0.5) * 10;
+                card.style.transform = `translate(${shiftX}px, ${shiftY}px)`;
+            });
+        });
+    </script>
+</body></html>

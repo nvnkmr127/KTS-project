@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduVision | Analytics Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Inter:wght@400;500;600&family=Geist:wght@400;600&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .inner-shadow-neomorphic {
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.5), inset -1px -1px 3px rgba(255,255,255,0.1);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .gold-glow {
+            box-shadow: 0 0 25px rgba(245, 197, 24, 0.25);
+        }
+        body {
+            background: radial-gradient(circle at top right, #1a1f21, #101415);
+            min-height: 100vh;
+        }
+        /* Custom scrollbar for horizontal KPI strip */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed": "#ffe08b",
+                      "on-secondary": "#00382b",
+                      "primary": "#ffe5a0",
+                      "on-tertiary-fixed-variant": "#6900b3",
+                      "surface-dim": "#101415",
+                      "error": "#ffb4ab",
+                      "surface-container-lowest": "#0b0f10",
+                      "inverse-surface": "#e0e3e5",
+                      "tertiary-fixed": "#f0dbff",
+                      "on-error": "#690005",
+                      "tertiary-fixed-dim": "#ddb7ff",
+                      "surface-variant": "#323537",
+                      "error-container": "#93000a",
+                      "surface-container-highest": "#323537",
+                      "on-secondary-fixed": "#002118",
+                      "on-error-container": "#ffdad6",
+                      "inverse-on-surface": "#2d3133",
+                      "secondary-container": "#00d1a7",
+                      "surface-container": "#1d2022",
+                      "on-primary-container": "#695200",
+                      "surface-tint": "#f0c110",
+                      "primary-fixed-dim": "#f0c110",
+                      "surface-bright": "#363a3b",
+                      "surface": "#101415",
+                      "on-primary-fixed": "#241a00",
+                      "on-primary-fixed-variant": "#584400",
+                      "outline": "#9a9078",
+                      "on-tertiary-container": "#7a1cc8",
+                      "secondary": "#41eec2",
+                      "on-surface-variant": "#d1c5ac",
+                      "on-background": "#e0e3e5",
+                      "on-secondary-fixed-variant": "#00513f",
+                      "on-secondary-container": "#005441",
+                      "primary-container": "#f5c518",
+                      "on-surface": "#e0e3e5",
+                      "inverse-primary": "#745b00",
+                      "on-tertiary-fixed": "#2c0051",
+                      "tertiary-container": "#e0bdff",
+                      "background": "#101415",
+                      "surface-container-low": "#191c1e",
+                      "outline-variant": "#4e4633",
+                      "secondary-fixed-dim": "#28dfb5",
+                      "secondary-fixed": "#55fcd0",
+                      "on-primary": "#3d2f00",
+                      "surface-container-high": "#272a2c",
+                      "tertiary": "#f3e0ff",
+                      "on-tertiary": "#490080"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-padding": "24px",
+                      "unit": "8px",
+                      "section-gap": "48px",
+                      "gutter": "16px",
+                      "glass-padding": "20px"
+              },
+              "fontFamily": {
+                      "h2": ["Plus Jakarta Sans"],
+                      "h1-mobile": ["Plus Jakarta Sans"],
+                      "body-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "label-caps": ["Geist"],
+                      "h1": ["Plus Jakarta Sans"],
+                      "h3": ["Plus Jakarta Sans"],
+                      "h2-mobile": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "h2": ["32px", {"lineHeight": "1.3", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                      "h1-mobile": ["32px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                      "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600"}],
+                      "h1": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "h3": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                      "h2-mobile": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/10 backdrop-blur-xl border-b border-white/15 shadow-[0_0_20px_rgba(245,197,24,0.3)] flex justify-between items-center px-container-padding py-unit">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full glass-panel flex items-center justify-center overflow-hidden border-primary-container/30">
+<img alt="School Crest Logo" class="w-full h-full object-cover" data-alt="A sophisticated school crest logo rendered in gold and obsidian glass textures. The crest features an open book and a laurel wreath, glowing subtly from within. The background is a deep navy with high-tech digital circuits barely visible. The overall mood is institutional, prestigious, and highly advanced." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3KvVPxror4-Gci5N5hEOs_CxazAuJG5qCmNFGVxfEGFOOTFiag02lrGIPl1mrAaUuiVzNnzmobh4f2QYHKmikLEa4HIq96qWdyrZq3QQ7_niMjagKPuz9CiN_yQtfDdAPHakJZd1kziLQHc1e7eewSWzRmmbio9CkDQZy_u25zoA7SYMBa_Urfb65Smy5ZHmmSC9W8Bc6-U0jQVs8VL67J3Vk8Zz7k5ICsl481fO0ZwmiADZrd4murYEoFOWCLxlkYmlVZhJGmly6"/>
+</div>
+<h1 class="font-h2 text-h2-mobile md:text-h2 text-primary-container tracking-tighter">EduVision</h1>
+</div>
+<div class="flex items-center gap-3">
+<button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center text-primary active:scale-95 duration-200 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined">emergency</span>
+</button>
+<div class="hidden md:flex items-center gap-6 px-6">
+<a class="text-primary font-label-caps" href="#">Analytics</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-caps" href="#">Reports</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-label-caps" href="#">Live Feed</a>
+</div>
+</div>
+</header>
+<main class="pt-24 pb-32 px-container-padding max-w-7xl mx-auto">
+<!-- Filters Strip -->
+<section class="mb-section-gap">
+<div class="flex flex-wrap items-center justify-between gap-4">
+<div class="flex p-1 rounded-full glass-panel">
+<button class="px-6 py-2 rounded-full text-on-primary-container bg-primary-container font-label-caps text-label-caps active:scale-95 transition-all">This Week</button>
+<button class="px-6 py-2 rounded-full text-on-surface-variant hover:text-primary font-label-caps text-label-caps active:scale-95 transition-all">Month</button>
+<button class="px-6 py-2 rounded-full text-on-surface-variant hover:text-primary font-label-caps text-label-caps active:scale-95 transition-all">Term</button>
+<button class="px-6 py-2 rounded-full text-on-surface-variant hover:text-primary font-label-caps text-label-caps active:scale-95 transition-all">Year</button>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-xl glass-panel border-white/10 text-on-surface hover:border-primary-container transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>
+<span class="font-label-caps text-label-caps">Export PDF</span>
+</button>
+<button class="flex items-center gap-2 px-5 py-2.5 rounded-xl glass-panel border-white/10 text-on-surface hover:border-primary-container transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[20px]">description</span>
+<span class="font-label-caps text-label-caps">Excel Sheets</span>
+</button>
+</div>
+</div>
+</section>
+<!-- KPI Strip -->
+<section class="mb-section-gap overflow-x-auto no-scrollbar py-2 -mx-4 px-4">
+<div class="flex gap-6 min-w-max">
+<!-- Defaulters -->
+<div class="glass-panel p-glass-padding rounded-2xl w-64 border-l-4 border-l-error">
+<p class="text-on-surface-variant font-label-caps text-label-caps mb-2">Defaulters</p>
+<div class="flex items-end justify-between">
+<h2 class="font-h2 text-h2 text-error">23</h2>
+<span class="material-symbols-outlined text-error/50">warning</span>
+</div>
+</div>
+<!-- Top Class -->
+<div class="glass-panel p-glass-padding rounded-2xl w-64 border-l-4 border-l-secondary gold-glow">
+<p class="text-on-surface-variant font-label-caps text-label-caps mb-2">Top Class</p>
+<div class="flex items-end justify-between">
+<h2 class="font-h2 text-h2 text-secondary">10-A</h2>
+<span class="material-symbols-outlined text-secondary/50">workspace_premium</span>
+</div>
+</div>
+<!-- Low Attendance -->
+<div class="glass-panel p-glass-padding rounded-2xl w-64 border-l-4 border-l-primary-container">
+<p class="text-on-surface-variant font-label-caps text-label-caps mb-2">Low Attendance</p>
+<div class="flex items-end justify-between">
+<h2 class="font-h2 text-h2 text-primary-container">14</h2>
+<span class="material-symbols-outlined text-primary-container/50">person_off</span>
+</div>
+</div>
+<!-- Fee Recovery -->
+<div class="glass-panel p-glass-padding rounded-2xl w-64 border-l-4 border-l-tertiary-container">
+<p class="text-on-surface-variant font-label-caps text-label-caps mb-2">Fee Recovery</p>
+<div class="flex items-end justify-between">
+<h2 class="font-h2 text-h2 text-tertiary-container">91%</h2>
+<span class="material-symbols-outlined text-tertiary-container/50">account_balance_wallet</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Attendance Trend (Large Card) -->
+<div class="lg:col-span-8 glass-panel p-glass-padding rounded-3xl relative overflow-hidden">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h3 class="font-h3 text-primary-container">Attendance Trend</h3>
+<p class="text-on-surface-variant text-sm">Last 30-day overview</p>
+</div>
+<span class="material-symbols-outlined text-primary-container">monitoring</span>
+</div>
+<!-- Line Chart Placeholder -->
+<div class="h-64 w-full relative flex items-end gap-2 px-2">
+<!-- Faux SVG Chart -->
+<div class="absolute inset-0 flex items-end opacity-20 pointer-events-none">
+<div class="w-full h-[1px] bg-white/10 absolute bottom-1/4 left-0 right-0"></div>
+<div class="w-full h-[1px] bg-white/10 absolute bottom-2/4 left-0 right-0"></div>
+<div class="w-full h-[1px] bg-white/10 absolute bottom-3/4 left-0 right-0"></div>
+</div>
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 200">
+<path d="M0,150 Q100,80 200,120 T400,60 T600,100 T800,40 T1000,90" fill="none" stroke="#f5c518" stroke-linecap="round" stroke-width="4"></path>
+<path d="M0,150 Q100,80 200,120 T400,60 T600,100 T800,40 T1000,90 V200 H0 Z" fill="url(#goldGradient)" fill-opacity="0.1"></path>
+<defs>
+<lineargradient id="goldGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#f5c518"></stop>
+<stop offset="100%" stop-color="transparent"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+</div>
+<!-- Fee Collection (Medium Card) -->
+<div class="lg:col-span-4 glass-panel p-glass-padding rounded-3xl">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-h3 text-primary-container">Fee Collection</h3>
+<span class="material-symbols-outlined text-secondary">bar_chart</span>
+</div>
+<div class="space-y-6">
+<div class="relative pt-1">
+<div class="flex mb-2 items-center justify-between">
+<div><span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-secondary bg-secondary/10">Term 1</span></div>
+<div class="text-right"><span class="text-xs font-semibold inline-block text-secondary">85%</span></div>
+</div>
+<div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-white/5">
+<div class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-secondary" style="width:85%"></div>
+</div>
+</div>
+<div class="relative pt-1">
+<div class="flex mb-2 items-center justify-between">
+<div><span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-primary-container bg-primary-container/10">Term 2</span></div>
+<div class="text-right"><span class="text-xs font-semibold inline-block text-primary-container">62%</span></div>
+</div>
+<div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-white/5">
+<div class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-primary-container" style="width:62%"></div>
+</div>
+</div>
+<div class="relative pt-1">
+<div class="flex mb-2 items-center justify-between">
+<div><span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-tertiary-container bg-tertiary-container/10">Term 3</span></div>
+<div class="text-right"><span class="text-xs font-semibold inline-block text-tertiary-container">40%</span></div>
+</div>
+<div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-white/5">
+<div class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-tertiary-container" style="width:40%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Subject Performance Heatmap -->
+<div class="lg:col-span-12 glass-panel p-glass-padding rounded-3xl">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-h3 text-primary-container">Subject Performance Heatmap</h3>
+<div class="flex gap-2">
+<div class="flex items-center gap-1 text-[10px] text-on-surface-variant font-label-caps"><div class="w-2 h-2 rounded-sm bg-error/20"></div> LOW</div>
+<div class="flex items-center gap-1 text-[10px] text-on-surface-variant font-label-caps"><div class="w-2 h-2 rounded-sm bg-primary-container"></div> AVG</div>
+<div class="flex items-center gap-1 text-[10px] text-on-surface-variant font-label-caps"><div class="w-2 h-2 rounded-sm bg-secondary"></div> HIGH</div>
+</div>
+</div>
+<div class="grid grid-cols-7 gap-2">
+<!-- Header Row -->
+<div class="text-center font-label-caps text-[10px] text-on-surface-variant">MATH</div>
+<div class="text-center font-label-caps text-[10px] text-on-surface-variant">SCI</div>
+<div class="text-center font-label-caps text-[10px] text-on-surface-variant">ENG</div>
+<div class="text-center font-label-caps text-[10px] text-on-surface-variant">HIST</div>
+<div class="text-center font-label-caps text-[10px] text-on-surface-variant">GEO</div>
+<div class="text-center font-label-caps text-[10px] text-on-surface-variant">ART</div>
+<div class="text-center font-label-caps text-[10px] text-on-surface-variant">PE</div>
+<!-- Data Blocks -->
+<div class="aspect-square rounded-lg bg-secondary flex items-center justify-center text-[10px] font-bold text-on-secondary">92</div>
+<div class="aspect-square rounded-lg bg-secondary/80 flex items-center justify-center text-[10px] font-bold text-on-secondary">88</div>
+<div class="aspect-square rounded-lg bg-primary-container flex items-center justify-center text-[10px] font-bold text-on-primary-container">74</div>
+<div class="aspect-square rounded-lg bg-primary-container/60 flex items-center justify-center text-[10px] font-bold text-on-primary-container">65</div>
+<div class="aspect-square rounded-lg bg-error/40 flex items-center justify-center text-[10px] font-bold text-on-error-container">42</div>
+<div class="aspect-square rounded-lg bg-secondary/90 flex items-center justify-center text-[10px] font-bold text-on-secondary">90</div>
+<div class="aspect-square rounded-lg bg-secondary flex items-center justify-center text-[10px] font-bold text-on-secondary">98</div>
+</div>
+</div>
+<!-- Class-wise Comparison Table -->
+<div class="lg:col-span-12 glass-panel rounded-3xl overflow-hidden">
+<div class="p-glass-padding border-b border-white/10 flex justify-between items-center">
+<h3 class="font-h3 text-primary-container">Class Performance Matrix</h3>
+<button class="text-secondary font-label-caps text-xs hover:underline">View Detailed Report</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-white/5 font-label-caps text-label-caps text-on-surface-variant">
+<tr>
+<th class="p-5">Grade/Class</th>
+<th class="p-5">Avg. Score</th>
+<th class="p-5">Attendance</th>
+<th class="p-5">Status</th>
+<th class="p-5 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/10">
+<tr class="hover:bg-white/5 transition-colors">
+<td class="p-5 font-bold">10-A (Sci)</td>
+<td class="p-5 text-secondary">89.4%</td>
+<td class="p-5">98.2%</td>
+<td class="p-5">
+<span class="px-3 py-1 rounded-full bg-secondary/10 text-secondary text-[10px] border border-secondary/20">ELITE</span>
+</td>
+<td class="p-5 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors">
+<td class="p-5 font-bold">12-C (Com)</td>
+<td class="p-5 text-primary-container">76.1%</td>
+<td class="p-5">91.0%</td>
+<td class="p-5">
+<span class="px-3 py-1 rounded-full bg-primary-container/10 text-primary-container text-[10px] border border-primary-container/20">STABLE</span>
+</td>
+<td class="p-5 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary">more_vert</button>
+</td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors">
+<td class="p-5 font-bold">9-B (Gen)</td>
+<td class="p-5 text-error">54.8%</td>
+<td class="p-5">72.4%</td>
+<td class="p-5">
+<span class="px-3 py-1 rounded-full bg-error/10 text-error text-[10px] border border-error/20">CRITICAL</span>
+</td>
+<td class="p-5 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary">more_vert</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-8 left-0 right-0 z-50 flex justify-around items-center mx-auto bg-surface/20 backdrop-blur-3xl border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.5)] w-[90%] max-w-md rounded-full px-6 py-3">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-all active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps text-[10px] mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary-container after:rounded-full active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-caps text-[10px] mt-1">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-all active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-caps text-[10px] mt-1">Users</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-all active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-label-caps text-[10px] mt-1">Broadcast</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-all active:inner-shadow-neomorphic scale-95 transition-transform" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-caps text-[10px] mt-1">Settings</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.classList.add('inner-shadow-neomorphic');
+            });
+            button.addEventListener('mouseup', () => {
+                button.classList.remove('inner-shadow-neomorphic');
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Parent Portal - Home Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .neumorphic-button {
+            box-shadow: inset 2px 2px 5px rgba(255, 255, 255, 0.1), 
+                        inset -2px -2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .coral-glow {
+            box-shadow: 0 0 24px rgba(244, 63, 94, 0.4);
+        }
+
+        .green-glow {
+            box-shadow: 0 0 24px rgba(34, 197, 94, 0.2);
+        }
+
+        body {
+            background: linear-gradient(135deg, #1F0A16 0%, #3D0A1E 100%);
+            min-height: 100vh;
+            color: #ffd8e9;
+        }
+
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#ffd9dc",
+                      "error-container": "#93000a",
+                      "surface-container-low": "#2b1421",
+                      "secondary-fixed": "#ffd9e1",
+                      "surface-dim": "#210c18",
+                      "secondary-container": "#703347",
+                      "surface-container-lowest": "#1b0713",
+                      "on-primary-container": "#5b0017",
+                      "secondary-fixed-dim": "#ffb1c6",
+                      "outline": "#aa888a",
+                      "outline-variant": "#5b4041",
+                      "inverse-surface": "#ffd8e9",
+                      "on-secondary-container": "#ef9eb4",
+                      "surface-container": "#2f1825",
+                      "primary-fixed": "#ffdadb",
+                      "tertiary-fixed-dim": "#ffb2ba",
+                      "on-primary": "#67001b",
+                      "background": "#210c18",
+                      "surface": "#210c18",
+                      "inverse-primary": "#bc0b3b",
+                      "on-primary-fixed-variant": "#92002a",
+                      "error": "#ffb4ab",
+                      "on-tertiary-fixed-variant": "#861e35",
+                      "tertiary-container": "#e6687b",
+                      "surface-tint": "#ffb2b7",
+                      "on-surface-variant": "#e3bdbf",
+                      "primary-fixed-dim": "#ffb2b7",
+                      "on-error": "#690005",
+                      "on-secondary-fixed-variant": "#703347",
+                      "on-tertiary-fixed": "#400010",
+                      "primary-container": "#ff516a",
+                      "on-primary-fixed": "#40000d",
+                      "on-tertiary-container": "#5b001b",
+                      "on-secondary": "#541d30",
+                      "surface-container-high": "#3b222f",
+                      "surface-bright": "#4c313f",
+                      "tertiary": "#ffb2ba",
+                      "inverse-on-surface": "#422936",
+                      "on-tertiary": "#660220",
+                      "on-secondary-fixed": "#3a071b",
+                      "secondary": "#ffb1c6",
+                      "on-error-container": "#ffdad6",
+                      "primary": "#ffb2b7",
+                      "surface-variant": "#472d3a",
+                      "on-surface": "#ffd8e9",
+                      "on-background": "#ffd8e9",
+                      "surface-container-highest": "#472d3a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "sm": "16px",
+                      "xs": "8px",
+                      "container-padding": "20px",
+                      "md": "24px",
+                      "gutter": "12px",
+                      "base": "4px",
+                      "lg": "32px",
+                      "xl": "48px"
+              },
+              "fontFamily": {
+                      "body-md": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "headline-xl": ["Plus Jakarta Sans"],
+                      "body-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-xl-mobile": ["Plus Jakarta Sans"],
+                      "headline-lg": ["Plus Jakarta Sans"],
+                      "headline-md": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-xl": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-xl-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "700"}],
+                      "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="pb-32">
+<!-- Background Shader -->
+
+<!-- Top App Bar -->
+<header class="flex justify-between items-center px-container-padding py-sm w-full top-0 sticky z-50 backdrop-blur-md bg-surface/10 border-b border-white/10">
+<div class="flex items-center gap-sm">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-white/20">
+<img alt="Parent Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMrIIqhz709VeW2BpRqLVg1j7U7Pl9daXfwRKA-2HDDgcA9W7mXSd5OKr4pnpdIm8PH7zmg2kpcIfjndCo00bTp-Axh-ozzk6NmCmBUgatneU-MIJXsqAP3jNupEJEVMnZddUdmfbtXx9Pf104uwZfzaiIwRgyJZ8fQhJHzGToBXPUzvkGYakj-ALyh-X-w-OuUIWQTLleEFRHfU4lEubjrHCKU1coc5G8ockGv2_JF5fyZw89gZymwweZDxq0LKQFld8hZ2gu1G6t"/>
+</div>
+<h1 class="font-headline-md-mobile text-headline-md-mobile font-bold text-on-surface">Good Morning, Ramesh 👋</h1>
+</div>
+<button class="material-symbols-outlined text-primary p-xs hover:opacity-80 transition-opacity active:scale-95">notifications</button>
+</header>
+<main class="px-container-padding pt-sm space-y-md">
+<!-- Child Switcher -->
+<div class="flex justify-center">
+<div class="glass-card rounded-full px-sm py-xs flex items-center gap-xs font-label-md text-label-md">
+<span class="text-primary font-bold">Vamshi (8-A)</span>
+<span class="material-symbols-outlined text-[14px]">expand_more</span>
+<div class="w-px h-4 bg-white/20 mx-xs"></div>
+<span class="text-on-surface-variant/70">Sneha (5-B)</span>
+</div>
+</div>
+<!-- Attendance Status -->
+<div class="glass-card rounded-xl p-sm flex items-center gap-sm border-l-4 border-green-500 green-glow">
+<div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-green-400">check_circle</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Vamshi entered school at 8:42 AM today</p>
+<p class="font-label-md text-label-md text-on-surface-variant/60">Gate 2 • Main Building</p>
+</div>
+</div>
+<!-- Feature Chips Row -->
+<div class="overflow-x-auto -mx-container-padding px-container-padding flex gap-xs py-xs no-scrollbar">
+<!-- Active chip -->
+<div class="glass-card bg-primary-container text-white px-md py-xs rounded-full font-label-md text-label-md whitespace-nowrap flex items-center gap-xs coral-glow border-none">
+<span class="material-symbols-outlined text-[18px]">calendar_today</span> Attendance
+            </div>
+<!-- Other chips -->
+<div class="glass-card px-md py-xs rounded-full font-label-md text-label-md whitespace-nowrap flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">assignment</span> Homework
+            </div>
+<div class="glass-card px-md py-xs rounded-full font-label-md text-label-md whitespace-nowrap flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">grade</span> Results
+            </div>
+<div class="glass-card px-md py-xs rounded-full font-label-md text-label-md whitespace-nowrap flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">payments</span> Fees
+            </div>
+<div class="glass-card px-md py-xs rounded-full font-label-md text-label-md whitespace-nowrap flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">directions_bus</span> Bus Tracker
+            </div>
+<div class="glass-card px-md py-xs rounded-full font-label-md text-label-md whitespace-nowrap flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">schedule</span> Timetable
+            </div>
+<div class="glass-card px-md py-xs rounded-full font-label-md text-label-md whitespace-nowrap flex items-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">event</span> PTM
+            </div>
+</div>
+<!-- Fee Alert Banner -->
+<div class="relative overflow-hidden rounded-xl p-md flex flex-col gap-xs coral-glow" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);">
+<div class="absolute top-0 right-0 p-sm opacity-20">
+<span class="material-symbols-outlined text-[64px]">warning</span>
+</div>
+<h3 class="font-headline-md-mobile text-headline-md-mobile font-bold text-white">Fee Alert</h3>
+<p class="font-body-md text-body-md text-white/90">Term 2 fee ₹18,000 due in 7 days</p>
+<button class="mt-xs bg-white text-[#d35400] px-md py-xs rounded-full font-label-md text-label-md self-start font-bold neumorphic-button active:scale-95 transition-transform">
+                Pay Now →
+            </button>
+</div>
+<!-- Homework Section -->
+<section class="space-y-sm">
+<div class="flex justify-between items-center">
+<h2 class="font-headline-md text-headline-md text-on-surface">Homework Due Today</h2>
+<span class="font-label-md text-label-md text-primary">View All</span>
+</div>
+<div class="grid grid-cols-1 gap-sm">
+<!-- Homework Card 1 -->
+<div class="glass-card rounded-xl p-md flex justify-between items-center group active:scale-[0.98] transition-transform">
+<div class="flex gap-md items-center">
+<div class="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-blue-400">functions</span>
+</div>
+<div>
+<p class="font-body-lg text-body-lg font-semibold text-on-surface">Math - Algebra Set 2</p>
+<p class="font-label-md text-label-md text-error">Due 4:00 PM</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:translate-x-1 transition-transform">chevron_right</span>
+</div>
+<!-- Homework Card 2 -->
+<div class="glass-card rounded-xl p-md flex justify-between items-center group active:scale-[0.98] transition-transform">
+<div class="flex gap-md items-center">
+<div class="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-purple-400">history_edu</span>
+</div>
+<div>
+<p class="font-body-lg text-body-lg font-semibold text-on-surface">English - Essay Draft</p>
+<p class="font-label-md text-label-md text-error">Due 4:00 PM</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:translate-x-1 transition-transform">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Bus Tracker Mini-Card -->
+<section class="space-y-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface">Live Bus Tracking</h2>
+<div class="glass-card rounded-2xl p-sm flex flex-col gap-sm overflow-hidden coral-glow">
+<div class="h-32 rounded-xl relative overflow-hidden bg-surface-container-low">
+<img alt="School bus map" class="w-full h-full object-cover opacity-60 grayscale brightness-75 contrast-125" data-location="Hyderabad" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBsrlIfVMFFa2P3mwXYGHD9lGeUxDUD7vCJYh_Zmz-dxQmtMhDnu974L3GPQWzT76Zv_Y_HDPPCGfCyhpM_lVfA2dhyrkJ6MpoiTZKbYZLmuzqnCxY66GcYOXpKh7_5o5ABVi748n7eriB2KwXpRxFOY8R2nfZns7ZwmL9NIWv3PVsATmL-NwizbA_tjDStVd8xxWe2BsdIpby-iUe9eNd0-aXwCKXjIXwjf_-jUhrUUvNnMuXWge43oWvQNK6EDijfjRjSFe14Ykdu"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent"></div>
+<div class="absolute bottom-3 left-3 flex items-center gap-xs">
+<div class="w-3 h-3 bg-primary rounded-full animate-ping"></div>
+<span class="font-label-md text-label-md text-white font-bold">Bus 42B - Route North</span>
+</div>
+</div>
+<div class="flex justify-between items-center px-xs">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary">directions_bus</span>
+<span class="font-body-md text-body-md font-semibold">Bus arrives in 12 min</span>
+</div>
+<button class="text-primary font-label-md text-label-md font-bold underline underline-offset-4">Track Live</button>
+</div>
+</div>
+</section>
+<!-- Announcements Feed -->
+<section class="space-y-sm">
+<h2 class="font-headline-md text-headline-md text-on-surface">Latest Announcements</h2>
+<div class="space-y-sm">
+<!-- Card 1 -->
+<div class="glass-card rounded-xl p-md flex gap-md">
+<div class="flex-shrink-0 w-12 h-12 rounded-full glass-card flex items-center justify-center border-primary/30">
+<span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div class="space-y-xs">
+<h4 class="font-body-lg text-body-lg font-bold">Annual Day Notice 2024</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant/80">Costumes for the cultural program must be collected by Friday evening from the respective class teachers.</p>
+<span class="inline-block font-label-md text-label-md text-primary bg-primary/10 px-xs py-[2px] rounded">School Admin</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-card rounded-xl p-md flex gap-md">
+<div class="flex-shrink-0 w-12 h-12 rounded-full glass-card flex items-center justify-center border-secondary/30">
+<span class="material-symbols-outlined text-secondary text-[28px]" style="font-variation-settings: 'FILL' 1;">science</span>
+</div>
+<div class="space-y-xs">
+<h4 class="font-body-lg text-body-lg font-bold">Science Fair Registration</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant/80">Students of Grade 8 are invited to submit their innovative projects for the regional Science Fair. Registrations close Monday.</p>
+<span class="inline-block font-label-md text-label-md text-secondary bg-secondary/10 px-xs py-[2px] rounded">Academic Cell</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-6 left-0 right-0 mx-auto w-[92%] max-w-md z-50 flex justify-around items-center py-xs px-sm backdrop-blur-[30px] bg-surface/10 border border-white/15 rounded-full shadow-[0_0_24px_rgba(244,63,94,0.2)]">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-full px-4 py-1 shadow-[0_0_12px_rgba(244,63,94,0.4)] scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<!-- Academics -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">Academics</span>
+</a>
+<!-- Fees -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md">Fees</span>
+</a>
+<!-- Bus -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">directions_bus</span>
+<span class="font-label-md text-label-md">Bus</span>
+</a>
+<!-- Messages -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant/70 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<!-- FAB Integration -->
+<button class="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-primary-container text-white flex items-center justify-center coral-glow active:scale-90 transition-transform z-40">
+<span class="material-symbols-outlined text-[28px]">chat_bubble</span>
+</button>
+<script>
+        // Micro-interactions and atmospheric logic
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('touchstart', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('touchend', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+
+        // Simple child switcher simulation
+        const switcher = document.querySelector('.glass-card.rounded-full');
+        switcher.addEventListener('click', () => {
+            const first = switcher.querySelector('.text-primary');
+            const second = switcher.querySelector('.text-on-surface-variant');
+            const tempText = first.textContent;
+            const tempClass = first.className;
+            
+            first.textContent = second.textContent.replace(' ▾', '');
+            first.className = second.className;
+            
+            second.textContent = tempText.includes('▾') ? tempText : tempText + ' ▾';
+            second.className = tempClass;
+        });
+    </script>
+</body></html>

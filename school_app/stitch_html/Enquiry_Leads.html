@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at top right, #00513f 0%, #121414 70%);
+            min-height: 100vh;
+            color: #e2e2e2;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neumorphic-button {
+            background: rgba(255, 255, 255, 0.07);
+            box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3), -2px -2px 8px rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+        .neumorphic-button:active {
+            box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.4), inset -1px -1px 4px rgba(255, 255, 255, 0.05);
+            transform: scale(0.98);
+        }
+        .emerald-glow {
+            box-shadow: 0 0 24px rgba(0, 212, 170, 0.4);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(0, 212, 170, 0.3);
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#081c32",
+                        "background": "#121414",
+                        "on-tertiary-fixed-variant": "#204f3f",
+                        "on-secondary-container": "#a4b6d3",
+                        "inverse-primary": "#006b55",
+                        "on-primary-fixed": "#002118",
+                        "secondary-container": "#364860",
+                        "on-surface": "#e2e2e2",
+                        "on-tertiary-container": "#255343",
+                        "surface-container-lowest": "#0c0f0f",
+                        "primary-fixed-dim": "#28dfb5",
+                        "secondary-fixed": "#d2e4ff",
+                        "on-surface-variant": "#bacac2",
+                        "on-primary-container": "#005643",
+                        "secondary-fixed-dim": "#b5c8e5",
+                        "surface-tint": "#28dfb5",
+                        "secondary": "#b5c8e5",
+                        "surface": "#121414",
+                        "primary": "#46f1c5",
+                        "tertiary-container": "#95c6b1",
+                        "on-tertiary": "#033829",
+                        "inverse-on-surface": "#2f3131",
+                        "inverse-surface": "#e2e2e2",
+                        "outline-variant": "#3b4a44",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary": "#1f3148",
+                        "outline": "#85948d",
+                        "on-error": "#690005",
+                        "on-primary-fixed-variant": "#00513f",
+                        "on-tertiary-fixed": "#002117",
+                        "primary-fixed": "#55fcd0",
+                        "surface-container-low": "#1a1c1c",
+                        "on-secondary-fixed-variant": "#364860",
+                        "on-primary": "#00382b",
+                        "surface-dim": "#121414",
+                        "surface-bright": "#37393a",
+                        "tertiary-fixed": "#bbedd7",
+                        "tertiary": "#b0e2cc",
+                        "surface-variant": "#333535",
+                        "surface-container-highest": "#333535",
+                        "surface-container-high": "#282a2b",
+                        "error": "#ffb4ab",
+                        "primary-container": "#00d4aa",
+                        "tertiary-fixed-dim": "#a0d1bc",
+                        "on-background": "#e2e2e2",
+                        "surface-container": "#1e2020"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "glass-margin": "12px",
+                        "stack-gap-lg": "24px",
+                        "container-padding": "20px",
+                        "stack-gap-sm": "8px",
+                        "stack-gap-md": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "stats-display": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["22px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-md-mobile": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-lg": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "label-md": ["11px", {"lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "stats-display": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="dark overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-padding h-16 bg-surface/60 backdrop-blur-[20px] border-b border-white/15 shadow-xl">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/30">
+<img alt="Staff Avatar" class="w-full h-full object-cover" data-alt="A professional high-resolution avatar for an educational administrator in a modern dark-themed interface. The character has a friendly expression and is dressed in contemporary business casual attire. The lighting is soft and cinematic, with subtle emerald mint highlights reflecting the brand colors of the EduVision platform. The background is a clean, blurred academic setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYiHMfcV5N3K6KM98EAi1YCAdDUlkx6BwhR2h7jrFgvtbULACr08vKouLuQifFLhklopOXgph_gkwy6UzbqpT0a5fKdFrjHaaUBWcglPBGS6Q2QM4dhZyQCfxGHfp18vtIm-dSS_-d2lJo9-l29mc_3Q1KjnMjBtSPkyoER3Ok9Galk-XgwJfaZNsikWkt9hbWkXM9YKaoBXIx4c77MwZzAGaWmEqrRUWBaTA--L6PmjlvnKWVpNAjpACesabLnZ9xyztWPzPpigdY"/>
+</div>
+<h1 class="font-headline-md text-headline-md-mobile md:text-headline-md text-primary font-bold">Admin Panel</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full style_universal_hover text-on-surface">
+<span class="material-symbols-outlined">search</span>
+</button>
+</header>
+<main class="pt-20 pb-24 px-container-padding max-w-md mx-auto">
+<!-- Dashboard Summary -->
+<section class="mb-stack-gap-lg">
+<div class="glass-card rounded-xl p-stack-gap-md mb-stack-gap-md">
+<p class="font-label-lg text-label-lg text-on-surface-variant uppercase mb-1">Enquiry Pipeline</p>
+<div class="flex justify-between items-end">
+<span class="font-stats-display text-stats-display text-primary-container">42 Leads</span>
+<span class="text-on-primary-fixed-variant bg-primary/20 px-2 py-1 rounded text-[10px] font-bold">+12% vs last week</span>
+</div>
+</div>
+<!-- Filters -->
+<div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-card border-primary text-primary font-bold text-label-md">All Leads</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-card text-on-surface-variant font-medium text-label-md hover:bg-white/5 transition-colors">New</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-card text-on-surface-variant font-medium text-label-md hover:bg-white/5 transition-colors">Contacted</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-card text-on-surface-variant font-medium text-label-md hover:bg-white/5 transition-colors">Follow-up</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass-card text-on-surface-variant font-medium text-label-md hover:bg-white/5 transition-colors">Converted</button>
+</div>
+</section>
+<!-- Leads List -->
+<section class="flex flex-col gap-glass-margin">
+<!-- Lead Card 1 -->
+<div class="glass-card rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden group">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-[18px] text-on-surface">Mr. Rajan</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">child_care</span>
+                            Child: Aarav
+                        </p>
+</div>
+<span class="bg-primary/20 text-primary-fixed-dim px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border border-primary/30">New</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">school</span>
+<span class="text-body-md font-medium">Class 1</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
+<span class="text-body-md font-medium">Oct 25</span>
+</div>
+</div>
+<div class="flex gap-2 mt-2">
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-primary">
+<span class="material-symbols-outlined text-[20px]">call</span>
+<span class="font-label-md">Quick Call</span>
+</button>
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[#25D366]">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+<span class="font-label-md">WhatsApp</span>
+</button>
+</div>
+</div>
+<!-- Lead Card 2 -->
+<div class="glass-card rounded-xl p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-[18px] text-on-surface">Mrs. Sharma</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">child_care</span>
+                            Child: Vihaan
+                        </p>
+</div>
+<span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border border-blue-500/30">Contacted</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">school</span>
+<span class="text-body-md font-medium">Class 3</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
+<span class="text-body-md font-medium">Oct 24</span>
+</div>
+</div>
+<div class="flex gap-2 mt-2">
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-primary">
+<span class="material-symbols-outlined text-[20px]">call</span>
+<span class="font-label-md">Quick Call</span>
+</button>
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[#25D366]">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+<span class="font-label-md">WhatsApp</span>
+</button>
+</div>
+</div>
+<!-- Lead Card 3 -->
+<div class="glass-card rounded-xl p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-[18px] text-on-surface">Dr. Gupta</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">child_care</span>
+                            Child: Ishani
+                        </p>
+</div>
+<span class="bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border border-amber-500/30">Follow-up</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">school</span>
+<span class="text-body-md font-medium">Nursery</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
+<span class="text-body-md font-medium">Oct 22</span>
+</div>
+</div>
+<div class="flex gap-2 mt-2">
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-primary">
+<span class="material-symbols-outlined text-[20px]">call</span>
+<span class="font-label-md">Quick Call</span>
+</button>
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[#25D366]">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+<span class="font-label-md">WhatsApp</span>
+</button>
+</div>
+</div>
+<!-- Lead Card 4 -->
+<div class="glass-card rounded-xl p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-[18px] text-on-surface">Mr. Verma</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">child_care</span>
+                            Child: Kabir
+                        </p>
+</div>
+<span class="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border border-emerald-500/30">Converted</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">school</span>
+<span class="text-body-md font-medium">Class 5</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
+<span class="text-body-md font-medium">Oct 19</span>
+</div>
+</div>
+<div class="flex gap-2 mt-2">
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-primary">
+<span class="material-symbols-outlined text-[20px]">call</span>
+<span class="font-label-md">Quick Call</span>
+</button>
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[#25D366]">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+<span class="font-label-md">WhatsApp</span>
+</button>
+</div>
+</div>
+<!-- Lead Card 5 -->
+<div class="glass-card rounded-xl p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-headline-md text-[18px] text-on-surface">Ms. Iyer</h3>
+<p class="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">child_care</span>
+                            Child: Meera
+                        </p>
+</div>
+<span class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border border-red-500/30">Dropped</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">school</span>
+<span class="text-body-md font-medium">KG 1</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px] text-primary">calendar_month</span>
+<span class="text-body-md font-medium">Oct 15</span>
+</div>
+</div>
+<div class="flex gap-2 mt-2">
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-primary opacity-50">
+<span class="material-symbols-outlined text-[20px]">call</span>
+<span class="font-label-md">Quick Call</span>
+</button>
+<button class="neumorphic-button flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[#25D366] opacity-50">
+<span class="material-symbols-outlined text-[20px]">chat</span>
+<span class="font-label-md">WhatsApp</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 py-3 bg-surface/60 backdrop-blur-[20px] rounded-t-xl border-t border-white/15 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md mt-1">Students</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-label-md mt-1">Fees</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-70 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">calendar_month</span>
+<span class="font-label-md text-label-md mt-1">Schedule</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full px-4 py-1 shadow-[0_0_24px_rgba(0,212,170,0.4)] scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined">chat</span>
+<span class="font-label-md text-label-md">Messages</span>
+</a>
+</nav>
+<!-- Floating Action Button (Admin Add Lead) -->
+<button class="fixed right-6 bottom-24 w-14 h-14 bg-primary-container text-on-primary rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,212,170,0.4)] hover:scale-110 active:scale-95 transition-all z-40">
+<span class="material-symbols-outlined text-[28px]">person_add</span>
+</button>
+<script>
+        // Simple micro-interaction for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+                card.style.transition = 'transform 0.1s ease';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

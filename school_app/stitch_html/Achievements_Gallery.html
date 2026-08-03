@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduVision | Achievements Gallery</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            box-shadow: 0 0 24px rgba(123, 208, 255, 0.4);
+            border-color: #8ed5ff;
+            transform: translateY(-4px);
+        }
+        .glow-text {
+            text-shadow: 0 0 12px rgba(142, 213, 255, 0.5);
+        }
+        body {
+            background-color: #101415;
+            background-image: radial-gradient(circle at 50% -20%, #173151 0%, #101415 70%);
+            min-height: 100vh;
+            color: #e0e3e5;
+        }
+        .glow-pulse {
+            animation: pulse-glow 2s infinite alternate;
+        }
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 10px rgba(123, 208, 255, 0.2); }
+            to { box-shadow: 0 0 25px rgba(123, 208, 255, 0.5); }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#d7e3fc",
+                      "error": "#ffb4ab",
+                      "surface-container-highest": "#323537",
+                      "on-primary-container": "#004965",
+                      "error-container": "#93000a",
+                      "on-secondary-container": "#a1bae1",
+                      "on-primary-fixed": "#001e2c",
+                      "primary-fixed-dim": "#7bd0ff",
+                      "secondary-container": "#314a6c",
+                      "primary-fixed": "#c4e7ff",
+                      "background": "#101415",
+                      "surface-container-lowest": "#0b0f10",
+                      "tertiary": "#c2cde6",
+                      "on-primary-fixed-variant": "#004c69",
+                      "on-primary": "#00354a",
+                      "on-secondary-fixed-variant": "#2f4869",
+                      "on-secondary-fixed": "#001c3a",
+                      "inverse-surface": "#e0e3e5",
+                      "surface": "#101415",
+                      "on-tertiary-fixed": "#101c2e",
+                      "inverse-primary": "#00668a",
+                      "on-error-container": "#ffdad6",
+                      "primary-container": "#38bdf8",
+                      "surface-container": "#1d2022",
+                      "outline": "#87929a",
+                      "outline-variant": "#3e484f",
+                      "on-tertiary-fixed-variant": "#3c475b",
+                      "on-tertiary-container": "#394459",
+                      "secondary-fixed-dim": "#afc8f0",
+                      "secondary-fixed": "#d4e3ff",
+                      "surface-container-low": "#191c1e",
+                      "surface-bright": "#363a3b",
+                      "secondary": "#afc8f0",
+                      "tertiary-container": "#a6b2ca",
+                      "inverse-on-surface": "#2d3133",
+                      "primary": "#8ed5ff",
+                      "on-surface": "#e0e3e5",
+                      "tertiary-fixed-dim": "#bbc7df",
+                      "surface-variant": "#323537",
+                      "on-tertiary": "#253144",
+                      "surface-dim": "#101415",
+                      "on-secondary": "#173151",
+                      "on-background": "#e0e3e5",
+                      "on-surface-variant": "#bdc8d1",
+                      "surface-container-high": "#272a2c",
+                      "surface-tint": "#7bd0ff",
+                      "on-error": "#690005"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "margin-desktop": "64px",
+                      "gutter": "24px",
+                      "unit": "8px",
+                      "margin-mobile": "20px",
+                      "section-gap": "120px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Plus Jakarta Sans"],
+                      "label-md": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "body-sm": ["Inter"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"],
+                      "headline-sm": ["Plus Jakarta Sans"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-lg": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "display-lg": ["56px", {"lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                      "headline-sm": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md">
+<!-- Top Navigation Bar -->
+<nav class="fixed top-0 w-full h-20 bg-white/12 backdrop-blur-[20px] border-b border-white/20 z-50 flex justify-between items-center px-margin-mobile md:px-margin-desktop">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-headline-sm" data-icon="school">school</span>
+<span class="font-display-lg text-headline-sm font-bold text-on-surface">EduVision</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Overview</a>
+<a class="font-label-lg text-primary font-bold transition-colors" href="#">Achievements</a>
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Campus</a>
+<a class="font-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Admissions</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary" data-icon="contact_support">contact_support</button>
+<button class="bg-primary text-on-primary-fixed px-6 py-2 rounded-full font-label-lg font-bold hover:shadow-[0_0_24px_rgba(123,208,255,0.4)] transition-all">Enroll Now</button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="pt-32 pb-40 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto">
+<!-- Header Section -->
+<header class="mb-section-gap text-center max-w-3xl mx-auto">
+<div class="inline-flex items-center gap-2 px-4 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary font-label-md mb-6">
+<span class="material-symbols-outlined text-[16px]" data-icon="stars" style="font-variation-settings: 'FILL' 1;">stars</span>
+                LEGACY OF EXCELLENCE
+            </div>
+<h1 class="font-display-lg text-headline-lg-mobile md:text-display-lg text-on-surface mb-6">Honoring Visionary Milestones</h1>
+<p class="font-body-lg text-on-surface-variant">Celebrate the academic brilliance, athletic triumphs, and global recognition that define the EduVision community.</p>
+</header>
+<!-- Bento Grid: Major Awards & Board Toppers -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter mb-section-gap">
+<!-- Global Impact Award (Large Glass Card) -->
+<div class="md:col-span-8 glass-card p-8 rounded-3xl flex flex-col md:flex-row gap-8 items-center overflow-hidden relative">
+<div class="flex-1 z-10">
+<span class="material-symbols-outlined text-primary text-headline-md mb-4" data-icon="emoji_events" style="font-variation-settings: 'FILL' 1;">emoji_events</span>
+<h2 class="font-headline-md text-on-surface mb-4">Innovation in Education 2024</h2>
+<p class="font-body-md text-on-surface-variant mb-6">Recognized by the World Education Forum for our groundbreaking 'EduVision Connect' digital curriculum and sustainable campus initiatives.</p>
+<div class="flex gap-4">
+<span class="px-4 py-2 bg-white/5 rounded-xl border border-white/10 font-label-md">Global Ranking #14</span>
+<span class="px-4 py-2 bg-white/5 rounded-xl border border-white/10 font-label-md">Sustainability Gold</span>
+</div>
+</div>
+<div class="flex-shrink-0 z-10">
+<img alt="Award Trophy" class="w-48 h-48 object-cover rounded-2xl shadow-2xl" data-alt="A detailed close-up shot of a magnificent glass trophy award with intricate geometric etchings inside. The trophy catches the cool blue and navy light of a high-end futuristic gallery. The background is a soft-focus midnight navy environment with ethereal sky blue glowing particles floating around, creating a sense of prestige and modern institutional victory." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFYsVBI_dRh3I_ThnDge924fn1kao2S55VOOWTLDCooVI18Fp09ZyIEKomTGw8IpvA53anlTDDk4fbA0AeUA4PS_sSZvJsrbsEFEwiEx61P5RAxXJm1SQ2KoFCkOykp2A499uryY228xFYAff4I4ArjRPQ6_MOgTQflk9c154MjYqXAXUSMaEK0-euAJLnj5zL3XvkOGuOIefirmefW3TPes3ApBYm4kAU3bn_3AnRk2pThWgKcyddye0Xl7Y-JPYBHq1EP2OP7IDM"/>
+</div>
+<!-- Decorative gradient -->
+<div class="absolute -right-20 -bottom-20 w-64 h-64 bg-primary/10 blur-[100px] rounded-full"></div>
+</div>
+<!-- News Coverage List (Vertical Glass Card) -->
+<div class="md:col-span-4 glass-card p-8 rounded-3xl flex flex-col">
+<h3 class="font-headline-sm text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="newspaper">newspaper</span>
+                    News Coverage
+                </h3>
+<div class="space-y-6 overflow-y-auto max-h-[300px] pr-2">
+<div class="group cursor-pointer">
+<span class="text-primary font-label-md block mb-1">Financial Times • Oct 2024</span>
+<p class="text-on-surface font-body-md group-hover:text-primary transition-colors">The Future of Hybrid Learning: EduVision leads the way.</p>
+</div>
+<div class="group cursor-pointer border-t border-white/10 pt-4">
+<span class="text-primary font-label-md block mb-1">National Geographic • Sep 2024</span>
+<p class="text-on-surface font-body-md group-hover:text-primary transition-colors">Sustainable Campuses: EduVision's Zero-Waste Success.</p>
+</div>
+<div class="group cursor-pointer border-t border-white/10 pt-4">
+<span class="text-primary font-label-md block mb-1">Tech Today • Aug 2024</span>
+<p class="text-on-surface font-body-md group-hover:text-primary transition-colors">AI in the Classroom: How Visionaries are born.</p>
+</div>
+</div>
+<button class="mt-auto pt-6 text-primary font-label-lg flex items-center gap-2 hover:gap-3 transition-all">
+                    View Press Room <span class="material-symbols-outlined">arrow_right_alt</span>
+</button>
+</div>
+<!-- Board Topper 1 -->
+<div class="md:col-span-4 glass-card p-6 rounded-3xl group">
+<div class="relative mb-6">
+<img alt="Student Topper" class="w-full aspect-square object-cover rounded-2xl grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="A professional studio portrait of a confident female student in a smart navy blazer, looking directly into the camera with a brilliant smile. The lighting is crisp and modern with cool blue secondary fills. The background is a deep, textured navy that creates a professional institutional feel. High-quality editorial style with vibrant, natural skin tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAaJRRUcA28cxQosr7uKPRNB3IhTl-dlnQ6_DpZiexIAAc_0P0JmsnYSVMA8aiBFT8rC3nCuwQFtb2AcEQIuToDiq0-8Tlf6EZ_YKmTLVOP-oHoq4XYuqmb6cAMMmd8Hy9zPmavw_taHz-yYOs4ZfsBtYjYgzw0qdqYpG0MR-3DQdXgwK5UkbPyy1aLEjek-ifsBSND4XdlAydQ9ttz3HaiPtfqE_qqqbyyFo-lry8dc5yJqqEs0_Cagii9CQQ1ctTgA30f9iFCx0kV"/>
+<div class="absolute bottom-4 right-4 bg-primary text-on-primary-fixed px-3 py-1 rounded-lg font-display-lg text-headline-sm shadow-xl">99.2%</div>
+</div>
+<h4 class="font-headline-sm text-on-surface">Elena Rodriguez</h4>
+<p class="font-body-sm text-on-surface-variant">Class of 2024 • Science Stream</p>
+</div>
+<!-- Board Topper 2 -->
+<div class="md:col-span-4 glass-card p-6 rounded-3xl group">
+<div class="relative mb-6">
+<img alt="Student Topper" class="w-full aspect-square object-cover rounded-2xl grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="A professional headshot of a male student with a sharp, clean appearance, wearing a dark navy school uniform. The lighting is cinematic with a focus on deep contrast and soft sky blue rim lights that make him pop from the dark midnight navy background. The style is premium and aspirational, reflecting a modern educational elite." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3J6LDmm46WVp_sAC5EGTsSAh9PchG1ki2dwCeQtqZ7lpQBury9NJHl96lY3FQbIRz0E3zz09MRlxOvEYRIf6qSSZ_BLSE3kq00LJJRpfYuQNZMqYPAoe6fDXVAHEjN76N-6bX_LxY0BANHHc3MzUONiJVkMoc0IWzSrHLQk8kv4bWJXS_Ltnh35hHjQu3boAWdw1oqhoKO_fv8FVr7E5BvGpAHpsdcHF89lo5SDiAyeBV4TEU-yLhF6XaX_OyzIuYPSy8PZDt5g9W"/>
+<div class="absolute bottom-4 right-4 bg-primary text-on-primary-fixed px-3 py-1 rounded-lg font-display-lg text-headline-sm shadow-xl">98.8%</div>
+</div>
+<h4 class="font-headline-sm text-on-surface">Marcus Chen</h4>
+<p class="font-body-sm text-on-surface-variant">Class of 2024 • Humanities</p>
+</div>
+<!-- Board Topper 3 -->
+<div class="md:col-span-4 glass-card p-6 rounded-3xl group">
+<div class="relative mb-6">
+<img alt="Student Topper" class="w-full aspect-square object-cover rounded-2xl grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="A sophisticated studio portrait of a young woman student with a look of quiet intelligence and determination. She is framed by soft, ethereal studio lighting with a distinct cool-toned palette. The deep midnight navy background has a very subtle glowing blueprint pattern, symbolizing architectural or visionary thinking. The image has a premium, high-contrast feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBby4ECDQvtbfjhIoFNAlrPOAuEb-_GjNSgR44IrHBvJigak7RPXOsVP6jJzlJ6gpV3g9Q7f5mI1gOGd2Dj4txEfMm6hV16lFJgnZEPqt7EKxZt9dDvx5CPj_5_7SvhtbWgt70mvXjGLjEz4ke7-4Rqy_2Cq2ABqC5LeC8D5mpO6zq_cxCea2GsagNzQhuN_3xpciyBAuh5J_63ERT20B21mx_aslDfjNMCx0RuNdy9A55d40tkT_6Dfdk61Kp51q9hZEvmJr8Bz_6D"/>
+<div class="absolute bottom-4 right-4 bg-primary text-on-primary-fixed px-3 py-1 rounded-lg font-display-lg text-headline-sm shadow-xl">98.5%</div>
+</div>
+<h4 class="font-headline-sm text-on-surface">Amara Okafor</h4>
+<p class="font-body-sm text-on-surface-variant">Class of 2024 • Commerce Stream</p>
+</div>
+</div>
+<!-- Event Photo Albums Section -->
+<section>
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+<div>
+<h2 class="font-headline-md text-on-surface mb-2">Life at EduVision</h2>
+<p class="font-body-md text-on-surface-variant">A visual journey through our events, symposia, and campus life.</p>
+</div>
+<div class="flex gap-4">
+<button class="p-3 rounded-full border border-white/20 glass-card flex items-center justify-center hover:bg-primary/20">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="p-3 rounded-full border border-white/20 glass-card flex items-center justify-center hover:bg-primary/20">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+<!-- Album 1 -->
+<div class="group relative overflow-hidden rounded-3xl cursor-pointer">
+<img alt="Graduation Day" class="w-full aspect-[3/4] object-cover group-hover:scale-110 transition-transform duration-700" data-alt="A wide, cinematic shot of a university graduation ceremony taking place in a grand, modern hall with glass walls. Hundreds of students in navy caps and gowns are tossing their caps into the air. The scene is bathed in warm sunlight filtering through high windows, contrasted with the cool blue architectural shadows of the campus. The mood is ecstatic and celebratory." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhKsZfv1SkNPXKoTR_e8yVZBFD38rC8MJP5VQLhtf6lBvN7bsuwUDLpg3JBe5YhxV2_5Q4k3V8V6PWDEQXXBke7SvXZwX9Ud7fJNG3gA4BsBtky36PTmxvJ-xZiV0nv97poEWB_dMZlLuMMyqP2Do41o3K26d5xf0iAzOCktfoS23CdYKoBTWJjkQWPV6ConWpZjyh6VpML8aOxsGsWjSlzBQ-erPxIy6CrKgtnzDkUYfhLwo2yeGOvb0ncFVLYLAAfaQbLOA2aY79"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
+<h5 class="font-headline-sm text-on-surface">Convocation 2024</h5>
+<p class="font-body-sm text-primary">124 Photos</p>
+</div>
+</div>
+<!-- Album 2 -->
+<div class="group relative overflow-hidden rounded-3xl cursor-pointer">
+<img alt="Annual Symposium" class="w-full aspect-[3/4] object-cover group-hover:scale-110 transition-transform duration-700" data-alt="A high-tech educational symposium with students gathered around glowing interactive holographic displays. The room is dark, illuminated primarily by the vibrant sky blue light of the technology. Faculty members are seen in the background engaged in deep discussion. The atmosphere is futuristic, visionary, and intensely focused on cutting-edge educational progress." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCz_fSAredYgOW0p6tSZq9TKh8skTW4-oo9MrhZcr--1wcE4y-RLIYNr-2btXdSOwuAm2ZES8v5s38AKZCZSCjLheAGEyKb_p45jWOBX9mQi8FNOjJSkVk5vBW52SKWbktXviZjVlKn191hS0CCDCvCu_HsvJWlCKt7QX0TqTz4LHmEyReHcZXUo7CJOUO4ZYAZuT-MmMhhRqvw5SGTORd5UDCGLH4t94vEvPGWBiTlR4oAzgZQhJ7NuO9j-NQxCD9Xsso8vvbqJxBG"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
+<h5 class="font-headline-sm text-on-surface">Tech Symposium</h5>
+<p class="font-body-sm text-primary">86 Photos</p>
+</div>
+</div>
+<!-- Album 3 -->
+<div class="group relative overflow-hidden rounded-3xl cursor-pointer">
+<img alt="Sports Meet" class="w-full aspect-[3/4] object-cover group-hover:scale-110 transition-transform duration-700" data-alt="Dynamic action shot of a student athletics event on a modern synthetic track. A runner in a navy and white athletic uniform is captured in a powerful stride. The late afternoon sun creates long, dramatic shadows and highlights the intensity on the athlete's face. The campus stadium architecture is visible in the background, featuring sleek metallic and glass curves." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBM1tIoNSiqU6ouRocYeJSTx5seqyRvMQFeb-wa3NncNWiEydHogE_AlnKBX1JjDq0D59MR-9XP5O4JdUCqSey2rmh0jqvTXb69tN2UQhyq8CvTVjkTBRdktaL8TH1D3Ac3x3Wi0GtwaS8oTsdZd0BCxj-zCiXMncWnmpN_Cwf8nO945l-ARp_USdGf6swTaD3YDaLMImeEUxQEr1PzrTQgehiDWLV5n-0CXLXra0d1XlSoUEcwUuZDk-qPB06RaoCy4u6CViHsKBFr"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
+<h5 class="font-headline-sm text-on-surface">Athletics Meet</h5>
+<p class="font-body-sm text-primary">210 Photos</p>
+</div>
+</div>
+<!-- Album 4 -->
+<div class="group relative overflow-hidden rounded-3xl cursor-pointer">
+<img alt="Cultural Night" class="w-full aspect-[3/4] object-cover group-hover:scale-110 transition-transform duration-700" data-alt="A vibrant cultural performance on a professionally lit stage. Students are performing a contemporary dance piece with dramatic lighting effects in shades of sky blue and deep violet. The energy is palpable, with light trails and soft motion blur suggesting dynamic movement. The overall aesthetic is artistic, high-energy, and modern, set against the dark institutional background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAx3qekLdkB7CAY5vIxnFXoLwzCiu0fHjhNqa3CJzMwUTySX_u-W9CUoxN0LSUClRRN8h5AvZbUOlpIwwSSMw6Tt818EOU-pIOTvNw1YiL4UsIgHYc8rbc1L1ntwKkKubPr-dcbFrml2NE5O3thDzvTXYdKaWGgQaqiwzyKreqD1v1jDVrE2kaMheGSfEKzVIyPgDyfxNOGpvSDdTi4MTbhLeQt0QgkqWydwjK1tg6HCHhtwSndAx0fnwwEdlqlz_ZNZJnLGY_0-uPc"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
+<h5 class="font-headline-sm text-on-surface">Cultural Fusion</h5>
+<p class="font-body-sm text-primary">158 Photos</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation CTA Bar -->
+<div class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-center py-6 px-margin-mobile md:px-margin-desktop bg-white/12 backdrop-blur-[20px] border-t border-primary shadow-[0_0_24px_rgba(123,208,255,0.4)]">
+<a class="flex items-center gap-3 group" href="#">
+<span class="font-label-lg text-label-lg text-primary font-bold">Register to unlock attendance, marks &amp; full features</span>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-2 transition-transform glow-pulse" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+<!-- Background Atmospheric Effects -->
+<div class="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
+<div class="absolute top-1/4 -left-20 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full"></div>
+<div class="absolute bottom-1/4 -right-20 w-[600px] h-[600px] bg-secondary/5 blur-[150px] rounded-full"></div>
+</div>
+<script>
+        // Micro-interactions for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.classList.add('scale-95');
+                setTimeout(() => card.classList.remove('scale-95'), 150);
+            });
+        });
+
+        // Simple scroll parallax for background
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            document.body.style.backgroundPosition = `50% ${scrolled * 0.1}px`;
+        });
+    </script>
+</body></html>

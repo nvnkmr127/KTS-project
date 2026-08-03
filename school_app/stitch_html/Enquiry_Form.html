@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduVision | Admission Enquiry</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #101415;
+            color: #e0e3e5;
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .glow-pulse:hover {
+            box-shadow: 0 0 24px rgba(123, 208, 255, 0.4);
+        }
+        .input-glass {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+        }
+        .input-glass:focus {
+            border-color: #8ed5ff;
+            box-shadow: 0 0 15px rgba(142, 213, 255, 0.3);
+            outline: none;
+            background: rgba(255, 255, 255, 0.12);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#d7e3fc",
+                        "error": "#ffb4ab",
+                        "surface-container-highest": "#323537",
+                        "on-primary-container": "#004965",
+                        "error-container": "#93000a",
+                        "on-secondary-container": "#a1bae1",
+                        "on-primary-fixed": "#001e2c",
+                        "primary-fixed-dim": "#7bd0ff",
+                        "secondary-container": "#314a6c",
+                        "primary-fixed": "#c4e7ff",
+                        "background": "#101415",
+                        "surface-container-lowest": "#0b0f10",
+                        "tertiary": "#c2cde6",
+                        "on-primary-fixed-variant": "#004c69",
+                        "on-primary": "#00354a",
+                        "on-secondary-fixed-variant": "#2f4869",
+                        "on-secondary-fixed": "#001c3a",
+                        "inverse-surface": "#e0e3e5",
+                        "surface": "#101415",
+                        "on-tertiary-fixed": "#101c2e",
+                        "inverse-primary": "#00668a",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#38bdf8",
+                        "surface-container": "#1d2022",
+                        "outline": "#87929a",
+                        "outline-variant": "#3e484f",
+                        "on-tertiary-fixed-variant": "#3c475b",
+                        "on-tertiary-container": "#394459",
+                        "secondary-fixed-dim": "#afc8f0",
+                        "secondary-fixed": "#d4e3ff",
+                        "surface-container-low": "#191c1e",
+                        "surface-bright": "#363a3b",
+                        "secondary": "#afc8f0",
+                        "tertiary-container": "#a6b2ca",
+                        "inverse-on-surface": "#2d3133",
+                        "primary": "#8ed5ff",
+                        "on-surface": "#e0e3e5",
+                        "tertiary-fixed-dim": "#bbc7df",
+                        "surface-variant": "#323537",
+                        "on-tertiary": "#253144",
+                        "surface-dim": "#101415",
+                        "on-secondary": "#173151",
+                        "on-background": "#e0e3e5",
+                        "on-surface-variant": "#bdc8d1",
+                        "surface-container-high": "#272a2c",
+                        "surface-tint": "#7bd0ff",
+                        "on-error": "#690005"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "margin-desktop": "64px",
+                        "gutter": "24px",
+                        "unit": "8px",
+                        "margin-mobile": "20px",
+                        "section-gap": "120px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-md": ["Inter"],
+                        "label-lg": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["56px", {"lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                        "headline-sm": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-body-md bg-background text-on-background">
+<!-- Background Atmospheric Effect -->
+<div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+
+<div class="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-primary/10 blur-[120px] rounded-full"></div>
+<div class="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-secondary/10 blur-[100px] rounded-full"></div>
+</div>
+<!-- Top Navigation Anchor (Shared Component Execution) -->
+<header class="fixed top-0 w-full z-50 bg-white/12 backdrop-blur-[20px] border-b border-white/20 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="school">school</span>
+<span class="font-display-lg text-headline-sm font-bold text-on-surface">EduVision</span>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="font-label-lg text-label-lg text-primary font-bold transition-colors" href="#">Admissions</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Curriculum</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Campus</a>
+</nav>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer" data-icon="contact_support">contact_support</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="relative z-10 flex-grow flex items-center justify-center pt-32 pb-40 px-margin-mobile md:px-margin-desktop">
+<div class="w-full max-w-container-max grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
+<!-- Hero Messaging -->
+<div class="lg:col-span-5 mb-12 lg:mb-0">
+<h1 class="font-display-lg text-headline-lg-mobile md:text-display-lg text-on-surface mb-6 leading-tight">
+                    Begin Your <span class="text-primary">Visionary</span> Journey.
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-8 max-w-md">
+                    Join an elite community of learners. Fill out the enquiry form below, and our admissions office will guide you through the next steps.
+                </p>
+<div class="glass-panel p-6 rounded-xl inline-flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div>
+<p class="font-label-lg text-on-surface font-bold">Priority Processing</p>
+<p class="font-body-sm text-on-surface-variant">Enquiries are reviewed within 24 hours.</p>
+</div>
+</div>
+</div>
+<!-- Form Container -->
+<div class="lg:col-span-7 flex justify-center lg:justify-end">
+<div class="glass-panel w-full max-w-[600px] p-8 md:p-12 rounded-3xl relative overflow-hidden">
+<div class="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+<span class="material-symbols-outlined text-9xl" data-icon="description">description</span>
+</div>
+<form class="space-y-6 relative z-10">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="font-label-md text-on-surface-variant uppercase tracking-widest ml-1">Parent Name</label>
+<input class="input-glass w-full px-5 py-4 rounded-xl text-on-surface placeholder:text-outline-variant font-body-md" placeholder="John Doe" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-on-surface-variant uppercase tracking-widest ml-1">Mobile Number</label>
+<input class="input-glass w-full px-5 py-4 rounded-xl text-on-surface placeholder:text-outline-variant font-body-md" placeholder="+1 (555) 000-0000" type="tel"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="font-label-md text-on-surface-variant uppercase tracking-widest ml-1">Child Name</label>
+<input class="input-glass w-full px-5 py-4 rounded-xl text-on-surface placeholder:text-outline-variant font-body-md" placeholder="Jane Doe" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-on-surface-variant uppercase tracking-widest ml-1">Class Applying For</label>
+<select class="input-glass w-full px-5 py-4 rounded-xl text-on-surface appearance-none font-body-md cursor-pointer">
+<option class="bg-surface-container">Select Grade</option>
+<option class="bg-surface-container">Grade 1 - Primary</option>
+<option class="bg-surface-container">Grade 6 - Middle</option>
+<option class="bg-surface-container">Grade 9 - High School</option>
+<option class="bg-surface-container">A-Levels / IB DP</option>
+</select>
+</div>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-on-surface-variant uppercase tracking-widest ml-1">Message</label>
+<textarea class="input-glass w-full px-5 py-4 rounded-xl text-on-surface placeholder:text-outline-variant font-body-md resize-none" placeholder="Any specific requirements or questions..." rows="4"></textarea>
+</div>
+<div class="pt-4 flex flex-col sm:flex-row gap-4">
+<button class="flex-1 bg-primary text-on-primary-fixed font-bold py-4 px-8 rounded-xl glow-pulse transition-all active:scale-95 flex items-center justify-center gap-2" type="submit">
+                                Submit Enquiry
+                                <span class="material-symbols-outlined" data-icon="send">send</span>
+</button>
+<button class="flex-1 border border-white/20 bg-white/5 text-primary font-bold py-4 px-8 rounded-xl hover:bg-white/10 transition-all active:scale-95" type="button">
+                                Create Parent Account
+                            </button>
+</div>
+</form>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Registration Bar (Shared Component Execution) -->
+<div class="fixed bottom-0 left-0 w-full z-50 bg-white/12 backdrop-blur-[20px] border-t border-primary shadow-[0_0_24px_rgba(123,208,255,0.4)] flex items-center justify-center py-6 px-margin-mobile md:px-margin-desktop">
+<div class="flex items-center gap-4 cursor-pointer group">
+<span class="font-label-lg text-label-lg text-primary font-bold">Register to unlock attendance, marks &amp; full features →</span>
+<span class="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<!-- Decorative Image Sections to anchor the premium feel -->
+<section class="relative h-[600px] w-full overflow-hidden mb-section-gap">
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10"></div>
+<img class="w-full h-full object-cover grayscale opacity-40 brightness-75" data-alt="A cinematic, low-angle shot of a futuristic university library with high glass ceilings and glowing blue geometric light fixtures. The space is filled with students engaged in collaborative study on digital glass interfaces. The lighting is deep midnight navy with ethereal sky blue accents, reflecting a high-end institutional and visionary educational environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdWzOrUGFCjW9D0Cjabd0PDP45l85rr0oCtGt5FOUPjhxzfwlDcDdlLxO-Zu3kiFUO2fPaVgIgtIqEK4YJV4Y6NyRO6qtyD5ntpqiX8WrsSUr4MdyU9UapNqDalAL51CenE5boNU3Bj_6tjEtoSS-xd1HuUds2EN1x2MVr_cFEqbdqgOBjJr_ZKltannbtqt9-9oVoEiBOf0m-yDRZYO_w9JryohOxp6S7wONFXIoHhvu2rjmi4_nXSOK1aR8P9kznwDh7IRxPiCOK"/>
+<div class="absolute inset-0 flex items-center justify-center z-20">
+<div class="text-center px-4">
+<h2 class="font-display-lg text-headline-lg text-on-surface mb-4">Shaping Future Leaders</h2>
+<p class="font-body-lg text-on-surface-variant max-w-2xl mx-auto">Our campus blends traditional academic rigor with cutting-edge technological infrastructure.</p>
+</div>
+</div>
+</section>
+<script>
+        // Micro-interaction for form inputs
+        const inputs = document.querySelectorAll('.input-glass');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.querySelector('label').classList.replace('text-on-surface-variant', 'text-primary');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.querySelector('label').classList.replace('text-primary', 'text-on-surface-variant');
+            });
+        });
+
+        // Simple form submission feedback
+        const form = document.querySelector('form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin" data-icon="progress_activity">progress_activity</span> Sending...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span> Success!';
+                btn.classList.replace('bg-primary', 'bg-green-500');
+                btn.classList.replace('text-on-primary-fixed', 'text-white');
+            }, 1500);
+        });
+    </script>
+</body></html>

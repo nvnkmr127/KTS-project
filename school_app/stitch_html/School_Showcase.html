@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EduVision International School | Future-Ready Education</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glow-pulse:active {
+            box-shadow: 0 0 24px rgba(123, 208, 255, 0.6);
+            transform: scale(0.98);
+            transition: all 0.2s ease;
+        }
+        .glass-card {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .sky-glow {
+            box-shadow: 0px 0px 24px rgba(56, 189, 248, 0.4);
+        }
+        body {
+            background: radial-gradient(circle at top right, #1a2a3a 0%, #101415 100%);
+            color: #e0e3e5;
+        }
+        ::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed": "#d7e3fc",
+                      "error": "#ffb4ab",
+                      "surface-container-highest": "#323537",
+                      "on-primary-container": "#004965",
+                      "error-container": "#93000a",
+                      "on-secondary-container": "#a1bae1",
+                      "on-primary-fixed": "#001e2c",
+                      "primary-fixed-dim": "#7bd0ff",
+                      "secondary-container": "#314a6c",
+                      "primary-fixed": "#c4e7ff",
+                      "background": "#101415",
+                      "surface-container-lowest": "#0b0f10",
+                      "tertiary": "#c2cde6",
+                      "on-primary-fixed-variant": "#004c69",
+                      "on-primary": "#00354a",
+                      "on-secondary-fixed-variant": "#2f4869",
+                      "on-secondary-fixed": "#001c3a",
+                      "inverse-surface": "#e0e3e5",
+                      "surface": "#101415",
+                      "on-tertiary-fixed": "#101c2e",
+                      "inverse-primary": "#00668a",
+                      "on-error-container": "#ffdad6",
+                      "primary-container": "#38bdf8",
+                      "surface-container": "#1d2022",
+                      "outline": "#87929a",
+                      "outline-variant": "#3e484f",
+                      "on-tertiary-fixed-variant": "#3c475b",
+                      "on-tertiary-container": "#394459",
+                      "secondary-fixed-dim": "#afc8f0",
+                      "secondary-fixed": "#d4e3ff",
+                      "surface-container-low": "#191c1e",
+                      "surface-bright": "#363a3b",
+                      "secondary": "#afc8f0",
+                      "tertiary-container": "#a6b2ca",
+                      "inverse-on-surface": "#2d3133",
+                      "primary": "#8ed5ff",
+                      "on-surface": "#e0e3e5",
+                      "tertiary-fixed-dim": "#bbc7df",
+                      "surface-variant": "#323537",
+                      "on-tertiary": "#253144",
+                      "surface-dim": "#101415",
+                      "on-secondary": "#173151",
+                      "on-background": "#e0e3e5",
+                      "on-surface-variant": "#bdc8d1",
+                      "surface-container-high": "#272a2c",
+                      "surface-tint": "#7bd0ff",
+                      "on-error": "#690005"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "margin-desktop": "64px",
+                      "gutter": "24px",
+                      "unit": "8px",
+                      "margin-mobile": "20px",
+                      "section-gap": "120px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Plus Jakarta Sans"],
+                      "label-md": ["Inter"],
+                      "label-lg": ["Inter"],
+                      "headline-md": ["Plus Jakarta Sans"],
+                      "body-sm": ["Inter"],
+                      "headline-lg-mobile": ["Plus Jakarta Sans"],
+                      "headline-sm": ["Plus Jakarta Sans"],
+                      "body-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-lg": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "display-lg": ["56px", {"lineHeight": "64px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "600"}],
+                      "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "headline-md": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "headline-lg-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                      "headline-sm": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                      "headline-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.01em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/12 backdrop-blur-[20px] border-b border-white/20 flex justify-between items-center px-margin-mobile md:px-margin-desktop h-20 transition-transform duration-300" id="main-header">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="school">school</span>
+<h1 class="font-display-lg text-headline-sm font-bold text-on-surface">EduVision</h1>
+</div>
+<nav class="hidden md:flex items-center gap-8">
+<a class="font-label-lg text-label-lg text-primary font-bold hover:text-primary transition-colors" href="#">Home</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Admissions</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Curriculum</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors" href="#">Campus</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-primary p-2 Active: scale-95 transition-transform" data-icon="contact_support">contact_support</button>
+<button class="hidden md:block bg-primary text-on-primary-container px-6 py-2.5 rounded-full font-label-lg text-label-lg glow-pulse">Apply Now</button>
+</div>
+</header>
+<main class="relative pt-20">
+<!-- Hero Section -->
+<section class="relative h-[751px] w-full flex items-center justify-start overflow-hidden">
+<!-- Full-width campus photo -->
+<div class="absolute inset-0 z-0">
+<img alt="School Campus" class="w-full h-full object-cover" data-alt="A sprawling, ultra-modern international school campus captured during the golden hour. The architecture features sleek glass facades and sweeping curves, nestled within lush green manicured lawns and vibrant botanical gardens. The sky is a deep twilight navy blending into a soft sky blue horizon, reflecting a visionary and prestigious educational atmosphere. Cinematic lighting highlights the institutional authority and futuristic design of the building." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9k2qrRKn6EjnwySdK8mvWGIpe-XMCT6PjXLgtiDE5O-zAs0M728KjEs2lEYzwC_UZJsD8w8Zzwmv_XflmUM8_AEnEGLAU4ferUD-PhSHAKJrd4_pJmBpBbkPgAtPLtwCyeFJJVMwOVLT0h2ecFRef8MHSXHhVUwFTucejkwH3ax5o4O36r1cvDPie5aQEMrhgPBFBl5H8p8uI8Ymb-rszmCJuKbQvR_KHb4oTXqQNDjh6RNFwtQ21EZndWWRkXCz79yeZzQ6KHK7s"/>
+<div class="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+</div>
+<div class="relative z-10 px-margin-mobile md:px-margin-desktop max-w-4xl">
+<div class="flex items-center gap-3 mb-6">
+<span class="bg-primary/20 border border-primary/40 text-primary px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase">CBSE / ICSE Accredited</span>
+<span class="text-on-surface-variant/80 font-label-md text-label-md tracking-widest">Est. 1998</span>
+</div>
+<h2 class="font-display-lg text-display-lg md:text-[80px] md:leading-[88px] mb-8 text-on-surface">
+                    EduVision <br/>
+<span class="text-primary">International School</span>
+</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-10 max-w-xl">
+                    Empowering the next generation of global thinkers through excellence in academic rigor and holistic development in a tech-integrated ecosystem.
+                </p>
+<div class="flex flex-wrap gap-4">
+<button class="bg-primary-container text-on-primary-container px-8 py-4 rounded-xl font-label-lg text-label-lg sky-glow hover:scale-105 transition-all">Explore Virtual Tour</button>
+<button class="glass-card text-on-surface px-8 py-4 rounded-xl font-label-lg text-label-lg hover:bg-white/20 transition-all">Download Prospectus</button>
+</div>
+</div>
+</section>
+<!-- Horizontal Scroll Chips -->
+<section class="relative z-20 -mt-10 mb-section-gap">
+<div class="flex items-center gap-3 px-margin-mobile md:px-margin-desktop overflow-x-auto no-scrollbar py-4">
+<button class="flex-none bg-primary text-on-primary-container px-6 py-2 rounded-full font-label-md text-label-md sky-glow">Overview</button>
+<button class="flex-none glass-card text-on-surface-variant px-6 py-2 rounded-full font-label-md text-label-md hover:border-primary transition-colors">Our Vision</button>
+<button class="flex-none glass-card text-on-surface-variant px-6 py-2 rounded-full font-label-md text-label-md hover:border-primary transition-colors">Leadership</button>
+<button class="flex-none glass-card text-on-surface-variant px-6 py-2 rounded-full font-label-md text-label-md hover:border-primary transition-colors">Infrastructure</button>
+<button class="flex-none glass-card text-on-surface-variant px-6 py-2 rounded-full font-label-md text-label-md hover:border-primary transition-colors">Sports Academy</button>
+<button class="flex-none glass-card text-on-surface-variant px-6 py-2 rounded-full font-label-md text-label-md hover:border-primary transition-colors">Innovation Hub</button>
+<button class="flex-none glass-card text-on-surface-variant px-6 py-2 rounded-full font-label-md text-label-md hover:border-primary transition-colors">Global Partnerships</button>
+</div>
+</section>
+<!-- Stat Strip -->
+<section class="px-margin-mobile md:px-margin-desktop mb-section-gap">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-gutter">
+<div class="glass-card sky-glow p-8 rounded-2xl text-center group hover:bg-white/20 transition-all cursor-default">
+<p class="font-display-lg text-headline-lg text-primary mb-1">1,200</p>
+<p class="font-label-lg text-label-lg text-on-surface-variant">Global Students</p>
+</div>
+<div class="glass-card sky-glow p-8 rounded-2xl text-center group hover:bg-white/20 transition-all cursor-default">
+<p class="font-display-lg text-headline-lg text-primary mb-1">68</p>
+<p class="font-label-lg text-label-lg text-on-surface-variant">Expert Faculty</p>
+</div>
+<div class="glass-card sky-glow p-8 rounded-2xl text-center group hover:bg-white/20 transition-all cursor-default">
+<p class="font-display-lg text-headline-lg text-primary mb-1">94%</p>
+<p class="font-label-lg text-label-lg text-on-surface-variant">Board Results</p>
+</div>
+<div class="glass-card sky-glow p-8 rounded-2xl text-center group hover:bg-white/20 transition-all cursor-default">
+<p class="font-display-lg text-headline-lg text-primary mb-1">25</p>
+<p class="font-label-lg text-label-lg text-on-surface-variant">Legacy Years</p>
+</div>
+</div>
+</section>
+<!-- Asymmetric Content Section -->
+<section class="px-margin-mobile md:px-margin-desktop mb-section-gap grid md:grid-cols-12 gap-12 items-center">
+<div class="md:col-span-7">
+<div class="glass-card p-1 rounded-3xl overflow-hidden relative group">
+<img alt="Classroom Innovation" class="w-full aspect-video object-cover rounded-[calc(1.5rem-4px)] transition-transform duration-700 group-hover:scale-105" data-alt="Students engaged in a high-tech, futuristic classroom at EduVision International School. The space features large interactive glass displays, ergonomic furniture, and warm ambient lighting mixed with sky blue digital glows. The students are diverse and focused, using tablets and holographic interfaces for a collaborative learning project. The setting is clean, modern, and highlights a visionary approach to 21st-century education." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBlbOkJML0ZHtBAsgIlDc0SgNZ8cxtHU65dA9vlXDDZN8jzqD6Oj6XmBgPiyvlvoarYwofQc1pOxnFapMfFX0-iwW77dRygkOclMsNajUowpnvBW1-vx1DdWk8m_wk3JNlBoaL_DmEZGYHiZON_xWUdpRoe6FjZlmcH1Zz1tRKG-6yPSOGdM59QCtr10hYXidoNTdd5B3GIC0Mktwph8QwC7WhxmJfxCKHDDFkQtJj_WgXhHrQWU0AJu_lMbXDxmHWC0sUnXQwSStRM"/>
+<div class="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+</div>
+</div>
+<div class="md:col-span-5 space-y-6">
+<h3 class="font-display-lg text-headline-lg text-on-surface">The Visionary <br/><span class="text-primary">Learning Paradigm</span></h3>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    At EduVision, we go beyond textbook learning. Our "Visionary Core" curriculum integrates STEAM, emotional intelligence, and global citizenship into every lesson. We prepare students for careers that don't yet exist.
+                </p>
+<ul class="space-y-4">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-label-lg text-label-lg">AI-Integrated Personalized Tracks</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-label-lg text-label-lg">World-Class Olympic Sports Facilities</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle">check_circle</span>
+<span class="font-label-lg text-label-lg">Ivy League Placement Cell</span>
+</li>
+</ul>
+</div>
+</section>
+<!-- Spacer for Bottom Nav -->
+<div class="h-32"></div>
+</main>
+<!-- BottomNavBar -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-center py-6 px-margin-mobile md:px-margin-desktop bg-white/12 backdrop-blur-[20px] border-t border-primary shadow-[0_0_24px_rgba(123,208,255,0.4)]">
+<div class="flex items-center gap-4 cursor-pointer group hover:bg-white/20 transition-all px-6 py-2 rounded-full glow-pulse">
+<span class="font-label-lg text-label-lg text-primary font-bold">Register to unlock attendance, marks &amp; full features</span>
+<span class="material-symbols-outlined text-primary transition-transform group-hover:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</footer>
+<script>
+        // Header scroll behavior
+        let lastScrollTop = 0;
+        const header = document.getElementById('main-header');
+        
+        window.addEventListener('scroll', () => {
+            let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            if (scrollTop > lastScrollTop && scrollTop > 100) {
+                header.style.transform = 'translateY(-100%)';
+            } else {
+                header.style.transform = 'translateY(0)';
+            }
+            lastScrollTop = scrollTop;
+        });
+
+        // Hover animation for chips
+        const chips = document.querySelectorAll('.flex-none.glass-card');
+        chips.forEach(chip => {
+            chip.addEventListener('mouseenter', () => {
+                chip.classList.add('sky-glow');
+            });
+            chip.addEventListener('mouseleave', () => {
+                if (!chip.classList.contains('bg-primary')) {
+                    chip.classList.remove('sky-glow');
+                }
+            });
+        });
+    </script>
+</body></html>

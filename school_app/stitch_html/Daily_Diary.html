@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@700;800&amp;family=Geist:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#0b0f10",
+                    "inverse-surface": "#e0e3e5",
+                    "tertiary-fixed": "#eedcff",
+                    "on-error": "#690005",
+                    "surface-variant": "#323537",
+                    "tertiary-fixed-dim": "#d4beec",
+                    "on-secondary-fixed": "#1e055a",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-highest": "#323537",
+                    "error-container": "#93000a",
+                    "primary-fixed": "#f0dbff",
+                    "on-tertiary-fixed-variant": "#503f66",
+                    "primary": "#ddb7ff",
+                    "on-secondary": "#33226f",
+                    "surface-dim": "#101415",
+                    "error": "#ffb4ab",
+                    "on-surface": "#e0e3e5",
+                    "on-tertiary-fixed": "#231437",
+                    "inverse-primary": "#842bd2",
+                    "background": "#101415",
+                    "tertiary-container": "#9c88b4",
+                    "outline-variant": "#4d4354",
+                    "surface-container-low": "#191c1e",
+                    "secondary-fixed": "#e7deff",
+                    "secondary-fixed-dim": "#cbbeff",
+                    "on-primary": "#490080",
+                    "surface-container-high": "#272a2c",
+                    "tertiary": "#d4beec",
+                    "on-tertiary": "#39294e",
+                    "inverse-on-surface": "#2d3133",
+                    "on-primary-container": "#400071",
+                    "surface-container": "#1d2022",
+                    "secondary-container": "#4a3a87",
+                    "surface-bright": "#363a3b",
+                    "primary-fixed-dim": "#ddb7ff",
+                    "surface-tint": "#ddb7ff",
+                    "outline": "#988d9f",
+                    "surface": "#101415",
+                    "on-primary-fixed": "#2c0051",
+                    "on-primary-fixed-variant": "#6900b3",
+                    "secondary": "#cbbeff",
+                    "on-tertiary-container": "#322247",
+                    "on-surface-variant": "#cfc2d6",
+                    "on-background": "#e0e3e5",
+                    "on-secondary-fixed-variant": "#4a3a87",
+                    "on-secondary-container": "#baa9ff",
+                    "primary-container": "#b76dff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "margin-desktop": "40px",
+                    "base": "8px",
+                    "max-width": "1440px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Geist"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background: radial-gradient(circle at top left, #2c0051 0%, #101415 100%);
+            min-height: 100vh;
+            color: #e0e3e5;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .neomorphic-press {
+            box-shadow: inset 4px 4px 8px rgba(0,0,0,0.4), inset -4px -4px 8px rgba(255,255,255,0.05);
+        }
+        .neomorphic-raise {
+            box-shadow: 6px 6px 12px rgba(0,0,0,0.3), -2px -2px 8px rgba(255,255,255,0.05);
+        }
+        .primary-glow {
+            filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.4));
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="font-body-md text-body-md pb-24">
+<!-- Top AppBar Shell -->
+<header class="w-full sticky top-0 z-50 bg-white/10 dark:bg-surface-container/10 backdrop-blur-xl border-b border-white/20 shadow-xl flex items-center justify-between px-margin-mobile py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full overflow-hidden border border-primary/30">
+<img alt="Teacher Profile" class="w-full h-full object-cover" data-alt="A professional and friendly portrait of a young male teacher with glasses, styled in a modern 3D avatar aesthetic. The background is a soft violet gradient, and the lighting is cinematic and high-key, matching a high-end educational software interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6FII3uyV1EzHcEIuotmjSZKD86lHevDrBM9_Ok8xj4ZrbQ7yVVVgcFnubsUFVOyqlA6qD8zTgS3i6OJD1MkDGusHQ2YKMOUqRwZQLdv0Lnd9T0JHGzJtRShhWW42FdURPJyMuNZWmq5y0hLxyvKSm6xGUuV7BqTtHpVE9P1cmuicg3C6rjjpJydbQ9C0Dcyd8HIbYh7lz4RQVwvMmmxlfe5r3oXq7TgvoyMx0b8rhgnIXBPKWd2rkzDvgc1yBKgqiVPhr4qwqRuSa"/>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-extrabold text-primary drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]">EduCommand</h1>
+</div>
+<button class="text-primary hover:bg-white/5 p-2 rounded-xl transition-colors active:scale-90 transition-transform">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+</header>
+<main class="max-w-screen-xl mx-auto px-margin-mobile mt-8 space-y-8">
+<!-- Header Section -->
+<section class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Daily Diary</h2>
+<p class="text-on-surface-variant/70 mt-1">Capture today's pedagogical progress.</p>
+</div>
+<div class="flex items-center gap-4">
+<!-- Class Selector -->
+<div class="relative group">
+<select class="appearance-none glass-card neomorphic-raise rounded-xl px-4 py-3 pr-12 text-primary font-semibold focus:outline-none focus:ring-2 ring-primary/50 transition-all cursor-pointer">
+<option>Grade 10 - Physics</option>
+<option>Grade 11 - Quantum Basics</option>
+<option>Grade 9 - Mechanics</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-primary">expand_more</span>
+</div>
+<!-- Date Picker -->
+<div class="glass-card neomorphic-raise rounded-xl px-4 py-3 flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-primary">calendar_today</span>
+<span class="font-label-sm text-label-sm">Oct 24, 2023</span>
+</div>
+</div>
+</section>
+<!-- Main Entry Form -->
+<section class="glass-card rounded-[2rem] p-6 md:p-8 space-y-6">
+<div class="space-y-3">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest ml-1">Today's Subject Focus</label>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-full glass-card border-primary/40 text-primary bg-primary/10 font-bold primary-glow transition-all">Electromagnetism</button>
+<button class="px-4 py-2 rounded-full glass-card border-white/10 text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all">Optics</button>
+<button class="px-4 py-2 rounded-full glass-card border-white/10 text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all">Thermodynamics</button>
+<button class="px-4 py-2 rounded-full glass-card border-white/10 text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all">Lab Session</button>
+<button class="px-3 py-2 rounded-full glass-card border-dashed border-white/30 text-on-surface-variant/50 flex items-center gap-1 hover:text-on-surface transition-all">
+<span class="material-symbols-outlined text-sm">add</span> Add Tag
+                    </button>
+</div>
+</div>
+<div class="space-y-3">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest ml-1">Class Coverage Details</label>
+<div class="neomorphic-press bg-surface-container-lowest/50 rounded-2xl overflow-hidden border border-white/5">
+<div class="flex items-center gap-2 p-3 border-b border-white/10 bg-white/5">
+<button class="p-2 hover:bg-white/10 rounded-lg text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-[20px]">format_bold</span></button>
+<button class="p-2 hover:bg-white/10 rounded-lg text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-[20px]">format_italic</span></button>
+<button class="p-2 hover:bg-white/10 rounded-lg text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-[20px]">format_list_bulleted</span></button>
+<div class="h-6 w-px bg-white/10 mx-1"></div>
+<button class="p-2 hover:bg-white/10 rounded-lg text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-[20px]">attach_file</span></button>
+</div>
+<textarea class="w-full h-48 bg-transparent p-6 text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none resize-none" placeholder="What was covered today in class? Summarize key concepts, student reactions, and homework assigned..."></textarea>
+</div>
+</div>
+<div class="flex justify-end pt-4">
+<button class="bg-primary text-on-primary-container px-8 py-4 rounded-2xl font-bold flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all primary-glow shadow-2xl">
+<span class="material-symbols-outlined">save</span>
+                    Save Daily Entry
+                </button>
+</div>
+</section>
+<!-- Past Entries Header -->
+<section class="space-y-6">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Recent Logs</h3>
+<button class="text-primary font-label-sm text-label-sm flex items-center gap-1 hover:underline">View All History <span class="material-symbols-outlined text-sm">arrow_forward</span></button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Log Card 1 -->
+<div class="glass-card rounded-[1.5rem] p-6 hover:translate-y-[-4px] transition-all duration-300 group cursor-pointer border-white/10 hover:border-primary/40">
+<div class="flex items-start justify-between mb-4">
+<div class="px-3 py-1 bg-primary/20 text-primary rounded-full font-label-sm text-label-sm">Mechanics</div>
+<span class="text-on-surface-variant/60 font-label-sm text-label-sm">Oct 23</span>
+</div>
+<h4 class="font-bold text-on-surface mb-2 group-hover:text-primary transition-colors">Newton's Third Law Deep Dive</h4>
+<p class="text-on-surface-variant/80 text-sm line-clamp-3 leading-relaxed">Completed the classroom demonstration with pulleys and weights. Students seemed engaged with the practical application, though 3 students struggled with...</p>
+<div class="mt-4 flex items-center gap-2 pt-4 border-t border-white/5">
+<span class="material-symbols-outlined text-on-surface-variant/50 text-sm">attachment</span>
+<span class="text-xs text-on-surface-variant/50">pulley_setup.pdf</span>
+</div>
+</div>
+<!-- Log Card 2 -->
+<div class="glass-card rounded-[1.5rem] p-6 hover:translate-y-[-4px] transition-all duration-300 group cursor-pointer border-white/10 hover:border-primary/40">
+<div class="flex items-start justify-between mb-4">
+<div class="px-3 py-1 bg-tertiary-container/20 text-tertiary rounded-full font-label-sm text-label-sm">Lab Session</div>
+<span class="text-on-surface-variant/60 font-label-sm text-label-sm">Oct 22</span>
+</div>
+<h4 class="font-bold text-on-surface mb-2 group-hover:text-primary transition-colors">Vector Addition Lab</h4>
+<p class="text-on-surface-variant/80 text-sm line-clamp-3 leading-relaxed">Students worked in pairs to calculate resultant forces using spring balances. Observations indicate that Grade 10B is ahead of schedule on this module...</p>
+<div class="mt-4 flex items-center gap-2 pt-4 border-t border-white/5">
+<span class="material-symbols-outlined text-on-surface-variant/50 text-sm">attachment</span>
+<span class="text-xs text-on-surface-variant/50">lab_results_2210.xlsx</span>
+</div>
+</div>
+<!-- Log Card 3 -->
+<div class="glass-card rounded-[1.5rem] p-6 hover:translate-y-[-4px] transition-all duration-300 group cursor-pointer border-white/10 hover:border-primary/40">
+<div class="flex items-start justify-between mb-4">
+<div class="px-3 py-1 bg-secondary-container/20 text-secondary rounded-full font-label-sm text-label-sm">Quantum</div>
+<span class="text-on-surface-variant/60 font-label-sm text-label-sm">Oct 21</span>
+</div>
+<h4 class="font-bold text-on-surface mb-2 group-hover:text-primary transition-colors">Intro to Wave-Particle Duality</h4>
+<p class="text-on-surface-variant/80 text-sm line-clamp-3 leading-relaxed">Started with the Double Slit Experiment concept. High levels of curiosity noted. Need to prepare more visual aids for the next session on Schrödinger...</p>
+<div class="mt-4 flex items-center gap-2 pt-4 border-t border-white/5">
+<span class="text-xs text-on-surface-variant/50">No attachments</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-white/12 dark:bg-surface-container-highest/12 backdrop-blur-2xl border-t border-white/20 rounded-t-xl shadow-[0_-4px_24px_rgba(168,85,247,0.15)]">
+<button class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-label-sm text-label-sm">Attendance</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary drop-shadow-[0_0_12px_rgba(168,85,247,0.6)] font-bold bg-white/10 rounded-xl px-3 py-1 active:scale-95 transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment</span>
+<span class="font-label-sm text-label-sm">Homework</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200">
+<span class="material-symbols-outlined">grade</span>
+<span class="font-label-sm text-label-sm">Marks</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant/80 hover:text-primary/80 active:scale-95 transition-all duration-200">
+<span class="material-symbols-outlined">event_busy</span>
+<span class="font-label-sm text-label-sm">Leave</span>
+</button>
+</nav>
+<!-- Background Atmospheric Effect -->
+<div class="fixed top-0 right-0 -z-10 w-1/2 h-full opacity-30 pointer-events-none">
+
+</div>
+<script>
+        // Simple micro-interaction for chips
+        document.querySelectorAll('.glass-card button').forEach(chip => {
+            chip.addEventListener('click', function() {
+                if(this.classList.contains('primary-glow')) {
+                    this.classList.remove('primary-glow', 'bg-primary/10', 'text-primary', 'border-primary/40');
+                    this.classList.add('border-white/10', 'text-on-surface-variant');
+                } else if (!this.innerText.includes('Add Tag')) {
+                    this.classList.add('primary-glow', 'bg-primary/10', 'text-primary', 'border-primary/40');
+                    this.classList.remove('border-white/10', 'text-on-surface-variant');
+                }
+            });
+        });
+
+        // Scroll reveal logic
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('bg-surface-container-lowest/80');
+            } else {
+                header.classList.remove('bg-surface-container-lowest/80');
+            }
+        });
+    </script>
+</body></html>
