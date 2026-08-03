@@ -87,6 +87,29 @@ const INITIAL_ACTIVITIES: TimelineActivity[] = [
   }
 ];
 
+const getInitialFeesForStudent = (feeStatus?: string): FeeItem[] => {
+  if (feeStatus === 'Paid') {
+    return [
+      { id: 'f1', name: 'Term 1 Tuition Fee', totalAmount: 15000, paidAmount: 15000, concessionAmount: 0 },
+      { id: 'f2', name: 'Term 2 Tuition Fee', totalAmount: 10000, paidAmount: 10000, concessionAmount: 0 },
+      { id: 'f3', name: 'Transport & Lab Fee', totalAmount: 10000, paidAmount: 10000, concessionAmount: 0 },
+    ];
+  } else if (feeStatus === 'Overdue') {
+    return [
+      { id: 'f1', name: 'Term 1 Tuition Fee', totalAmount: 15000, paidAmount: 0, concessionAmount: 0 },
+      { id: 'f2', name: 'Term 2 Tuition Fee', totalAmount: 10000, paidAmount: 0, concessionAmount: 0 },
+      { id: 'f3', name: 'Transport & Lab Fee', totalAmount: 10000, paidAmount: 0, concessionAmount: 0 },
+    ];
+  } else {
+    // Partial
+    return [
+      { id: 'f1', name: 'Term 1 Tuition Fee', totalAmount: 15000, paidAmount: 15000, concessionAmount: 0 },
+      { id: 'f2', name: 'Term 2 Tuition Fee', totalAmount: 10000, paidAmount: 10000, concessionAmount: 0 },
+      { id: 'f3', name: 'Transport & Lab Fee', totalAmount: 10000, paidAmount: 0, concessionAmount: 0 },
+    ];
+  }
+};
+
 export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) => {
   const selectedStudent = route?.params?.student;
   const studentName = selectedStudent?.name || 'Julian Sterling';
@@ -100,7 +123,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
   const [showTimelineFilterDropdown, setShowTimelineFilterDropdown] = useState(false);
 
   // Dynamic State for Fees and Activities
-  const [feeItems, setFeeItems] = useState<FeeItem[]>(INITIAL_FEES);
+  const [feeItems, setFeeItems] = useState<FeeItem[]>(() => getInitialFeesForStudent(selectedStudent?.feeStatus));
   const [activities, setActivities] = useState<TimelineActivity[]>(INITIAL_ACTIVITIES);
 
   // Modal States
@@ -527,12 +550,50 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
           <View className="bg-[#101415]/95 border border-[#00f1a1]/40 rounded-3xl p-5 mb-8 shadow-2xl">
             {/* Header */}
             <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
-              <View className="flex-1">
+              <View className="flex-1 mr-2">
                 <Text className="text-white text-base font-bold">Student Profile Details</Text>
                 <Text className="text-white/50 text-[11px]">Personal, attendance and fee ledger summary</Text>
               </View>
-              <View className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-full">
-                <Text className="text-[#00f1a1] text-[10px] font-bold">{selectedStudent?.status || 'Active'}</Text>
+
+              <View className="items-end" style={{ gap: 6 }}>
+                <View className="flex-row items-center">
+                  <Text className="text-white/40 text-[10px] uppercase font-bold mr-1.5">Status:</Text>
+                  {selectedStudent?.status === 'Left' ? (
+                    <View className="bg-white/10 border border-white/20 px-2.5 py-0.5 rounded-full">
+                      <Text className="text-white/60 text-[10px] font-bold">Left</Text>
+                    </View>
+                  ) : selectedStudent?.status === 'Transfer' ? (
+                    <View className="bg-sky-500/15 border border-sky-500/40 px-2.5 py-0.5 rounded-full">
+                      <Text className="text-sky-400 text-[10px] font-bold">Transfer</Text>
+                    </View>
+                  ) : (
+                    <View className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2.5 py-0.5 rounded-full">
+                      <Text className="text-[#00f1a1] text-[10px] font-bold">{selectedStudent?.status || 'Active'}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <View className="flex-row items-center">
+                  <Text className="text-white/40 text-[10px] uppercase font-bold mr-1.5">Fee Status:</Text>
+                  {feeTotals.due > 0 ? (
+                    feeTotals.paid > 0 ? (
+                      <View className="bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full flex-row items-center">
+                        <View className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5" />
+                        <Text className="text-amber-400 text-[10px] font-bold">Partial</Text>
+                      </View>
+                    ) : (
+                      <View className="bg-rose-500/10 border border-rose-500/30 px-2.5 py-0.5 rounded-full flex-row items-center">
+                        <View className="w-1.5 h-1.5 rounded-full bg-rose-400 mr-1.5" />
+                        <Text className="text-rose-400 text-[10px] font-bold">Overdue</Text>
+                      </View>
+                    )
+                  ) : (
+                    <View className="bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex-row items-center">
+                      <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5" />
+                      <Text className="text-emerald-400 text-[10px] font-bold">Paid</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </View>
 

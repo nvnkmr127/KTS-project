@@ -755,8 +755,14 @@ export const StudentDirectoryScreen: React.FC<any> = ({ route, navigation }) => 
                     </View>
                   </Pressable>
                   <View className="items-end" style={{ gap: 6 }}>
-                    {renderStatusBadge(student.status)}
-                    {renderFeeBadge(student.feeStatus)}
+                    <View className="flex-row items-center">
+                      <Text className="text-white/40 text-[10px] uppercase font-bold mr-1.5">Status:</Text>
+                      {renderStatusBadge(student.status)}
+                    </View>
+                    <View className="flex-row items-center">
+                      <Text className="text-white/40 text-[10px] uppercase font-bold mr-1.5">Fee Status:</Text>
+                      {renderFeeBadge(student.feeStatus)}
+                    </View>
                   </View>
                 </View>
 
