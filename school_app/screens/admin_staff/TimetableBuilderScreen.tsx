@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, ActivityIndicator, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   Calendar, Clock, Plus, Pencil, Save, X, 
@@ -123,6 +124,30 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
 
   // Edit Timings Modal State
   const [showEditTimingsModal, setShowEditTimingsModal] = useState(false);
+
+  // Handle Hardware Back Button & System Back Gesture (matching chevron left behavior)
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (showCellEditModal) {
+          setShowCellEditModal(false);
+          return true;
+        }
+        if (showEditTimingsModal) {
+          setShowEditTimingsModal(false);
+          return true;
+        }
+        if (navigation?.canGoBack && navigation.canGoBack()) {
+          navigation.goBack();
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [showCellEditModal, showEditTimingsModal, navigation])
+  );
   const [tempTimings, setTempTimings] = useState<PeriodTiming[]>(DEFAULT_PERIOD_TIMINGS);
 
   // Print Preview Modal State

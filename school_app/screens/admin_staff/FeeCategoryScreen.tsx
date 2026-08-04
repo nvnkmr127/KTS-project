@@ -1,112 +1,115 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Switch, Modal } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GlassCard } from '../../components/GlassCard';
-import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { 
-  Layers, Plus, Search, Tag, Edit3
+  Tags, Plus, Trash2, Pencil, CheckCircle2, 
+  AlertCircle, X, ShieldAlert, BookOpen, School, Search
 } from 'lucide-react-native';
+import { AdminStaffHeader } from '../../components/AdminStaffHeader';
+import { GlassCard } from '../../components/GlassCard';
 
-interface FeeCategory {
+export interface FeeCategoryItem {
   id: string;
   name: string;
-  code: string;
-  frequency: 'Monthly' | 'Quarterly' | 'Annually' | 'One-Time';
   amount: number;
-  classesApplicable: string;
-  isMandatory: boolean;
-  status: 'active' | 'inactive';
+  description: string;
+  status: 'Active' | 'Inactive';
+  applicableClasses: string;
 }
 
+const MOCK_FEE_CATEGORIES: FeeCategoryItem[] = [
+  { id: 'cat_1', name: 'Tuition Fee', amount: 35000, description: 'Core academic term fee including classroom instruction and study material', status: 'Active', applicableClasses: 'All Classes (1 to 10)' },
+  { id: 'cat_2', name: 'Transport / Bus Fee', amount: 12000, description: 'Annual AC bus transport facility per student route', status: 'Active', applicableClasses: 'Opted Students' },
+  { id: 'cat_3', name: 'Examination Fee', amount: 3000, description: 'Internal midterm, quarterly and board prep exam evaluation fees', status: 'Active', applicableClasses: 'Classes 6 to 10' },
+  { id: 'cat_4', name: 'Laboratory & Practical Fee', amount: 5000, description: 'Science lab equipment, computer lab systems and consumables', status: 'Active', applicableClasses: 'Classes 8 to 10' },
+  { id: 'cat_5', name: 'Sports & Cultural Fee', amount: 2000, description: 'Annual sports day events, athletic equipment and cultural fest', status: 'Active', applicableClasses: 'All Classes' }
+];
+
 export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
+  const [categories, setCategories] = useState<FeeCategoryItem[]>(MOCK_FEE_CATEGORIES);
   const [searchQuery, setSearchQuery] = useState('');
-  const [addModalVisible, setAddModalVisible] = useState(false);
 
-  // Form state
-  const [catName, setCatName] = useState('');
-  const [catCode, setCatCode] = useState('');
-  const [catAmount, setCatAmount] = useState('');
-  const [catFreq, setCatFreq] = useState<'Monthly' | 'Quarterly' | 'Annually' | 'One-Time'>('Quarterly');
+  // Modal States
+  const [showAddEditModal, setShowAddEditModal] = useState(false);
+  const [editingCat, setEditingCat] = useState<FeeCategoryItem | null>(null);
+  const [deletingCat, setDeletingCat] = useState<FeeCategoryItem | null>(null);
 
-  const [categories, setCategories] = useState<FeeCategory[]>([
-    {
-      id: '1',
-      name: 'Tuition Fee',
-      code: 'FEE-TUIT',
-      frequency: 'Quarterly',
-      amount: 14500,
-      classesApplicable: 'Grades 1 to 12',
-      isMandatory: true,
-      status: 'active'
-    },
-    {
-      id: '2',
-      name: 'Computer & Science Lab Fee',
-      code: 'FEE-LAB',
-      frequency: 'Quarterly',
-      amount: 3200,
-      classesApplicable: 'Grades 6 to 12',
-      isMandatory: true,
-      status: 'active'
-    },
-    {
-      id: '3',
-      name: 'School Transport & Bus Fee',
-      code: 'FEE-TRANS',
-      frequency: 'Monthly',
-      amount: 2500,
-      classesApplicable: 'Opt-in Transport Users',
-      isMandatory: false,
-      status: 'active'
-    },
-    {
-      id: '4',
-      name: 'Annual Sports & Activity Fee',
-      code: 'FEE-SPORT',
-      frequency: 'Annually',
-      amount: 5000,
-      classesApplicable: 'Grades 1 to 12',
-      isMandatory: true,
-      status: 'active'
-    },
-    {
-      id: '5',
-      name: 'Admission & Registration Charge',
-      code: 'FEE-ADM',
-      frequency: 'One-Time',
-      amount: 25000,
-      classesApplicable: 'New Entrants Only',
-      isMandatory: true,
-      status: 'active'
-    }
-  ]);
+  // Form States
+  const [formName, setFormName] = useState('');
+  const [formAmount, setFormAmount] = useState('5000');
+  const [formDescription, setFormDescription] = useState('');
+  const [formClasses, setFormClasses] = useState('All Classes');
 
-  const toggleStatus = (id: string) => {
-    setCategories(prev => prev.map(c => c.id === id ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' } : c));
+  // Custom Toast State
+  const [toastData, setToastData] = useState<{ visible: boolean; title: string; message: string; type?: 'success' | 'warning' }>({
+    visible: false, title: '', message: '', type: 'success'
+  });
+
+  const showToast = (title: string, message: string, type: 'success' | 'warning' = 'success') => {
+    setToastData({ visible: true, title, message, type });
   };
 
-  const handleAddCategory = () => {
-    if (!catName.trim() || !catAmount) return;
-    const newCat: FeeCategory = {
-      id: Date.now().toString(),
-      name: catName,
-      code: catCode || `FEE-${catName.substring(0, 4).toUpperCase()}`,
-      frequency: catFreq,
-      amount: parseFloat(catAmount) || 0,
-      classesApplicable: 'Grades 1 to 12',
-      isMandatory: true,
-      status: 'active'
-    };
-    setCategories([...categories, newCat]);
-    setCatName('');
-    setCatCode('');
-    setCatAmount('');
-    setAddModalVisible(false);
+  const handleOpenAdd = () => {
+    setEditingCat(null);
+    setFormName('');
+    setFormAmount('5000');
+    setFormDescription('Annual academic fee category');
+    setFormClasses('All Classes (1 to 10)');
+    setShowAddEditModal(true);
+  };
+
+  const handleOpenEdit = (cat: FeeCategoryItem) => {
+    setEditingCat(cat);
+    setFormName(cat.name);
+    setFormAmount(String(cat.amount));
+    setFormDescription(cat.description);
+    setFormClasses(cat.applicableClasses);
+    setShowAddEditModal(true);
+  };
+
+  const handleSaveCategory = () => {
+    if (!formName.trim()) {
+      showToast('Missing Name', 'Please enter category name.', 'warning');
+      return;
+    }
+    const amt = parseFloat(formAmount) || 0;
+
+    if (editingCat) {
+      setCategories(prev => prev.map(c => c.id === editingCat.id ? {
+        ...c,
+        name: formName,
+        amount: amt,
+        description: formDescription || 'School fee structure component',
+        applicableClasses: formClasses || 'All Classes'
+      } : c));
+      showToast('Category Updated', `${formName} updated successfully.`, 'success');
+    } else {
+      const newCat: FeeCategoryItem = {
+        id: `cat_${Date.now()}`,
+        name: formName,
+        amount: amt,
+        description: formDescription || 'School fee structure component',
+        status: 'Active',
+        applicableClasses: formClasses || 'All Classes'
+      };
+      setCategories(prev => [newCat, ...prev]);
+      showToast('Category Created', `${formName} added to fee structure.`, 'success');
+    }
+
+    setShowAddEditModal(false);
+  };
+
+  const handleConfirmDeleteCategory = () => {
+    if (!deletingCat) return;
+    const name = deletingCat.name;
+    setCategories(prev => prev.filter(c => c.id !== deletingCat.id));
+    setDeletingCat(null);
+    showToast('Category Deleted', `${name} removed from fee categories.`, 'warning');
   };
 
   const filteredCategories = categories.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    c.code.toLowerCase().includes(searchQuery.toLowerCase())
+    c.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -118,158 +121,222 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <AdminStaffHeader 
-        title="Fee Categories"
-        subtitle="STRUCTURE & HEAD TERMINAL"
-        onBackPress={() => navigation.goBack()}
+      <AdminStaffHeader
+        onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        title="Fee Categories Console"
+        subtitle="Structure, Breakdown & Tuition Allocation"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1] items-center justify-center shadow-[0_0_10px_rgba(0,241,161,0.5)]">
-            <Tag size={22} color="#101415" />
+          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
+            <Tags size={20} color="#00f1a1" />
           </View>
-        }
-        rightAction={
-          <Pressable 
-            onPress={() => setAddModalVisible(true)}
-            className="w-10 h-10 rounded-xl bg-[#00f1a1] items-center justify-center shadow-[0_0_10px_rgba(0,241,161,0.4)]"
-          >
-            <Plus size={22} color="#101415" />
-          </Pressable>
         }
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Banner */}
-        <View className="mb-5">
-          <GlassCard intensity="low" className="p-4 border-[#00f1a1]/30 bg-[#101415]/80 flex-row justify-between items-center">
-            <View>
-              <Text className="text-white/60 text-xs font-semibold">CONFIGURED FEE TYPES</Text>
-              <Text className="text-[#00f1a1] text-2xl font-bold mt-0.5">{categories.length} Categories</Text>
-              <Text className="text-white/40 text-[10px] mt-0.5">Active Academic Session 2024-25</Text>
-            </View>
-            <View className="w-12 h-12 rounded-2xl bg-[#00f1a1]/10 border border-[#00f1a1]/30 items-center justify-center">
-              <Layers size={26} color="#00f1a1" />
-            </View>
-          </GlassCard>
-        </View>
-
-        {/* Search */}
-        <View className="mb-5">
-          <View className="flex-row items-center bg-[#101415] border border-[#00f1a1]/20 rounded-xl px-4 py-3">
-            <Search size={18} color="#00f1a1" />
-            <TextInput
-              placeholder="Search fee category or code..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              className="flex-1 text-white text-sm ml-2.5 p-0"
-            />
-          </View>
-        </View>
-
-        {/* Category Items */}
-        <View className="mb-6">
-          <Text className="text-[#00f1a1] text-xs font-bold tracking-[0.2em] mb-4">ALL CATEGORIES</Text>
-
-          {filteredCategories.map((item) => (
-            <GlassCard key={item.id} intensity="low" className="mb-4 p-4 border-[#00f1a1]/20 bg-[#101415]/80">
-              <View className="flex-row justify-between items-start mb-3">
-                <View className="flex-1 mr-2">
-                  <View className="flex-row items-center">
-                    <Tag size={16} color="#00f1a1" />
-                    <Text className="text-white font-bold text-base ml-2">{item.name}</Text>
-                  </View>
-                  <Text className="text-white/40 text-xs font-mono mt-0.5 ml-6">Code: {item.code}</Text>
-                </View>
-                <View className="items-end">
-                  <Text className="text-[#00f1a1] text-lg font-bold">₹{item.amount.toLocaleString()}</Text>
-                  <Text className="text-white/60 text-[10px] uppercase font-semibold">{item.frequency}</Text>
-                </View>
-              </View>
-
-              <View className="bg-white/5 border border-white/10 rounded-xl p-2.5 mb-3 flex-row justify-between items-center">
-                <Text className="text-white/70 text-xs">Applicable: <Text className="text-white font-medium">{item.classesApplicable}</Text></Text>
-                <View className={`px-2 py-0.5 rounded-full ${item.isMandatory ? 'bg-[#00f1a1]/20 border border-[#00f1a1]/40' : 'bg-white/10'}`}>
-                  <Text className={`text-[10px] font-bold ${item.isMandatory ? 'text-[#00f1a1]' : 'text-white/60'}`}>
-                    {item.isMandatory ? 'Mandatory' : 'Optional'}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center justify-between pt-2 border-t border-white/5">
-                <View className="flex-row items-center">
-                  <Text className="text-white/60 text-xs mr-2">Status:</Text>
-                  <Switch
-                    value={item.status === 'active'}
-                    onValueChange={() => toggleStatus(item.id)}
-                    trackColor={{ false: '#333', true: 'rgba(0, 241, 161, 0.4)' }}
-                    thumbColor={item.status === 'active' ? '#00f1a1' : '#999'}
-                  />
-                  <Text className={`text-xs font-bold ml-2 ${item.status === 'active' ? 'text-[#00f1a1]' : 'text-white/40'}`}>
-                    {item.status === 'active' ? 'Active' : 'Inactive'}
-                  </Text>
-                </View>
-
-                <Pressable 
-                  onPress={() => navigation.navigate('AssignFeeStructure')}
-                  className="bg-[#00f1a1]/10 border border-[#00f1a1]/30 px-3 py-1.5 rounded-lg flex-row items-center"
-                >
-                  <Edit3 size={14} color="#00f1a1" />
-                  <Text className="text-[#00f1a1] text-xs font-bold ml-1">Configure</Text>
+        
+        {/* Header Ribbon & Add Button */}
+        <View className="px-5 mb-5 flex-row justify-between items-center">
+          <View className="flex-1 mr-3">
+            <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
+              <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder="Search category name or description..."
+                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                className="flex-1 text-white text-xs"
+                style={{ paddingVertical: 0 }}
+              />
+              {searchQuery.length > 0 && (
+                <Pressable onPress={() => setSearchQuery('')}>
+                  <X size={15} color="rgba(255, 255, 255, 0.5)" />
                 </Pressable>
+              )}
+            </View>
+          </View>
+
+          <Pressable
+            onPress={handleOpenAdd}
+            className="bg-[#00f1a1] px-4 py-2.5 rounded-2xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+          >
+            <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
+            <Text className="text-[#101415] text-xs font-extrabold">Add Category</Text>
+          </Pressable>
+        </View>
+
+        {/* Fee Category List Cards */}
+        <View className="px-5">
+          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Configured Fee Structure Categories ({filteredCategories.length})</Text>
+
+          {filteredCategories.map(cat => (
+            <GlassCard key={cat.id} intensity="low" className="mb-4 p-4 border-white/10 bg-[#101415]/90">
+              <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
+                <View className="flex-row items-center flex-1 mr-2">
+                  <View className="w-10 h-10 rounded-2xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
+                    <Tags size={20} color="#00f1a1" />
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center">
+                      <Text className="text-white font-extrabold text-base mr-2">{cat.name}</Text>
+                      <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                        <Text className="text-[#00f1a1] text-[9.5px] font-bold">{cat.status}</Text>
+                      </View>
+                    </View>
+                    <Text className="text-[#00f1a1] font-extrabold text-sm mt-0.5">₹{cat.amount.toLocaleString()} <Text className="text-white/40 text-[10px] font-normal">/ student</Text></Text>
+                  </View>
+                </View>
+
+                <View className="flex-row items-center" style={{ gap: 6 }}>
+                  <Pressable
+                    onPress={() => handleOpenEdit(cat)}
+                    className="bg-white/5 border border-white/10 p-2 rounded-xl"
+                  >
+                    <Pencil size={14} color="rgba(255,255,255,0.7)" />
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => setDeletingCat(cat)}
+                    className="bg-rose-500/10 border border-rose-500/30 p-2 rounded-xl"
+                  >
+                    <Trash2 size={14} color="#ff516a" />
+                  </Pressable>
+                </View>
+              </View>
+
+              <Text className="text-white/70 text-xs leading-relaxed mb-3">{cat.description}</Text>
+
+              <View className="bg-black/40 p-2.5 rounded-xl border border-white/5 flex-row justify-between items-center">
+                <Text className="text-white/40 text-[10px] font-bold uppercase">Applicability</Text>
+                <Text className="text-sky-300 text-xs font-bold">{cat.applicableClasses}</Text>
               </View>
             </GlassCard>
           ))}
         </View>
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Add Modal */}
-      <Modal visible={addModalVisible} transparent animationType="slide">
-        <View className="flex-1 bg-black/80 justify-end">
-          <View className="bg-[#101415] border-t border-[#00f1a1] p-6 rounded-t-3xl">
-            <Text className="text-white text-xl font-bold mb-4">Create Fee Category</Text>
-            
-            <Text className="text-white/60 text-xs mb-1 font-semibold">Category Name</Text>
-            <TextInput 
-              placeholder="e.g. Science Lab Fee"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={catName}
-              onChangeText={setCatName}
-              className="bg-white/5 border border-white/10 rounded-xl text-white px-3 py-2.5 mb-3 text-sm"
-            />
-
-            <Text className="text-white/60 text-xs mb-1 font-semibold">Category Code</Text>
-            <TextInput 
-              placeholder="e.g. FEE-LAB"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={catCode}
-              onChangeText={setCatCode}
-              className="bg-white/5 border border-white/10 rounded-xl text-white px-3 py-2.5 mb-3 text-sm"
-            />
-
-            <Text className="text-white/60 text-xs mb-1 font-semibold">Amount (₹)</Text>
-            <TextInput 
-              placeholder="e.g. 3500"
-              keyboardType="numeric"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={catAmount}
-              onChangeText={setCatAmount}
-              className="bg-white/5 border border-white/10 rounded-xl text-white px-3 py-2.5 mb-5 text-sm"
-            />
-
-            <View className="flex-row" style={{ gap: 12 }}>
-              <Pressable 
-                onPress={() => setAddModalVisible(false)}
-                className="flex-1 bg-white/10 py-3 rounded-xl items-center"
-              >
-                <Text className="text-white font-bold">Cancel</Text>
-              </Pressable>
-              <Pressable 
-                onPress={handleAddCategory}
-                className="flex-1 bg-[#00f1a1] py-3 rounded-xl items-center"
-              >
-                <Text className="text-[#101415] font-bold">Add Category</Text>
+      {/* ADD / EDIT CATEGORY MODAL */}
+      <Modal visible={showAddEditModal} transparent animationType="slide" onRequestClose={() => setShowAddEditModal(false)}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <Text className="text-white font-bold text-base">{editingCat ? 'Edit Fee Category' : 'Create Fee Category'}</Text>
+              <Pressable onPress={() => setShowAddEditModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
               </Pressable>
             </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+              <View className="mb-3">
+                <Text className="text-white/70 text-xs font-bold mb-1">Category Name *</Text>
+                <TextInput
+                  value={formName}
+                  onChangeText={setFormName}
+                  placeholder="e.g. Science Laboratory Fee"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                />
+              </View>
+
+              <View className="mb-3">
+                <Text className="text-white/70 text-xs font-bold mb-1">Fee Amount (₹) *</Text>
+                <TextInput
+                  value={formAmount}
+                  onChangeText={setFormAmount}
+                  keyboardType="numeric"
+                  placeholder="5000"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs font-mono"
+                />
+              </View>
+
+              <View className="mb-3">
+                <Text className="text-white/70 text-xs font-bold mb-1">Applicable Classes</Text>
+                <TextInput
+                  value={formClasses}
+                  onChangeText={setFormClasses}
+                  placeholder="e.g. Classes 8 to 10"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                />
+              </View>
+
+              <View className="mb-3">
+                <Text className="text-white/70 text-xs font-bold mb-1">Category Description</Text>
+                <TextInput
+                  value={formDescription}
+                  onChangeText={setFormDescription}
+                  multiline
+                  numberOfLines={3}
+                  placeholder="Details regarding fee usage and allocation..."
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  style={{ textAlignVertical: 'top' }}
+                />
+              </View>
+            </ScrollView>
+
+            <View className="flex-row border-t border-white/10 pt-3 mt-2" style={{ gap: 10 }}>
+              <Pressable onPress={() => setShowAddEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
+                <Text className="text-white font-bold text-xs">Cancel</Text>
+              </Pressable>
+              <Pressable onPress={handleSaveCategory} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+                <Text className="text-[#101415] font-extrabold text-xs">
+                  {editingCat ? 'Update Category' : 'Save Category'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* CONFIRM DELETE CATEGORY MODAL */}
+      <Modal visible={Boolean(deletingCat)} transparent animationType="fade" onRequestClose={() => setDeletingCat(null)}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-rose-500/50 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(255,81,106,0.3)]">
+            <View className="w-14 h-14 rounded-full bg-rose-500/20 border border-rose-500/50 items-center justify-center mb-4">
+              <Trash2 size={28} color="#ff516a" />
+            </View>
+
+            <Text className="text-white text-lg font-extrabold text-center mb-1">Delete Fee Category?</Text>
+            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">
+              Are you sure you want to remove "{deletingCat?.name}" from fee categories?
+            </Text>
+
+            <View className="flex-row w-full" style={{ gap: 10 }}>
+              <Pressable onPress={() => setDeletingCat(null)} className="flex-1 py-3.5 rounded-xl bg-white/10 items-center">
+                <Text className="text-white font-bold text-xs">Cancel</Text>
+              </Pressable>
+              <Pressable onPress={handleConfirmDeleteCategory} className="flex-1 py-3.5 rounded-xl bg-rose-500 items-center shadow-[0_0_12px_rgba(255,81,106,0.4)]">
+                <Text className="text-white font-extrabold text-xs">Delete Category</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* CUSTOM TOAST MODAL */}
+      <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+              {toastData.type === 'warning' ? (
+                <AlertCircle size={28} color="#f59e0b" />
+              ) : (
+                <CheckCircle2 size={28} color="#00f1a1" />
+              )}
+            </View>
+
+            <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
+            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
+
+            <Pressable
+              onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
+              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+            >
+              <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -280,10 +347,10 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0d2a24',
   },
   scrollContent: {
     paddingTop: 16,
-    paddingHorizontal: 20,
     paddingBottom: 100,
   },
 });

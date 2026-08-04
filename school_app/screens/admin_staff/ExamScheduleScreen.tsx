@@ -1,40 +1,138 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Platform, Image } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GlassCard } from '../../components/GlassCard';
-import { StatusBadge } from '../../components/StatusBadge';
+import { 
+  Award, Calendar, Clock, Plus, Trash2, Pencil, 
+  CheckCircle2, AlertCircle, X, BookOpen, ShieldCheck, UserCheck, Search
+} from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
-import { Search, FileText, Calendar, Clock, Building2, Star, PlusCircle } from 'lucide-react-native';
+import { GlassCard } from '../../components/GlassCard';
 
-const exams = [
-  {
-    id: 1,
-    title: 'Mid-Term Exam',
-    subject: 'Class 10 — Science & Mathematics',
-    status: 'UPCOMING',
-    date: 'Oct 24, 2024',
-    time: '09:00 AM (3 hrs)',
-    venue: 'Main Auditorium',
-    marks: '100 Points',
-    assigned: [
-      'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=150',
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150',
-    ],
-  },
-  {
-    id: 2,
-    title: 'Final Assessment',
-    subject: 'Class 12 — Economics & Humanities',
-    status: 'DRAFT',
-    date: 'Nov 12, 2024',
-    time: '02:00 PM (2 hrs)',
-    venue: 'Block C - Hall 4',
-    marks: '80 Points',
-    assigned: [],
-  },
+export interface ExamScheduleItem {
+  id: string;
+  examName: string;
+  className: string;
+  subject: string;
+  date: string;
+  timeSlot: string;
+  maxMarks: number;
+  roomNo: string;
+  status: 'Upcoming' | 'Completed' | 'Results Published';
+}
+
+const MOCK_EXAM_SCHEDULES: ExamScheduleItem[] = [
+  { id: 'ex_1', examName: 'Unit Test 1', className: 'Class 10A', subject: 'Mathematics', date: '2026-06-10', timeSlot: '09:30 AM - 11:00 AM', maxMarks: 25, roomNo: 'Room 12', status: 'Upcoming' },
+  { id: 'ex_2', examName: 'Unit Test 1', className: 'Class 10A', subject: 'Physics', date: '2026-06-11', timeSlot: '09:30 AM - 11:00 AM', maxMarks: 25, roomNo: 'Room 12', status: 'Upcoming' },
+  { id: 'ex_3', examName: 'Mid-Term Examination 2026', className: 'Class 10A', subject: 'Chemistry', date: '2026-06-25', timeSlot: '09:30 AM - 12:30 PM', maxMarks: 100, roomNo: 'Chemistry Lab', status: 'Upcoming' },
+  { id: 'ex_4', examName: 'Quarterly Assessment', className: 'Class 9A', subject: 'English', date: '2026-05-15', timeSlot: '09:30 AM - 12:00 PM', maxMarks: 50, roomNo: 'Room 14', status: 'Results Published' }
 ];
 
 export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
+  const [examSchedules, setExamSchedules] = useState<ExamScheduleItem[]>(MOCK_EXAM_SCHEDULES);
+  const [activeTab, setActiveTab] = useState<'schedules' | 'invigilation' | 'results'>('schedules');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedClassFilter, setSelectedClassFilter] = useState('All');
+
+  // Modal States
+  const [showAddEditModal, setShowAddEditModal] = useState(false);
+  const [editingExam, setEditingExam] = useState<ExamScheduleItem | null>(null);
+  const [deletingExam, setDeletingExam] = useState<ExamScheduleItem | null>(null);
+
+  // Form States
+  const [formExamName, setFormExamName] = useState('Mid-Term Examination 2026');
+  const [formClass, setFormClass] = useState('Class 10A');
+  const [formSubject, setFormSubject] = useState('Mathematics');
+  const [formDate, setFormDate] = useState('2026-06-15');
+  const [formTimeSlot, setFormTimeSlot] = useState('09:30 AM - 12:30 PM');
+  const [formMaxMarks, setFormMaxMarks] = useState('100');
+  const [formRoom, setFormRoom] = useState('Room 12');
+
+  // Custom Toast State
+  const [toastData, setToastData] = useState<{ visible: boolean; title: string; message: string; type?: 'success' | 'warning' }>({
+    visible: false, title: '', message: '', type: 'success'
+  });
+
+  const showToast = (title: string, message: string, type: 'success' | 'warning' = 'success') => {
+    setToastData({ visible: true, title, message, type });
+  };
+
+  const handleOpenAdd = () => {
+    setEditingExam(null);
+    setFormExamName('Mid-Term Examination 2026');
+    setFormClass('Class 10A');
+    setFormSubject('Mathematics');
+    setFormDate('2026-06-15');
+    setFormTimeSlot('09:30 AM - 12:30 PM');
+    setFormMaxMarks('100');
+    setFormRoom('Room 12');
+    setShowAddEditModal(true);
+  };
+
+  const handleOpenEdit = (ex: ExamScheduleItem) => {
+    setEditingExam(ex);
+    setFormExamName(ex.examName);
+    setFormClass(ex.className);
+    setFormSubject(ex.subject);
+    setFormDate(ex.date);
+    setFormTimeSlot(ex.timeSlot);
+    setFormMaxMarks(String(ex.maxMarks));
+    setFormRoom(ex.roomNo);
+    setShowAddEditModal(true);
+  };
+
+  const handleSaveExamSchedule = () => {
+    if (!formExamName.trim() || !formSubject.trim()) {
+      showToast('Missing Fields', 'Please fill exam name and subject.', 'warning');
+      return;
+    }
+    const marks = parseInt(formMaxMarks) || 100;
+
+    if (editingExam) {
+      setExamSchedules(prev => prev.map(e => e.id === editingExam.id ? {
+        ...e,
+        examName: formExamName,
+        className: formClass,
+        subject: formSubject,
+        date: formDate || '2026-06-15',
+        timeSlot: formTimeSlot || '09:30 AM - 12:30 PM',
+        maxMarks: marks,
+        roomNo: formRoom || 'Room 12'
+      } : e));
+      showToast('Schedule Updated', `${formSubject} exam schedule updated.`, 'success');
+    } else {
+      const newEx: ExamScheduleItem = {
+        id: `ex_${Date.now()}`,
+        examName: formExamName,
+        className: formClass,
+        subject: formSubject,
+        date: formDate || '2026-06-15',
+        timeSlot: formTimeSlot || '09:30 AM - 12:30 PM',
+        maxMarks: marks,
+        roomNo: formRoom || 'Room 12',
+        status: 'Upcoming'
+      };
+      setExamSchedules(prev => [newEx, ...prev]);
+      showToast('Exam Scheduled', `${formSubject} added to exam timetable.`, 'success');
+    }
+
+    setShowAddEditModal(false);
+  };
+
+  const handleConfirmDeleteExam = () => {
+    if (!deletingExam) return;
+    const sub = deletingExam.subject;
+    setExamSchedules(prev => prev.filter(e => e.id !== deletingExam.id));
+    setDeletingExam(null);
+    showToast('Exam Removed', `${sub} exam deleted from schedule.`, 'warning');
+  };
+
+  const filteredExams = examSchedules.filter(ex => {
+    const matchesClass = selectedClassFilter === 'All' || ex.className.includes(selectedClassFilter);
+    const matchesSearch = ex.examName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          ex.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          ex.className.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesClass && matchesSearch;
+  });
 
   return (
     <View style={styles.container}>
@@ -44,116 +142,377 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      <AdminStaffHeader 
-        title="Admin Panel"
+
+      <AdminStaffHeader
+        onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        title="Examinations Console"
+        subtitle="Schedules, Invigilation & Assessment Management"
         icon={
-          <Image 
-            source={{ uri: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150' }} 
-            className="w-8 h-8 rounded-full border border-emerald-500/30"
-          />
-        }
-        rightAction={
-          <Pressable>
-            <Search size={24} color="#34D399" />
-          </Pressable>
+          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
+            <Award size={20} color="#00f1a1" />
+          </View>
         }
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* Title Row */}
-        <View className="flex-row justify-between items-center mb-6">
-          <Text className="text-white text-lg font-bold">Exam Schedule</Text>
-          <Pressable className="bg-[#101415] border border-[#00f1a1]/30 px-4 py-2 rounded-lg flex-row items-center">
-            <FileText size={16} color="#00f1a1" className="mr-2" />
-            <Text className="text-[#00f1a1] font-semibold text-sm">Export PDF</Text>
-          </Pressable>
+        {/* Navigation Tabs (Schedules, Invigilation, Results) */}
+        <View className="px-5 mb-4">
+          <View className="flex-row bg-[#101415] p-1.5 rounded-2xl border border-white/10" style={{ gap: 6 }}>
+            <Pressable
+              onPress={() => setActiveTab('schedules')}
+              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'schedules' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+            >
+              <Text className={`text-xs font-extrabold ${activeTab === 'schedules' ? 'text-[#101415]' : 'text-white/60'}`}>
+                Exam Schedules
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setActiveTab('invigilation')}
+              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'invigilation' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+            >
+              <Text className={`text-xs font-extrabold ${activeTab === 'invigilation' ? 'text-[#101415]' : 'text-white/60'}`}>
+                Invigilation Duties
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setActiveTab('results')}
+              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'results' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+            >
+              <Text className={`text-xs font-extrabold ${activeTab === 'results' ? 'text-[#101415]' : 'text-white/60'}`}>
+                Results & Ranks
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
-        {/* Exam Cards */}
-        {exams.map((exam) => (
-          <GlassCard key={exam.id} intensity="low" className="p-5 mb-5 border-l-2 border-l-[#00f1a1] border-[#00f1a1]/20 bg-[#101415]/60 shadow-[0_4px_15px_rgba(0,241,161,0.1)]">
-            <View className="flex-row justify-between items-start mb-5">
-              <View className="flex-row flex-1 mr-4">
-                <View className="bg-[#101415] p-3 rounded-xl border border-[#00f1a1]/30 mr-4 h-12 w-12 items-center justify-center">
-                  <FileText size={20} color="#00f1a1" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white text-base font-bold mb-1">{exam.title}</Text>
-                  <Text className="text-white/60 text-xs leading-5">{exam.subject}</Text>
-                </View>
-              </View>
-              <StatusBadge status={exam.status} variant="outline" />
-            </View>
-
-            <View className="flex-row mb-5">
-              <View className="flex-1">
-                <View className="flex-row mb-4 items-start">
-                  <Calendar size={16} color="#00f1a1" opacity={0.7} className="mr-3 mt-0.5" />
-                  <View>
-                    <Text className="text-white/50 text-[10px] tracking-wider font-bold mb-0.5">DATE</Text>
-                    <Text className="text-white text-sm font-medium">{exam.date}</Text>
-                  </View>
-                </View>
-                <View className="flex-row items-start">
-                  <Building2 size={16} color="#00f1a1" opacity={0.7} className="mr-3 mt-0.5" />
-                  <View>
-                    <Text className="text-white/50 text-[10px] tracking-wider font-bold mb-0.5">VENUE</Text>
-                    <Text className="text-white text-sm font-medium">{exam.venue}</Text>
-                  </View>
-                </View>
-              </View>
-              
-              <View className="flex-1">
-                <View className="flex-row mb-4 items-start">
-                  <Clock size={16} color="#00f1a1" opacity={0.7} className="mr-3 mt-0.5" />
-                  <View>
-                    <Text className="text-white/50 text-[10px] tracking-wider font-bold mb-0.5">TIME</Text>
-                    <Text className="text-white text-sm font-medium">{exam.time}</Text>
-                  </View>
-                </View>
-                <View className="flex-row items-start">
-                  <Star size={16} color="#00f1a1" opacity={0.7} className="mr-3 mt-0.5" />
-                  <View>
-                    <Text className="text-white/50 text-[10px] tracking-wider font-bold mb-0.5">TOTAL MARKS</Text>
-                    <Text className="text-white text-sm font-medium">{exam.marks}</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View className="border-t border-[#00f1a1]/10 pt-4 mt-2">
+        {activeTab === 'schedules' && (
+          <>
+            {/* Search & Add Action Header */}
+            <View className="px-5 mb-4">
               <View className="flex-row justify-between items-center mb-3">
-                <Text className="text-white/70 text-xs tracking-[0.1em] font-bold">INVIGILATION DUTY</Text>
-                <Pressable className="flex-row items-center">
-                  <PlusCircle size={14} color="#00f1a1" className="mr-1" />
-                  <Text className="text-[#00f1a1] font-semibold text-xs tracking-wider">Assign Teacher</Text>
+                <View className="flex-1 bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 mr-3 shadow-md">
+                  <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+                  <TextInput
+                    placeholder="Search exam name or subject..."
+                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    className="flex-1 text-white text-xs"
+                    style={{ paddingVertical: 0 }}
+                  />
+                  {searchQuery.length > 0 && (
+                    <Pressable onPress={() => setSearchQuery('')}>
+                      <X size={15} color="rgba(255, 255, 255, 0.5)" />
+                    </Pressable>
+                  )}
+                </View>
+
+                <Pressable
+                  onPress={handleOpenAdd}
+                  className="bg-[#00f1a1] px-4 py-2.5 rounded-2xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+                >
+                  <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
+                  <Text className="text-[#101415] text-xs font-extrabold">Schedule Exam</Text>
                 </Pressable>
               </View>
-              
-              {exam.assigned.length > 0 ? (
-                <View className="flex-row items-center">
-                  {exam.assigned.map((avatar, idx) => (
-                    <Image 
-                      key={idx}
-                      source={{ uri: avatar }} 
-                      className="w-8 h-8 rounded-full border-2 border-[#101415]"
-                      style={{ marginLeft: idx > 0 ? -10 : 0, zIndex: 10 - idx }}
-                    />
-                  ))}
-                  <View className="w-8 h-8 rounded-full border-2 border-[#101415] bg-[#1c2222] items-center justify-center -ml-2 z-0">
-                    <Text className="text-[#00f1a1] text-[10px] font-bold">+2</Text>
-                  </View>
+
+              {/* Class Filter Selector */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View className="flex-row" style={{ gap: 8 }}>
+                  {['All', '10A', '9A', '8A', '7A'].map((cls) => {
+                    const isSelected = selectedClassFilter === cls;
+                    return (
+                      <Pressable
+                        key={cls}
+                        onPress={() => setSelectedClassFilter(cls)}
+                        className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                      >
+                        <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white/70'}`}>
+                          {cls === 'All' ? 'All Classes' : `Class ${cls}`}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
                 </View>
-              ) : (
-                <Text className="text-white/30 italic text-xs">No teachers assigned yet</Text>
-              )}
+              </ScrollView>
             </View>
-          </GlassCard>
-        ))}
+
+            {/* Exam Schedules List Cards */}
+            <View className="px-5">
+              <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Configured Exam Timetable ({filteredExams.length})</Text>
+
+              {filteredExams.map(ex => (
+                <GlassCard key={ex.id} intensity="low" className="mb-4 p-4 border-white/10 bg-[#101415]/90">
+                  <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
+                    <View className="flex-row items-center flex-1 mr-2">
+                      <View className="w-10 h-10 rounded-2xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
+                        <BookOpen size={20} color="#00f1a1" />
+                      </View>
+                      <View className="flex-1">
+                        <View className="flex-row items-center">
+                          <Text className="text-white font-extrabold text-base mr-2">{ex.subject}</Text>
+                          <View className="bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 rounded-md">
+                            <Text className="text-sky-300 text-[9.5px] font-bold">{ex.className}</Text>
+                          </View>
+                        </View>
+                        <Text className="text-[#00f1a1] text-xs font-bold mt-0.5">{ex.examName}</Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center" style={{ gap: 6 }}>
+                      <Pressable
+                        onPress={() => handleOpenEdit(ex)}
+                        className="bg-white/5 border border-white/10 p-2 rounded-xl"
+                      >
+                        <Pencil size={14} color="rgba(255,255,255,0.7)" />
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => setDeletingExam(ex)}
+                        className="bg-rose-500/10 border border-rose-500/30 p-2 rounded-xl"
+                      >
+                        <Trash2 size={14} color="#ff516a" />
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {/* Date & Time Slot Grid */}
+                  <View className="flex-row justify-between bg-black/40 p-3 rounded-2xl border border-white/5 mb-2">
+                    <View className="flex-row items-center">
+                      <Calendar size={14} color="#00f1a1" style={{ marginRight: 6 }} />
+                      <Text className="text-white text-xs font-semibold">{ex.date}</Text>
+                    </View>
+
+                    <View className="flex-row items-center">
+                      <Clock size={14} color="#38bdf8" style={{ marginRight: 6 }} />
+                      <Text className="text-sky-300 text-xs font-semibold">{ex.timeSlot}</Text>
+                    </View>
+                  </View>
+
+                  <View className="flex-row justify-between items-center">
+                    <Text className="text-white/50 text-[11px]">Room: {ex.roomNo}</Text>
+                    <Text className="text-amber-400 font-extrabold text-xs">Max Marks: {ex.maxMarks}</Text>
+                  </View>
+                </GlassCard>
+              ))}
+            </View>
+          </>
+        )}
+
+        {activeTab === 'invigilation' && (
+          <View className="px-5">
+            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-4">
+              <Text className="text-white font-extrabold text-sm mb-1">Faculty Invigilation Roster</Text>
+              <Text className="text-white/50 text-xs mb-3">Assigned exam room supervision for staff members</Text>
+              
+              <View className="bg-white/5 p-3 rounded-2xl border border-white/10 mb-2 flex-row justify-between items-center">
+                <View>
+                  <Text className="text-white font-bold text-xs">Mrs. Anita Sharma</Text>
+                  <Text className="text-white/40 text-[10px]">Mathematics • Room 12 (09:30 AM)</Text>
+                </View>
+                <View className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-xl">
+                  <Text className="text-[#00f1a1] text-[10px] font-bold">Assigned</Text>
+                </View>
+              </View>
+
+              <View className="bg-white/5 p-3 rounded-2xl border border-white/10 flex-row justify-between items-center">
+                <View>
+                  <Text className="text-white font-bold text-xs">Mr. Rajesh Kumar</Text>
+                  <Text className="text-white/40 text-[10px]">Physics Lab • Room 15 (09:30 AM)</Text>
+                </View>
+                <View className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-xl">
+                  <Text className="text-[#00f1a1] text-[10px] font-bold">Assigned</Text>
+                </View>
+              </View>
+            </GlassCard>
+          </View>
+        )}
+
+        {activeTab === 'results' && (
+          <View className="px-5">
+            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
+              <Text className="text-white font-extrabold text-sm mb-1">Class Rank & Performance Results</Text>
+              <Text className="text-white/50 text-xs mb-3">Published examination marks and rank cards</Text>
+
+              <View className="bg-black/40 p-3 rounded-2xl border border-white/5 mb-2 flex-row justify-between items-center">
+                <View>
+                  <Text className="text-white font-bold text-xs">Priya Sharma (Roll: 10A01)</Text>
+                  <Text className="text-[#00f1a1] text-[11px] font-extrabold mt-0.5">Rank 1 • 94.5% (A+ Grade)</Text>
+                </View>
+                <View className="bg-purple-500/20 border border-purple-500/40 px-3 py-1 rounded-xl">
+                  <Text className="text-purple-300 text-[10px] font-bold">Grade A+</Text>
+                </View>
+              </View>
+            </GlassCard>
+          </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* ADD / EDIT EXAM MODAL */}
+      <Modal visible={showAddEditModal} transparent animationType="slide" onRequestClose={() => setShowAddEditModal(false)}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <Text className="text-white font-bold text-base">{editingExam ? 'Edit Exam Schedule' : 'Schedule Examination'}</Text>
+              <Pressable onPress={() => setShowAddEditModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
+              <View className="mb-3">
+                <Text className="text-white/70 text-xs font-bold mb-1">Examination Title *</Text>
+                <TextInput
+                  value={formExamName}
+                  onChangeText={setFormExamName}
+                  placeholder="e.g. Mid-Term Examination 2026"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                />
+              </View>
+
+              <View className="flex-row mb-3" style={{ gap: 10 }}>
+                <View className="flex-1">
+                  <Text className="text-white/70 text-xs font-bold mb-1">Target Class *</Text>
+                  <TextInput
+                    value={formClass}
+                    onChangeText={setFormClass}
+                    placeholder="Class 10A"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  />
+                </View>
+
+                <View className="flex-1">
+                  <Text className="text-white/70 text-xs font-bold mb-1">Subject *</Text>
+                  <TextInput
+                    value={formSubject}
+                    onChangeText={setFormSubject}
+                    placeholder="Mathematics"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row mb-3" style={{ gap: 10 }}>
+                <View className="flex-1">
+                  <Text className="text-white/70 text-xs font-bold mb-1">Date (YYYY-MM-DD) *</Text>
+                  <TextInput
+                    value={formDate}
+                    onChangeText={setFormDate}
+                    placeholder="2026-06-15"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs font-mono"
+                  />
+                </View>
+
+                <View className="flex-1">
+                  <Text className="text-white/70 text-xs font-bold mb-1">Time Slot *</Text>
+                  <TextInput
+                    value={formTimeSlot}
+                    onChangeText={setFormTimeSlot}
+                    placeholder="09:30 AM - 12:30 PM"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row mb-3" style={{ gap: 10 }}>
+                <View className="flex-1">
+                  <Text className="text-white/70 text-xs font-bold mb-1">Max Marks *</Text>
+                  <TextInput
+                    value={formMaxMarks}
+                    onChangeText={setFormMaxMarks}
+                    keyboardType="numeric"
+                    placeholder="100"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs font-mono"
+                  />
+                </View>
+
+                <View className="flex-1">
+                  <Text className="text-white/70 text-xs font-bold mb-1">Hall / Room No.</Text>
+                  <TextInput
+                    value={formRoom}
+                    onChangeText={setFormRoom}
+                    placeholder="Room 12"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View className="flex-row border-t border-white/10 pt-3 mt-2" style={{ gap: 10 }}>
+              <Pressable onPress={() => setShowAddEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
+                <Text className="text-white font-bold text-xs">Cancel</Text>
+              </Pressable>
+              <Pressable onPress={handleSaveExamSchedule} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+                <Text className="text-[#101415] font-extrabold text-xs">
+                  {editingExam ? 'Update Schedule' : 'Save Schedule'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* CONFIRM DELETE EXAM MODAL */}
+      <Modal visible={Boolean(deletingExam)} transparent animationType="fade" onRequestClose={() => setDeletingExam(null)}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-rose-500/50 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(255,81,106,0.3)]">
+            <View className="w-14 h-14 rounded-full bg-rose-500/20 border border-rose-500/50 items-center justify-center mb-4">
+              <Trash2 size={28} color="#ff516a" />
+            </View>
+
+            <Text className="text-white text-lg font-extrabold text-center mb-1">Delete Exam Schedule?</Text>
+            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">
+              Are you sure you want to remove "{deletingExam?.subject}" from {deletingExam?.className} exam timetable?
+            </Text>
+
+            <View className="flex-row w-full" style={{ gap: 10 }}>
+              <Pressable onPress={() => setDeletingExam(null)} className="flex-1 py-3.5 rounded-xl bg-white/10 items-center">
+                <Text className="text-white font-bold text-xs">Cancel</Text>
+              </Pressable>
+              <Pressable onPress={handleConfirmDeleteExam} className="flex-1 py-3.5 rounded-xl bg-rose-500 items-center shadow-[0_0_12px_rgba(255,81,106,0.4)]">
+                <Text className="text-white font-extrabold text-xs">Delete Exam</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* CUSTOM TOAST MODAL */}
+      <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+              {toastData.type === 'warning' ? (
+                <AlertCircle size={28} color="#f59e0b" />
+              ) : (
+                <CheckCircle2 size={28} color="#00f1a1" />
+              )}
+            </View>
+
+            <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
+            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
+
+            <Pressable
+              onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
+              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+            >
+              <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -161,19 +520,11 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
+    backgroundColor: '#0d2a24',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 40,
+    paddingTop: 16,
+    paddingBottom: 100,
   },
 });
 

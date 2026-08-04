@@ -1,13 +1,88 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Platform, Image } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GlassCard } from '../../components/GlassCard';
-import { StatusBadge } from '../../components/StatusBadge';
+import { 
+  Users, Calendar, Clock, UserPlus, CheckCircle2, 
+  AlertCircle, X, ShieldCheck, UserX, ArrowRight, Search, RefreshCw
+} from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
-import { Search, ChevronDown, Clock, MapPin, Calendar, Check, X, AlertCircle, CheckCircle2 } from 'lucide-react-native';
+import { GlassCard } from '../../components/GlassCard';
+
+export interface AbsentTeacherItem {
+  id: string;
+  name: string;
+  subject: string;
+  absentDate: string;
+  unassignedPeriod: string;
+  targetClass: string;
+  timeSlot: string;
+}
+
+export interface AvailableTeacherItem {
+  id: string;
+  name: string;
+  subject: string;
+  freeStatus: string;
+}
+
+const MOCK_ABSENT_TEACHERS: AbsentTeacherItem[] = [
+  { id: 'ab_1', name: 'Dr. Meenakshi Sundaram', subject: 'Chemistry', absentDate: 'Today (2026-08-04)', unassignedPeriod: 'Period 3', targetClass: 'Class 10A', timeSlot: '10:00 AM - 10:45 AM' },
+  { id: 'ab_2', name: 'Mr. David Miller', subject: 'English', absentDate: 'Today (2026-08-04)', unassignedPeriod: 'Period 4', targetClass: 'Class 6B', timeSlot: '11:30 AM - 12:15 PM' }
+];
+
+const MOCK_FREE_TEACHERS: AvailableTeacherItem[] = [
+  { id: 'ft_1', name: 'Mrs. Anita Sharma', subject: 'Mathematics', freeStatus: 'Free during Period 3 & 4' },
+  { id: 'ft_2', name: 'Mr. Rajesh Kumar', subject: 'Physics', freeStatus: 'Free during Period 3' },
+  { id: 'ft_3', name: 'Mrs. Sunita Rao', subject: 'Social Studies', freeStatus: 'Free during Period 4' }
+];
 
 export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('Pending');
+  const [absentTeachers, setAbsentTeachers] = useState<AbsentTeacherItem[]>(MOCK_ABSENT_TEACHERS);
+  const [activeSubstitutions, setActiveSubstitutions] = useState<Array<{ id: string; originalTeacher: string; subTeacher: string; targetClass: string; period: string }>>([
+    { id: 'sub_1', originalTeacher: 'Mr. Vikramaditya Singh', subTeacher: 'Mrs. Priya Nambiar', targetClass: 'Class 8A', period: 'Period 2 (09:15 AM)' }
+  ]);
+
+  // Modal States
+  const [selectedUnassigned, setSelectedUnassigned] = useState<AbsentTeacherItem | null>(null);
+  const [selectedSubTeacherId, setSelectedSubTeacherId] = useState('ft_1');
+
+  // Custom Toast State
+  const [toastData, setToastData] = useState<{ visible: boolean; title: string; message: string; type?: 'success' | 'warning' }>({
+    visible: false, title: '', message: '', type: 'success'
+  });
+
+  const showToast = (title: string, message: string, type: 'success' | 'warning' = 'success') => {
+    setToastData({ visible: true, title, message, type });
+  };
+
+  const handleOpenAssignModal = (ab: AbsentTeacherItem) => {
+    setSelectedUnassigned(ab);
+    setSelectedSubTeacherId('ft_1');
+  };
+
+  const handleConfirmSubstitute = () => {
+    if (!selectedUnassigned) return;
+    const subObj = MOCK_FREE_TEACHERS.find(f => f.id === selectedSubTeacherId) || MOCK_FREE_TEACHERS[0];
+
+    const newSub = {
+      id: `sub_${Date.now()}`,
+      originalTeacher: selectedUnassigned.name,
+      subTeacher: subObj.name,
+      targetClass: selectedUnassigned.targetClass,
+      period: `${selectedUnassigned.unassignedPeriod} (${selectedUnassigned.timeSlot})`
+    };
+
+    setActiveSubstitutions(prev => [newSub, ...prev]);
+    setAbsentTeachers(prev => prev.filter(a => a.id !== selectedUnassigned.id));
+    const targetClass = selectedUnassigned.targetClass;
+    setSelectedUnassigned(null);
+
+    showToast(
+      'Substitute Assigned!',
+      `${subObj.name} assigned to cover ${targetClass} (${newSub.period}).`,
+      'success'
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -17,130 +92,186 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      <AdminStaffHeader 
-        title="Admin Panel"
+
+      <AdminStaffHeader
+        onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        title="Teacher Substitutions Console"
+        subtitle="Absenteeism Coverage & Period Allotment"
         icon={
-          <Image 
-            source={{ uri: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150' }} 
-            className="w-8 h-8 rounded-full border border-[#00f1a1]/30"
-          />
-        }
-        rightAction={
-          <Pressable>
-            <Search size={24} color="#00f1a1" />
-          </Pressable>
+          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
+            <Users size={20} color="#00f1a1" />
+          </View>
         }
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Teacher Profile Card */}
-        <GlassCard intensity="low" className="p-5 items-center mb-8 border border-[#00f1a1]/30 w-2/3 self-center shadow-[0_10px_25px_rgba(0,241,161,0.15)] bg-[#101415]/80" glowColor="rgba(0, 241, 161, 0.1)">
-          <Image 
-            source={{ uri: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=150' }} 
-            className="w-16 h-16 rounded-full mb-3 border border-[#00f1a1]/50"
-          />
-          <Text className="text-white text-lg font-bold mb-1">Marcus Thorne</Text>
-          <Text className="text-white/60 text-xs mb-3">Mathematics Dept.</Text>
-          <View className="bg-[#101415] px-3 py-1 rounded-sm border border-[#00f1a1]/40">
-            <Text className="text-[#00f1a1] text-[10px] font-bold tracking-[0.2em] text-center">SICK{"\n"}LEAVE</Text>
-          </View>
-        </GlassCard>
+        
+        {/* KPI Cards */}
+        <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
+          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-white/40 text-[10px] font-bold uppercase">Absent Faculty</Text>
+              <UserX size={14} color="#ff516a" />
+            </View>
+            <Text className="text-rose-400 text-xl font-extrabold">{absentTeachers.length} On Leave</Text>
+            <Text className="text-rose-300 text-[10px] font-semibold mt-0.5">● Today (2026-08-04)</Text>
+          </GlassCard>
 
-        {/* Timeline Header */}
-        <View className="mb-6">
-          <Text className="text-white text-xl font-bold tracking-tight mb-1">Timeline: Marcus Thorne</Text>
-          <Text className="text-white/60 text-sm">Select unassigned periods to bridge the gap.</Text>
+          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-white/40 text-[10px] font-bold uppercase">Active Subs</Text>
+              <CheckCircle2 size={14} color="#00f1a1" />
+            </View>
+            <Text className="text-[#00f1a1] text-xl font-extrabold">{activeSubstitutions.length} Allotted</Text>
+            <Text className="text-[#00f1a1] text-[10px] font-semibold mt-0.5">● Period Covered</Text>
+          </GlassCard>
         </View>
 
-        {/* Timeline Items */}
-        <View className="ml-2 mb-8 border-l border-white/10 pl-6 pb-2">
-          
-          {/* Item 1 - Assigned */}
-          <View className="relative mb-6">
-            <View className="absolute -left-[35px] bg-[#101415] w-6 h-6 items-center justify-center">
-              <View className="w-2 h-2 rounded-full bg-[#00f1a1]" />
-            </View>
-            <Text className="text-white/50 text-xs font-semibold absolute -left-16 top-1">08:00</Text>
-            
-            <GlassCard intensity="low" className="p-4 bg-[#101415]/60 border border-[#00f1a1]/30 flex-row justify-between items-center shadow-[0_4px_15px_rgba(0,241,161,0.1)]" glowColor="rgba(0, 241, 161, 0.1)">
-              <View>
-                <Text className="text-[#00f1a1] font-bold mb-1 tracking-wider text-sm">PERIOD 1: ALGEBRA II</Text>
-                <Text className="text-white text-xs">Room 402 • <Text className="text-[#00f1a1]">Sub: Sarah Jenks</Text></Text>
-              </View>
-              <CheckCircle2 size={24} color="#00f1a1" />
-            </GlassCard>
-          </View>
+        {/* Unassigned Period Slots (Absent Teachers) */}
+        <View className="px-5 mb-5">
+          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Unassigned Periods Requiring Substitutes ({absentTeachers.length})</Text>
 
-          {/* Item 2 - Unassigned */}
-          <View className="relative mb-6">
-            <View className="absolute -left-[35px] bg-[#101415] w-6 h-6 items-center justify-center">
-              <View className="w-2 h-2 rounded-full bg-[#ff516a] shadow-[0_0_8px_#ff516a]" />
-            </View>
-            <Text className="text-white/50 text-xs font-semibold absolute -left-16 top-1">09:15</Text>
-            
-            <GlassCard intensity="low" className="p-4 bg-[#101415]/60 border border-[#ff516a]/40 flex-row justify-between items-center shadow-[0_4px_15px_rgba(255,81,106,0.15)]" glowColor="rgba(255, 81, 106, 0.1)">
-              <View className="flex-1">
-                <Text className="text-[#ff516a] font-bold mb-2 tracking-wider text-sm">PERIOD 2:{"\n"}CALCULUS BC</Text>
-                <Text className="text-white text-xs leading-5">Room 402 •{"\n"}<Text className="text-white font-bold">UNASSIGNED</Text></Text>
-              </View>
-              <Pressable className="bg-[#ff516a] px-4 py-2 rounded-full flex-row items-center shadow-[0_0_10px_rgba(255,81,106,0.4)]">
-                <Clock size={14} color="#101415" className="mr-1.5" />
-                <Text className="text-[#101415] font-bold text-xs tracking-wider">ASSIGN</Text>
-              </Pressable>
-            </GlassCard>
-          </View>
+          {absentTeachers.length > 0 ? (
+            absentTeachers.map(ab => (
+              <GlassCard key={ab.id} intensity="low" className="mb-3 p-4 border-white/10 bg-[#101415]/90">
+                <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
+                  <View className="flex-1 mr-2">
+                    <View className="flex-row items-center">
+                      <Text className="text-white font-extrabold text-base mr-2">{ab.targetClass}</Text>
+                      <View className="bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-md">
+                        <Text className="text-rose-400 text-[9.5px] font-bold">{ab.unassignedPeriod}</Text>
+                      </View>
+                    </View>
+                    <Text className="text-[#00f1a1] text-xs font-bold mt-0.5">{ab.timeSlot}</Text>
+                    <Text className="text-white/50 text-[11px] mt-0.5">Absent: {ab.name} ({ab.subject})</Text>
+                  </View>
 
-          {/* Item 3 - Unassigned */}
-          <View className="relative mb-6">
-            <View className="absolute -left-[35px] bg-[#101415] w-6 h-6 items-center justify-center">
-              <View className="w-2 h-2 rounded-full bg-[#ff516a] shadow-[0_0_8px_#ff516a]" />
-            </View>
-            <Text className="text-white/50 text-xs font-semibold absolute -left-16 top-1">10:30</Text>
-            
-            <GlassCard intensity="low" className="p-4 bg-[#101415]/60 border border-[#ff516a]/40 flex-row justify-between items-center shadow-[0_4px_15px_rgba(255,81,106,0.15)]" glowColor="rgba(255, 81, 106, 0.1)">
-              <View className="flex-1">
-                <Text className="text-[#ff516a] font-bold mb-2 tracking-wider text-sm">PERIOD 3:{"\n"}TRIG PREP</Text>
-                <Text className="text-white text-xs leading-5">Room 402 •{"\n"}<Text className="text-white font-bold">UNASSIGNED</Text></Text>
-              </View>
-              <Pressable className="bg-[#ff516a] px-4 py-2 rounded-full flex-row items-center shadow-[0_0_10px_rgba(255,81,106,0.4)]">
-                <Clock size={14} color="#101415" className="mr-1.5" />
-                <Text className="text-[#101415] font-bold text-xs tracking-wider">ASSIGN</Text>
-              </Pressable>
+                  <Pressable
+                    onPress={() => handleOpenAssignModal(ab)}
+                    className="bg-[#00f1a1] px-3.5 py-2 rounded-xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+                  >
+                    <UserPlus size={13} color="#101415" style={{ marginRight: 5 }} />
+                    <Text className="text-[#101415] text-xs font-extrabold">Assign Sub</Text>
+                  </Pressable>
+                </View>
+              </GlassCard>
+            ))
+          ) : (
+            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 items-center justify-center">
+              <CheckCircle2 size={24} color="#00f1a1" style={{ marginBottom: 6 }} />
+              <Text className="text-white font-bold text-xs">All Absent Periods Covered!</Text>
+              <Text className="text-white/40 text-[10px] mt-0.5">No unassigned period slots remaining today.</Text>
             </GlassCard>
-          </View>
-
-          {/* Item 4 - Assigned */}
-          <View className="relative">
-            <View className="absolute -left-[35px] bg-[#101415] w-6 h-6 items-center justify-center">
-              <View className="w-2 h-2 rounded-full bg-[#00f1a1]" />
-            </View>
-            <Text className="text-white/50 text-xs font-semibold absolute -left-16 top-1">12:00</Text>
-            
-            <GlassCard intensity="low" className="p-4 bg-[#101415]/60 border border-[#00f1a1]/30 flex-row justify-between items-center shadow-[0_4px_15px_rgba(0,241,161,0.1)]" glowColor="rgba(0, 241, 161, 0.1)">
-              <View>
-                <Text className="text-[#00f1a1] font-bold mb-1 tracking-wider text-sm">LUNCH DUTY</Text>
-                <Text className="text-white text-xs">Cafeteria • <Text className="text-[#00f1a1]">Sub: Leo G.</Text></Text>
-              </View>
-              <CheckCircle2 size={24} color="#00f1a1" />
-            </GlassCard>
-          </View>
-
+          )}
         </View>
 
-        {/* Efficiency Rating */}
-        <GlassCard intensity="low" className="p-5 border-[#00f1a1]/10 bg-[#101415]/60">
-          <Text className="text-[#00f1a1] tracking-[0.2em] text-[10px] font-bold mb-3">EFFICIENCY RATING</Text>
-          <View className="flex-row items-end mb-4">
-            <Text className="text-[#00f1a1] text-4xl font-bold tracking-tighter mr-3">82%</Text>
-            <Text className="text-white/80 text-sm mb-1.5">Substitutions Filled Today</Text>
-          </View>
-          <View className="h-2 bg-white/10 rounded-full w-full overflow-hidden">
-            <View className="h-full bg-[#00f1a1] rounded-full w-[82%] shadow-[0_0_8px_#00f1a1]" />
-          </View>
-        </GlassCard>
+        {/* Active Substitute Assignments Summary List */}
+        <View className="px-5">
+          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Today's Assigned Substitutions ({activeSubstitutions.length})</Text>
+
+          {activeSubstitutions.map(sub => (
+            <GlassCard key={sub.id} intensity="low" className="mb-3 p-3.5 border-white/10 bg-[#101415]/90">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1">
+                  <View className="flex-row items-center">
+                    <Text className="text-white font-extrabold text-sm mr-2">{sub.targetClass}</Text>
+                    <Text className="text-[#00f1a1] text-xs font-bold">{sub.period}</Text>
+                  </View>
+                  <Text className="text-white/60 text-xs mt-1">
+                    Substitute: <Text className="text-white font-bold">{sub.subTeacher}</Text> (for {sub.originalTeacher})
+                  </Text>
+                </View>
+
+                <View className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-xl">
+                  <Text className="text-[#00f1a1] text-[10px] font-bold">Active ✓</Text>
+                </View>
+              </View>
+            </GlassCard>
+          ))}
+        </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* ASSIGN SUBSTITUTE MODAL */}
+      <Modal visible={Boolean(selectedUnassigned)} transparent animationType="slide" onRequestClose={() => setSelectedUnassigned(null)}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
+                  <UserPlus size={16} color="#00f1a1" />
+                </View>
+                <View>
+                  <Text className="text-white font-bold text-base">Assign Substitute</Text>
+                  <Text className="text-[#00f1a1] text-[11px] font-bold">{selectedUnassigned?.targetClass} • {selectedUnassigned?.unassignedPeriod}</Text>
+                </View>
+              </View>
+              <Pressable onPress={() => setSelectedUnassigned(null)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
+              <Text className="text-white/70 text-xs font-bold mb-2">Available Free Teachers for {selectedUnassigned?.unassignedPeriod} *</Text>
+
+              {MOCK_FREE_TEACHERS.map(ft => {
+                const isSel = selectedSubTeacherId === ft.id;
+                return (
+                  <Pressable
+                    key={ft.id}
+                    onPress={() => setSelectedSubTeacherId(ft.id)}
+                    className={`p-3 rounded-2xl border mb-2.5 flex-row justify-between items-center ${isSel ? 'bg-[#00f1a1]/20 border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                  >
+                    <View>
+                      <Text className={`text-xs font-extrabold ${isSel ? 'text-[#00f1a1]' : 'text-white'}`}>{ft.name}</Text>
+                      <Text className="text-white/40 text-[10px]">{ft.subject} • {ft.freeStatus}</Text>
+                    </View>
+
+                    <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                      <Text className="text-[#00f1a1] text-[9px] font-bold">Free Slot</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <View className="flex-row border-t border-white/10 pt-3 mt-2" style={{ gap: 10 }}>
+              <Pressable onPress={() => setSelectedUnassigned(null)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
+                <Text className="text-white font-bold text-xs">Cancel</Text>
+              </Pressable>
+              <Pressable onPress={handleConfirmSubstitute} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+                <Text className="text-[#101415] font-extrabold text-xs">Confirm Sub</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* CUSTOM TOAST MODAL */}
+      <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+              {toastData.type === 'warning' ? (
+                <AlertCircle size={28} color="#f59e0b" />
+              ) : (
+                <CheckCircle2 size={28} color="#00f1a1" />
+              )}
+            </View>
+
+            <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
+            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
+
+            <Pressable
+              onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
+              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+            >
+              <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -148,19 +279,11 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
+    backgroundColor: '#0d2a24',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 40,
+    paddingTop: 16,
+    paddingBottom: 100,
   },
 });
 

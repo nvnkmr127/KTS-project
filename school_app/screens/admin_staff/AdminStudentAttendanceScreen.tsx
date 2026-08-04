@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   UserCheck, Users, UserX, Calendar, Search, 
   CheckCircle2, AlertCircle, ChevronRight, ArrowLeft, 
-  School, AlertTriangle, ShieldCheck, ChevronLeft, Clock, Info
+  School, AlertTriangle, ShieldCheck, ChevronLeft, Clock, Info, X
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
@@ -72,6 +73,34 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const [selectedClass, setSelectedClass] = useState<ClassItemSummary | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceRecord | null>(null);
 
+  // Handle Hardware Back Button & System Back Gesture (matching chevron left behavior)
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (showDatePickerModal) {
+          setShowDatePickerModal(false);
+          return true;
+        }
+        if (viewLevel === 3) {
+          setViewLevel(2);
+          return true;
+        }
+        if (viewLevel === 2) {
+          setViewLevel(1);
+          return true;
+        }
+        if (navigation?.canGoBack && navigation.canGoBack()) {
+          navigation.goBack();
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [viewLevel, showDatePickerModal, navigation])
+  );
+
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
   const [academicYear, setAcademicYear] = useState('2026-2027 (Current)');
@@ -86,6 +115,10 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const totalPresentAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.presentToday, 0);
   const totalAbsentAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.absentToday, 0);
   const overallAvgAll = ((totalPresentAll / totalEnrolledAll) * 100).toFixed(1);
+
+  const [selectedDate, setSelectedDate] = useState('04-08-2026');
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+  const [customDateInput, setCustomDateInput] = useState('04-08-2026');
 
   const handleSelectClassCard = (cls: ClassItemSummary) => {
     setSelectedClass(cls);
@@ -185,6 +218,14 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 <Text className="text-white text-base font-extrabold">School Directory — Classes</Text>
                 <Text className="text-white/50 text-xs">Select a class card to inspect student overall percentages</Text>
               </View>
+
+              <Pressable
+                onPress={() => setShowDatePickerModal(true)}
+                className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center"
+              >
+                <Calendar size={13} color="#00f1a1" style={{ marginRight: 5 }} />
+                <Text className="text-[#00f1a1] text-xs font-bold">{selectedDate}</Text>
+              </Pressable>
             </View>
 
             {/* Search Input */}
@@ -425,6 +466,97 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* INTERACTIVE DATE PICKER SELECTION MODAL */}
+      <Modal visible={showDatePickerModal} transparent animationType="slide" onRequestClose={() => setShowDatePickerModal(false)}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <View className="flex-row items-center">
+                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
+                  <Calendar size={16} color="#00f1a1" />
+                </View>
+                <Text className="text-white font-bold text-base">Select Attendance Date</Text>
+              </View>
+              <Pressable onPress={() => setShowDatePickerModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+
+            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-2">Calendar Grid Date Selector</Text>
+            <View className="flex-row justify-between items-center bg-white/5 p-2.5 rounded-2xl mb-3 border border-white/10">
+              <Pressable 
+                onPress={() => {
+                  const d = new Date(selectedDate.split('-').reverse().join('-'));
+                  d.setMonth(d.getMonth() - 1);
+                  const yearStr = d.getFullYear();
+                  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+                  setSelectedDate(`01-${monthStr}-${yearStr}`);
+                }}
+                className="p-1 border border-white/10 rounded-lg bg-white/5"
+              >
+                <ChevronLeft size={16} color="#00f1a1" />
+              </Pressable>
+              <Text className="text-white font-extrabold text-sm">{selectedDate}</Text>
+              <Pressable 
+                onPress={() => {
+                  const d = new Date(selectedDate.split('-').reverse().join('-'));
+                  d.setMonth(d.getMonth() + 1);
+                  const yearStr = d.getFullYear();
+                  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
+                  setSelectedDate(`01-${monthStr}-${yearStr}`);
+                }}
+                className="p-1 border border-white/10 rounded-lg bg-white/5"
+              >
+                <ChevronRight size={16} color="#00f1a1" />
+              </Pressable>
+            </View>
+
+            <View className="flex-row flex-wrap mb-4" style={{ gap: 8 }}>
+              {['04-08-2026', '03-08-2026', '02-08-2026', '01-08-2026', '31-07-2026', '30-07-2026'].map(qd => {
+                const isSel = selectedDate === qd;
+                return (
+                  <Pressable
+                    key={qd}
+                    onPress={() => {
+                      setSelectedDate(qd);
+                      setCustomDateInput(qd);
+                      setShowDatePickerModal(false);
+                    }}
+                    className={`px-3 py-2 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                  >
+                    <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>{qd}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1.5">Custom Date (DD-MM-YYYY)</Text>
+            <TextInput
+              value={customDateInput}
+              onChangeText={setCustomDateInput}
+              placeholder="e.g. 04-08-2026"
+              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2.5 text-xs font-mono mb-4 text-center"
+            />
+
+            <View className="flex-row" style={{ gap: 10 }}>
+              <Pressable onPress={() => setShowDatePickerModal(false)} className="flex-1 py-3 rounded-xl bg-[#101415] border border-white/10 items-center">
+                <Text className="text-white font-bold text-xs">Cancel</Text>
+              </Pressable>
+              <Pressable 
+                onPress={() => {
+                  setSelectedDate(customDateInput);
+                  setShowDatePickerModal(false);
+                }} 
+                className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              >
+                <Text className="text-[#101415] font-extrabold text-xs">Set Target Date</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
