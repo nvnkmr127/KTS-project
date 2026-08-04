@@ -48,6 +48,9 @@ import RecycleBinScreen from '../screens/admin_staff/RecycleBinScreen';
 import ClassManagementScreen from '../screens/admin_staff/ClassManagementScreen';
 import AdminStudentAttendanceScreen from '../screens/admin_staff/AdminStudentAttendanceScreen';
 import AdminDailyDiaryScreen from '../screens/admin_staff/AdminDailyDiaryScreen';
+import AdminStaffLeavesScreen from '../screens/admin_staff/AdminStaffLeavesScreen';
+import AdminBusTrackingScreen from '../screens/admin_staff/AdminBusTrackingScreen';
+import AdminReportsAnalyticsScreen from '../screens/admin_staff/AdminReportsAnalyticsScreen';
 
 // Teacher Screens
 import TeacherDashboard from '../screens/teachers/TeacherDashboard';
@@ -212,6 +215,9 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="ClassManagement" component={ClassManagementScreen} />
       <AppStack.Screen name="AdminStudentAttendance" component={AdminStudentAttendanceScreen} />
       <AppStack.Screen name="AdminDailyDiary" component={AdminDailyDiaryScreen} />
+      <AppStack.Screen name="AdminStaffLeaves" component={AdminStaffLeavesScreen} />
+      <AppStack.Screen name="AdminBusTracking" component={AdminBusTrackingScreen} />
+      <AppStack.Screen name="AdminReportsAnalytics" component={AdminReportsAnalyticsScreen} />
     </AppStack.Navigator>
   );
 };

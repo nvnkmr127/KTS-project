@@ -36,15 +36,15 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
     { title: 'Fee Collection', icon: <Wallet size={24} color="#00f1a1" />, route: 'FeeList' },
     { title: 'Fee Category', icon: <Tag size={24} color="#00f1a1" />, route: 'FeeCategory' },
     { title: 'Holiday Calendar', icon: <CalendarDays size={24} color="#00f1a1" />, route: 'HolidayCalendar' },
-    { title: 'Staff Leaves', icon: <CalendarOff size={24} color="#00f1a1" />, route: 'LeaveApprovals' },
+    { title: 'Staff Leaves', icon: <CalendarOff size={24} color="#00f1a1" />, route: 'AdminStaffLeaves' },
     { title: 'Timetable Builder', icon: <CalendarRange size={24} color="#00f1a1" />, route: 'TimetableBuilder' },
     { title: 'Exam Schedule', icon: <FileEdit size={24} color="#00f1a1" />, route: 'Schedule' },
     { title: 'Substitution Assign', icon: <ArrowLeftRight size={24} color="#00f1a1" />, route: 'SubstitutionManagement' },
     { title: 'Circulars', icon: <Megaphone size={24} color="#00f1a1" />, route: 'Messages' },
     { title: 'Enquiry Leads', icon: <UserSearch size={24} color="#00f1a1" />, route: 'EnquiryLeads' },
     { title: 'Student Performance', icon: <BarChart2 size={24} color="#00f1a1" />, route: 'StudentPerformance' },
-    { title: 'Bus Tracking', icon: <Bus size={24} color="#00f1a1" />, route: 'BusTracking' },
-    { title: 'Reports & Analytics', icon: <FileBarChart size={24} color="#00f1a1" />, route: 'AnalyticsDashboard' },
+    { title: 'Bus Tracking', icon: <Bus size={24} color="#00f1a1" />, route: 'AdminBusTracking' },
+    { title: 'Reports & Analytics', icon: <FileBarChart size={24} color="#00f1a1" />, route: 'AdminReportsAnalytics' },
     { title: 'Recycle Bin', icon: <Trash2 size={24} color="#00f1a1" />, route: 'RecycleBin' },
   ];
 
