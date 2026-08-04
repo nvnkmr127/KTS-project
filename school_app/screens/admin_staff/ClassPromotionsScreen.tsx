@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   TrendingUp, GraduationCap, ArrowRight, CheckCircle2, 
-  AlertCircle, X, Search, UserCheck, RefreshCw, ChevronRight, School, UserX
+  AlertCircle, X, Search, ChevronDown, Check, UserX, Info
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
@@ -11,83 +11,171 @@ import { GlassCard } from '../../components/GlassCard';
 export interface StudentPromotionItem {
   id: string;
   name: string;
-  rollNo: string;
-  currentClass: string;
-  currentSection: string;
   gender: 'Male' | 'Female';
+  rollNo: string;
+  status: 'Active' | 'Inactive';
   action: 'promote' | 'retain' | 'left' | 'alumni';
-  targetClass: string;
-  targetSection: string;
 }
 
-const MOCK_PROMOTION_STUDENTS: StudentPromotionItem[] = [
-  { id: 'p1', name: 'B Sandeep Goud', rollNo: '9A01', currentClass: 'Class 9', currentSection: 'Section A', gender: 'Male', action: 'promote', targetClass: 'Class 10', targetSection: 'Section A' },
-  { id: 'p2', name: 'Banda Teja Sri', rollNo: '9A02', currentClass: 'Class 9', currentSection: 'Section A', gender: 'Female', action: 'promote', targetClass: 'Class 10', targetSection: 'Section A' },
-  { id: 'p3', name: 'Chandippa Sragvi', rollNo: '9A03', currentClass: 'Class 9', currentSection: 'Section A', gender: 'Female', action: 'retain', targetClass: 'Class 9', targetSection: 'Section A' },
-  { id: 'p4', name: 'Chilkuri Shiva Prasad', rollNo: '9A04', currentClass: 'Class 9', currentSection: 'Section A', gender: 'Male', action: 'promote', targetClass: 'Class 10', targetSection: 'Section B' },
-  { id: 'p5', name: 'D Thanush', rollNo: '9A05', currentClass: 'Class 9', currentSection: 'Section A', gender: 'Male', action: 'left', targetClass: 'Left', targetSection: '-' },
-  { id: 'p6', name: 'Priya Sharma', rollNo: '10A01', currentClass: 'Class 10', currentSection: 'Section A', gender: 'Female', action: 'alumni', targetClass: 'Graduated', targetSection: 'Alumni' }
+const ALL_SOURCE_CLASSES = [
+  'Nursery A', 'Nursery B',
+  'LKG A', 'LKG B',
+  'UKG A', 'UKG B',
+  'Class 1A', 'Class 1B',
+  'Class 2A', 'Class 2B',
+  'Class 3A', 'Class 3B',
+  'Class 4A', 'Class 4B',
+  'Class 5A', 'Class 5B',
+  'Class 6A', 'Class 6B',
+  'Class 7A', 'Class 7B',
+  'Class 8A', 'Class 8B',
+  'Class 9A', 'Class 9B',
+  'Class 10A', 'Class 10B'
+];
+
+const ALL_DESTINATION_CLASSES: Record<string, string[]> = {
+  'Nursery': ['LKG A', 'LKG B'],
+  'LKG': ['UKG A', 'UKG B'],
+  'UKG': ['Class 1A', 'Class 1B'],
+  'Class 1': ['Class 2A', 'Class 2B'],
+  'Class 2': ['Class 3A', 'Class 3B'],
+  'Class 3': ['Class 4A', 'Class 4B'],
+  'Class 4': ['Class 5A', 'Class 5B'],
+  'Class 5': ['Class 6A', 'Class 6B'],
+  'Class 6': ['Class 7A', 'Class 7B'],
+  'Class 7': ['Class 8A', 'Class 8B'],
+  'Class 8': ['Class 9A', 'Class 9B'],
+  'Class 9': ['Class 10A', 'Class 10B'],
+  'Class 10': ['Alumni Network']
+};
+
+const autoDestinationMap: Record<string, string> = {
+  'Nursery A': 'LKG A', 'Nursery B': 'LKG B',
+  'LKG A': 'UKG A', 'LKG B': 'UKG B',
+  'UKG A': 'Class 1A', 'UKG B': 'Class 1B',
+  'Class 1A': 'Class 2A', 'Class 1B': 'Class 2B',
+  'Class 2A': 'Class 3A', 'Class 2B': 'Class 3B',
+  'Class 3A': 'Class 4A', 'Class 3B': 'Class 4B',
+  'Class 4A': 'Class 5A', 'Class 4B': 'Class 5B',
+  'Class 5A': 'Class 6A', 'Class 5B': 'Class 6B',
+  'Class 6A': 'Class 7A', 'Class 6B': 'Class 7B',
+  'Class 7A': 'Class 8A', 'Class 7B': 'Class 8B',
+  'Class 8A': 'Class 9A', 'Class 8B': 'Class 9B',
+  'Class 9A': 'Class 10A', 'Class 9B': 'Class 10B',
+  'Class 10A': 'Alumni Network', 'Class 10B': 'Alumni Network'
+};
+
+// Helper function to extract grade key (e.g. "Class 8A" -> "Class 8", "Nursery A" -> "Nursery")
+const getGradeKey = (sourceClassStr: string) => {
+  if (sourceClassStr.startsWith('Nursery')) return 'Nursery';
+  if (sourceClassStr.startsWith('LKG')) return 'LKG';
+  if (sourceClassStr.startsWith('UKG')) return 'UKG';
+  const match = sourceClassStr.match(/(Class\s+\d+)/i);
+  return match ? match[1] : 'Class 8';
+};
+
+const MOCK_CLASS_8A_STUDENTS: StudentPromotionItem[] = [
+  { id: '160', name: 'Pogula Sanjay Goud', gender: 'Male', rollNo: '160', status: 'Active', action: 'promote' },
+  { id: '161', name: 'Pogula Swathi', gender: 'Female', rollNo: '161', status: 'Active', action: 'promote' },
+  { id: '162', name: 'Rathod Maheshwari', gender: 'Female', rollNo: '162', status: 'Active', action: 'promote' },
+  { id: '163', name: 'Sara Sathvik', gender: 'Male', rollNo: '163', status: 'Active', action: 'promote' },
+  { id: '164', name: 'Sara Uday Kiran', gender: 'Male', rollNo: '164', status: 'Active', action: 'promote' },
+  { id: '148', name: 'Chakali Navadeep', gender: 'Male', rollNo: '148', status: 'Active', action: 'promote' },
+  { id: '149', name: 'Chakali Sharanya Sri', gender: 'Female', rollNo: '149', status: 'Active', action: 'promote' },
+  { id: '150', name: 'Chakali Sneha', gender: 'Female', rollNo: '150', status: 'Active', action: 'promote' },
+  { id: '151', name: 'Chakali Vishnu Charan', gender: 'Male', rollNo: '151', status: 'Active', action: 'promote' },
+  { id: '152', name: 'Dosada Vaishnavi', gender: 'Female', rollNo: '152', status: 'Active', action: 'promote' },
+  { id: '153', name: 'Gundala Manoj Kumar', gender: 'Male', rollNo: '153', status: 'Active', action: 'promote' },
+  { id: '154', name: 'Harijan Nani', gender: 'Male', rollNo: '154', status: 'Active', action: 'promote' },
+  { id: '155', name: 'Karike Chandana', gender: 'Female', rollNo: '155', status: 'Active', action: 'promote' },
+  { id: '156', name: 'Mohammad Sohel Khan', gender: 'Male', rollNo: '156', status: 'Active', action: 'promote' },
+  { id: '157', name: 'P Akhil', gender: 'Male', rollNo: '157', status: 'Active', action: 'promote' },
+  { id: '158', name: 'P Pranaya', gender: 'Female', rollNo: '158', status: 'Active', action: 'promote' },
+  { id: '159', name: 'Papayolla Archana', gender: 'Female', rollNo: '159', status: 'Active', action: 'promote' }
+];
+
+const MOCK_CLASS_10A_STUDENTS: StudentPromotionItem[] = [
+  { id: '1472', name: 'Vaarla Bhanu Prasad', gender: 'Male', rollNo: '1472', status: 'Active', action: 'alumni' },
+  { id: '1604', name: 'Vadde Mahender', gender: 'Male', rollNo: '1604', status: 'Active', action: 'alumni' },
+  { id: '862', name: 'Vadde Dileep', gender: 'Male', rollNo: '862', status: 'Active', action: 'alumni' },
+  { id: '919', name: 'P Tejasri', gender: 'Female', rollNo: '919', status: 'Active', action: 'alumni' },
+  { id: '883', name: 'P Anjali', gender: 'Female', rollNo: '883', status: 'Active', action: 'alumni' },
+  { id: '1603', name: 'K Varsha', gender: 'Female', rollNo: '1603', status: 'Active', action: 'alumni' },
+  { id: '1086', name: 'K Sravani', gender: 'Female', rollNo: '1086', status: 'Active', action: 'alumni' },
+  { id: '1469', name: 'H Sri Laxmi', gender: 'Female', rollNo: '1469', status: 'Active', action: 'alumni' },
+  { id: '910', name: 'G Archana', gender: 'Female', rollNo: '910', status: 'Active', action: 'alumni' },
+  { id: '918', name: 'Ch Sowmya', gender: 'Female', rollNo: '918', status: 'Active', action: 'alumni' },
+  { id: '1327', name: 'Ch Jeevitha', gender: 'Female', rollNo: '1327', status: 'Active', action: 'alumni' },
+  { id: '1050', name: 'Ch Geetanjali', gender: 'Female', rollNo: '1050', status: 'Active', action: 'alumni' },
+  { id: '892', name: 'C UshaSri', gender: 'Female', rollNo: '892', status: 'Active', action: 'alumni' },
+  { id: '1763', name: 'A Pranathi', gender: 'Female', rollNo: '1763', status: 'Active', action: 'alumni' },
+  { id: '2026', name: 'Appajigudem Akshara', gender: 'Female', rollNo: 'STDde2026001', status: 'Active', action: 'alumni' }
 ];
 
 export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
-  const [sourceAy, setSourceAy] = useState('2025-2026');
-  const [targetAy, setTargetAy] = useState('2026-2027');
-  const [sourceClass, setSourceClass] = useState('Class 9 — Section A');
-  const [students, setStudents] = useState<StudentPromotionItem[]>(MOCK_PROMOTION_STUDENTS);
+  const [currentAcademicYear] = useState('2026-2027');
+  const [upcomingAcademicYear] = useState('2026-2027');
+  const [sourceClass, setSourceClass] = useState('Class 8A');
+  const [targetClass, setTargetClass] = useState('Class 9A');
   const [searchQuery, setSearchQuery] = useState('');
+  const [studentsList, setStudentsList] = useState<StudentPromotionItem[]>(MOCK_CLASS_8A_STUDENTS);
+
+  // Dropdown Modal States
+  const [showSourceClassModal, setShowSourceClassModal] = useState(false);
+  const [showTargetClassModal, setShowTargetClassModal] = useState(false);
 
   // Confirmation Modal State
   const [showExecuteModal, setShowExecuteModal] = useState(false);
 
-  // Custom Toast State
-  const [toastData, setToastData] = useState<{ visible: boolean; title: string; message: string; type?: 'success' | 'warning' }>({
-    visible: false, title: '', message: '', type: 'success'
+  // Toast State
+  const [toastData, setToastData] = useState<{ visible: boolean; title: string; message: string }>({
+    visible: false, title: '', message: ''
   });
 
-  const showToast = (title: string, message: string, type: 'success' | 'warning' = 'success') => {
-    setToastData({ visible: true, title, message, type });
+  const isClass10Source = sourceClass.startsWith('Class 10');
+
+  // Compute next available destination options based on Source Class
+  const currentGradeKey = getGradeKey(sourceClass);
+  const availableDestinationOptions = ALL_DESTINATION_CLASSES[currentGradeKey] || ['Class 9A', 'Class 9B'];
+
+  // Handle Source Class Selection with Auto-Fill Destination Class
+  const handleSelectSourceClass = (selected: string) => {
+    setSourceClass(selected);
+    setShowSourceClassModal(false);
+
+    // Auto fill destination class to next level
+    const autoDest = autoDestinationMap[selected] || 'Class 9A';
+    setTargetClass(autoDest);
+
+    // Load roster data & default actions
+    if (selected.startsWith('Class 10')) {
+      setStudentsList(MOCK_CLASS_10A_STUDENTS.map(s => ({ ...s, action: 'alumni' })));
+    } else {
+      setStudentsList(MOCK_CLASS_8A_STUDENTS.map(s => ({ ...s, action: 'promote' })));
+    }
   };
 
-  const handleSetAllAction = (action: 'promote' | 'retain' | 'alumni') => {
-    setStudents(prev => prev.map(s => ({
-      ...s,
-      action,
-      targetClass: action === 'promote' ? 'Class 10' : action === 'retain' ? s.currentClass : action === 'alumni' ? 'Graduated' : 'Left',
-      targetSection: action === 'promote' ? 'Section A' : action === 'retain' ? s.currentSection : action === 'alumni' ? 'Alumni' : '-'
-    })));
-    showToast('Bulk Decision Applied', `All students set to ${action.toUpperCase()}.`, 'success');
+  const handleSetAllAction = (act: 'promote' | 'retain' | 'left' | 'alumni') => {
+    setStudentsList(prev => prev.map(s => ({ ...s, action: act })));
   };
 
-  const handleStudentActionChange = (id: string, action: 'promote' | 'retain' | 'left' | 'alumni') => {
-    setStudents(prev => prev.map(s => {
-      if (s.id === id) {
-        return {
-          ...s,
-          action,
-          targetClass: action === 'promote' ? 'Class 10' : action === 'retain' ? s.currentClass : action === 'alumni' ? 'Graduated' : 'Left',
-          targetSection: action === 'promote' ? 'Section A' : action === 'retain' ? s.currentSection : action === 'alumni' ? 'Alumni' : '-'
-        };
-      }
-      return s;
-    }));
+  const handleStudentActionChange = (id: string, act: 'promote' | 'retain' | 'left' | 'alumni') => {
+    setStudentsList(prev => prev.map(s => s.id === id ? { ...s, action: act } : s));
   };
 
   const handleConfirmPromotion = () => {
     setShowExecuteModal(false);
-    showToast(
-      'Promotions Processed!',
-      `Successfully migrated students from ${sourceAy} (${sourceClass}) to ${targetAy}.`,
-      'success'
-    );
+    setToastData({
+      visible: true,
+      title: isClass10Source ? 'Graduation Complete!' : 'Promotions Processed!',
+      message: isClass10Source 
+        ? `Successfully graduated ${studentsList.filter(s => s.action === 'alumni').length} students from ${sourceClass} into the Alumni directory.`
+        : `Successfully promoted ${studentsList.filter(s => s.action === 'promote').length} students from ${sourceClass} to ${targetClass}.`
+    });
   };
 
-  const promoteCount = students.filter(s => s.action === 'promote').length;
-  const retainCount = students.filter(s => s.action === 'retain').length;
-  const alumniCount = students.filter(s => s.action === 'alumni').length;
-  const leftCount = students.filter(s => s.action === 'left').length;
-
-  const filteredStudents = students.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredStudents = studentsList.filter(s =>
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.rollNo.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -102,8 +190,8 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
 
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
-        title="Class Promotions Engine"
-        subtitle="Batch Migration & Academic Progression"
+        title="Student Promotion"
+        subtitle={`ACADEMIC YEAR: ${currentAcademicYear} (Current)`}
         icon={
           <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
             <TrendingUp size={20} color="#00f1a1" />
@@ -113,111 +201,157 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* Source & Target Academic Year Transition Banner */}
-        <View className="px-5 mb-5">
-          <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
-            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Academic Year Migration Config</Text>
-            
-            <View className="flex-row items-center justify-between mb-3 bg-black/40 p-3 rounded-2xl border border-white/5">
-              <View className="flex-1">
-                <Text className="text-white/50 text-[10px] uppercase font-bold">Source Year</Text>
-                <Text className="text-[#00f1a1] text-xs font-extrabold mt-0.5">{sourceAy}</Text>
-              </View>
-
-              <View className="w-8 h-8 rounded-full bg-[#00f1a1]/15 border border-[#00f1a1]/40 items-center justify-center mx-2">
-                <ArrowRight size={16} color="#00f1a1" />
-              </View>
-
-              <View className="flex-1 items-end">
-                <Text className="text-white/50 text-[10px] uppercase font-bold">Target Next Year</Text>
-                <Text className="text-sky-400 text-xs font-extrabold mt-0.5">{targetAy}</Text>
-              </View>
-            </View>
-
-            <View className="bg-white/5 p-3 rounded-2xl border border-white/10 flex-row justify-between items-center">
-              <View>
-                <Text className="text-white text-xs font-bold">Source Class Section</Text>
-                <Text className="text-white/50 text-[10px]">{sourceClass}</Text>
-              </View>
-              <View className="bg-[#00f1a1]/20 border border-[#00f1a1]/40 px-2.5 py-1 rounded-xl">
-                <Text className="text-[#00f1a1] text-[10px] font-bold">{students.length} Students</Text>
-              </View>
-            </View>
-          </GlassCard>
+        {/* Title Dashboard Section */}
+        <View className="px-5 mb-4">
+          <View className="flex-row items-center">
+            <GraduationCap size={20} color="#00f1a1" style={{ marginRight: 8 }} />
+            <Text className="text-white font-extrabold text-lg">Student Promotion Dashboard</Text>
+          </View>
+          <Text className="text-white/50 text-xs mt-0.5">
+            Promote students of the present class to the next class level for the upcoming academic year.
+          </Text>
         </View>
 
-        {/* 4 Summary Stats Cards */}
-        <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">To Promote</Text>
-              <TrendingUp size={14} color="#00f1a1" />
+        {/* 1. Source & 2. Destination Batch Config Grid */}
+        <View className="px-5 mb-4 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
+          {/* Card 1: Source Class / Batch */}
+          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/90">
+            <View className="flex-row items-center mb-2.5">
+              <View className="w-5 h-5 rounded-full bg-sky-500/20 border border-sky-400/40 items-center justify-center mr-1.5">
+                <Text className="text-sky-400 text-[10px] font-extrabold">1</Text>
+              </View>
+              <Text className="text-white/80 text-[10.5px] font-extrabold">Source Class / Batch</Text>
             </View>
-            <Text className="text-[#00f1a1] text-xl font-extrabold">{promoteCount} Students</Text>
-            <Text className="text-emerald-400 text-[10px] font-semibold mt-0.5">● Next Class</Text>
-          </GlassCard>
 
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">To Retain</Text>
-              <RefreshCw size={14} color="#f59e0b" />
+            <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Academic Year</Text>
+            <View className="bg-white/5 border border-white/15 rounded-xl px-2.5 py-1.5 mb-2.5">
+              <Text className="text-white text-xs font-bold">{currentAcademicYear}</Text>
             </View>
-            <Text className="text-amber-400 text-xl font-extrabold">{retainCount} Students</Text>
-            <Text className="text-amber-300 text-[10px] font-semibold mt-0.5">● Repeat Same Class</Text>
-          </GlassCard>
 
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">To Alumni</Text>
-              <GraduationCap size={14} color="#c084fc" />
-            </View>
-            <Text className="text-purple-300 text-xl font-extrabold">{alumniCount} Graduates</Text>
-            <Text className="text-purple-400 text-[10px] font-semibold mt-0.5">● Class 10 Graduates</Text>
-          </GlassCard>
-
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Left / TC</Text>
-              <UserX size={14} color="#ff516a" />
-            </View>
-            <Text className="text-rose-400 text-xl font-extrabold">{leftCount} Left</Text>
-            <Text className="text-rose-300 text-[10px] font-semibold mt-0.5">● Transferred</Text>
-          </GlassCard>
-        </View>
-
-        {/* Bulk Action Controls */}
-        <View className="px-5 mb-5">
-          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-2">Bulk Quick Decision Shortcuts</Text>
-          <View className="flex-row" style={{ gap: 8 }}>
+            <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Class & Section</Text>
             <Pressable
-              onPress={() => handleSetAllAction('promote')}
-              className="flex-1 bg-emerald-500/15 border border-emerald-500/40 py-2.5 rounded-xl items-center"
+              onPress={() => setShowSourceClassModal(true)}
+              className="bg-[#00f1a1]/10 border border-[#00f1a1]/40 rounded-xl px-2.5 py-2 flex-row justify-between items-center"
             >
-              <Text className="text-[#00f1a1] text-xs font-bold">Promote All</Text>
+              <Text className="text-[#00f1a1] text-xs font-bold mr-1" numberOfLines={1}>{sourceClass}</Text>
+              <ChevronDown size={14} color="#00f1a1" />
             </Pressable>
+          </GlassCard>
 
+          {/* Card 2: Destination Class / Batch */}
+          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/90">
+            <View className="flex-row items-center mb-2.5">
+              <View className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 items-center justify-center mr-1.5">
+                <Text className="text-[#00f1a1] text-[10px] font-extrabold">2</Text>
+              </View>
+              <Text className="text-white/80 text-[10.5px] font-extrabold">Destination Class / Batch</Text>
+            </View>
+
+            {isClass10Source ? (
+              /* Class 10 Destination Card: Alumni Network Banner */
+              <View className="items-center py-2">
+                <View className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 items-center justify-center mb-2">
+                  <GraduationCap size={20} color="#c084fc" />
+                </View>
+                <Text className="text-purple-300 font-extrabold text-xs text-center">Alumni Network</Text>
+                <Text className="text-white/50 text-[9.5px] text-center mt-0.5 leading-tight">
+                  Class 10 students graduate and join the Alumni directory.
+                </Text>
+                <View className="bg-purple-500/20 border border-purple-500/40 px-2.5 py-1 rounded-xl mt-2">
+                  <Text className="text-purple-300 text-[10px] font-extrabold">Graduates → Alumni</Text>
+                </View>
+              </View>
+            ) : (
+              /* Standard Destination Class Card */
+              <>
+                <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Upcoming Year</Text>
+                <View className="bg-white/5 border border-white/15 rounded-xl px-2.5 py-1.5 mb-2.5">
+                  <Text className="text-white text-xs font-bold">{upcomingAcademicYear}</Text>
+                </View>
+
+                <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Target Class & Section</Text>
+                <Pressable
+                  onPress={() => setShowTargetClassModal(true)}
+                  className="bg-sky-500/10 border border-sky-400/40 rounded-xl px-2.5 py-2 flex-row justify-between items-center"
+                >
+                  <Text className="text-sky-400 text-xs font-bold mr-1" numberOfLines={1}>{targetClass}</Text>
+                  <ChevronDown size={14} color="#38bdf8" />
+                </Pressable>
+              </>
+            )}
+          </GlassCard>
+        </View>
+
+        {/* Transition Rules Info Box */}
+        <View className="px-5 mb-4">
+          <View className="bg-white/5 border border-white/10 p-3.5 rounded-2xl">
+            <View className="flex-row items-center mb-1.5">
+              <Info size={14} color="#38bdf8" style={{ marginRight: 6 }} />
+              <Text className="text-white font-extrabold text-xs">Transition Rules:</Text>
+            </View>
+            {isClass10Source ? (
+              <>
+                <Text className="text-white/60 text-[11px] leading-relaxed">
+                  • <Text className="text-purple-300 font-bold">Alumni</Text> graduates the student and registers them in the Alumni network automatically.
+                </Text>
+                <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
+                  • <Text className="text-amber-400 font-bold">Retain</Text> assigns the student to the corresponding class level under the new year (keeps them in the same grade).
+                </Text>
+                <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
+                  • <Text className="text-rose-400 font-bold">Left</Text> updates the student status to "Left" (for transfers or dropouts). They are excluded from future year lists.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text className="text-white/60 text-[11px] leading-relaxed">
+                  • <Text className="text-[#00f1a1] font-bold">Promote</Text> updates the student to the selected target batch under the upcoming year.
+                </Text>
+                <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
+                  • <Text className="text-amber-400 font-bold">Retain</Text> assigns the student to the corresponding class level under the new year (keeps them in the same grade).
+                </Text>
+                <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
+                  • <Text className="text-rose-400 font-bold">Left</Text> updates the student status to "Left" (for transfers or dropouts). They are excluded from future year lists.
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Students List Header & Search Bar */}
+        <View className="px-5 mb-3 flex-row justify-between items-center">
+          <Text className="text-white font-extrabold text-base">Students List ({filteredStudents.length})</Text>
+
+          {/* Bulk Action Pills */}
+          <View className="flex-row items-center" style={{ gap: 6 }}>
+            {!isClass10Source && (
+              <Pressable
+                onPress={() => handleSetAllAction('promote')}
+                className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2.5 py-1 rounded-xl"
+              >
+                <Text className="text-[#00f1a1] text-[10.5px] font-extrabold">All Promote</Text>
+              </Pressable>
+            )}
             <Pressable
               onPress={() => handleSetAllAction('retain')}
-              className="flex-1 bg-amber-500/15 border border-amber-500/40 py-2.5 rounded-xl items-center"
+              className="bg-amber-500/15 border border-amber-500/40 px-2.5 py-1 rounded-xl"
             >
-              <Text className="text-amber-400 text-xs font-bold">Retain All</Text>
+              <Text className="text-amber-400 text-[10.5px] font-extrabold">All Retain</Text>
             </Pressable>
-
             <Pressable
-              onPress={() => handleSetAllAction('alumni')}
-              className="flex-1 bg-purple-500/15 border border-purple-500/40 py-2.5 rounded-xl items-center"
+              onPress={() => handleSetAllAction('left')}
+              className="bg-rose-500/15 border border-rose-500/40 px-2.5 py-1 rounded-xl"
             >
-              <Text className="text-purple-300 text-xs font-bold">Alumni All</Text>
+              <Text className="text-rose-400 text-[10.5px] font-extrabold">All Left</Text>
             </Pressable>
           </View>
         </View>
 
-        {/* Search Input */}
+        {/* Search Bar */}
         <View className="px-5 mb-4">
-          <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
-            <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+          <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2 shadow-md">
+            <Search size={15} color="#00f1a1" style={{ marginRight: 8 }} />
             <TextInput
-              placeholder="Search student by name or roll number..."
+              placeholder="Search students..."
               placeholderTextColor="rgba(255, 255, 255, 0.4)"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -226,112 +360,232 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')}>
-                <X size={15} color="rgba(255, 255, 255, 0.5)" />
+                <X size={14} color="rgba(255, 255, 255, 0.5)" />
               </Pressable>
             )}
           </View>
         </View>
 
-        {/* Student Roster Promotion Decision List */}
+        {/* Student Roster Cards */}
         <View className="px-5 mb-5">
-          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Individual Student Promotion Decisions</Text>
-
           {filteredStudents.map(st => (
-            <GlassCard key={st.id} intensity="low" className="mb-3 p-4 border-white/10 bg-[#101415]/90">
-              <View className="flex-row justify-between items-center mb-3 pb-2.5 border-b border-white/10">
-                <View className="flex-row items-center flex-1 mr-2">
-                  <View className="w-9 h-9 rounded-full bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
-                    <Text className="text-[#00f1a1] text-xs font-extrabold">{st.name.slice(0, 2).toUpperCase()}</Text>
+            <GlassCard key={st.id} intensity="low" className="mb-2.5 p-3.5 border-white/10 bg-[#101415]/90">
+              <View className="flex-row justify-between items-center">
+                <View className="flex-1 mr-2">
+                  <View className="flex-row items-center">
+                    <Text className="text-white font-extrabold text-xs mr-1.5">{st.name}</Text>
+                    <Text className="text-white/40 text-[10px]">({st.gender})</Text>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-white font-bold text-xs">{st.name}</Text>
-                    <Text className="text-white/50 text-[10px]">Roll: {st.rollNo} • Current: {st.currentClass} {st.currentSection}</Text>
+                  <View className="flex-row items-center mt-1">
+                    <Text className="text-white/50 text-[10px] mr-3">Roll: {st.rollNo}</Text>
+                    <View className="bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md">
+                      <Text className="text-[#00f1a1] text-[9px] font-bold">{st.status}</Text>
+                    </View>
                   </View>
                 </View>
 
-                <View className="bg-white/5 border border-white/10 px-2.5 py-1 rounded-xl">
-                  <Text className="text-sky-400 text-[10px] font-bold">Target: {st.targetClass}</Text>
+                {/* Transition Action Buttons */}
+                <View className="flex-row items-center" style={{ gap: 4 }}>
+                  {isClass10Source ? (
+                    /* Class 10: Alumni | Retain | Left */
+                    <>
+                      <Pressable
+                        onPress={() => handleStudentActionChange(st.id, 'alumni')}
+                        className={`px-3 py-1.5 rounded-xl border flex-row items-center ${st.action === 'alumni' ? 'bg-purple-600 border-purple-500' : 'bg-white/5 border-white/15'}`}
+                      >
+                        <GraduationCap size={12} color={st.action === 'alumni' ? '#ffffff' : '#c084fc'} style={{ marginRight: 3 }} />
+                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'alumni' ? 'text-white' : 'text-purple-300'}`}>Alumni</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => handleStudentActionChange(st.id, 'retain')}
+                        className={`px-2.5 py-1.5 rounded-xl border ${st.action === 'retain' ? 'bg-amber-500 border-amber-500' : 'bg-white/5 border-white/15'}`}
+                      >
+                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'retain' ? 'text-[#101415]' : 'text-white/70'}`}>Retain</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => handleStudentActionChange(st.id, 'left')}
+                        className={`px-2.5 py-1.5 rounded-xl border ${st.action === 'left' ? 'bg-rose-500 border-rose-500' : 'bg-white/5 border-white/15'}`}
+                      >
+                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'left' ? 'text-white' : 'text-white/70'}`}>Left</Text>
+                      </Pressable>
+                    </>
+                  ) : (
+                    /* Standard Grade: Promote | Retain | Left */
+                    <>
+                      <Pressable
+                        onPress={() => handleStudentActionChange(st.id, 'promote')}
+                        className={`px-3 py-1.5 rounded-xl border flex-row items-center ${st.action === 'promote' ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                      >
+                        <TrendingUp size={12} color={st.action === 'promote' ? '#101415' : '#00f1a1'} style={{ marginRight: 3 }} />
+                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'promote' ? 'text-[#101415]' : 'text-[#00f1a1]'}`}>Promote</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => handleStudentActionChange(st.id, 'retain')}
+                        className={`px-2.5 py-1.5 rounded-xl border ${st.action === 'retain' ? 'bg-amber-500 border-amber-500' : 'bg-white/5 border-white/15'}`}
+                      >
+                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'retain' ? 'text-[#101415]' : 'text-white/70'}`}>Retain</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => handleStudentActionChange(st.id, 'left')}
+                        className={`px-2.5 py-1.5 rounded-xl border ${st.action === 'left' ? 'bg-rose-500 border-rose-500' : 'bg-white/5 border-white/15'}`}
+                      >
+                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'left' ? 'text-white' : 'text-white/70'}`}>Left</Text>
+                      </Pressable>
+                    </>
+                  )}
                 </View>
-              </View>
-
-              {/* Action Decision Selector Pills */}
-              <View className="flex-row justify-between" style={{ gap: 6 }}>
-                {(['promote', 'retain', 'left', 'alumni'] as const).map(act => {
-                  const isSel = st.action === act;
-                  const getColors = () => {
-                    if (!isSel) return 'bg-white/5 border-white/10 text-white/50';
-                    if (act === 'promote') return 'bg-[#00f1a1] border-[#00f1a1] text-[#101415]';
-                    if (act === 'retain') return 'bg-amber-500 border-amber-500 text-[#101415]';
-                    if (act === 'alumni') return 'bg-purple-500 border-purple-500 text-white';
-                    return 'bg-rose-500 border-rose-500 text-white';
-                  };
-
-                  return (
-                    <Pressable
-                      key={act}
-                      onPress={() => handleStudentActionChange(st.id, act)}
-                      className={`flex-1 py-1.5 rounded-xl border items-center justify-center ${getColors()}`}
-                    >
-                      <Text className={`text-[10px] font-extrabold capitalize ${isSel && (act === 'promote' || act === 'retain') ? 'text-[#101415]' : isSel ? 'text-white' : 'text-white/60'}`}>
-                        {act}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
               </View>
             </GlassCard>
           ))}
         </View>
 
-        {/* Execute Promotion Submit Button */}
+        {/* Bottom Execute Action Button */}
         <View className="px-5 mb-5">
           <Pressable
             onPress={() => setShowExecuteModal(true)}
-            className="w-full py-4 rounded-2xl bg-[#00f1a1] items-center justify-center shadow-[0_0_20px_rgba(0,241,161,0.4)] flex-row"
+            className={`w-full py-4 rounded-2xl items-center justify-center flex-row shadow-lg ${
+              isClass10Source 
+                ? 'bg-purple-600 shadow-[0_0_20px_rgba(192,132,252,0.4)]' 
+                : 'bg-[#00f1a1] shadow-[0_0_20px_rgba(0,241,161,0.4)]'
+            }`}
           >
-            <TrendingUp size={18} color="#101415" style={{ marginRight: 8 }} />
-            <Text className="text-[#101415] font-extrabold text-sm">Execute Promotions Process ({students.length})</Text>
+            {isClass10Source ? (
+              <>
+                <GraduationCap size={20} color="#ffffff" style={{ marginRight: 8 }} />
+                <Text className="text-white font-extrabold text-sm">
+                  Graduate to Alumni ({studentsList.length} students)
+                </Text>
+              </>
+            ) : (
+              <>
+                <ArrowRight size={18} color="#101415" style={{ marginRight: 8 }} />
+                <Text className="text-[#101415] font-extrabold text-sm">
+                  Execute Promotion ({studentsList.length} students)
+                </Text>
+              </>
+            )}
           </Pressable>
         </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* CONFIRM EXECUTE PROMOTIONS MODAL */}
+      {/* SOURCE CLASS SELECTION MODAL */}
+      <Modal visible={showSourceClassModal} transparent animationType="slide" onRequestClose={() => setShowSourceClassModal(false)}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <Text className="text-white font-bold text-base">Select Source Class Section</Text>
+              <Pressable onPress={() => setShowSourceClassModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ maxHeight: 300 }}>
+              <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                {ALL_SOURCE_CLASSES.map(cls => {
+                  const isSel = sourceClass === cls;
+                  return (
+                    <Pressable
+                      key={cls}
+                      onPress={() => handleSelectSourceClass(cls)}
+                      className={`w-[48%] py-3 rounded-xl border items-center ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                    >
+                      <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* DYNAMIC TARGET DESTINATION CLASS SELECTION MODAL (FILTERED TO NEXT GRADE ONLY) */}
+      <Modal visible={showTargetClassModal} transparent animationType="slide" onRequestClose={() => setShowTargetClassModal(false)}>
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-sky-400/40 rounded-3xl w-full max-w-sm p-5 shadow-[0_0_30px_rgba(56,189,248,0.3)]">
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <View>
+                <Text className="text-white font-bold text-base">Target Destination Class</Text>
+                <Text className="text-sky-400 text-[10px] font-semibold">Showing next grade options for {sourceClass}</Text>
+              </View>
+              <Pressable onPress={() => setShowTargetClassModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+
+            <ScrollView style={{ maxHeight: 300 }}>
+              <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+                {availableDestinationOptions.map(cls => {
+                  const isSel = targetClass === cls;
+                  return (
+                    <Pressable
+                      key={cls}
+                      onPress={() => {
+                        setTargetClass(cls);
+                        setShowTargetClassModal(false);
+                      }}
+                      className={`w-full py-3 rounded-xl border items-center ${isSel ? 'bg-sky-400 border-sky-400' : 'bg-white/5 border-white/15'}`}
+                    >
+                      <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* EXECUTE PROMOTION CONFIRM MODAL */}
       <Modal visible={showExecuteModal} transparent animationType="fade" onRequestClose={() => setShowExecuteModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
           <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className="w-14 h-14 rounded-full bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mb-4">
-              <TrendingUp size={28} color="#00f1a1" />
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${isClass10Source ? 'bg-purple-500/20 border-purple-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+              {isClass10Source ? (
+                <GraduationCap size={28} color="#c084fc" />
+              ) : (
+                <TrendingUp size={28} color="#00f1a1" />
+              )}
             </View>
 
-            <Text className="text-white text-lg font-extrabold text-center mb-1">Execute Class Promotions?</Text>
+            <Text className="text-white text-lg font-extrabold text-center mb-1">
+              {isClass10Source ? 'Graduate Class 10 Students?' : 'Execute Student Promotions?'}
+            </Text>
             <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">
-              Are you sure you want to promote {promoteCount} students, retain {retainCount}, and transfer {alumniCount} to Alumni? This action will update student active class records for {targetAy}.
+              {isClass10Source 
+                ? `Are you sure you want to graduate ${studentsList.length} Class 10 students into the Alumni directory for ${upcomingAcademicYear}?`
+                : `Are you sure you want to promote ${studentsList.length} students from ${sourceClass} to ${targetClass} for ${upcomingAcademicYear}?`}
             </Text>
 
             <View className="flex-row w-full" style={{ gap: 10 }}>
               <Pressable onPress={() => setShowExecuteModal(false)} className="flex-1 py-3.5 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleConfirmPromotion} className="flex-1 py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
-                <Text className="text-[#101415] font-extrabold text-xs">Execute Migration</Text>
+              <Pressable 
+                onPress={handleConfirmPromotion} 
+                className={`flex-1 py-3.5 rounded-xl items-center ${isClass10Source ? 'bg-purple-600' : 'bg-[#00f1a1]'}`}
+              >
+                <Text className={`font-extrabold text-xs ${isClass10Source ? 'text-white' : 'text-[#101415]'}`}>
+                  {isClass10Source ? 'Graduate All' : 'Confirm Migration'}
+                </Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* CUSTOM TOAST MODAL */}
+      {/* TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
           <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
-              {toastData.type === 'warning' ? (
-                <AlertCircle size={28} color="#f59e0b" />
-              ) : (
-                <CheckCircle2 size={28} color="#00f1a1" />
-              )}
+            <View className="w-14 h-14 rounded-full bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mb-4">
+              <CheckCircle2 size={28} color="#00f1a1" />
             </View>
 
             <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
