@@ -77,7 +77,7 @@ export const AddStudentScreen: React.FC<any> = ({ navigation }) => {
 
   const handleFinish = () => {
     setSuccessModalVisible(false);
-    navigation.navigate('Students');
+    navigation.navigate('StudentDirectory');
   };
 
   return (

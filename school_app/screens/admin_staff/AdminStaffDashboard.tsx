@@ -13,7 +13,7 @@ import {
   Megaphone, UserPlus, Phone, MessageCircle, X, Check,
   ShieldCheck, Bell, UserCheck, BookOpen, TrendingUp,
   GraduationCap, Tag, Palmtree, CalendarOff, BarChart2, Layers,
-  UserSearch, PhoneCall, HelpCircle
+  UserSearch, PhoneCall, HelpCircle, School, FileBarChart, Trash2
 } from 'lucide-react-native';
 
 interface QuickAction {
@@ -26,8 +26,9 @@ interface QuickAction {
 export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
 
   const quickActions: QuickAction[] = [
-    { title: 'Student Profiles', icon: <UserSquare2 size={24} color="#00f1a1" />, route: 'Students' },
+    { title: 'Student Profiles', icon: <UserSquare2 size={24} color="#00f1a1" />, route: 'StudentDirectory' },
     { title: 'Add Student', icon: <UserPlus size={24} color="#00f1a1" />, route: 'AddStudent' },
+    { title: 'Classes', icon: <School size={24} color="#00f1a1" />, route: 'ClassManagement' },
     { title: 'Student Attendance', icon: <UserCheck size={24} color="#00f1a1" />, route: 'AttendanceMarking' },
     { title: 'Daily Diary View', icon: <BookOpen size={24} color="#00f1a1" />, route: 'DailyDiary' },
     { title: 'Classes Promotions', icon: <TrendingUp size={24} color="#00f1a1" />, route: 'ClassPromotions' },
@@ -42,6 +43,9 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
     { title: 'Circulars', icon: <Megaphone size={24} color="#00f1a1" />, route: 'Messages' },
     { title: 'Enquiry Leads', icon: <UserSearch size={24} color="#00f1a1" />, route: 'EnquiryLeads' },
     { title: 'Student Performance', icon: <BarChart2 size={24} color="#00f1a1" />, route: 'StudentPerformance' },
+    { title: 'Bus Tracking', icon: <Bus size={24} color="#00f1a1" />, route: 'BusTracking' },
+    { title: 'Reports & Analytics', icon: <FileBarChart size={24} color="#00f1a1" />, route: 'AnalyticsDashboard' },
+    { title: 'Recycle Bin', icon: <Trash2 size={24} color="#00f1a1" />, route: 'RecycleBin' },
   ];
 
   const feeDefaulters = [
@@ -96,7 +100,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
             value="1248" 
             icon={<Users size={20} color="#00f1a1" />}
             progress={0.65}
-            onPress={() => navigation.navigate('Students')}
+            onPress={() => navigation.navigate('StudentDirectory')}
           />
           <AdminStatCard 
             title="FEES DUE" 

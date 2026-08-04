@@ -44,6 +44,8 @@ import AlumniManagementScreen from '../screens/admin_staff/AlumniManagementScree
 import FeeCategoryScreen from '../screens/admin_staff/FeeCategoryScreen';
 import HolidayCalendarScreen from '../screens/admin_staff/HolidayCalendarScreen';
 import AddStudentScreen from '../screens/admin_staff/AddStudentScreen';
+import RecycleBinScreen from '../screens/admin_staff/RecycleBinScreen';
+import ClassManagementScreen from '../screens/admin_staff/ClassManagementScreen';
 
 // Teacher Screens
 import TeacherDashboard from '../screens/teachers/TeacherDashboard';
@@ -170,6 +172,7 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="EnquiryLeads" component={EnquiryLeadsScreen} />
       <AppStack.Screen name="StudentPerformance" component={StudentPerformanceScreen} />
       <AppStack.Screen name="StudentDirectory" component={StudentDirectoryScreen} />
+      <AppStack.Screen name="Students" component={StudentDirectoryScreen} />
       <AppStack.Screen name="SubstitutionManagement" component={SubstitutionManagementScreen} />
       <AppStack.Screen name="LeaveApplication" component={LeaveApplicationScreen} />
       <AppStack.Screen name="AnalyticsDashboard" component={AnalyticsDashboardScreen} />
@@ -178,6 +181,11 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="AdmissionsInfo" component={AdmissionsInfoScreen} />
       <AppStack.Screen name="AchievementsGallery" component={AchievementsGalleryScreen} />
       <AppStack.Screen name="FeeCollection" component={FeeCollectionScreen} />
+      <AppStack.Screen name="FeeList" component={FeeCollectionScreen} />
+      <AppStack.Screen name="Fees" component={FeeCollectionScreen} />
+      <AppStack.Screen name="Analytics" component={AnalyticsDashboardScreen} />
+      <AppStack.Screen name="Users" component={UserManagementScreen} />
+      <AppStack.Screen name="Broadcast" component={NotificationCenterScreen} />
       <AppStack.Screen name="FeeStructure" component={FeeStructureScreen} />
       <AppStack.Screen name="EnquiryForm" component={EnquiryFormScreen} />
       <AppStack.Screen name="TimetableBuilder" component={TimetableBuilderScreen} />
@@ -198,6 +206,8 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="FeeCategory" component={FeeCategoryScreen} />
       <AppStack.Screen name="HolidayCalendar" component={HolidayCalendarScreen} />
       <AppStack.Screen name="AddStudent" component={AddStudentScreen} />
+      <AppStack.Screen name="RecycleBin" component={RecycleBinScreen} />
+      <AppStack.Screen name="ClassManagement" component={ClassManagementScreen} />
     </AppStack.Navigator>
   );
 };
