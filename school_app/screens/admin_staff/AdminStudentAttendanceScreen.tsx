@@ -1,0 +1,443 @@
+import React, { useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { 
+  UserCheck, Users, UserX, Calendar, Search, 
+  CheckCircle2, AlertCircle, ChevronRight, ArrowLeft, 
+  School, AlertTriangle, ShieldCheck, ChevronLeft, Clock, Info
+} from 'lucide-react-native';
+import { AdminStaffHeader } from '../../components/AdminStaffHeader';
+import { GlassCard } from '../../components/GlassCard';
+
+export interface ClassItemSummary {
+  id: string;
+  className: string;      // e.g. "Class 9A"
+  grade: string;          // e.g. "Class 9"
+  section: string;        // e.g. "Section A"
+  teacherName: string;    // e.g. "Dr. Meenakshi Sundaram"
+  totalStudents: number;
+  presentToday: number;
+  absentToday: number;
+  todayAvg: number;       // e.g. 95.5%
+}
+
+export interface StudentAttendanceRecord {
+  id: string;
+  name: string;
+  initials: string;
+  rollNo: string;
+  totalLectures: number;
+  attended: number;
+  overallPct: number;
+  // Day status map for August 2026 (day number -> 'present' | 'absent' | 'partial')
+  attendanceMap: Record<number, 'present' | 'absent' | 'partial'>;
+}
+
+const MOCK_CLASSES_GRID: ClassItemSummary[] = [
+  { id: 'c1', className: 'Class 1A', grade: 'Class 1', section: 'A', teacherName: 'Mrs. Sunita Rao', totalStudents: 30, presentToday: 28, absentToday: 2, todayAvg: 93.3 },
+  { id: 'c2', className: 'Class 1B', grade: 'Class 1', section: 'B', teacherName: 'Mr. David Miller', totalStudents: 28, presentToday: 27, absentToday: 1, todayAvg: 96.4 },
+  { id: 'c3', className: 'Class 2A', grade: 'Class 2', section: 'A', teacherName: 'Mrs. Anita Sharma', totalStudents: 32, presentToday: 30, absentToday: 2, todayAvg: 93.7 },
+  { id: 'c4', className: 'Class 2B', grade: 'Class 2', section: 'B', teacherName: 'Mr. Rajesh Kumar', totalStudents: 31, presentToday: 29, absentToday: 2, todayAvg: 93.5 },
+  { id: 'c5', className: 'Class 3A', grade: 'Class 3', section: 'A', teacherName: 'Dr. Meenakshi Sundaram', totalStudents: 34, presentToday: 33, absentToday: 1, todayAvg: 97.0 },
+  { id: 'c6', className: 'Class 3B', grade: 'Class 3', section: 'B', teacherName: 'Mr. Vikramaditya Singh', totalStudents: 33, presentToday: 31, absentToday: 2, todayAvg: 93.9 },
+  { id: 'c7', className: 'Class 4A', grade: 'Class 4', section: 'A', teacherName: 'Mrs. Priya Nambiar', totalStudents: 35, presentToday: 34, absentToday: 1, todayAvg: 97.1 },
+  { id: 'c8', className: 'Class 4B', grade: 'Class 4', section: 'B', teacherName: 'Mr. Suresh Verma', totalStudents: 34, presentToday: 32, absentToday: 2, todayAvg: 94.1 },
+  { id: 'c9', className: 'Class 5A', grade: 'Class 5', section: 'A', teacherName: 'Mrs. Sunita Rao', totalStudents: 36, presentToday: 35, absentToday: 1, todayAvg: 97.2 },
+  { id: 'c10', className: 'Class 5B', grade: 'Class 5', section: 'B', teacherName: 'Mr. David Miller', totalStudents: 35, presentToday: 33, absentToday: 2, todayAvg: 94.2 },
+  { id: 'c11', className: 'Class 6A', grade: 'Class 6', section: 'A', teacherName: 'Mrs. Anita Sharma', totalStudents: 38, presentToday: 37, absentToday: 1, todayAvg: 97.3 },
+  { id: 'c12', className: 'Class 6B', grade: 'Class 6', section: 'B', teacherName: 'Mr. Rajesh Kumar', totalStudents: 37, presentToday: 35, absentToday: 2, todayAvg: 94.5 },
+  { id: 'c13', className: 'Class 7A', grade: 'Class 7', section: 'A', teacherName: 'Dr. Meenakshi Sundaram', totalStudents: 40, presentToday: 39, absentToday: 1, todayAvg: 97.5 },
+  { id: 'c14', className: 'Class 7B', grade: 'Class 7', section: 'B', teacherName: 'Mr. Vikramaditya Singh', totalStudents: 39, presentToday: 37, absentToday: 2, todayAvg: 94.8 },
+  { id: 'c15', className: 'Class 8A', grade: 'Class 8', section: 'A', teacherName: 'Mrs. Priya Nambiar', totalStudents: 44, presentToday: 43, absentToday: 1, todayAvg: 97.7 },
+  { id: 'c16', className: 'Class 9A', grade: 'Class 9', section: 'A', teacherName: 'Dr. Meenakshi Sundaram', totalStudents: 21, presentToday: 20, absentToday: 1, todayAvg: 95.2 },
+  { id: 'c17', className: 'Class 10A', grade: 'Class 10', section: 'A', teacherName: 'Mrs. Anita Sharma', totalStudents: 35, presentToday: 34, absentToday: 1, todayAvg: 97.1 }
+];
+
+const MOCK_CLASS_STUDENTS: StudentAttendanceRecord[] = [
+  { id: 's1', name: 'B Sandeep Goud', initials: 'BS', rollNo: '123', totalLectures: 45, attended: 42, overallPct: 93.3, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'partial', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'absent', 12: 'present', 13: 'present', 14: 'present' } },
+  { id: 's2', name: 'Banda Teja Sri', initials: 'BT', rollNo: '124', totalLectures: 45, attended: 44, overallPct: 97.7, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
+  { id: 's3', name: 'Chandippa Sragvi', initials: 'CS', rollNo: '125', totalLectures: 45, attended: 40, overallPct: 88.8, attendanceMap: { 1: 'present', 2: 'absent', 3: 'present', 4: 'present', 5: 'present', 6: 'absent', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'absent', 14: 'present' } },
+  { id: 's4', name: 'Chilkuri Shiva Prasad', initials: 'CS', rollNo: '126', totalLectures: 45, attended: 45, overallPct: 100.0, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
+  { id: 's5', name: 'D Thanush', initials: 'DT', rollNo: '127', totalLectures: 45, attended: 41, overallPct: 91.1, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'absent', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'absent', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
+  { id: 's6', name: 'Dutha Varshini', initials: 'DV', rollNo: '128', totalLectures: 45, attended: 43, overallPct: 95.5, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'absent', 12: 'present', 13: 'present', 14: 'present' } },
+  { id: 's7', name: 'Harijan Naveen Kumar', initials: 'HN', rollNo: '129', totalLectures: 45, attended: 39, overallPct: 86.6, attendanceMap: { 1: 'present', 2: 'absent', 3: 'present', 4: 'present', 5: 'absent', 6: 'present', 7: 'present', 8: 'present', 10: 'absent', 11: 'present', 12: 'present', 13: 'present', 14: 'absent' } },
+  { id: 's8', name: 'Kandikonda Ashwitha', initials: 'KA', rollNo: '130', totalLectures: 45, attended: 44, overallPct: 97.7, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
+  { id: 's9', name: 'Katikam Sreshta', initials: 'KS', rollNo: '131', totalLectures: 45, attended: 42, overallPct: 93.3, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'absent', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
+  { id: 's10', name: 'Kavali Chaithra', initials: 'KC', rollNo: '132', totalLectures: 45, attended: 45, overallPct: 100.0, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } }
+];
+
+export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
+  // Navigation level: 1 = Class Directory, 2 = Class Student List, 3 = Student Monthly Grid
+  const [viewLevel, setViewLevel] = useState<1 | 2 | 3>(1);
+  const [selectedClass, setSelectedClass] = useState<ClassItemSummary | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceRecord | null>(null);
+
+  // Search & Filter
+  const [searchQuery, setSearchQuery] = useState('');
+  const [academicYear, setAcademicYear] = useState('2026-2027 (Current)');
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(4); // Default 4 Aug
+
+  const filteredClasses = MOCK_CLASSES_GRID.filter(c => 
+    c.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.teacherName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const totalEnrolledAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.totalStudents, 0);
+  const totalPresentAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.presentToday, 0);
+  const totalAbsentAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.absentToday, 0);
+  const overallAvgAll = ((totalPresentAll / totalEnrolledAll) * 100).toFixed(1);
+
+  const handleSelectClassCard = (cls: ClassItemSummary) => {
+    setSelectedClass(cls);
+    setViewLevel(2);
+  };
+
+  const handleSelectStudent = (st: StudentAttendanceRecord) => {
+    setSelectedStudent(st);
+    setViewLevel(3);
+  };
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#0d2a24', '#121414']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+      
+      {/* Top Header */}
+      <AdminStaffHeader 
+        onBackPress={
+          viewLevel === 3 
+            ? () => setViewLevel(2) 
+            : viewLevel === 2 
+            ? () => setViewLevel(1) 
+            : (navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined)
+        }
+        title={
+          viewLevel === 3 
+            ? `${selectedStudent?.name}` 
+            : viewLevel === 2 
+            ? `${selectedClass?.className} — Student Attendance` 
+            : "Student Attendance"
+        }
+        subtitle={
+          viewLevel === 3 
+            ? `Roll: ${selectedStudent?.rollNo} | Class: ${selectedClass?.className}` 
+            : viewLevel === 2 
+            ? "Overall Percentages Directory" 
+            : `ACADEMIC YEAR: ${academicYear}`
+        }
+        icon={
+          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
+            <UserCheck size={20} color="#00f1a1" />
+          </View>
+        }
+      />
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
+        {/* TOP SUMMARY METRICS (Visible across all levels matching Web design) */}
+        <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
+          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-white/40 text-[10px] font-bold uppercase">Present Today</Text>
+              <CheckCircle2 size={14} color="#00f1a1" />
+            </View>
+            <Text className="text-[#00f1a1] text-xl font-extrabold">{totalPresentAll}</Text>
+            <Text className="text-white/50 text-[10px]">Out of {totalEnrolledAll}</Text>
+          </GlassCard>
+
+          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-white/40 text-[10px] font-bold uppercase">Absent Today</Text>
+              <UserX size={14} color="#ff516a" />
+            </View>
+            <Text className="text-rose-400 text-xl font-extrabold">{totalAbsentAll}</Text>
+            <Text className="text-white/50 text-[10px]">Alerts sent via WA+SMS</Text>
+          </GlassCard>
+
+          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-white/40 text-[10px] font-bold uppercase">Today's Avg</Text>
+              <UserCheck size={14} color="#38bdf8" />
+            </View>
+            <Text className="text-sky-400 text-xl font-extrabold">{overallAvgAll}%</Text>
+            <Text className="text-white/50 text-[10px]">August 2026</Text>
+          </GlassCard>
+
+          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-white/40 text-[10px] font-bold uppercase">Low Attendance</Text>
+              <AlertTriangle size={14} color="#f59e0b" />
+            </View>
+            <Text className="text-amber-400 text-xl font-extrabold">1 Class</Text>
+            <Text className="text-white/50 text-[10px]">Requires monthly data</Text>
+          </GlassCard>
+        </View>
+
+        {/* LEVEL 1: SCHOOL DIRECTORY — CLASSES */}
+        {viewLevel === 1 && (
+          <View>
+            <View className="px-5 mb-4 flex-row justify-between items-center">
+              <View>
+                <Text className="text-white text-base font-extrabold">School Directory — Classes</Text>
+                <Text className="text-white/50 text-xs">Select a class card to inspect student overall percentages</Text>
+              </View>
+            </View>
+
+            {/* Search Input */}
+            <View className="px-5 mb-4">
+              <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
+                <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+                <TextInput
+                  placeholder="Search classes..."
+                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  className="flex-1 text-white text-xs"
+                  style={{ paddingVertical: 0 }}
+                />
+              </View>
+            </View>
+
+            {/* Class Cards Grid */}
+            <View className="px-5 flex-row flex-wrap justify-between" style={{ gap: 12 }}>
+              {filteredClasses.map(cls => (
+                <Pressable
+                  key={cls.id}
+                  onPress={() => handleSelectClassCard(cls)}
+                  className="w-[48%] bg-[#101415]/90 border border-white/10 rounded-2xl p-3.5 shadow-lg active:opacity-80"
+                >
+                  <View className="flex-row items-center mb-2">
+                    <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2">
+                      <School size={16} color="#00f1a1" />
+                    </View>
+                    <Text className="text-white font-extrabold text-sm flex-1">{cls.className}</Text>
+                  </View>
+
+                  <Text className="text-white/60 text-[10px] font-semibold" numberOfLines={1}>
+                    Teacher: {cls.teacherName || 'Not assigned'}
+                  </Text>
+                  <Text className="text-white/40 text-[9.5px] font-medium mb-2.5">
+                    Total Students: {cls.totalStudents} Students
+                  </Text>
+
+                  {/* Attendance Pills */}
+                  <View className="flex-row items-center justify-between pt-2 border-t border-white/5">
+                    <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                      <Text className="text-[#00f1a1] text-[9.5px] font-bold">{cls.presentToday} Present</Text>
+                    </View>
+                    <View className="bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-md">
+                      <Text className="text-rose-400 text-[9.5px] font-bold">{cls.absentToday} Absent</Text>
+                    </View>
+                  </View>
+
+                  <View className="mt-2.5 flex-row items-center justify-end">
+                    <Text className="text-[#00f1a1] text-[10px] font-bold mr-1">View Attendance</Text>
+                    <ChevronRight size={12} color="#00f1a1" />
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Bottom Row: Class-wise Today at a Glance (Class-wise aggregation) */}
+            <View className="px-5 mt-6 mb-4">
+              <Text className="text-white text-xs font-bold uppercase tracking-wider mb-3">Class-wise Today at a Glance</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View className="flex-row" style={{ gap: 10 }}>
+                  {Array.from({ length: 10 }, (_, idx) => {
+                    const gradeLabel = `Class ${idx + 1}`;
+                    const matchingSections = MOCK_CLASSES_GRID.filter(c => c.grade === gradeLabel);
+                    const avg = matchingSections.length > 0 
+                      ? (matchingSections.reduce((acc, curr) => acc + curr.todayAvg, 0) / matchingSections.length).toFixed(1) + '%'
+                      : '0%';
+
+                    return (
+                      <GlassCard key={gradeLabel} intensity="low" className="p-3.5 w-28 items-center border-white/10 bg-[#101415]/80">
+                        <Text className="text-white/60 text-xs font-bold mb-1">{gradeLabel}</Text>
+                        <Text className="text-[#00f1a1] text-base font-extrabold">{avg}</Text>
+                      </GlassCard>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        )}
+
+        {/* LEVEL 2: CLASS STUDENT ATTENDANCE LIST (READ-ONLY) */}
+        {viewLevel === 2 && selectedClass && (
+          <View className="px-5">
+            {/* Read-Only Warning Banner (Matches Web Screenshot 2) */}
+            <View className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-2xl mb-4 flex-row items-center">
+              <Info size={18} color="#f59e0b" style={{ marginRight: 10 }} />
+              <View className="flex-1">
+                <Text className="text-amber-400 text-xs font-bold">Attendance is Read-only</Text>
+                <Text className="text-white/70 text-[10.5px] mt-0.5 leading-relaxed">
+                  Submissions and status edits of student attendance records must be performed by teachers in the Attendance Allot tab.
+                </Text>
+              </View>
+            </View>
+
+            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">
+              Showing {MOCK_CLASS_STUDENTS.length} students in this class
+            </Text>
+
+            {/* Students Directory List */}
+            {MOCK_CLASS_STUDENTS.map(st => (
+              <Pressable
+                key={st.id}
+                onPress={() => handleSelectStudent(st)}
+                className="bg-[#101415]/90 border border-white/10 p-3.5 rounded-2xl mb-2.5 flex-row items-center justify-between active:bg-white/5"
+              >
+                <View className="flex-row items-center flex-1 mr-2">
+                  <View className="w-9 h-9 rounded-full bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
+                    <Text className="text-[#00f1a1] text-xs font-extrabold">{st.initials}</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white text-xs font-bold">{st.name}</Text>
+                    <Text className="text-white/50 text-[10px]">Enrollment: {st.rollNo} • Lectures: {st.totalLectures}</Text>
+                  </View>
+                </View>
+
+                <View className="items-end">
+                  <Text className="text-[#00f1a1] text-xs font-extrabold">{st.overallPct}% Overall</Text>
+                  <View className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden mt-1">
+                    <View className="h-full rounded-full bg-[#00f1a1]" style={{ width: `${st.overallPct}%` }} />
+                  </View>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* LEVEL 3: STUDENT MONTHLY ATTENDANCE GRID CALENDAR (Matches Web Screenshot 3) */}
+        {viewLevel === 3 && selectedStudent && (
+          <View className="px-5">
+            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-4">
+              {/* Header with Legend */}
+              <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-3">
+                <Text className="text-white font-extrabold text-sm">Monthly Attendance Grid</Text>
+                <View className="flex-row items-center" style={{ gap: 8 }}>
+                  <View className="flex-row items-center">
+                    <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1" />
+                    <Text className="text-white/60 text-[9px]">Present</Text>
+                  </View>
+                  <View className="flex-row items-center">
+                    <View className="w-2 h-2 rounded-full bg-amber-400 mr-1" />
+                    <Text className="text-white/60 text-[9px]">Partial</Text>
+                  </View>
+                  <View className="flex-row items-center">
+                    <View className="w-2 h-2 rounded-full bg-rose-500 mr-1" />
+                    <Text className="text-white/60 text-[9px]">Absent</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Month Navigation */}
+              <View className="flex-row justify-between items-center mb-4">
+                <Pressable className="p-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <ChevronLeft size={16} color="#00f1a1" />
+                </Pressable>
+                <Text className="text-white font-bold text-xs">August 2026</Text>
+                <Pressable className="p-1.5 rounded-lg bg-white/5 border border-white/10">
+                  <ChevronRight size={16} color="#00f1a1" />
+                </Pressable>
+              </View>
+
+              {/* Days Header Row */}
+              <View className="flex-row justify-between mb-2">
+                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => (
+                  <Text key={d} className="w-[13%] text-center text-white/40 text-[9px] font-bold uppercase">{d}</Text>
+                ))}
+              </View>
+
+              {/* Calendar Days Grid */}
+              <View className="flex-row flex-wrap justify-between" style={{ gap: 4 }}>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(dayNum => {
+                  const status = selectedStudent.attendanceMap[dayNum];
+                  const isSelected = selectedCalendarDay === dayNum;
+                  return (
+                    <Pressable
+                      key={dayNum}
+                      onPress={() => setSelectedCalendarDay(dayNum)}
+                      className={`w-[13%] h-10 rounded-xl items-center justify-center border ${
+                        isSelected 
+                          ? 'border-[#00f1a1] bg-[#00f1a1]/20' 
+                          : status === 'present' 
+                          ? 'bg-emerald-500/10 border-emerald-500/30' 
+                          : status === 'absent' 
+                          ? 'bg-rose-500/10 border-rose-500/30' 
+                          : status === 'partial'
+                          ? 'bg-amber-500/10 border-amber-500/30'
+                          : 'bg-white/5 border-white/5'
+                      }`}
+                    >
+                      <Text className={`text-xs font-bold ${status === 'present' ? 'text-[#00f1a1]' : status === 'absent' ? 'text-rose-400' : status === 'partial' ? 'text-amber-400' : 'text-white/40'}`}>
+                        {dayNum}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </GlassCard>
+
+            {/* Bottom Section: Period-Wise Breakdown for Selected Date */}
+            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
+              <View className="flex-row items-center mb-3">
+                <Clock size={14} color="#00f1a1" style={{ marginRight: 6 }} />
+                <Text className="text-white text-xs font-bold">
+                  Period-wise breakdown on Aug {selectedCalendarDay}, 2026
+                </Text>
+              </View>
+
+              {selectedCalendarDay === 4 ? (
+                <View style={{ gap: 8 }}>
+                  <View className="bg-white/5 border border-white/10 p-2.5 rounded-xl flex-row justify-between items-center">
+                    <Text className="text-white text-xs font-semibold">Period 1: Mathematics</Text>
+                    <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                      <Text className="text-[#00f1a1] text-[9.5px] font-bold">Present (09:00 AM)</Text>
+                    </View>
+                  </View>
+                  <View className="bg-white/5 border border-white/10 p-2.5 rounded-xl flex-row justify-between items-center">
+                    <Text className="text-white text-xs font-semibold">Period 2: Physics</Text>
+                    <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                      <Text className="text-[#00f1a1] text-[9.5px] font-bold">Present (09:45 AM)</Text>
+                    </View>
+                  </View>
+                  <View className="bg-white/5 border border-white/10 p-2.5 rounded-xl flex-row justify-between items-center">
+                    <Text className="text-white text-xs font-semibold">Period 3: Chemistry</Text>
+                    <View className="bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-md">
+                      <Text className="text-rose-400 text-[9.5px] font-bold">Absent (10:45 AM)</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <View className="py-6 items-center">
+                  <Text className="text-white/40 text-xs italic">No attendance marked on this date.</Text>
+                </View>
+              )}
+            </GlassCard>
+          </View>
+        )}
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0d2a24',
+  },
+  scrollContent: {
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+});
+
+export default AdminStudentAttendanceScreen;
