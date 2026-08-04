@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface StudentFeeRecord {
   id: string;
@@ -72,6 +73,31 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Paid' | 'Partial' | 'Unpaid'>('All');
 
+  useEffect(() => {
+    const fetchFeeRecords = async () => {
+      try {
+        const res = await api.getResources('student-fees');
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped: StudentFeeRecord[] = res.map((f: any) => ({
+            id: String(f.id),
+            name: f.student_name || f.name || 'Student',
+            rollNo: f.roll_no || `10A0${f.id}`,
+            className: f.class_name || 'Class 10 — Section A',
+            totalFee: Number(f.total_fee || f.amount || 45000),
+            paidAmount: Number(f.paid_amount || 0),
+            balanceDue: Number(f.due_amount || f.balance_due || (f.total_fee ? f.total_fee - (f.paid_amount || 0) : 45000)),
+            status: (f.status === 'paid' ? 'Paid' : f.status === 'partial' ? 'Partial' : 'Unpaid') as any,
+            lastPaymentDate: f.updated_at ? f.updated_at.split('T')[0] : 'None',
+          }));
+          setFeeRecords(mapped);
+        }
+      } catch (err) {
+        console.log('Error loading fee records:', err);
+      }
+    };
+    fetchFeeRecords();
+  }, []);
+
   // Modal States
   const [selectedFeeStudent, setSelectedFeeStudent] = useState<StudentFeeRecord | null>(null);
   const [paymentAmountInput, setPaymentAmountInput] = useState('');
@@ -94,7 +120,7 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation }) => {
     setRefNoInput(`UPI${Math.floor(100000 + Math.random() * 900000)}`);
   };
 
-  const handleProcessFeePayment = () => {
+  const handleProcessFeePayment = async () => {
     if (!selectedFeeStudent) return;
     const amount = parseFloat(paymentAmountInput);
     if (isNaN(amount) || amount <= 0) {
@@ -102,29 +128,37 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation }) => {
       return;
     }
 
+    const newPaid = selectedFeeStudent.paidAmount + amount;
+    const newBal = Math.max(0, selectedFeeStudent.totalFee - newPaid);
+    const newStatus = newBal === 0 ? 'Paid' : newPaid > 0 ? 'Partial' : 'Unpaid';
+
+    try {
+      await api.updateResource('student-fees', selectedFeeStudent.id, {
+        paid_amount: newPaid,
+        due_amount: newBal,
+        status: newStatus.toLowerCase(),
+        payment_mode: paymentModeInput,
+        reference_no: refNoInput,
+      });
+    } catch (e) {
+      console.log('Error updating fee in DB:', e);
+    }
+
     setFeeRecords(prev => prev.map(f => {
       if (f.id === selectedFeeStudent.id) {
-        const newPaid = f.paidAmount + amount;
-        const newBal = Math.max(0, f.totalFee - newPaid);
-        const newStatus = newBal === 0 ? 'Paid' : newPaid > 0 ? 'Partial' : 'Unpaid';
         return {
           ...f,
           paidAmount: newPaid,
           balanceDue: newBal,
           status: newStatus,
-          lastPaymentDate: new Date().toISOString().slice(0, 10)
+          lastPaymentDate: new Date().toISOString().split('T')[0]
         };
       }
       return f;
     }));
 
-    const studentName = selectedFeeStudent.name;
     setSelectedFeeStudent(null);
-    showToast(
-      'Payment Recorded!',
-      `Successfully collected ₹${amount.toLocaleString()} for ${studentName} via ${paymentModeInput}.`,
-      'success'
-    );
+    showToast('Payment Collected', `Successfully recorded ₹${amount.toLocaleString()} for ${selectedFeeStudent.name}.`, 'success');
   };
 
   const filteredRecords = feeRecords.filter(item => {

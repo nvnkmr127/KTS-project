@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface AlumniMember {
   id: string;
@@ -77,6 +78,32 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
   const [alumniList, setAlumniList] = useState<AlumniMember[]>(MOCK_ALUMNI);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYearFilter, setSelectedYearFilter] = useState('All');
+
+  useEffect(() => {
+    const fetchAlumni = async () => {
+      try {
+        const res = await api.getResources('alumni');
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped: AlumniMember[] = res.map((a: any) => ({
+            id: String(a.id),
+            name: a.name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Alumni Member',
+            passoutYear: a.passout_year || a.year || '2025',
+            graduatedClass: a.graduated_class || a.class_name || 'Class 10 — Section A',
+            occupation: a.occupation || 'Professional',
+            companyOrInstitute: a.company_institute || a.institute || 'University',
+            phone: a.phone || a.mobile || '+91 98765 43210',
+            email: a.email || 'alumni@example.com',
+            city: a.city || 'Hyderabad, TS',
+            avatarColor: '#00f1a1',
+          }));
+          setAlumniList(mapped);
+        }
+      } catch (err) {
+        console.log('Error loading alumni:', err);
+      }
+    };
+    fetchAlumni();
+  }, []);
 
   // Modal States
   const [showAddEditModal, setShowAddEditModal] = useState(false);

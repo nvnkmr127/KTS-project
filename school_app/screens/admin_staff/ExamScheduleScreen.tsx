@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface ExamScheduleItem {
   id: string;
@@ -32,6 +33,31 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<'schedules' | 'invigilation' | 'results'>('schedules');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClassFilter, setSelectedClassFilter] = useState('All');
+
+  useEffect(() => {
+    const fetchExamSchedules = async () => {
+      try {
+        const res = await api.getResources('exam-schedules');
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped: ExamScheduleItem[] = res.map((e: any) => ({
+            id: String(e.id),
+            examName: e.exam_name || e.name || 'Mid-Term Exam',
+            className: e.class_name || (e.batch ? e.batch.name : 'Class 10A'),
+            subject: e.subject || 'Mathematics',
+            date: e.date || '2026-06-10',
+            timeSlot: e.time_slot || e.time || '09:30 AM - 11:00 AM',
+            maxMarks: Number(e.max_marks || 100),
+            roomNo: e.room_no || 'Room 12',
+            status: (e.status || 'Upcoming') as any,
+          }));
+          setExamSchedules(mapped);
+        }
+      } catch (err) {
+        console.log('Error loading exam schedules:', err);
+      }
+    };
+    fetchExamSchedules();
+  }, []);
 
   // Modal States
   const [showAddEditModal, setShowAddEditModal] = useState(false);

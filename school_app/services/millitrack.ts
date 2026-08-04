@@ -110,7 +110,7 @@ export const BUS_ROUTES_CONFIG: RouteConfig[] = [
 
 export async function fetchLiveBusPositions(): Promise<LiveBusData[]> {
   try {
-    const res = await api.getResources('bus/positions');
+    const res = await api.getBusPositions();
     if (res && Array.isArray(res)) {
       return res;
     }

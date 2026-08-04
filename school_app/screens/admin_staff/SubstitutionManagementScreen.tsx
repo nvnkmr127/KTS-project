@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface AbsentTeacherItem {
   id: string;
@@ -38,6 +39,22 @@ const MOCK_FREE_TEACHERS: AvailableTeacherItem[] = [
 
 export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
   const [absentTeachers, setAbsentTeachers] = useState<AbsentTeacherItem[]>(MOCK_ABSENT_TEACHERS);
+  const [availableTeachers] = useState<AvailableTeacherItem[]>(MOCK_FREE_TEACHERS);
+
+  useEffect(() => {
+    const fetchSubstitutes = async () => {
+      try {
+        const res = await api.getSubstitutesSchedule();
+        if (res && Array.isArray(res.absentTeachers) && res.absentTeachers.length > 0) {
+          setAbsentTeachers(res.absentTeachers);
+        }
+      } catch (err) {
+        console.log('Error fetching substitutes:', err);
+      }
+    };
+    fetchSubstitutes();
+  }, []);
+
   const [activeSubstitutions, setActiveSubstitutions] = useState<Array<{ id: string; originalTeacher: string; subTeacher: string; targetClass: string; period: string }>>([
     { id: 'sub_1', originalTeacher: 'Mr. Vikramaditya Singh', subTeacher: 'Mrs. Priya Nambiar', targetClass: 'Class 8A', period: 'Period 2 (09:15 AM)' }
   ]);

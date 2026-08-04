@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GlassCard } from '../../components/GlassCard';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
+import { api } from '../../services/api';
 import { 
   UserPlus, ChevronDown, Calendar, HelpCircle, 
   CheckCircle2, ArrowLeft
@@ -71,8 +72,30 @@ export const AddStudentScreen: React.FC<any> = ({ navigation }) => {
   const [showSectionPicker, setShowSectionPicker] = useState(false);
   const [showGenderPicker, setShowGenderPicker] = useState(false);
 
-  const handleSaveStudent = () => {
-    setSuccessModalVisible(true);
+  const handleSaveStudent = async () => {
+    try {
+      await api.createResource('students', {
+        name: `${firstName} ${lastName}`.trim(),
+        first_name: firstName,
+        last_name: lastName,
+        class_name: `${studentClass} — ${section}`,
+        gender,
+        admission_number: admissionNoForm,
+        pen_number: penNoForm,
+        dob: dobForm,
+        father_name: fatherName,
+        father_mobile: fatherMobile,
+        mother_name: motherName,
+        mother_mobile: motherMobile,
+        address,
+        aadhar_number: aadharNumber,
+        status: 'Active',
+      });
+    } catch (err) {
+      console.log('Error creating student in database:', err);
+    } finally {
+      setSuccessModalVisible(true);
+    }
   };
 
   const handleFinish = () => {

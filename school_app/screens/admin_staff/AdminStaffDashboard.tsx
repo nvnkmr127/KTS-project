@@ -1,11 +1,13 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../../components/GlassCard';
 import { AdminStatCard } from '../../components/AdminStatCard';
 import { QuickActionIcon } from '../../components/QuickActionIcon';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
+import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 import { 
   Users, Banknote, CalendarDays, Bus, 
   Search, UserSquare2, Wallet, CalendarRange, 
@@ -24,6 +26,83 @@ interface QuickAction {
 }
 
 export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    studentsCount: '1,248',
+    feesDue: '₹2.3L',
+    pendingLeaves: '5',
+    activeBuses: '8',
+  });
+  const [feeDefaulters, setFeeDefaulters] = useState([
+    { id: 1, initials: 'AG', name: 'Aman Gupta', classInfo: '10-A', amount: '₹4,500', color: 'bg-emerald-950/40 text-emerald-400' },
+    { id: 2, initials: 'RS', name: 'Riya Sen', classInfo: '8-B', amount: '₹1,200', color: 'bg-emerald-950/40 text-emerald-400' },
+    { id: 3, initials: 'KP', name: 'Kevin Peters', classInfo: '12-C', amount: '₹8,900', color: 'bg-emerald-950/40 text-emerald-400' },
+  ]);
+  const [leaveRequests, setLeaveRequests] = useState([
+    { id: 1, name: 'Mrs. Anita Sharma', type: 'Sick Leave', date: '24 Oct - 26 Oct' },
+    { id: 2, name: 'Mr. Rajesh Kumar', type: 'Casual Leave', date: '25 Oct' },
+  ]);
+
+  const fetchLiveDashboardData = async () => {
+    try {
+      // 1. Fetch Students count
+      const students = await api.getResources('students');
+      let studentCountStr = stats.studentsCount;
+      if (Array.isArray(students)) {
+        studentCountStr = String(students.length);
+      }
+
+      // 2. Fetch Fee Records
+      const fees = await api.getResources('student-fees');
+      let feeDueSum = 0;
+      if (Array.isArray(fees)) {
+        fees.forEach((f: any) => {
+          if (f.status === 'unpaid' || f.status === 'partial' || f.status === 'overdue') {
+            feeDueSum += Number(f.due_amount || f.amount || 0);
+          }
+        });
+        if (feeDueSum > 0) {
+          stats.feesDue = feeDueSum >= 100000 ? `₹${(feeDueSum / 100000).toFixed(1)}L` : `₹${feeDueSum.toLocaleString()}`;
+        }
+      }
+
+      // 3. Fetch Leaves
+      const leaves = await api.getResources('leaves');
+      if (Array.isArray(leaves)) {
+        const pending = leaves.filter((l: any) => l.status === 'pending' || l.status === 'Pending');
+        setStats(prev => ({
+          ...prev,
+          studentsCount: studentCountStr,
+          pendingLeaves: String(pending.length),
+        }));
+
+        if (pending.length > 0) {
+          setLeaveRequests(pending.slice(0, 3).map((l: any, idx: number) => ({
+            id: l.id || idx,
+            name: l.applicant_name || l.user_name || l.staff_name || 'Staff Member',
+            type: l.leave_type || l.type || 'Leave',
+            date: l.start_date ? `${l.start_date} - ${l.end_date || l.start_date}` : 'Today'
+          })));
+        }
+      } else {
+        setStats(prev => ({ ...prev, studentsCount: studentCountStr }));
+      }
+    } catch (e) {
+      console.log('Error fetching live dashboard metrics:', e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveDashboardData();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchLiveDashboardData();
+  };
 
   const quickActions: QuickAction[] = [
     { title: 'Student Profiles', icon: <UserSquare2 size={24} color="#00f1a1" />, route: 'StudentDirectory' },
@@ -38,25 +117,14 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
     { title: 'Holiday Calendar', icon: <CalendarDays size={24} color="#00f1a1" />, route: 'HolidayCalendar' },
     { title: 'Staff Leaves', icon: <CalendarOff size={24} color="#00f1a1" />, route: 'AdminStaffLeaves' },
     { title: 'Timetable Builder', icon: <CalendarRange size={24} color="#00f1a1" />, route: 'TimetableBuilder' },
-    { title: 'Exam Schedule', icon: <FileEdit size={24} color="#00f1a1" />, route: 'Schedule' },
+    { title: 'Exam Schedule', icon: <FileEdit size={24} color="#00f1a1" />, route: 'ExamSchedule' },
     { title: 'Substitution Assign', icon: <ArrowLeftRight size={24} color="#00f1a1" />, route: 'SubstitutionManagement' },
-    { title: 'Circulars', icon: <Megaphone size={24} color="#00f1a1" />, route: 'Messages' },
+    { title: 'Circulars', icon: <Megaphone size={24} color="#00f1a1" />, route: 'Messaging' },
     { title: 'Enquiry Leads', icon: <UserSearch size={24} color="#00f1a1" />, route: 'EnquiryLeads' },
     { title: 'Student Performance', icon: <BarChart2 size={24} color="#00f1a1" />, route: 'StudentPerformance' },
     { title: 'Bus Tracking', icon: <Bus size={24} color="#00f1a1" />, route: 'AdminBusTracking' },
     { title: 'Reports & Analytics', icon: <FileBarChart size={24} color="#00f1a1" />, route: 'AdminReportsAnalytics' },
     { title: 'Recycle Bin', icon: <Trash2 size={24} color="#00f1a1" />, route: 'RecycleBin' },
-  ];
-
-  const feeDefaulters = [
-    { id: 1, initials: 'AG', name: 'Aman Gupta', classInfo: '10-A', amount: '₹4,500', color: 'bg-emerald-950/40 text-emerald-400' },
-    { id: 2, initials: 'RS', name: 'Riya Sen', classInfo: '8-B', amount: '₹1,200', color: 'bg-emerald-950/40 text-emerald-400' },
-    { id: 3, initials: 'KP', name: 'Kevin Peters', classInfo: '12-C', amount: '₹8,900', color: 'bg-emerald-950/40 text-emerald-400' },
-  ];
-
-  const leaveRequests = [
-    { id: 1, name: 'Mrs. Anita Sharma', type: 'Sick Leave', date: '24 Oct - 26 Oct' },
-    { id: 2, name: 'Mr. Rajesh Kumar', type: 'Casual Leave', date: '25 Oct' },
   ];
 
   return (
@@ -86,44 +154,47 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
       <ScrollView 
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00f1a1" />
+        }
       >
         {/* Welcome Section */}
         <View className="mb-6 px-5">
-          <Text className="text-white/90 text-xl font-bold mb-1">Welcome, Sarah</Text>
-          <Text className="text-white/60 text-sm">Good morning! Here's the overview for today.</Text>
+          <Text className="text-white/90 text-xl font-bold mb-1">Welcome, {user?.name || 'Sarah'}</Text>
+          <Text className="text-white/60 text-sm">Good morning! Here's the live system overview.</Text>
         </View>
 
         {/* Stats Grid */}
         <View className="flex-row mb-3 px-5" style={{ gap: 12 }}>
           <AdminStatCard 
             title="STUDENTS" 
-            value="1248" 
+            value={stats.studentsCount} 
             icon={<Users size={20} color="#00f1a1" />}
             progress={0.65}
             onPress={() => navigation.navigate('StudentDirectory')}
           />
           <AdminStatCard 
             title="FEES DUE" 
-            value="₹2.3L" 
+            value={stats.feesDue} 
             icon={<Banknote size={20} color="#00f1a1" />}
-            trend="12% vs last month"
-            onPress={() => navigation.navigate('Fees')}
+            trend="Live database sync"
+            onPress={() => navigation.navigate('FeeList')}
           />
         </View>
         <View className="flex-row mb-8 px-5" style={{ gap: 12 }}>
           <AdminStatCard 
             title="LEAVES" 
-            value="5" 
+            value={stats.pendingLeaves} 
             icon={<CalendarDays size={20} color="#00f1a1" />}
             subtitle="Awaiting Approval"
-            onPress={() => navigation.navigate('LeaveApprovals')}
+            onPress={() => navigation.navigate('AdminStaffLeaves')}
           />
           <AdminStatCard 
             title="BUS ROUTES" 
-            value="8" 
+            value={stats.activeBuses} 
             icon={<Bus size={20} color="#00f1a1" />}
-            subtitle="All on track"
-            onPress={() => navigation.navigate('BusTracking')}
+            subtitle="GPS Millitrack"
+            onPress={() => navigation.navigate('AdminBusTracking')}
           />
         </View>
 
@@ -150,9 +221,9 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
         <View className="px-5">
           <View className="flex-row justify-between items-center mb-4 mt-2">
             <Text className="text-[#00f1a1] text-xs font-bold tracking-[0.2em]">FEE DEFAULTERS</Text>
-            <View className="bg-[#101415] border border-[#00f1a1]/30 px-3 py-1 rounded-full">
+            <Pressable onPress={() => navigation.navigate('FeeList')} className="bg-[#101415] border border-[#00f1a1]/30 px-3 py-1 rounded-full">
               <Text className="text-[#00f1a1] text-[10px] font-bold tracking-widest">VIEW ALL</Text>
-            </View>
+            </Pressable>
           </View>
           <GlassCard intensity="low" className="mb-8 p-1 border-[#00f1a1]/20 bg-[#101415]/60">
             {feeDefaulters.map((defaulter, index) => (
@@ -179,23 +250,28 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
 
         {/* Leave Requests */}
         <View className="px-5">
-          <Text className="text-[#00f1a1] text-xs font-bold tracking-[0.2em] mb-4">LEAVE REQUESTS</Text>
-          {leaveRequests.map((req, index) => (
-          <GlassCard key={req.id} intensity="low" className="mb-3 flex-row items-center justify-between p-4 border-l-4 border-l-[#00f1a1] border-t border-r border-b border-[#00f1a1]/20 bg-[#101415]/60">
-            <View>
-              <Text className="text-white text-base font-semibold">{req.name}</Text>
-              <Text className="text-white/60 text-xs mt-1">{req.type} • {req.date}</Text>
-            </View>
-            <View className="flex-row items-center" style={{ gap: 8 }}>
-              <Pressable className="bg-[#101415] p-2 rounded-full border border-[#ff516a]/50 shadow-[0_0_10px_rgba(255,81,106,0.3)]">
-                <X size={16} color="#ff516a" />
-              </Pressable>
-              <Pressable className="bg-[#101415] p-2 rounded-full border border-[#00f1a1]/50 shadow-[0_0_10px_rgba(0,241,161,0.3)]">
-                <Check size={16} color="#00f1a1" />
-              </Pressable>
-            </View>
-          </GlassCard>
-        ))}
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-[#00f1a1] text-xs font-bold tracking-[0.2em]">LEAVE REQUESTS</Text>
+            <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="bg-[#101415] border border-[#00f1a1]/30 px-3 py-1 rounded-full">
+              <Text className="text-[#00f1a1] text-[10px] font-bold tracking-widest">MANAGE</Text>
+            </Pressable>
+          </View>
+          {leaveRequests.map((req) => (
+            <GlassCard key={req.id} intensity="low" className="mb-3 flex-row items-center justify-between p-4 border-l-4 border-l-[#00f1a1] border-t border-r border-b border-[#00f1a1]/20 bg-[#101415]/60">
+              <View>
+                <Text className="text-white text-base font-semibold">{req.name}</Text>
+                <Text className="text-white/60 text-xs mt-1">{req.type} • {req.date}</Text>
+              </View>
+              <View className="flex-row items-center" style={{ gap: 8 }}>
+                <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="bg-[#101415] p-2 rounded-full border border-[#ff516a]/50 shadow-[0_0_10px_rgba(255,81,106,0.3)]">
+                  <X size={16} color="#ff516a" />
+                </Pressable>
+                <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="bg-[#101415] p-2 rounded-full border border-[#00f1a1]/50 shadow-[0_0_10px_rgba(0,241,161,0.3)]">
+                  <Check size={16} color="#00f1a1" />
+                </Pressable>
+              </View>
+            </GlassCard>
+          ))}
         </View>
 
         <View style={{ height: 100 }} />
@@ -208,18 +284,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100, // accommodate bottom tab navigator height
+    paddingBottom: 100,
   },
 });
 

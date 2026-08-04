@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -41,6 +41,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface StudentItem {
   id: string;
@@ -296,6 +297,36 @@ export const StudentDirectoryScreen: React.FC<any> = ({ route, navigation }) => 
   const [studentsList, setStudentsList] = useState<StudentItem[]>(MOCK_STUDENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const res = await api.getResources('students');
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped: StudentItem[] = res.map((s: any) => ({
+            id: String(s.id),
+            name: s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Student',
+            gender: s.gender === 'Female' ? 'Female' : 'Male',
+            dob: s.dob || s.date_of_birth || 'N/A',
+            admissionNo: s.admission_number || s.admissionNo || `STDDe2026${s.id}`,
+            penNo: s.pen_number || s.penNo || 'N/A',
+            className: s.class_name || (s.batch ? s.batch.name : 'Class 10 — A'),
+            academicYear: s.academic_year || '2026-2027',
+            parentName: s.parent_name || s.father_name || s.guardian_name || 'Parent',
+            phone: s.phone || s.mobile || '+91 9876543210',
+            feeStatus: s.fee_status || 'Paid',
+            status: s.status || 'Active',
+            initials: (s.name || s.first_name || 'ST').slice(0, 2).toUpperCase(),
+            avatarColor: '#3b82f6',
+          }));
+          setStudentsList(mapped);
+        }
+      } catch (e) {
+        console.log('Error loading students from DB:', e);
+      }
+    };
+    fetchStudents();
+  }, []);
 
   // Import Modal & File Picker States
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);

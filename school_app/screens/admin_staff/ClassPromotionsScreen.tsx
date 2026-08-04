@@ -7,6 +7,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface StudentPromotionItem {
   id: string;
@@ -163,8 +164,19 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
     setStudentsList(prev => prev.map(s => s.id === id ? { ...s, action: act } : s));
   };
 
-  const handleConfirmPromotion = () => {
+  const handleConfirmPromotion = async () => {
     setShowExecuteModal(false);
+    
+    // Sync promotions with DB
+    try {
+      const promoted = studentsList.filter(s => s.action === 'promote');
+      for (const st of promoted) {
+        await api.updateResource('students', st.id, { class_name: targetClass });
+      }
+    } catch (err) {
+      console.log('Error executing promotions in DB:', err);
+    }
+
     setToastData({
       visible: true,
       title: isClass10Source ? 'Graduation Complete!' : 'Promotions Processed!',

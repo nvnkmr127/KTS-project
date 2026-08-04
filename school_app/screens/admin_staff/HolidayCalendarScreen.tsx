@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface HolidayItem {
   id: string;
@@ -29,6 +30,27 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation }) => {
   const [holidays, setHolidays] = useState<HolidayItem[]>(MOCK_HOLIDAYS);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | 'National' | 'Festival' | 'Institutional' | 'Vacation'>('All');
+
+  useEffect(() => {
+    const fetchHolidays = async () => {
+      try {
+        const res = await api.getResources('holidays');
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped: HolidayItem[] = res.map((h: any) => ({
+            id: String(h.id),
+            title: h.title || h.name || 'School Holiday',
+            dateRange: h.date_range || h.start_date || '15 Aug 2026',
+            type: (h.type || 'Festival') as any,
+            description: h.description || 'Official school holiday',
+          }));
+          setHolidays(mapped);
+        }
+      } catch (err) {
+        console.log('Error loading holidays:', err);
+      }
+    };
+    fetchHolidays();
+  }, []);
 
   // Modal States
   const [showAddEditModal, setShowAddEditModal] = useState(false);

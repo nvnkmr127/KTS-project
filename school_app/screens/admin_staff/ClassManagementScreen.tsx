@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface SubjectTeacher {
   subject: string;
@@ -200,6 +201,42 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('2026-2027');
   const [selectedWingFilter, setSelectedWingFilter] = useState('All');
+
+  useEffect(() => {
+    const fetchBatches = async () => {
+      try {
+        const res = await api.getResources('batches');
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped: ClassItem[] = res.map((b: any, idx: number) => ({
+            id: String(b.id),
+            grade: b.name ? b.name.split('—')[0].trim() : `Class ${b.id}`,
+            section: b.name && b.name.includes('—') ? b.name.split('—')[1].trim() : 'Section A',
+            wing: (b.wing || 'High School') as any,
+            classTeacher: b.class_teacher_name || b.teacher_name || 'Mrs. Anita Sharma',
+            teacherSubject: b.subject || 'Academics',
+            teacherPhone: b.phone || '+91 98765 43210',
+            totalStudents: Number(b.total_students || b.students_count || 40),
+            maxCapacity: Number(b.capacity || 45),
+            roomNo: b.room_no || `Room ${100 + idx}`,
+            buildingBlock: b.block || 'Main Academic Block',
+            attendanceRate: b.attendance_rate || '96.5%',
+            presentToday: Number(b.present_today || 38),
+            absentToday: Number(b.absent_today || 2),
+            classRank: b.rank || '#1 in Academic Division',
+            academicYear: b.academic_year || '2026-2027',
+            avatarColor: '#00f1a1',
+            subjectTeachers: [
+              { subject: 'Core Subjects', teacherName: b.class_teacher_name || 'Faculty Member', phone: '+91 98765 43210', hoursPerWeek: 5 }
+            ]
+          }));
+          setClassList(mapped);
+        }
+      } catch (err) {
+        console.log('Error fetching batches:', err);
+      }
+    };
+    fetchBatches();
+  }, []);
 
   // Modal States
   const [showAddModal, setShowAddModal] = useState(false);

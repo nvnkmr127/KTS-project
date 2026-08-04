@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, Image, Modal, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Calendar, FileText, CheckCircle2, XCircle, Clock, UserCheck } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
@@ -73,7 +74,38 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
 
   const [leaves, setLeaves] = useState(initialLeaves);
 
-  const handleAction = (id: string, name: string, status: 'approved' | 'rejected') => {
+  useEffect(() => {
+    const fetchLeaves = async () => {
+      try {
+        const res = await api.getResources('leaves');
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped = res.map((l: any) => ({
+            id: String(l.id),
+            name: l.applicant_name || l.user_name || l.staff_name || 'Staff Member',
+            role: l.designation || l.department || 'Faculty',
+            type: (l.leave_type || l.type || 'CASUAL LEAVE').toUpperCase(),
+            dates: l.start_date ? `${l.start_date} - ${l.end_date || l.start_date}` : 'Oct 12 - Oct 15',
+            days: l.days ? `${l.days} Days` : '1 Day',
+            reason: l.reason || 'Leave request submitted via portal.',
+            status: (l.status || 'pending').toLowerCase() as any,
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
+          }));
+          setLeaves(mapped);
+        }
+      } catch (err) {
+        console.log('Error fetching leaves:', err);
+      }
+    };
+    fetchLeaves();
+  }, []);
+
+  const handleAction = async (id: string, name: string, status: 'approved' | 'rejected') => {
+    try {
+      await api.updateResource('leaves', id, { status });
+    } catch (e) {
+      console.log('Error updating leave status in DB:', e);
+    }
+
     setLeaves(prev => prev.map(l => l.id === id ? { ...l, status } : l));
     setCustomAlert({
       visible: true,

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { api } from '../services/api';
 
 export interface DiaryEntry {
   id: string;
@@ -17,7 +18,8 @@ export interface DiaryEntry {
 
 interface DiaryStore {
   diaryEntries: DiaryEntry[];
-  addOrUpdateEntry: (entry: Omit<DiaryEntry, 'id' | 'submittedAt'>) => void;
+  fetchDailyDiariesFromApi: () => Promise<void>;
+  addOrUpdateEntry: (entry: Omit<DiaryEntry, 'id' | 'submittedAt'>) => Promise<void>;
   getEntriesForClassAndDate: (classId: string, date: string) => DiaryEntry[];
   getClassSubmittedCount: (classId: string, date: string) => number;
 }
@@ -69,9 +71,53 @@ const INITIAL_MOCK_ENTRIES: DiaryEntry[] = [
 export const useDiaryStore = create<DiaryStore>((set, get) => ({
   diaryEntries: INITIAL_MOCK_ENTRIES,
 
-  addOrUpdateEntry: (newEntryData) => {
+  fetchDailyDiariesFromApi: async () => {
+    try {
+      const res = await api.getResources('daily-diaries');
+      if (Array.isArray(res) && res.length > 0) {
+        const mapped: DiaryEntry[] = res.map((d: any) => ({
+          id: String(d.id),
+          classId: d.class_id || d.batch_id || '10A',
+          className: d.class_name || 'Class 10A',
+          periodNumber: Number(d.period_number || 1),
+          subject: d.subject || 'General',
+          teacherName: d.teacher_name || 'Faculty Member',
+          topicTitle: d.topic_title || d.title || 'Lesson Overview',
+          contentSummary: d.content_summary || d.summary || d.description || '',
+          homework: d.homework || '',
+          date: d.date || new Date().toISOString().split('T')[0],
+          submittedAt: d.submitted_at || '09:00 AM',
+          attachmentName: d.attachment_name,
+        }));
+        set({ diaryEntries: mapped });
+      }
+    } catch (e) {
+      console.log('Error fetching daily diaries:', e);
+    }
+  },
+
+  addOrUpdateEntry: async (newEntryData) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Sync with Laravel DB
+    try {
+      await api.createResource('daily-diaries', {
+        class_id: newEntryData.classId,
+        class_name: newEntryData.className,
+        period_number: newEntryData.periodNumber,
+        subject: newEntryData.subject,
+        teacher_name: newEntryData.teacherName,
+        topic_title: newEntryData.topicTitle,
+        content_summary: newEntryData.contentSummary,
+        homework: newEntryData.homework,
+        date: newEntryData.date,
+        submitted_at: timeStr,
+        attachment_name: newEntryData.attachmentName,
+      });
+    } catch (e) {
+      console.log('Error creating daily diary entry in database:', e);
+    }
 
     set((state) => {
       const existingIdx = state.diaryEntries.findIndex(

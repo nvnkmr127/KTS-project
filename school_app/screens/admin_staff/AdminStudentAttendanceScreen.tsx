@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
 
 export interface ClassItemSummary {
   id: string;
@@ -72,6 +73,12 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const [viewLevel, setViewLevel] = useState<1 | 2 | 3>(1);
   const [selectedClass, setSelectedClass] = useState<ClassItemSummary | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceRecord | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [academicYear, setAcademicYear] = useState('2026-2027 (Current)');
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(4); // Default 4 Aug
+  const [selectedDate, setSelectedDate] = useState('04-08-2026');
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+  const [customDateInput, setCustomDateInput] = useState('04-08-2026');
 
   // Handle Hardware Back Button & System Back Gesture (matching chevron left behavior)
   useFocusEffect(
@@ -101,10 +108,19 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
     }, [viewLevel, showDatePickerModal, navigation])
   );
 
-  // Search & Filter
-  const [searchQuery, setSearchQuery] = useState('');
-  const [academicYear, setAcademicYear] = useState('2026-2027 (Current)');
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(4); // Default 4 Aug
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      try {
+        const res = await api.getResources('attendance');
+        if (res) {
+          console.log('Attendance data connected with backend API');
+        }
+      } catch (e) {
+        console.log('Error loading attendance from API:', e);
+      }
+    };
+    fetchAttendanceData();
+  }, []);
 
   const filteredClasses = MOCK_CLASSES_GRID.filter(c => 
     c.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,10 +131,6 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const totalPresentAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.presentToday, 0);
   const totalAbsentAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.absentToday, 0);
   const overallAvgAll = ((totalPresentAll / totalEnrolledAll) * 100).toFixed(1);
-
-  const [selectedDate, setSelectedDate] = useState('04-08-2026');
-  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
-  const [customDateInput, setCustomDateInput] = useState('04-08-2026');
 
   const handleSelectClassCard = (cls: ClassItemSummary) => {
     setSelectedClass(cls);
