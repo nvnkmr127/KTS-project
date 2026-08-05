@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, BackHandler } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useNavigation } from '@react-navigation/native';
@@ -18,9 +18,18 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
   const [livePositions, setLivePositions] = useState<LiveBusData[]>([]);
   const [busAreaNames, setBusAreaNames] = useState<Record<string, string>>({});
   const [mapType, setMapType] = useState<'roadmap' | 'hybrid' | 'satellite'>('roadmap');
+  
+  // Dynamic Scroll Lock State
+  const [isScrollEnabled, setIsScrollEnabled] = useState<boolean>(true);
+  const scrollTimerRef = useRef<any>(null);
 
-  const selectedRouteConfig = BUS_ROUTES_CONFIG.find(r => r.id === selectedRouteId) || BUS_ROUTES_CONFIG[0];
-  const liveBusData = livePositions.find(p => p.busNumber === selectedRouteConfig.busNumber);
+  const selectedRouteConfig = useMemo(() => {
+    return BUS_ROUTES_CONFIG.find(r => r.id === selectedRouteId) || BUS_ROUTES_CONFIG[0];
+  }, [selectedRouteId]);
+
+  const liveBusData = useMemo(() => {
+    return livePositions.find(p => p.busNumber === selectedRouteConfig.busNumber);
+  }, [livePositions, selectedRouteConfig]);
 
   const currentLat = liveBusData?.lat ?? selectedRouteConfig.startPos.lat;
   const currentLng = liveBusData?.lng ?? selectedRouteConfig.startPos.lng;
@@ -31,12 +40,36 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
   const currentAreaName = busAreaNames[selectedRouteConfig.busNumber] || liveBusData?.address || 'Locating Fleet Position...';
 
   // Calculate Fleet KPIs
-  const activeFleetCount = livePositions.filter(p => p.ignition && !p.error).length || 4;
+  const activeFleetCount = useMemo(() => {
+    return livePositions.filter(p => p.ignition && !p.error).length || 4;
+  }, [livePositions]);
+
   const totalFleetCount = BUS_ROUTES_CONFIG.length; // 5
-  const avgSpeed = Math.round(
-    livePositions.filter(p => p.ignition).reduce((sum, p) => sum + p.speed, 0) /
-    Math.max(1, livePositions.filter(p => p.ignition).length)
-  ) || 40;
+
+  const avgSpeed = useMemo(() => {
+    const activeBuses = livePositions.filter(p => p.ignition);
+    return Math.round(
+      activeBuses.reduce((sum, p) => sum + p.speed, 0) / Math.max(1, activeBuses.length)
+    ) || 40;
+  }, [livePositions]);
+
+  // Handle map touch start: temporarily lock scroll for map interaction & auto-release after 400ms
+  const handleMapTouchStart = () => {
+    setIsScrollEnabled(false);
+    if (scrollTimerRef.current) {
+      clearTimeout(scrollTimerRef.current);
+    }
+    scrollTimerRef.current = setTimeout(() => {
+      setIsScrollEnabled(true);
+    }, 400);
+  };
+
+  const handleMapTouchEnd = () => {
+    if (scrollTimerRef.current) {
+      clearTimeout(scrollTimerRef.current);
+    }
+    setIsScrollEnabled(true);
+  };
 
   // Safe BackHandler effect
   useEffect(() => {
@@ -49,17 +82,19 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
     };
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    };
   }, [navigation]);
 
-  // Google Maps Reverse Geocoding API function to get real-world area names from lat/lng
+  // Google Maps Reverse Geocoding API function
   const fetchAreaFromCoords = async (lat: number, lng: number): Promise<string> => {
     try {
       const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`);
       const data = await res.json();
       if (data.results && data.results.length > 0) {
         const address = data.results[0].formatted_address;
-        // Clean up and truncate long address strings
         return address.length > 40 ? address.substring(0, 40) + '...' : address;
       }
     } catch (err) {
@@ -72,7 +107,6 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
     const data = await fetchLiveBusPositions();
     setLivePositions(data);
 
-    // Fetch dynamic area names for all 5 buses using Google Reverse Geocoding
     const newAreas: Record<string, string> = {};
     for (const b of data) {
       if (b.lat && b.lng) {
@@ -87,12 +121,12 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
 
   useEffect(() => {
     loadLiveGps();
-    const interval = setInterval(loadLiveGps, 15000); // 15s live GPS polling (web parity)
+    const interval = setInterval(loadLiveGps, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  // Pure Google Maps JavaScript SDK HTML Generator (Greedy Touch Control Enabled)
-  const generateGoogleMapsHtml = () => {
+  // Memoized Google Maps JavaScript SDK HTML Generator (60 FPS Performance)
+  const googleMapsHtml = useMemo(() => {
     const allBusesJson = JSON.stringify(
       BUS_ROUTES_CONFIG.map(cfg => {
         const live = livePositions.find(p => p.busNumber === cfg.busNumber);
@@ -118,7 +152,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
           <style>
-            * { -webkit-tap-highlight-color: transparent; }
+            * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
             html, body, #map { height: 100%; width: 100%; margin: 0; padding: 0; background: #e5e3df; touch-action: manipulation; }
           </style>
           <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=weekly"></script>
@@ -128,7 +162,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
               const selectedBus = allBuses.find(b => b.id === ${selectedRouteId}) || allBuses[0];
               const centerPos = { lat: selectedBus.lat, lng: selectedBus.lng };
 
-              // Standard Google Map View with full touch controls
+              // Native Google Map View with full gesture recognition (pan, zoom, rotate, tilt, double-tap)
               const map = new google.maps.Map(document.getElementById('map'), {
                 zoom: 15,
                 center: centerPos,
@@ -139,9 +173,11 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
                 mapTypeControl: true,
                 streetViewControl: false,
                 fullscreenControl: false,
+                rotateControl: true,
+                tiltControl: true,
               });
 
-              // Add KTS School Main Marker
+              // Add KTS School Main Campus Marker
               new google.maps.Marker({
                 position: { lat: 17.3198, lng: 78.1511 },
                 map: map,
@@ -152,7 +188,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
                 }
               });
 
-              // Add Live Bus Location Markers for all 5 buses (NO CONNECTING LINES)
+              // Add Live Bus Location Markers for all 5 buses
               allBuses.forEach(b => {
                 const marker = new google.maps.Marker({
                   position: { lat: b.lat, lng: b.lng },
@@ -180,10 +216,13 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
         </body>
       </html>
     `;
-  };
+  }, [selectedRouteId, mapType, livePositions, busAreaNames]);
 
   return (
-    <View style={styles.container}>
+    <View 
+      style={styles.container}
+      onTouchStart={() => setIsScrollEnabled(true)} // Guarantee screen scroll unlocks on any outside touch
+    >
       <LinearGradient
         colors={['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
@@ -202,7 +241,12 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* Parent ScrollView with dynamic scroll lock */}
+      <ScrollView 
+        scrollEnabled={isScrollEnabled} 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Account Renewal Pending / Demo GPS Banner (Web Parity) */}
         <View className="px-5 mb-4">
@@ -261,7 +305,6 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
             <View className="flex-row" style={{ gap: 8 }}>
               {BUS_ROUTES_CONFIG.map(r => {
                 const isSel = selectedRouteId === r.id;
-                const area = busAreaNames[r.busNumber] || 'GPS Active';
                 return (
                   <Pressable
                     key={r.id}
@@ -278,7 +321,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
           </ScrollView>
         </View>
 
-        {/* Large 440px Standard Google Maps View Card */}
+        {/* Large 440px Native Interactive Google Maps View Card */}
         <View className="px-5 mb-5">
           <GlassCard intensity="low" className="p-3.5 border-white/10 bg-[#101415]/90 overflow-hidden">
             <View className="flex-row justify-between items-center mb-3">
@@ -309,11 +352,16 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
               </View>
             </View>
 
-            {/* 440px Height Google Maps Window with Greedy Touch Gestures */}
-            <View className="w-full h-[440px] rounded-2xl overflow-hidden border border-white/15 shadow-2xl">
+            {/* 440px Height Interactive Google Maps Window with Auto-Releasing Touch Lock */}
+            <View 
+              onTouchStart={handleMapTouchStart}
+              onTouchMove={handleMapTouchStart}
+              onTouchEnd={handleMapTouchEnd}
+              className="w-full h-[440px] rounded-2xl overflow-hidden border border-white/15 shadow-2xl"
+            >
               <WebView
                 originWhitelist={['*']}
-                source={{ html: generateGoogleMapsHtml() }}
+                source={{ html: googleMapsHtml }}
                 style={{ flex: 1 }}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
@@ -325,7 +373,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
           </GlassCard>
         </View>
 
-        {/* Vehicle & Driver Info Card (Dynamic Location Name from Map API) */}
+        {/* Vehicle & Driver Info Card */}
         <View className="px-5 mb-5">
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
             <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Vehicle & Driver Details</Text>
@@ -337,7 +385,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
                 </View>
                 <View>
                   <Text className="text-white font-extrabold text-sm">{selectedRouteConfig.driver}</Text>
-                  <Text className="text-white/50 text-[10px]">Driver Contact: {selectedRouteConfig.phone}</Text>
+                  <Text className="text-[#00f1a1] text-[10px] font-bold mt-0.5">Driver Contact: {selectedRouteConfig.phone}</Text>
                 </View>
               </View>
 
