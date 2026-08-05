@@ -16,6 +16,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
 
   const [selectedRouteId, setSelectedRouteId] = useState<number>(1);
   const [livePositions, setLivePositions] = useState<LiveBusData[]>([]);
+  const [busAreaNames, setBusAreaNames] = useState<Record<string, string>>({});
   const [mapType, setMapType] = useState<'roadmap' | 'hybrid' | 'satellite'>('roadmap');
 
   const selectedRouteConfig = BUS_ROUTES_CONFIG.find(r => r.id === selectedRouteId) || BUS_ROUTES_CONFIG[0];
@@ -25,7 +26,9 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
   const currentLng = liveBusData?.lng ?? selectedRouteConfig.startPos.lng;
   const currentSpeed = liveBusData?.speed ?? 42;
   const isIgnitionOn = liveBusData?.ignition ?? true;
-  const lastSeenText = liveBusData?.address || 'Near School Main Route';
+  
+  // Dynamic reverse geocoded area name or fallback
+  const currentAreaName = busAreaNames[selectedRouteConfig.busNumber] || liveBusData?.address || 'Locating Fleet Position...';
 
   // Calculate Fleet KPIs
   const activeFleetCount = livePositions.filter(p => p.ignition && !p.error).length || 4;
@@ -49,9 +52,37 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
     return () => subscription.remove();
   }, [navigation]);
 
+  // Google Maps Reverse Geocoding API function to get real-world area names from lat/lng
+  const fetchAreaFromCoords = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`);
+      const data = await res.json();
+      if (data.results && data.results.length > 0) {
+        const address = data.results[0].formatted_address;
+        // Clean up and truncate long address strings
+        return address.length > 40 ? address.substring(0, 40) + '...' : address;
+      }
+    } catch (err) {
+      console.log('Error reverse geocoding coordinates:', err);
+    }
+    return `Area: ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+  };
+
   const loadLiveGps = async () => {
     const data = await fetchLiveBusPositions();
     setLivePositions(data);
+
+    // Fetch dynamic area names for all 5 buses using Google Reverse Geocoding
+    const newAreas: Record<string, string> = {};
+    for (const b of data) {
+      if (b.lat && b.lng) {
+        const areaName = await fetchAreaFromCoords(b.lat, b.lng);
+        newAreas[b.busNumber] = areaName;
+      }
+    }
+    if (Object.keys(newAreas).length > 0) {
+      setBusAreaNames(newAreas);
+    }
   };
 
   useEffect(() => {
@@ -65,12 +96,13 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
     const allBusesJson = JSON.stringify(
       BUS_ROUTES_CONFIG.map(cfg => {
         const live = livePositions.find(p => p.busNumber === cfg.busNumber);
+        const area = busAreaNames[cfg.busNumber] || live?.address || 'Near School Route';
         return {
           id: cfg.id,
           busNumber: cfg.busNumber,
-          route: cfg.route,
           driver: cfg.driver,
           color: cfg.color,
+          areaName: area,
           lat: live?.lat ?? cfg.startPos.lat,
           lng: live?.lng ?? cfg.startPos.lng,
           speed: live?.speed ?? 40,
@@ -135,7 +167,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
 
                 if (b.id === ${selectedRouteId}) {
                   const infoWindow = new google.maps.InfoWindow({
-                    content: '<div style="padding:6px; font-weight:bold; color:#1a73e8; font-family:sans-serif">' + b.busNumber + '<br/><span style="color:#3c4043; font-size:12px">Speed: ' + b.speed + ' km/h • Driver: ' + b.driver + '</span></div>'
+                    content: '<div style="padding:6px; font-weight:bold; color:#1a73e8; font-family:sans-serif">Bus ' + b.busNumber + '<br/><span style="color:#3c4043; font-size:12px">Location: ' + b.areaName + '<br/>Speed: ' + b.speed + ' km/h</span></div>'
                   });
                   infoWindow.open(map, marker);
                 }
@@ -162,7 +194,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
         title="Bus Fleet Tracking Console"
-        subtitle="Standard Google Maps Location & Route Monitoring"
+        subtitle="Live GPS & Real-time Area Location"
         icon={
           <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
             <Bus size={20} color="#00f1a1" />
@@ -215,9 +247,9 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
           </GlassCard>
         </View>
 
-        {/* Route Selector Ribbon */}
+        {/* Bus Fleet Selector Ribbon (Dynamic Bus Plates & Dynamic Area Names) */}
         <View className="px-5 mb-4 flex-row justify-between items-center">
-          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Select Transport Route (5 Buses)</Text>
+          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Select Bus Fleet (5 Buses)</Text>
           <Pressable onPress={loadLiveGps} className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2.5 py-1 rounded-xl flex-row items-center">
             <RefreshCw size={11} color="#00f1a1" style={{ marginRight: 4 }} />
             <Text className="text-[#00f1a1] text-[10px] font-bold">Refresh GPS</Text>
@@ -229,6 +261,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
             <View className="flex-row" style={{ gap: 8 }}>
               {BUS_ROUTES_CONFIG.map(r => {
                 const isSel = selectedRouteId === r.id;
+                const area = busAreaNames[r.busNumber] || 'GPS Active';
                 return (
                   <Pressable
                     key={r.id}
@@ -236,7 +269,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
                     className={`px-3.5 py-2 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-[#101415]/90 border-white/10'}`}
                   >
                     <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/80'}`}>
-                      {r.busNumber} • {r.route.split('—')[1] || r.route}
+                      Bus {r.busNumber}
                     </Text>
                   </Pressable>
                 );
@@ -249,9 +282,11 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
         <View className="px-5 mb-5">
           <GlassCard intensity="low" className="p-3.5 border-white/10 bg-[#101415]/90 overflow-hidden">
             <View className="flex-row justify-between items-center mb-3">
-              <View className="flex-row items-center">
+              <View className="flex-row items-center flex-1 mr-2">
                 <Navigation size={16} color="#00f1a1" style={{ marginRight: 6 }} />
-                <Text className="text-white font-extrabold text-sm">{selectedRouteConfig.busNumber} Standard Google Map</Text>
+                <Text className="text-white font-extrabold text-sm" numberOfLines={1}>
+                  Bus {selectedRouteConfig.busNumber}
+                </Text>
               </View>
 
               {/* Map View Mode Toggles */}
@@ -290,10 +325,10 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
           </GlassCard>
         </View>
 
-        {/* Vehicle & Driver Info Card */}
+        {/* Vehicle & Driver Info Card (Dynamic Location Name from Map API) */}
         <View className="px-5 mb-5">
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
-            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Vehicle & Driver Info</Text>
+            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Vehicle & Driver Details</Text>
 
             <View className="flex-row justify-between items-center mb-3 bg-black/40 p-3 rounded-2xl border border-white/5">
               <View className="flex-row items-center">
@@ -312,7 +347,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
               </Pressable>
             </View>
 
-            <View className="flex-row justify-between" style={{ gap: 8 }}>
+            <View className="flex-row justify-between mb-3" style={{ gap: 8 }}>
               <View className="flex-1 bg-white/5 p-3 rounded-2xl border border-white/10">
                 <Text className="text-white/40 text-[9px] uppercase font-bold">Current Speed</Text>
                 <Text className="text-[#00f1a1] font-extrabold text-base mt-0.5">{currentSpeed} km/h</Text>
@@ -324,9 +359,13 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
               </View>
             </View>
 
-            <View className="mt-3 bg-black/40 p-2.5 rounded-xl border border-white/5 flex-row items-center">
-              <MapPin size={14} color="#00f1a1" style={{ marginRight: 6 }} />
-              <Text className="text-white/70 text-xs flex-1" numberOfLines={1}>Location: {lastSeenText}</Text>
+            {/* Dynamic Map Location Field */}
+            <View className="bg-black/40 p-3 rounded-xl border border-white/5 flex-row items-center">
+              <MapPin size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+              <View className="flex-1">
+                <Text className="text-white/50 text-[9px] font-bold uppercase">Current Area Location (Map API)</Text>
+                <Text className="text-white font-bold text-xs mt-0.5">{currentAreaName}</Text>
+              </View>
             </View>
           </GlassCard>
         </View>
