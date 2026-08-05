@@ -16,7 +16,7 @@ import {
   ShieldCheck, Bell, UserCheck, BookOpen, TrendingUp,
   GraduationCap, Tag, Palmtree, CalendarOff, BarChart2, Layers,
   UserSearch, PhoneCall, HelpCircle, School, FileBarChart, Trash2, CheckCircle2,
-  LogOut, Mail, Building2, Smartphone
+  LogOut, Mail, Building2, Smartphone, History, ChevronRight
 } from 'lucide-react-native';
 
 interface QuickAction {
@@ -406,8 +406,22 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                 </View>
               </View>
 
-              {/* Bottom Sign Out Button (Redirects to Splash) */}
+              {/* Bottom Actions: Activity Log & Sign Out */}
               <View className="pb-6">
+                <Pressable
+                  onPress={() => {
+                    setShowSidebarModal(false);
+                    navigation.navigate('AdminActivityLog');
+                  }}
+                  className="w-full py-3.5 px-4 mb-2.5 bg-[#00f1a1]/15 border border-[#00f1a1]/40 rounded-2xl flex-row items-center justify-between active:bg-[#00f1a1]/25"
+                >
+                  <View className="flex-row items-center">
+                    <History size={18} color="#00f1a1" style={{ marginRight: 10 }} />
+                    <Text className="text-[#00f1a1] font-extrabold text-xs">Activity Log</Text>
+                  </View>
+                  <ChevronRight size={16} color="#00f1a1" />
+                </Pressable>
+
                 <Pressable
                   onPress={handleSignOut}
                   className="w-full py-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30 shadow-[0_0_15px_rgba(255,81,106,0.3)]"
