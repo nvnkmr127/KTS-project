@@ -198,85 +198,64 @@ export const SuperAdminDashboard: React.FC = () => {
           </View>
 
           <View className="flex-row flex-wrap justify-between">
-            {/* Action 1: Manage Users */}
+            {/* Action 1: Admin */}
             <Pressable 
-              onPress={() => navigation.navigate('Users')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
+              onPress={() => navigation.navigate('SuperAdminAdminConsole')}
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
-              <Users size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Manage Users</Text>
+              <ShieldCheck size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2">Admin</Text>
             </Pressable>
 
             {/* Action 2: Fee Structure */}
             <Pressable 
               onPress={() => navigation.navigate('AssignFeeStructure')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
               <Banknote size={24} color="#ffe5a0" />
               <Text className="text-white text-[10px] font-bold text-center mt-2">Fee Structure</Text>
             </Pressable>
 
-            {/* Action 3: Analytics */}
-            <Pressable 
-              onPress={() => navigation.navigate('Analytics')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
-            >
-              <BarChart size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Analytics</Text>
-            </Pressable>
-
-            {/* Action 4: Announcements */}
-            <Pressable 
-              onPress={() => navigation.navigate('Broadcast')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
-            >
-              <Megaphone size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Announcements</Text>
-            </Pressable>
-
-            {/* Action 5: Leave Approvals */}
+            {/* Action 3: Leave Approvals */}
             <Pressable 
               onPress={() => navigation.navigate('LeaveApprovals')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
               <CalendarCheck size={24} color="#ffe5a0" />
               <Text className="text-white text-[10px] font-bold text-center mt-2">Leave Approvals</Text>
             </Pressable>
 
-            {/* Action 6: Salary & Payroll */}
+            {/* Action 4: Salary & Payroll */}
             <Pressable 
               onPress={() => navigation.navigate('SalaryExpenses')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
               <Briefcase size={24} color="#ffe5a0" />
               <Text className="text-white text-[10px] font-bold text-center mt-2">Salary & Payroll</Text>
             </Pressable>
 
-            {/* Action 7: Expenses */}
+            {/* Action 5: Expenses */}
             <Pressable 
               onPress={() => navigation.navigate('SalaryExpenses')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
               <Receipt size={24} color="#ffe5a0" />
               <Text className="text-white text-[10px] font-bold text-center mt-2">Expenses</Text>
             </Pressable>
 
-            {/* Action 8: Staff Access */}
+            {/* Action 6: Staff Access */}
             <Pressable 
               onPress={() => navigation.navigate('Users')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
               <UserCheck size={24} color="#ffe5a0" />
               <Text className="text-white text-[10px] font-bold text-center mt-2">Staff Access</Text>
-            </Pressable>
-
-            {/* Action 9: App Settings */}
-            <Pressable 
-              onPress={() => navigation.navigate('Settings')}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:scale-95"
-            >
-              <Settings size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">App Settings</Text>
             </Pressable>
           </View>
         </View>

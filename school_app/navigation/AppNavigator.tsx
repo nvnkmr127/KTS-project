@@ -29,6 +29,7 @@ import SalaryExpensesScreen from '../screens/super_admin/SalaryExpensesScreen';
 import NotificationCenterScreen from '../screens/super_admin/NotificationCenterScreen';
 import PortalToolsScreen from '../screens/super_admin/PortalToolsScreen';
 import AssignFeeStructureScreen from '../screens/super_admin/AssignFeeStructureScreen';
+import SuperAdminAdminConsoleScreen from '../screens/super_admin/SuperAdminAdminConsoleScreen';
 
 // Admin Staff Screens
 import AdminStaffDashboard from '../screens/admin_staff/AdminStaffDashboard';
@@ -227,6 +228,7 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="AdminBusTracking" component={AdminBusTrackingScreen} />
       <AppStack.Screen name="AdminReportsAnalytics" component={AdminReportsAnalyticsScreen} />
       <AppStack.Screen name="StaffAttendance" component={AdminStaffAttendanceScreen} />
+      <AppStack.Screen name="SuperAdminAdminConsole" component={SuperAdminAdminConsoleScreen} />
     </AppStack.Navigator>
   );
 };
