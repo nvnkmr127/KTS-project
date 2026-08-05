@@ -609,7 +609,28 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
             filteredRecords.map((item) => (
               <GlassCard key={item.id} intensity="low" className="p-4 mb-3 border border-white/10 bg-[#101415]/90">
                 <View className="flex-row items-center justify-between mb-2">
-                  <View className="flex-row items-center flex-1 mr-2">
+                  <Pressable
+                    onPress={() => {
+                      navigation.navigate('StudentPerformance', {
+                        student: {
+                          id: item.id,
+                          name: item.name,
+                          className: item.className,
+                          rollNo: item.rollNo,
+                          feeStatus: item.status,
+                          totalFee: item.totalFee,
+                          paidAmount: item.paidAmount,
+                          balanceDue: item.balanceDue,
+                          initials: item.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2),
+                        },
+                        openProfile: true,
+                        studentName: item.name,
+                        className: item.className,
+                        rollNo: item.rollNo,
+                      });
+                    }}
+                    className="flex-row items-center flex-1 mr-2 active:opacity-70"
+                  >
                     <View className="w-10 h-10 rounded-2xl bg-[#00f1a1]/15 border border-[#00f1a1]/30 items-center justify-center mr-3">
                       <Text className="text-[#00f1a1] font-extrabold text-xs">
                         {item.name.split(' ').map(n=>n[0]).join('').slice(0,2)}
@@ -619,7 +640,7 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                       <Text className="text-white font-extrabold text-sm">{item.name}</Text>
                       <Text className="text-[#00f1a1] text-[10px] font-extrabold uppercase mt-0.5">{item.className} • Roll #{item.rollNo}</Text>
                     </View>
-                  </View>
+                  </Pressable>
 
                   <View className={`px-2.5 py-1 rounded-full border ${item.status === 'Paid' ? 'bg-emerald-500/20 border-emerald-500/40' :
                       item.status === 'Partial' ? 'bg-amber-500/20 border-amber-500/40' :

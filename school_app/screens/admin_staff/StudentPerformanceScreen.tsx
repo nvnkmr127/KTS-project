@@ -87,43 +87,72 @@ const INITIAL_ACTIVITIES: TimelineActivity[] = [
   }
 ];
 
-const getInitialFeesForStudent = (feeStatus?: string): FeeItem[] => {
-  if (feeStatus === 'Paid') {
+const getInitialFeesForStudent = (student?: any): FeeItem[] => {
+  if (!student) {
     return [
-      { id: 'f1', name: 'Term 1 Tuition Fee', totalAmount: 15000, paidAmount: 15000, concessionAmount: 0 },
-      { id: 'f2', name: 'Term 2 Tuition Fee', totalAmount: 10000, paidAmount: 10000, concessionAmount: 0 },
-      { id: 'f3', name: 'Transport & Lab Fee', totalAmount: 10000, paidAmount: 10000, concessionAmount: 0 },
-    ];
-  } else if (feeStatus === 'Overdue') {
-    return [
-      { id: 'f1', name: 'Term 1 Tuition Fee', totalAmount: 15000, paidAmount: 0, concessionAmount: 0 },
-      { id: 'f2', name: 'Term 2 Tuition Fee', totalAmount: 10000, paidAmount: 0, concessionAmount: 0 },
-      { id: 'f3', name: 'Transport & Lab Fee', totalAmount: 10000, paidAmount: 0, concessionAmount: 0 },
-    ];
-  } else {
-    // Partial
-    return [
-      { id: 'f1', name: 'Term 1 Tuition Fee', totalAmount: 15000, paidAmount: 15000, concessionAmount: 0 },
-      { id: 'f2', name: 'Term 2 Tuition Fee', totalAmount: 10000, paidAmount: 10000, concessionAmount: 0 },
-      { id: 'f3', name: 'Transport & Lab Fee', totalAmount: 10000, paidAmount: 0, concessionAmount: 0 },
+      { id: 'f1', name: 'Class X Tuition Fee', totalAmount: 25000, paidAmount: 25000, concessionAmount: 0 },
+      { id: 'f2', name: 'Term 2 Academic & Lab Fee', totalAmount: 10000, paidAmount: 10000, concessionAmount: 0 },
+      { id: 'f3', name: 'Transport & Activity Fee', totalAmount: 10000, paidAmount: 0, concessionAmount: 0 },
     ];
   }
+
+  // Extract student fee metrics if provided
+  const total = typeof student.totalFee === 'number' && student.totalFee > 0 ? student.totalFee : 45000;
+  const paid = typeof student.paidAmount === 'number' 
+    ? student.paidAmount 
+    : (student.feeStatus === 'Paid' ? total : student.feeStatus === 'Overdue' || student.feeStatus === 'Unpaid' ? 0 : Math.round(total * 0.65));
+
+  // Component breakdown matching exact total sum
+  const comp1Total = Math.round(total * 0.55);
+  const comp2Total = Math.round(total * 0.25);
+  const comp3Total = total - comp1Total - comp2Total;
+
+  // Distribute paid amount across components starting from Component 1
+  let remainingPaid = paid;
+  
+  const comp1Paid = Math.min(comp1Total, remainingPaid);
+  remainingPaid -= comp1Paid;
+
+  const comp2Paid = Math.min(comp2Total, remainingPaid);
+  remainingPaid -= comp2Paid;
+
+  const comp3Paid = Math.min(comp3Total, remainingPaid);
+
+  return [
+    { id: 'f1', name: student.feeCategory || 'Class X Tuition Fee', totalAmount: comp1Total, paidAmount: comp1Paid, concessionAmount: 0 },
+    { id: 'f2', name: 'Term 2 Academic & Lab Fee', totalAmount: comp2Total, paidAmount: comp2Paid, concessionAmount: 0 },
+    { id: 'f3', name: 'Transport & Activity Fee', totalAmount: comp3Total, paidAmount: comp3Paid, concessionAmount: 0 },
+  ];
 };
 
 export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) => {
   const selectedStudent = route?.params?.student;
-  const studentName = selectedStudent?.name || 'Julian Sterling';
-  const className = selectedStudent?.className || 'Class 10 — A';
-  const admissionNo = selectedStudent?.admissionNo || 'STDDe2026002';
+  const openProfileParam = route?.params?.openProfile;
+  const studentName = selectedStudent?.name || route?.params?.studentName || 'Julian Sterling';
+  const className = selectedStudent?.className || route?.params?.className || 'Class 10 — A';
+  const admissionNo = selectedStudent?.admissionNo || route?.params?.rollNo || 'STDDe2026002';
   const canGoBack = navigation?.canGoBack && navigation.canGoBack();
 
-  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState<boolean>(() => openProfileParam === true);
+
+  // Dynamic State for Fees and Activities
+  const [feeItems, setFeeItems] = useState<FeeItem[]>(() => getInitialFeesForStudent(selectedStudent));
+
+  React.useEffect(() => {
+    if (route?.params?.openProfile === true) {
+      setIsDetailsExpanded(true);
+    }
+  }, [route?.params?.openProfile, route?.params?.student]);
+
+  React.useEffect(() => {
+    if (selectedStudent) {
+      setFeeItems(getInitialFeesForStudent(selectedStudent));
+    }
+  }, [selectedStudent]);
+
   const [showAttendanceCalendar, setShowAttendanceCalendar] = useState(false);
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'payment' | 'concession'>('all');
   const [showTimelineFilterDropdown, setShowTimelineFilterDropdown] = useState(false);
-
-  // Dynamic State for Fees and Activities
-  const [feeItems, setFeeItems] = useState<FeeItem[]>(() => getInitialFeesForStudent(selectedStudent?.feeStatus));
   const [activities, setActivities] = useState<TimelineActivity[]>(INITIAL_ACTIVITIES);
 
   // Modal States
