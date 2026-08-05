@@ -172,14 +172,6 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   const handleSignOut = () => {
     setShowSidebarModal(false);
     logout();
-    if (navigation?.reset) {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Splash' }],
-      });
-    } else if (navigation?.navigate) {
-      navigation.navigate('Splash');
-    }
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;

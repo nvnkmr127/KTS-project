@@ -172,6 +172,7 @@ const RoleStackComponent = () => {
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
       <AppStack.Screen name={initialRoute} component={mainComponent} />
+      <AppStack.Screen name="Splash" component={SplashScreen} />
       {/* Remaining Feature Screens */}
       <AppStack.Screen name="FeePayment" component={FeePaymentScreen} />
       <AppStack.Screen name="ReportCard" component={ReportCardScreen} />
