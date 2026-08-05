@@ -51,6 +51,7 @@ import AdminDailyDiaryScreen from '../screens/admin_staff/AdminDailyDiaryScreen'
 import AdminStaffLeavesScreen from '../screens/admin_staff/AdminStaffLeavesScreen';
 import AdminBusTrackingScreen from '../screens/admin_staff/AdminBusTrackingScreen';
 import AdminReportsAnalyticsScreen from '../screens/admin_staff/AdminReportsAnalyticsScreen';
+import AdminStaffAttendanceScreen from '../screens/admin_staff/AdminStaffAttendanceScreen';
 
 // Teacher Screens
 import TeacherDashboard from '../screens/teachers/TeacherDashboard';
@@ -218,6 +219,7 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="AdminStaffLeaves" component={AdminStaffLeavesScreen} />
       <AppStack.Screen name="AdminBusTracking" component={AdminBusTrackingScreen} />
       <AppStack.Screen name="AdminReportsAnalytics" component={AdminReportsAnalyticsScreen} />
+      <AppStack.Screen name="StaffAttendance" component={AdminStaffAttendanceScreen} />
     </AppStack.Navigator>
   );
 };

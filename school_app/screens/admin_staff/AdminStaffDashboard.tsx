@@ -121,7 +121,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
     { title: 'Substitution Assign', icon: <ArrowLeftRight size={24} color="#00f1a1" />, route: 'SubstitutionManagement' },
     { title: 'Circulars', icon: <Megaphone size={24} color="#00f1a1" />, route: 'Messaging' },
     { title: 'Enquiry Leads', icon: <UserSearch size={24} color="#00f1a1" />, route: 'EnquiryLeads' },
-    { title: 'Student Performance', icon: <BarChart2 size={24} color="#00f1a1" />, route: 'StudentPerformance' },
+    { title: 'Staff Attendance', icon: <UserCheck size={24} color="#00f1a1" />, route: 'StaffAttendance' },
     { title: 'Bus Tracking', icon: <Bus size={24} color="#00f1a1" />, route: 'AdminBusTracking' },
     { title: 'Reports & Analytics', icon: <FileBarChart size={24} color="#00f1a1" />, route: 'AdminReportsAnalytics' },
     { title: 'Recycle Bin', icon: <Trash2 size={24} color="#00f1a1" />, route: 'RecycleBin' },

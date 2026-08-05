@@ -1,0 +1,358 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, Image, TextInput, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { 
+  UserCheck, Clock, Calendar, Search, Filter, Fingerprint, ShieldCheck, Lock, Eye
+} from 'lucide-react-native';
+import { AdminStaffHeader } from '../../components/AdminStaffHeader';
+import { GlassCard } from '../../components/GlassCard';
+import { api } from '../../services/api';
+
+export interface StaffAttendanceItem {
+  id: string;
+  name: string;
+  role: string;
+  department: 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support';
+  empCode: string;
+  avatar: string;
+  status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
+  inTime: string;
+  outTime: string;
+  biometricSynced: boolean;
+}
+
+const INITIAL_STAFF_MEMBERS: StaffAttendanceItem[] = [
+  {
+    id: 'st_1',
+    name: 'Dr. Julian Vance',
+    role: 'Senior Physics Faculty',
+    department: 'Teaching',
+    empCode: 'EMP-101',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
+    status: 'Present',
+    inTime: '08:24 AM',
+    outTime: '04:30 PM',
+    biometricSynced: true,
+  },
+  {
+    id: 'st_2',
+    name: 'Mrs. Sarah Jenkins',
+    role: 'Admin Operations Head',
+    department: 'Admin',
+    empCode: 'EMP-102',
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150',
+    status: 'Present',
+    inTime: '08:15 AM',
+    outTime: '05:00 PM',
+    biometricSynced: true,
+  },
+  {
+    id: 'st_3',
+    name: 'Prof. Michael Chen',
+    role: 'HOD Mathematics',
+    department: 'Teaching',
+    empCode: 'EMP-103',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150',
+    status: 'Leave',
+    inTime: '--:--',
+    outTime: '--:--',
+    biometricSynced: false,
+  },
+  {
+    id: 'st_4',
+    name: 'Rajesh Sharma',
+    role: 'Senior Accountant',
+    department: 'Non-Teaching',
+    empCode: 'EMP-104',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150',
+    status: 'Half Day',
+    inTime: '08:30 AM',
+    outTime: '01:00 PM',
+    biometricSynced: true,
+  },
+  {
+    id: 'st_5',
+    name: 'Priya Nambiar',
+    role: 'English Teacher',
+    department: 'Teaching',
+    empCode: 'EMP-105',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150',
+    status: 'Absent',
+    inTime: '--:--',
+    outTime: '--:--',
+    biometricSynced: false,
+  },
+];
+
+export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
+  const [selectedDate, setSelectedDate] = useState('2026-08-05');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState<'All' | 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support'>('All');
+  const [staffMembers, setStaffMembers] = useState<StaffAttendanceItem[]>(INITIAL_STAFF_MEMBERS);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Handle Hardware Back Button
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (navigation?.canGoBack && navigation.canGoBack()) {
+          navigation.goBack();
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [navigation])
+  );
+
+  // Fetch Faculty List & Attendance Records from Laravel DB API
+  const fetchFacultyAttendanceFromApi = async () => {
+    setIsSyncing(true);
+    try {
+      // 1. Fetch Faculty list from DB
+      const facultyList = await api.getResources('faculty');
+      if (Array.isArray(facultyList) && facultyList.length > 0) {
+        const mappedStaff: StaffAttendanceItem[] = facultyList.map((f: any, index: number) => ({
+          id: String(f.id || `faculty_${index}`),
+          name: f.name || `${f.first_name || ''} ${f.last_name || ''}`.trim() || 'Staff Member',
+          role: f.designation || f.department || 'Faculty Member',
+          department: (f.department_category || f.department || 'Teaching') as any,
+          empCode: f.employee_code || f.emp_code || `EMP-${100 + index}`,
+          avatar: f.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
+          status: 'Present',
+          inTime: f.in_time || '08:30 AM',
+          outTime: f.out_time || '04:30 PM',
+          biometricSynced: !!f.biometric_code,
+        }));
+        setStaffMembers(mappedStaff);
+      }
+
+      // 2. Fetch existing attendance overrides from DB
+      const attendanceLogs = await api.getResources('staff-attendance', { date: selectedDate });
+      if (Array.isArray(attendanceLogs) && attendanceLogs.length > 0) {
+        setStaffMembers(prev => prev.map(s => {
+          const log = attendanceLogs.find((l: any) => String(l.staff_id || l.faculty_id) === s.id);
+          if (log) {
+            return {
+              ...s,
+              status: (log.status || s.status) as any,
+              inTime: log.in_time || s.inTime,
+              outTime: log.out_time || s.outTime,
+            };
+          }
+          return s;
+        }));
+      }
+    } catch (e) {
+      console.log('Using initial staff attendance offline fallback:', e);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFacultyAttendanceFromApi();
+  }, [selectedDate]);
+
+  // Filtered staff list
+  const filteredStaff = staffMembers.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          s.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          s.empCode.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDept = selectedDeptFilter === 'All' || s.department === selectedDeptFilter;
+    return matchesSearch && matchesDept;
+  });
+
+  // KPI Metrics Calculations
+  const totalStaffCount = staffMembers.length;
+  const presentCount = staffMembers.filter(s => s.status === 'Present').length;
+  const absentCount = staffMembers.filter(s => s.status === 'Absent' || s.status === 'Leave').length;
+  const halfDayCount = staffMembers.filter(s => s.status === 'Half Day').length;
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#0d2a24', '#121414']}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+
+      <AdminStaffHeader
+        onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        title="Staff Attendance Console"
+        subtitle="View Only • Employee Attendance Records"
+        icon={
+          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
+            <UserCheck size={20} color="#00f1a1" />
+          </View>
+        }
+      />
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        
+        {/* View Only Mode Notification Ribbon */}
+        <View className="px-5 mb-4">
+          <View className="bg-sky-500/15 border border-sky-500/30 p-3 rounded-2xl flex-row items-center">
+            <View className="w-8 h-8 rounded-xl bg-sky-500/20 items-center justify-center mr-3">
+              <Eye size={18} color="#38bdf8" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sky-400 font-extrabold text-xs">View Only Mode Active</Text>
+              <Text className="text-sky-200/70 text-[10px] mt-0.5">Admin Staff login has view-only access. Super Admin manages staff members and attendance modifications.</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Top 4 KPI Metrics Cards */}
+        <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
+          <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Total Staff</Text>
+            <Text className="text-white text-lg font-extrabold mt-0.5">{totalStaffCount}</Text>
+          </GlassCard>
+
+          <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Present</Text>
+            <Text className="text-[#00f1a1] text-lg font-extrabold mt-0.5">{presentCount}</Text>
+          </GlassCard>
+
+          <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Absent/Leave</Text>
+            <Text className="text-rose-400 text-lg font-extrabold mt-0.5">{absentCount}</Text>
+          </GlassCard>
+
+          <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Half Day</Text>
+            <Text className="text-amber-400 text-lg font-extrabold mt-0.5">{halfDayCount}</Text>
+          </GlassCard>
+        </View>
+
+        {/* Date Selector */}
+        <View className="px-5 mb-4 flex-row justify-between items-center">
+          <View className="flex-row items-center bg-[#101415]/90 border border-white/10 px-3 py-1.5 rounded-xl">
+            <Calendar size={14} color="#00f1a1" style={{ marginRight: 6 }} />
+            <Text className="text-white font-extrabold text-xs">{selectedDate}</Text>
+          </View>
+
+          <View className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl flex-row items-center">
+            <ShieldCheck size={13} color="#00f1a1" style={{ marginRight: 4 }} />
+            <Text className="text-[#00f1a1] text-[10px] font-bold">Biometric e-TimeOffice</Text>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <View className="px-5 mb-4">
+          <View className="bg-[#101415]/90 border border-white/10 rounded-2xl px-3.5 py-2.5 flex-row items-center">
+            <Search size={16} color="rgba(255,255,255,0.4)" style={{ marginRight: 8 }} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search faculty name or emp code..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              className="flex-1 text-white text-xs"
+            />
+          </View>
+        </View>
+
+        {/* Department Filter Ribbon */}
+        <View className="px-5 mb-4">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row" style={{ gap: 8 }}>
+              {(['All', 'Teaching', 'Non-Teaching', 'Admin', 'Support'] as const).map(d => {
+                const isSel = selectedDeptFilter === d;
+                return (
+                  <Pressable
+                    key={d}
+                    onPress={() => setSelectedDeptFilter(d)}
+                    className={`px-3 py-1.5 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-[#101415]/90 border-white/10'}`}
+                  >
+                    <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
+                      {d}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Staff Attendance List (View Only) */}
+        <View className="px-5 mb-8">
+          {filteredStaff.length === 0 ? (
+            <GlassCard className="p-8 items-center justify-center border border-white/10 bg-[#101415]/90" intensity="low">
+              <Text className="text-white/40 text-xs font-bold">No staff members found matching filter.</Text>
+            </GlassCard>
+          ) : (
+            filteredStaff.map(staff => (
+              <GlassCard key={staff.id} intensity="low" className="p-4 mb-3 border-white/10 bg-[#101415]/90">
+                
+                {/* Profile Header Row */}
+                <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-white/10">
+                  <View className="flex-row items-center flex-1 mr-2">
+                    <Image
+                      source={{ uri: staff.avatar }}
+                      className="w-12 h-12 rounded-2xl border border-white/10 mr-3"
+                    />
+                    <View className="flex-1">
+                      <Text className="text-white font-extrabold text-sm">{staff.name}</Text>
+                      <Text className="text-[#00f1a1] text-[10px] font-extrabold uppercase mt-0.5">{staff.role} • {staff.empCode}</Text>
+                    </View>
+                  </View>
+
+                  <View className={`px-2.5 py-1 rounded-full border ${
+                    staff.status === 'Present' ? 'bg-emerald-500/20 border-emerald-500/40' :
+                    staff.status === 'Absent' ? 'bg-rose-500/20 border-rose-500/40' :
+                    staff.status === 'Half Day' ? 'bg-amber-500/20 border-amber-500/40' :
+                    'bg-sky-500/20 border-sky-500/40'
+                  }`}>
+                    <Text className={`text-[10px] font-extrabold uppercase ${
+                      staff.status === 'Present' ? 'text-[#00f1a1]' :
+                      staff.status === 'Absent' ? 'text-rose-400' :
+                      staff.status === 'Half Day' ? 'text-amber-400' : 'text-sky-400'
+                    }`}>
+                      {staff.status}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Timing Info & Biometric Sync Tag */}
+                <View className="flex-row justify-between items-center bg-black/40 p-2.5 rounded-xl border border-white/5">
+                  <View className="flex-row items-center">
+                    <Clock size={13} color="#00f1a1" style={{ marginRight: 4 }} />
+                    <Text className="text-white/70 text-xs font-bold">IN: {staff.inTime}  |  OUT: {staff.outTime}</Text>
+                  </View>
+
+                  <View className="flex-row items-center">
+                    <Fingerprint size={12} color={staff.biometricSynced ? '#00f1a1' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 3 }} />
+                    <Text className={`text-[9px] font-bold ${staff.biometricSynced ? 'text-[#00f1a1]' : 'text-white/40'}`}>
+                      {staff.biometricSynced ? 'e-TimeOffice Live' : 'Recorded'}
+                    </Text>
+                  </View>
+                </View>
+
+              </GlassCard>
+            ))
+          )}
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0d2a24',
+  },
+  scrollContent: {
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+});
+
+export default AdminStaffAttendanceScreen;
