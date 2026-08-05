@@ -54,6 +54,7 @@ import AdminReportsAnalyticsScreen from '../screens/admin_staff/AdminReportsAnal
 import AdminStaffAttendanceScreen from '../screens/admin_staff/AdminStaffAttendanceScreen';
 import AdminAlertConfigurationScreen from '../screens/admin_staff/AdminAlertConfigurationScreen';
 import AdminActivityLogScreen from '../screens/admin_staff/AdminActivityLogScreen';
+import AdminStaffSettingsScreen from '../screens/admin_staff/AdminStaffSettingsScreen';
 
 // Teacher Screens
 import TeacherDashboard from '../screens/teachers/TeacherDashboard';
@@ -211,6 +212,7 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="AssignFeeStructure" component={AssignFeeStructureScreen} />
       <AppStack.Screen name="AdminAlertConfiguration" component={AdminAlertConfigurationScreen} />
       <AppStack.Screen name="AdminActivityLog" component={AdminActivityLogScreen} />
+      <AppStack.Screen name="AdminStaffSettings" component={AdminStaffSettingsScreen} />
       <AppStack.Screen name="ClassPromotions" component={ClassPromotionsScreen} />
       <AppStack.Screen name="AlumniManagement" component={AlumniManagementScreen} />
       <AppStack.Screen name="FeeCategory" component={FeeCategoryScreen} />

@@ -16,7 +16,7 @@ import {
   ShieldCheck, Bell, UserCheck, BookOpen, TrendingUp,
   GraduationCap, Tag, Palmtree, CalendarOff, BarChart2, Layers,
   UserSearch, PhoneCall, HelpCircle, School, FileBarChart, Trash2, CheckCircle2,
-  LogOut, Mail, Building2, Smartphone, History, ChevronRight
+  LogOut, Mail, Building2, Smartphone, History, ChevronRight, Settings
 } from 'lucide-react-native';
 
 interface QuickAction {
@@ -406,8 +406,22 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                 </View>
               </View>
 
-              {/* Bottom Actions: Activity Log & Sign Out */}
+              {/* Bottom Actions: Settings, Activity Log & Sign Out */}
               <View className="pb-6">
+                <Pressable
+                  onPress={() => {
+                    setShowSidebarModal(false);
+                    navigation.navigate('AdminStaffSettings');
+                  }}
+                  className="w-full py-3.5 px-4 mb-2.5 bg-white/5 border border-white/15 rounded-2xl flex-row items-center justify-between active:bg-white/10"
+                >
+                  <View className="flex-row items-center">
+                    <Settings size={18} color="#00f1a1" style={{ marginRight: 10 }} />
+                    <Text className="text-white font-extrabold text-xs">Settings</Text>
+                  </View>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" />
+                </Pressable>
+
                 <Pressable
                   onPress={() => {
                     setShowSidebarModal(false);
