@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  Award, Calendar, Clock, Plus, Trash2, Pencil, 
+import {
+  Award, Calendar, Clock, Plus, Trash2, Pencil,
   CheckCircle2, AlertCircle, X, BookOpen, ShieldCheck, UserCheck, Search
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
@@ -155,8 +155,8 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
   const filteredExams = examSchedules.filter(ex => {
     const matchesClass = selectedClassFilter === 'All' || ex.className.includes(selectedClassFilter);
     const matchesSearch = ex.examName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          ex.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          ex.className.toLowerCase().includes(searchQuery.toLowerCase());
+      ex.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ex.className.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesClass && matchesSearch;
   });
 
@@ -172,7 +172,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
         title="Examinations Console"
-        subtitle="Schedules, Invigilation & Assessment Management"
+        subtitle="Schedules,Invigilation & Marks Management"
         icon={
           <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
             <Award size={20} color="#00f1a1" />
@@ -181,7 +181,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
+
         {/* Navigation Tabs (Schedules, Invigilation, Results) */}
         <View className="px-5 mb-4">
           <View className="flex-row bg-[#101415] p-1.5 rounded-2xl border border-white/10" style={{ gap: 6 }}>
@@ -333,7 +333,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
             <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-4">
               <Text className="text-white font-extrabold text-sm mb-1">Faculty Invigilation Roster</Text>
               <Text className="text-white/50 text-xs mb-3">Assigned exam room supervision for staff members</Text>
-              
+
               <View className="bg-white/5 p-3 rounded-2xl border border-white/10 mb-2 flex-row justify-between items-center">
                 <View>
                   <Text className="text-white font-bold text-xs">Mrs. Anita Sharma</Text>

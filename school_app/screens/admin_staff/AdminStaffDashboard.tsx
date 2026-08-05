@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl, Modal, BackHandler } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { GlassCard } from '../../components/GlassCard';
 import { AdminStatCard } from '../../components/AdminStatCard';
 import { QuickActionIcon } from '../../components/QuickActionIcon';
@@ -15,7 +15,8 @@ import {
   Megaphone, UserPlus, Phone, MessageCircle, X, Check,
   ShieldCheck, Bell, UserCheck, BookOpen, TrendingUp,
   GraduationCap, Tag, Palmtree, CalendarOff, BarChart2, Layers,
-  UserSearch, PhoneCall, HelpCircle, School, FileBarChart, Trash2
+  UserSearch, PhoneCall, HelpCircle, School, FileBarChart, Trash2, CheckCircle2,
+  LogOut, Mail, Building2, Smartphone
 } from 'lucide-react-native';
 
 interface QuickAction {
@@ -25,24 +26,70 @@ interface QuickAction {
   params?: Record<string, any>;
 }
 
-export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
-  const { user } = useAuthStore();
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  category: 'Fees' | 'Leaves' | 'System' | 'Bus';
+  read: boolean;
+}
+
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+  { id: 'n1', title: 'Term 2 Fee Collection Summary', message: '₹42,500 collected today across Class 10-A and 9-B.', time: '10 mins ago', category: 'Fees', read: false },
+  { id: 'n2', title: 'Pending Staff Leave Applications', message: '5 staff leave applications pending review.', time: '35 mins ago', category: 'Leaves', read: false },
+  { id: 'n3', title: 'Bus Live Movement Alert', message: 'Bus TS07UP2292 completed Morning Route 1.', time: '1 hour ago', category: 'Bus', read: false },
+  { id: 'n4', title: 'Parent Fee Reminder Broadcast', message: 'Automated fee due reminder dispatched to 480 parents.', time: '2 hours ago', category: 'Fees', read: true },
+];
+
+export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation }) => {
+  const defaultNavigation = useNavigation<any>();
+  const navigation = propNavigation || defaultNavigation;
+  const { user, logout } = useAuthStore();
+
   const [refreshing, setRefreshing] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showSidebarModal, setShowSidebarModal] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState<'All' | 'Fees' | 'Leaves' | 'System' | 'Bus'>('All');
+  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+
   const [stats, setStats] = useState({
     studentsCount: '1,248',
     feesDue: '₹2.3L',
     pendingLeaves: '5',
     activeBuses: '8',
   });
+
   const [feeDefaulters, setFeeDefaulters] = useState([
     { id: 1, initials: 'AG', name: 'Aman Gupta', classInfo: '10-A', amount: '₹4,500', color: 'bg-emerald-950/40 text-emerald-400' },
     { id: 2, initials: 'RS', name: 'Riya Sen', classInfo: '8-B', amount: '₹1,200', color: 'bg-emerald-950/40 text-emerald-400' },
     { id: 3, initials: 'KP', name: 'Kevin Peters', classInfo: '12-C', amount: '₹8,900', color: 'bg-emerald-950/40 text-emerald-400' },
   ]);
+
   const [leaveRequests, setLeaveRequests] = useState([
     { id: 1, name: 'Mrs. Anita Sharma', type: 'Sick Leave', date: '24 Oct - 26 Oct' },
     { id: 2, name: 'Mr. Rajesh Kumar', type: 'Casual Leave', date: '25 Oct' },
   ]);
+
+  // Safe BackHandler effect
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (showSidebarModal) {
+          setShowSidebarModal(false);
+          return true;
+        }
+        if (showNotificationModal) {
+          setShowNotificationModal(false);
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [showSidebarModal, showNotificationModal])
+  );
 
   const fetchLiveDashboardData = async () => {
     try {
@@ -88,6 +135,20 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
       } else {
         setStats(prev => ({ ...prev, studentsCount: studentCountStr }));
       }
+
+      // 4. Fetch Live Notifications
+      const notifs = await api.getNotifications();
+      if (Array.isArray(notifs) && notifs.length > 0) {
+        const mapped = notifs.map((n: any) => ({
+          id: String(n.id || Date.now()),
+          title: n.title || 'System Alert',
+          message: n.message || n.body || 'New administrative notification.',
+          time: n.created_at || 'Recently',
+          category: (n.category || 'System') as any,
+          read: !!n.read,
+        }));
+        setNotifications(mapped);
+      }
     } catch (e) {
       console.log('Error fetching live dashboard metrics:', e);
     } finally {
@@ -104,6 +165,25 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
     fetchLiveDashboardData();
   };
 
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleSignOut = () => {
+    setShowSidebarModal(false);
+    logout();
+    if (navigation?.reset) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Splash' }],
+      });
+    } else if (navigation?.navigate) {
+      navigation.navigate('Splash');
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
   const quickActions: QuickAction[] = [
     { title: 'Student Profiles', icon: <UserSquare2 size={24} color="#00f1a1" />, route: 'StudentDirectory' },
     { title: 'Add Student', icon: <UserPlus size={24} color="#00f1a1" />, route: 'AddStudent' },
@@ -119,13 +199,17 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
     { title: 'Timetable Builder', icon: <CalendarRange size={24} color="#00f1a1" />, route: 'TimetableBuilder' },
     { title: 'Exam Schedule', icon: <FileEdit size={24} color="#00f1a1" />, route: 'ExamSchedule' },
     { title: 'Substitution Assign', icon: <ArrowLeftRight size={24} color="#00f1a1" />, route: 'SubstitutionManagement' },
-    { title: 'Circulars', icon: <Megaphone size={24} color="#00f1a1" />, route: 'Messaging' },
+    { title: 'Circulars', icon: <Megaphone size={24} color="#00f1a1" />, route: 'AdminAlertConfiguration' },
     { title: 'Enquiry Leads', icon: <UserSearch size={24} color="#00f1a1" />, route: 'EnquiryLeads' },
     { title: 'Staff Attendance', icon: <UserCheck size={24} color="#00f1a1" />, route: 'StaffAttendance' },
     { title: 'Bus Tracking', icon: <Bus size={24} color="#00f1a1" />, route: 'AdminBusTracking' },
     { title: 'Reports & Analytics', icon: <FileBarChart size={24} color="#00f1a1" />, route: 'AdminReportsAnalytics' },
     { title: 'Recycle Bin', icon: <Trash2 size={24} color="#00f1a1" />, route: 'RecycleBin' },
   ];
+
+  const filteredNotifications = notifications.filter(n => 
+    notificationFilter === 'All' || n.category === notificationFilter
+  );
 
   return (
     <View style={styles.container}>
@@ -136,6 +220,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
         style={StyleSheet.absoluteFillObject}
       />
       <AdminStaffHeader 
+        onIconPress={() => setShowSidebarModal(true)}
         title="EduVision"
         subtitle="Admin Staff Terminal"
         icon={
@@ -144,9 +229,14 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
           </View>
         }
         rightAction={
-          <Pressable className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative shadow-[0_0_10px_rgba(0,241,161,0.1)]">
+          <Pressable 
+            onPress={() => setShowNotificationModal(true)}
+            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative active:bg-white/10 shadow-[0_0_10px_rgba(0,241,161,0.1)]"
+          >
             <Bell size={18} color="#00f1a1" />
-            <View className="absolute top-2 right-2 w-2 h-2 bg-[#ff516a] rounded-full shadow-[0_0_5px_rgba(255,81,106,0.8)]" />
+            {unreadCount > 0 && (
+              <View className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#ff516a] rounded-full items-center justify-center shadow-[0_0_6px_rgba(255,81,106,0.8)]" />
+            )}
           </Pressable>
         }
       />
@@ -181,92 +271,69 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
             onPress={() => navigation.navigate('FeeList')}
           />
         </View>
-        <View className="flex-row mb-8 px-5" style={{ gap: 12 }}>
+
+        <View className="flex-row mb-6 px-5" style={{ gap: 12 }}>
           <AdminStatCard 
-            title="LEAVES" 
+            title="PENDING LEAVES" 
             value={stats.pendingLeaves} 
             icon={<CalendarDays size={20} color="#00f1a1" />}
-            subtitle="Awaiting Approval"
+            progress={0.25}
             onPress={() => navigation.navigate('AdminStaffLeaves')}
           />
           <AdminStatCard 
-            title="BUS ROUTES" 
+            title="ACTIVE BUSES" 
             value={stats.activeBuses} 
             icon={<Bus size={20} color="#00f1a1" />}
-            subtitle="GPS Millitrack"
+            trend="GPS Live"
             onPress={() => navigation.navigate('AdminBusTracking')}
           />
         </View>
 
-        {/* Quick Actions */}
-        <View className="px-5">
-          <Text className="text-[#00f1a1] text-xs font-bold tracking-[0.2em] mb-4">QUICK ACTIONS</Text>
-          <View className="flex-row flex-wrap justify-between mb-4">
+        {/* Quick Actions Grid */}
+        <View className="mb-6 px-5">
+          <Text className="text-white/80 text-sm font-bold uppercase tracking-wider mb-4">Quick Management Actions</Text>
+          <View className="flex-row flex-wrap justify-between">
             {quickActions.map((action, index) => (
-              <QuickActionIcon 
+              <QuickActionIcon
                 key={index}
                 title={action.title}
                 icon={action.icon}
-                onPress={() => {
-                  if (action.route) {
-                    navigation.navigate(action.route, action.params);
-                  }
-                }}
+                onPress={() => navigation.navigate(action.route, action.params)}
               />
             ))}
           </View>
         </View>
 
-        {/* Fee Defaulters */}
-        <View className="px-5">
-          <View className="flex-row justify-between items-center mb-4 mt-2">
-            <Text className="text-[#00f1a1] text-xs font-bold tracking-[0.2em]">FEE DEFAULTERS</Text>
-            <Pressable onPress={() => navigation.navigate('FeeList')} className="bg-[#101415] border border-[#00f1a1]/30 px-3 py-1 rounded-full">
-              <Text className="text-[#00f1a1] text-[10px] font-bold tracking-widest">VIEW ALL</Text>
-            </Pressable>
-          </View>
-          <GlassCard intensity="low" className="mb-8 p-1 border-[#00f1a1]/20 bg-[#101415]/60">
-            {feeDefaulters.map((defaulter, index) => (
-              <View 
-                key={defaulter.id} 
-                className={`flex-row items-center p-3 ${index !== feeDefaulters.length - 1 ? 'border-b border-[#00f1a1]/10' : ''}`}
-              >
-                <View className="w-10 h-10 rounded-full items-center justify-center mr-3 bg-[#101415] border border-[#00f1a1]/30">
-                  <Text className="text-[#00f1a1] font-bold">{defaulter.initials}</Text>
+        {/* Priority Action Lists */}
+        <View className="mb-6 px-5">
+          <Text className="text-white/80 text-sm font-bold uppercase tracking-wider mb-3">Pending Fee Overdue (Top 3)</Text>
+          {feeDefaulters.map((item) => (
+            <GlassCard key={item.id} className="p-3 mb-2 flex-row justify-between items-center bg-[#101415]/90 border-white/10" intensity="low">
+              <View className="flex-row items-center gap-3">
+                <View className={`w-9 h-9 rounded-xl ${item.color} items-center justify-center border border-emerald-500/20`}>
+                  <Text className="font-bold text-xs">{item.initials}</Text>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-white text-base font-semibold">
-                    {defaulter.name} <Text className="text-white/40 font-normal text-xs">({defaulter.classInfo})</Text>
-                  </Text>
-                  <Text className="text-[#ff516a] text-xs mt-0.5">{defaulter.amount} overdue</Text>
+                <View>
+                  <Text className="text-white font-bold text-sm">{item.name}</Text>
+                  <Text className="text-white/50 text-xs">Class {item.classInfo}</Text>
                 </View>
-                <Pressable className="bg-[#101415] p-2 rounded-full border border-[#00f1a1]/30">
-                  <MessageCircle size={16} color="#00f1a1" />
-                </Pressable>
               </View>
-            ))}
-          </GlassCard>
+              <Text className="text-[#00f1a1] font-extrabold text-sm">{item.amount}</Text>
+            </GlassCard>
+          ))}
         </View>
 
-        {/* Leave Requests */}
-        <View className="px-5">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-[#00f1a1] text-xs font-bold tracking-[0.2em]">LEAVE REQUESTS</Text>
-            <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="bg-[#101415] border border-[#00f1a1]/30 px-3 py-1 rounded-full">
-              <Text className="text-[#00f1a1] text-[10px] font-bold tracking-widest">MANAGE</Text>
-            </Pressable>
-          </View>
-          {leaveRequests.map((req) => (
-            <GlassCard key={req.id} intensity="low" className="mb-3 flex-row items-center justify-between p-4 border-l-4 border-l-[#00f1a1] border-t border-r border-b border-[#00f1a1]/20 bg-[#101415]/60">
-              <View>
-                <Text className="text-white text-base font-semibold">{req.name}</Text>
-                <Text className="text-white/60 text-xs mt-1">{req.type} • {req.date}</Text>
-              </View>
-              <View className="flex-row items-center" style={{ gap: 8 }}>
-                <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="bg-[#101415] p-2 rounded-full border border-[#ff516a]/50 shadow-[0_0_10px_rgba(255,81,106,0.3)]">
-                  <X size={16} color="#ff516a" />
-                </Pressable>
-                <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="bg-[#101415] p-2 rounded-full border border-[#00f1a1]/50 shadow-[0_0_10px_rgba(0,241,161,0.3)]">
+        {/* Staff Leave Requests */}
+        <View className="mb-6 px-5">
+          <Text className="text-white/80 text-sm font-bold uppercase tracking-wider mb-3">Recent Leave Approvals</Text>
+          {leaveRequests.map((item) => (
+            <GlassCard key={item.id} className="p-3 mb-2 bg-[#101415]/90 border-white/10" intensity="low">
+              <View className="flex-row justify-between items-center">
+                <View>
+                  <Text className="text-white font-bold text-sm">{item.name}</Text>
+                  <Text className="text-white/50 text-xs">{item.type} • {item.date}</Text>
+                </View>
+                <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="p-2 bg-[#00f1a1]/20 border border-[#00f1a1]/40 rounded-xl">
                   <Check size={16} color="#00f1a1" />
                 </Pressable>
               </View>
@@ -276,6 +343,183 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation }) => {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* LEFT SIDEBAR DRAWER MODAL (Profile Details & Sign Out) */}
+      {showSidebarModal && (
+        <Modal visible={showSidebarModal} transparent animationType="fade" onRequestClose={() => setShowSidebarModal(false)}>
+          <View className="flex-1 bg-black/80 flex-row">
+            <View className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-white/15" style={{ backgroundColor: '#101415' }}>
+              
+              {/* Sidebar Header & Close */}
+              <View>
+                <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5 pt-4">
+                  <View className="flex-row items-center">
+                    <View className="w-9 h-9 rounded-xl bg-[#00f1a1] items-center justify-center mr-2.5 shadow-[0_0_10px_rgba(0,241,161,0.4)]">
+                      <ShieldCheck size={20} color="#101415" />
+                    </View>
+                    <View>
+                      <Text className="text-white font-extrabold text-sm">EduVision</Text>
+                      <Text className="text-[#00f1a1] text-[9px] font-bold">Admin Staff Portal</Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={() => setShowSidebarModal(false)} className="p-1">
+                    <X size={20} color="rgba(255,255,255,0.6)" />
+                  </Pressable>
+                </View>
+
+                {/* Profile Avatar Card */}
+                <View className="bg-black/60 p-4 rounded-3xl border border-white/10 mb-5 items-center">
+                  <View className="w-16 h-16 rounded-full bg-[#00f1a1]/20 border-2 border-[#00f1a1] items-center justify-center mb-3 shadow-[0_0_15px_rgba(0,241,161,0.3)]">
+                    <Text className="text-[#00f1a1] font-extrabold text-xl">
+                      {(user?.name || 'Sarah Jenkins').split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </Text>
+                  </View>
+                  <Text className="text-white font-extrabold text-base text-center">{user?.name || 'Sarah Jenkins'}</Text>
+                  <Text className="text-white/50 text-xs text-center mt-0.5">{user?.email || 'sarah.jenkins@kts.edu.in'}</Text>
+
+                  <View className="bg-[#00f1a1]/20 border border-[#00f1a1]/40 px-3 py-1 rounded-xl mt-3">
+                    <Text className="text-[#00f1a1] text-[10px] font-black uppercase">ADMIN STAFF CONSOLE</Text>
+                  </View>
+                </View>
+
+                {/* Staff Info Details List */}
+                <View className="bg-white/5 p-3.5 rounded-2xl border border-white/10 mb-4" style={{ gap: 10 }}>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Employee ID</Text>
+                    <Text className="text-white font-extrabold text-xs">EMP-2026-88</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Department</Text>
+                    <Text className="text-[#00f1a1] font-bold text-xs">Administration</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Campus</Text>
+                    <Text className="text-white font-bold text-xs">KTS Main Campus</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">System Version</Text>
+                    <Text className="text-white/70 font-semibold text-xs">v2.4.0 (Expo v56)</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Bottom Sign Out Button (Redirects to Splash) */}
+              <View className="pb-6">
+                <Pressable
+                  onPress={handleSignOut}
+                  className="w-full py-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30 shadow-[0_0_15px_rgba(255,81,106,0.3)]"
+                >
+                  <LogOut size={18} color="#ff516a" style={{ marginRight: 8 }} />
+                  <Text className="text-[#ff516a] font-extrabold text-xs uppercase tracking-wider">Sign Out</Text>
+                </Pressable>
+              </View>
+
+            </View>
+
+            {/* Tap Backdrop Outside Drawer to Dismiss */}
+            <Pressable onPress={() => setShowSidebarModal(false)} className="flex-1" />
+          </View>
+        </Modal>
+      )}
+
+      {/* NOTIFICATION CARD MODAL (Top-Right Popover Below Bell Icon) */}
+      {showNotificationModal && (
+        <Modal visible={showNotificationModal} transparent animationType="fade" onRequestClose={() => setShowNotificationModal(false)}>
+          <Pressable 
+            onPress={() => setShowNotificationModal(false)}
+            className="flex-1 bg-black/60 pt-20 px-4 items-end"
+          >
+            <Pressable 
+              onPress={(e) => e.stopPropagation()} 
+              className="w-[92%] max-w-sm p-4 border border-white/20 rounded-3xl shadow-2xl" 
+              style={{ backgroundColor: '#101415', marginTop: 8 }}
+            >
+              
+              {/* Header Bar */}
+              <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
+                <View className="flex-row items-center">
+                  <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
+                    <Bell size={16} color="#00f1a1" />
+                  </View>
+                  <View>
+                    <Text className="text-white font-extrabold text-base">Notification Center</Text>
+                    <Text className="text-[#00f1a1] text-[10px] font-bold">{unreadCount} Unread System Alerts</Text>
+                  </View>
+                </View>
+                
+                <Pressable onPress={() => setShowNotificationModal(false)} className="p-1">
+                  <X size={20} color="rgba(255,255,255,0.6)" />
+                </Pressable>
+              </View>
+
+              {/* Notification Category Filters */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                <View className="flex-row" style={{ gap: 6 }}>
+                  {(['All', 'Fees', 'Leaves', 'Bus', 'System'] as const).map(cat => {
+                    const isSel = notificationFilter === cat;
+                    return (
+                      <Pressable
+                        key={cat}
+                        onPress={() => setNotificationFilter(cat)}
+                        className={`px-3 py-1.5 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                      >
+                        <Text className={`text-[10px] font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>{cat}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
+              {/* Notifications List */}
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }} className="mb-4">
+                {filteredNotifications.length === 0 ? (
+                  <View className="py-8 items-center justify-center">
+                    <Text className="text-white/40 text-xs font-bold">No notifications in this category.</Text>
+                  </View>
+                ) : (
+                  filteredNotifications.map(n => (
+                    <View 
+                      key={n.id} 
+                      className={`p-3 rounded-2xl mb-2.5 border ${
+                        n.read ? 'bg-white/5 border-white/5' : 'bg-[#00f1a1]/10 border-[#00f1a1]/30'
+                      }`}
+                    >
+                      <View className="flex-row justify-between items-start mb-1">
+                        <Text className="text-white font-extrabold text-xs flex-1 mr-2">{n.title}</Text>
+                        <Text className="text-white/40 text-[9px]">{n.time}</Text>
+                      </View>
+                      <Text className="text-white/70 text-[11px] leading-snug">{n.message}</Text>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+
+              {/* Footer Actions */}
+              <View className="flex-row" style={{ gap: 8 }}>
+                <Pressable
+                  onPress={handleMarkAllRead}
+                  className="flex-1 py-2.5 bg-white/10 rounded-xl items-center flex-row justify-center"
+                >
+                  <CheckCircle2 size={14} color="#00f1a1" style={{ marginRight: 4 }} />
+                  <Text className="text-white text-xs font-bold">Mark All Read</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setShowNotificationModal(false)}
+                  className="flex-1 py-2.5 bg-[#00f1a1] rounded-xl items-center"
+                >
+                  <Text className="text-[#101415] text-xs font-extrabold uppercase">Close</Text>
+                </Pressable>
+              </View>
+
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
     </View>
   );
 };

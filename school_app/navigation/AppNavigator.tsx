@@ -10,7 +10,7 @@ import {
   Home, Bell, Calendar, User, MessageCircle, 
   GraduationCap, Banknote, Bus, ClipboardCheck, 
   ClipboardList, Star, CalendarOff, Users, 
-  BarChart, Megaphone, Settings, FileText 
+  BarChart, Megaphone, Settings, FileText, Sliders
 } from 'lucide-react-native';
 
 // Auth Screens
@@ -52,6 +52,7 @@ import AdminStaffLeavesScreen from '../screens/admin_staff/AdminStaffLeavesScree
 import AdminBusTrackingScreen from '../screens/admin_staff/AdminBusTrackingScreen';
 import AdminReportsAnalyticsScreen from '../screens/admin_staff/AdminReportsAnalyticsScreen';
 import AdminStaffAttendanceScreen from '../screens/admin_staff/AdminStaffAttendanceScreen';
+import AdminAlertConfigurationScreen from '../screens/admin_staff/AdminAlertConfigurationScreen';
 
 // Teacher Screens
 import TeacherDashboard from '../screens/teachers/TeacherDashboard';
@@ -110,7 +111,7 @@ const AdminStaffTabs = () => (
     <Tab.Screen name="Students" component={StudentDirectoryScreen} options={getTabOptions(Users, '#46f1c5')} />
     <Tab.Screen name="Fees" component={FeeCollectionScreen} options={getTabOptions(Banknote, '#46f1c5')} />
     <Tab.Screen name="Schedule" component={ExamScheduleScreen} options={getTabOptions(Calendar, '#46f1c5')} />
-    <Tab.Screen name="Messages" component={MessagingScreen} options={getTabOptions(MessageCircle, '#46f1c5')} />
+    <Tab.Screen name="Config" component={AdminAlertConfigurationScreen} options={getTabOptions(Sliders, '#46f1c5', 'Config')} />
   </Tab.Navigator>
 );
 
@@ -207,6 +208,7 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="AttendanceHistory" component={AttendanceHistoryScreen} />
       <AppStack.Screen name="StudentProfileDetails" component={ProfileScreen} />
       <AppStack.Screen name="AssignFeeStructure" component={AssignFeeStructureScreen} />
+      <AppStack.Screen name="AdminAlertConfiguration" component={AdminAlertConfigurationScreen} />
       <AppStack.Screen name="ClassPromotions" component={ClassPromotionsScreen} />
       <AppStack.Screen name="AlumniManagement" component={AlumniManagementScreen} />
       <AppStack.Screen name="FeeCategory" component={FeeCategoryScreen} />
