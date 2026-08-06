@@ -8,6 +8,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface StudentPromotionItem {
   id: string;
@@ -114,6 +115,8 @@ const MOCK_CLASS_10A_STUDENTS: StudentPromotionItem[] = [
 ];
 
 export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [currentAcademicYear] = useState('2026-2027');
   const [upcomingAcademicYear] = useState('2026-2027');
   const [sourceClass, setSourceClass] = useState('Class 8A');
@@ -191,10 +194,17 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
     s.rollNo.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -203,10 +213,10 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
         title="Student Promotion"
-        subtitle={`ACADEMIC YEAR: ${currentAcademicYear} (Current)`}
+        subtitle="Promote Classes & Manage Academic Progressions"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <TrendingUp size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <TrendingUp size={20} color={primaryColor} />
           </View>
         }
       />
@@ -216,7 +226,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
         {/* Title Dashboard Section */}
         <View className="px-5 mb-4">
           <View className="flex-row items-center">
-            <GraduationCap size={20} color="#00f1a1" style={{ marginRight: 8 }} />
+            <GraduationCap size={20} color={primaryColor} style={{ marginRight: 8 }} />
             <Text className="text-white font-extrabold text-lg">Student Promotion Dashboard</Text>
           </View>
           <Text className="text-white/50 text-xs mt-0.5">
@@ -243,10 +253,10 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
             <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Class & Section</Text>
             <Pressable
               onPress={() => setShowSourceClassModal(true)}
-              className="bg-[#00f1a1]/10 border border-[#00f1a1]/40 rounded-xl px-2.5 py-2 flex-row justify-between items-center"
+              className={`border rounded-xl px-2.5 py-2 flex-row justify-between items-center ${isSuperAdmin ? 'bg-[#f0c110]/10 border-[#f0c110]/40' : 'bg-[#00f1a1]/10 border-[#00f1a1]/40'}`}
             >
-              <Text className="text-[#00f1a1] text-xs font-bold mr-1" numberOfLines={1}>{sourceClass}</Text>
-              <ChevronDown size={14} color="#00f1a1" />
+              <Text className={`${primaryTextClass} text-xs font-bold mr-1`} numberOfLines={1}>{sourceClass}</Text>
+              <ChevronDown size={14} color={primaryColor} />
             </Pressable>
           </GlassCard>
 
@@ -254,7 +264,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/90">
             <View className="flex-row items-center mb-2.5">
               <View className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 items-center justify-center mr-1.5">
-                <Text className="text-[#00f1a1] text-[10px] font-extrabold">2</Text>
+                <Text className={`${primaryTextClass} text-[10px] font-extrabold`}>2</Text>
               </View>
               <Text className="text-white/80 text-[10.5px] font-extrabold">Destination Class / Batch</Text>
             </View>
@@ -316,7 +326,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
             ) : (
               <>
                 <Text className="text-white/60 text-[11px] leading-relaxed">
-                  • <Text className="text-[#00f1a1] font-bold">Promote</Text> updates the student to the selected target batch under the upcoming year.
+                  • <Text className={`${primaryTextClass} font-bold`}>Promote</Text> updates the student to the selected target batch under the upcoming year.
                 </Text>
                 <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
                   • <Text className="text-amber-400 font-bold">Retain</Text> assigns the student to the corresponding class level under the new year (keeps them in the same grade).
@@ -338,9 +348,9 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
             {!isClass10Source && (
               <Pressable
                 onPress={() => handleSetAllAction('promote')}
-                className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2.5 py-1 rounded-xl"
+                className={`px-2.5 py-1 rounded-xl ${primaryBadgeClass}`}
               >
-                <Text className="text-[#00f1a1] text-[10.5px] font-extrabold">All Promote</Text>
+                <Text className={`${primaryTextClass} text-[10.5px] font-extrabold`}>All Promote</Text>
               </Pressable>
             )}
             <Pressable
@@ -361,7 +371,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
         {/* Search Bar */}
         <View className="px-5 mb-4">
           <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2 shadow-md">
-            <Search size={15} color="#00f1a1" style={{ marginRight: 8 }} />
+            <Search size={15} color={primaryColor} style={{ marginRight: 8 }} />
             <TextInput
               placeholder="Search students..."
               placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -390,8 +400,8 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
                   </View>
                   <View className="flex-row items-center mt-1">
                     <Text className="text-white/50 text-[10px] mr-3">Roll: {st.rollNo}</Text>
-                    <View className="bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md">
-                      <Text className="text-[#00f1a1] text-[9px] font-bold">{st.status}</Text>
+                    <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                      <Text className={`${primaryTextClass} text-[9px] font-bold`}>{st.status}</Text>
                     </View>
                   </View>
                 </View>
@@ -428,10 +438,10 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
                     <>
                       <Pressable
                         onPress={() => handleStudentActionChange(st.id, 'promote')}
-                        className={`px-3 py-1.5 rounded-xl border flex-row items-center ${st.action === 'promote' ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                        className={`px-3 py-1.5 rounded-xl border flex-row items-center ${st.action === 'promote' ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                       >
-                        <TrendingUp size={12} color={st.action === 'promote' ? '#101415' : '#00f1a1'} style={{ marginRight: 3 }} />
-                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'promote' ? 'text-[#101415]' : 'text-[#00f1a1]'}`}>Promote</Text>
+                        <TrendingUp size={12} color={st.action === 'promote' ? '#101415' : primaryColor} style={{ marginRight: 3 }} />
+                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'promote' ? 'text-[#101415]' : primaryTextClass}`}>Promote</Text>
                       </Pressable>
 
                       <Pressable
@@ -462,7 +472,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
             className={`w-full py-4 rounded-2xl items-center justify-center flex-row shadow-lg ${
               isClass10Source 
                 ? 'bg-purple-600 shadow-[0_0_20px_rgba(192,132,252,0.4)]' 
-                : 'bg-[#00f1a1] shadow-[0_0_20px_rgba(0,241,161,0.4)]'
+                : `${primaryBtnClass} shadow-lg`
             }`}
           >
             {isClass10Source ? (
@@ -489,7 +499,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
       {/* SOURCE CLASS SELECTION MODAL */}
       <Modal visible={showSourceClassModal} transparent animationType="slide" onRequestClose={() => setShowSourceClassModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <Text className="text-white font-bold text-base">Select Source Class Section</Text>
               <Pressable onPress={() => setShowSourceClassModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
@@ -505,7 +515,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
                     <Pressable
                       key={cls}
                       onPress={() => handleSelectSourceClass(cls)}
-                      className={`w-[48%] py-3 rounded-xl border items-center ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                      className={`w-[48%] py-3 rounded-xl border items-center ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                     >
                       <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
                     </Pressable>
@@ -557,12 +567,12 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
       {/* EXECUTE PROMOTION CONFIRM MODAL */}
       <Modal visible={showExecuteModal} transparent animationType="fade" onRequestClose={() => setShowExecuteModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${isClass10Source ? 'bg-purple-500/20 border-purple-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${isClass10Source ? 'bg-purple-500/20 border-purple-500/40' : primaryBadgeClass}`}>
               {isClass10Source ? (
                 <GraduationCap size={28} color="#c084fc" />
               ) : (
-                <TrendingUp size={28} color="#00f1a1" />
+                <TrendingUp size={28} color={primaryColor} />
               )}
             </View>
 
@@ -581,7 +591,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
               </Pressable>
               <Pressable 
                 onPress={handleConfirmPromotion} 
-                className={`flex-1 py-3.5 rounded-xl items-center ${isClass10Source ? 'bg-purple-600' : 'bg-[#00f1a1]'}`}
+                className={`flex-1 py-3.5 rounded-xl items-center ${isClass10Source ? 'bg-purple-600' : primaryBtnClass}`}
               >
                 <Text className={`font-extrabold text-xs ${isClass10Source ? 'text-white' : 'text-[#101415]'}`}>
                   {isClass10Source ? 'Graduate All' : 'Confirm Migration'}
@@ -595,9 +605,9 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
       {/* TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className="w-14 h-14 rounded-full bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mb-4">
-              <CheckCircle2 size={28} color="#00f1a1" />
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${primaryBadgeClass}`}>
+              <CheckCircle2 size={28} color={primaryColor} />
             </View>
 
             <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
@@ -605,7 +615,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
-              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
             </Pressable>

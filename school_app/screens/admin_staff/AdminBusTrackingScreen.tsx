@@ -7,12 +7,15 @@ import { Bus, MapPin, Phone, User, Clock, Navigation, RefreshCw, Satellite, Map 
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { BUS_ROUTES_CONFIG, fetchLiveBusPositions, LiveBusData } from '../../services/millitrack';
+import { useAuthStore } from '../../store/useAuthStore';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAYOIEB9I2lOiJbGM7t723CUtDEjm4-Yj0';
 
 export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
 
   const [selectedRouteId, setSelectedRouteId] = useState<number>(1);
   const [livePositions, setLivePositions] = useState<LiveBusData[]>([]);
@@ -218,13 +221,20 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
     `;
   }, [selectedRouteId, mapType, livePositions, busAreaNames]);
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
     <View 
-      style={styles.container}
+      style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}
       onTouchStart={() => setIsScrollEnabled(true)} // Guarantee screen scroll unlocks on any outside touch
     >
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -235,8 +245,8 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
         title="Bus Fleet Tracking Console"
         subtitle="Live GPS & Real-time Area Location"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <Bus size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <Bus size={20} color={primaryColor} />
           </View>
         }
       />
@@ -264,11 +274,11 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
         {/* Top 3 Derived KPI Cards */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
           <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/90 items-center">
-            <View className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 items-center justify-center mb-1.5">
-              <Bus size={16} color="#00f1a1" />
+            <View className={`w-8 h-8 rounded-xl items-center justify-center mb-1.5 ${primaryBadgeClass}`}>
+              <Bus size={16} color={primaryColor} />
             </View>
             <Text className="text-white/50 text-[9px] font-bold uppercase text-center">Active Fleet</Text>
-            <Text className="text-[#00f1a1] text-xl font-extrabold mt-0.5">{activeFleetCount} / {totalFleetCount}</Text>
+            <Text className={`${primaryTextClass} text-xl font-extrabold mt-0.5`}>{activeFleetCount} / {totalFleetCount}</Text>
             <Text className="text-white/40 text-[9px] text-center mt-0.5">Buses En Route</Text>
           </GlassCard>
 
@@ -294,9 +304,9 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
         {/* Bus Fleet Selector Ribbon (Dynamic Bus Plates & Dynamic Area Names) */}
         <View className="px-5 mb-4 flex-row justify-between items-center">
           <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Select Bus Fleet (5 Buses)</Text>
-          <Pressable onPress={loadLiveGps} className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2.5 py-1 rounded-xl flex-row items-center">
-            <RefreshCw size={11} color="#00f1a1" style={{ marginRight: 4 }} />
-            <Text className="text-[#00f1a1] text-[10px] font-bold">Refresh GPS</Text>
+          <Pressable onPress={loadLiveGps} className={`px-2.5 py-1 rounded-xl flex-row items-center ${primaryBadgeClass}`}>
+            <RefreshCw size={11} color={primaryColor} style={{ marginRight: 4 }} />
+            <Text className={`${primaryTextClass} text-[10px] font-bold`}>Refresh GPS</Text>
           </Pressable>
         </View>
 
@@ -309,7 +319,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
                   <Pressable
                     key={r.id}
                     onPress={() => setSelectedRouteId(r.id)}
-                    className={`px-3.5 py-2 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-[#101415]/90 border-white/10'}`}
+                    className={`px-3.5 py-2 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-[#101415]/90 border-white/10'}`}
                   >
                     <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/80'}`}>
                       Bus {r.busNumber}
@@ -326,7 +336,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
           <GlassCard intensity="low" className="p-3.5 border-white/10 bg-[#101415]/90 overflow-hidden">
             <View className="flex-row justify-between items-center mb-3">
               <View className="flex-row items-center flex-1 mr-2">
-                <Navigation size={16} color="#00f1a1" style={{ marginRight: 6 }} />
+                <Navigation size={16} color={primaryColor} style={{ marginRight: 6 }} />
                 <Text className="text-white font-extrabold text-sm" numberOfLines={1}>
                   Bus {selectedRouteConfig.busNumber}
                 </Text>
@@ -336,17 +346,17 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
               <View className="flex-row items-center bg-white/5 border border-white/10 rounded-xl p-0.5" style={{ gap: 4 }}>
                 <Pressable
                   onPress={() => setMapType('roadmap')}
-                  className={`px-2.5 py-1 rounded-lg flex-row items-center ${mapType === 'roadmap' ? 'bg-[#00f1a1]' : ''}`}
+                  className={`px-2.5 py-1 rounded-lg flex-row items-center ${mapType === 'roadmap' ? primaryBtnClass : ''}`}
                 >
-                  <MapIcon size={11} color={mapType === 'roadmap' ? '#101415' : '#00f1a1'} style={{ marginRight: 3 }} />
+                  <MapIcon size={11} color={mapType === 'roadmap' ? '#101415' : primaryColor} style={{ marginRight: 3 }} />
                   <Text className={`text-[10px] font-bold ${mapType === 'roadmap' ? 'text-[#101415]' : 'text-white/70'}`}>Map</Text>
                 </Pressable>
 
                 <Pressable
                   onPress={() => setMapType('hybrid')}
-                  className={`px-2.5 py-1 rounded-lg flex-row items-center ${mapType === 'hybrid' ? 'bg-[#00f1a1]' : ''}`}
+                  className={`px-2.5 py-1 rounded-lg flex-row items-center ${mapType === 'hybrid' ? primaryBtnClass : ''}`}
                 >
-                  <Satellite size={11} color={mapType === 'hybrid' ? '#101415' : '#00f1a1'} style={{ marginRight: 3 }} />
+                  <Satellite size={11} color={mapType === 'hybrid' ? '#101415' : primaryColor} style={{ marginRight: 3 }} />
                   <Text className={`text-[10px] font-bold ${mapType === 'hybrid' ? 'text-[#101415]' : 'text-white/70'}`}>Satellite</Text>
                 </Pressable>
               </View>
@@ -380,25 +390,25 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
 
             <View className="flex-row justify-between items-center mb-3 bg-black/40 p-3 rounded-2xl border border-white/5">
               <View className="flex-row items-center">
-                <View className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mr-3">
-                  <User size={18} color="#00f1a1" />
+                <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                  <User size={18} color={primaryColor} />
                 </View>
                 <View>
                   <Text className="text-white font-extrabold text-sm">{selectedRouteConfig.driver}</Text>
-                  <Text className="text-[#00f1a1] text-[10px] font-bold mt-0.5">Driver Contact: {selectedRouteConfig.phone}</Text>
+                  <Text className={`${primaryTextClass} text-[10px] font-bold mt-0.5`}>Driver Contact: {selectedRouteConfig.phone}</Text>
                 </View>
               </View>
 
-              <Pressable className="bg-[#00f1a1]/20 border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center">
-                <Phone size={13} color="#00f1a1" style={{ marginRight: 4 }} />
-                <Text className="text-[#00f1a1] text-xs font-bold">Call</Text>
+              <Pressable className={`${primaryBadgeClass} px-3 py-1.5 rounded-xl flex-row items-center`}>
+                <Phone size={13} color={primaryColor} style={{ marginRight: 4 }} />
+                <Text className={`${primaryTextClass} text-xs font-bold`}>Call</Text>
               </Pressable>
             </View>
 
             <View className="flex-row justify-between mb-3" style={{ gap: 8 }}>
               <View className="flex-1 bg-white/5 p-3 rounded-2xl border border-white/10">
                 <Text className="text-white/40 text-[9px] uppercase font-bold">Current Speed</Text>
-                <Text className="text-[#00f1a1] font-extrabold text-base mt-0.5">{currentSpeed} km/h</Text>
+                <Text className={`${primaryTextClass} font-extrabold text-base mt-0.5`}>{currentSpeed} km/h</Text>
               </View>
 
               <View className="flex-1 bg-white/5 p-3 rounded-2xl border border-white/10">
@@ -409,7 +419,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
 
             {/* Dynamic Map Location Field */}
             <View className="bg-black/40 p-3 rounded-xl border border-white/5 flex-row items-center">
-              <MapPin size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+              <MapPin size={16} color={primaryColor} style={{ marginRight: 8 }} />
               <View className="flex-1">
                 <Text className="text-white/50 text-[9px] font-bold uppercase">Current Area Location (Map API)</Text>
                 <Text className="text-white font-bold text-xs mt-0.5">{currentAreaName}</Text>

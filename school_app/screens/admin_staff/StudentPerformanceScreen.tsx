@@ -32,6 +32,7 @@ import {
   AlertCircle
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface FeeItem {
   id: string;
@@ -126,6 +127,8 @@ const getInitialFeesForStudent = (student?: any): FeeItem[] => {
 };
 
 export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const selectedStudent = route?.params?.student;
   const openProfileParam = route?.params?.openProfile;
   const studentName = selectedStudent?.name || route?.params?.studentName || 'Julian Sterling';
@@ -489,10 +492,17 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
     }
   };
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -504,13 +514,13 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
         subtitle="ACADEMIC PERFORMANCE TERMINAL"
         onBackPress={canGoBack ? () => navigation.goBack() : undefined}
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1] items-center justify-center shadow-[0_0_10px_rgba(0,241,161,0.5)]">
-            <TrendingUp size={22} color="#101415" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <TrendingUp size={22} color={primaryColor} />
           </View>
         }
         rightAction={
-          <Pressable className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative shadow-[0_0_10px_rgba(0,241,161,0.1)]">
-            <Bell size={18} color="#00f1a1" />
+          <Pressable className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative">
+            <Bell size={18} color={primaryColor} />
           </Pressable>
         }
       />
@@ -526,10 +536,10 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
           {canGoBack && (
             <Pressable
               onPress={() => navigation.goBack()}
-              className="bg-[#00f1a1]/15 border border-[#00f1a1]/30 px-3 py-1.5 rounded-xl flex-row items-center flex-shrink-0"
+              className={`px-3 py-1.5 rounded-xl flex-row items-center flex-shrink-0 ${primaryBadgeClass}`}
             >
-              <ArrowLeft size={13} color="#00f1a1" style={{ marginRight: 4 }} />
-              <Text className="text-[#00f1a1] text-xs font-bold">Back</Text>
+              <ArrowLeft size={13} color={primaryColor} style={{ marginRight: 4 }} />
+              <Text className={`${primaryTextClass} text-xs font-bold`}>Back</Text>
             </Pressable>
           )}
         </View>
@@ -537,16 +547,16 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
         {/* Student Selector Banner (Clicking toggles inline details below) */}
         <Pressable
           onPress={() => setIsDetailsExpanded(!isDetailsExpanded)}
-          className="bg-[#101415]/90 border border-[#00f1a1]/40 rounded-2xl px-5 py-3.5 flex-row justify-between items-center mb-4 shadow-lg active:opacity-80"
+          className={`bg-[#101415]/90 border rounded-2xl px-5 py-3.5 flex-row justify-between items-center mb-4 shadow-lg active:opacity-80 ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}
         >
           <View className="flex-row items-center flex-1 mr-2">
-            <View className="w-10 h-10 rounded-full bg-[#00f1a1]/20 border border-[#00f1a1]/50 items-center justify-center mr-3">
-              <Text className="text-[#00f1a1] font-bold text-base">
+            <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${primaryBadgeClass}`}>
+              <Text className={`${primaryTextClass} font-bold text-base`}>
                 {selectedStudent?.initials || studentName.slice(0, 2).toUpperCase()}
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="text-[#00f1a1] text-[10px] font-bold tracking-widest uppercase mb-0.5">
+              <Text className={`${primaryTextClass} text-[10px] font-bold tracking-widest uppercase mb-0.5`}>
                 SELECTED STUDENT • {className}
               </Text>
               <Text className="text-white font-bold text-base" numberOfLines={1}>{studentName}</Text>
@@ -558,17 +568,17 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             {/* Edit Profile Button */}
             <Pressable
               onPress={() => navigation.navigate('AddStudent', { student: selectedStudent, isEdit: true })}
-              className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center mr-2"
+              className={`px-3 py-1.5 rounded-xl flex-row items-center mr-2 ${primaryBadgeClass}`}
             >
-              <Pencil size={12} color="#00f1a1" style={{ marginRight: 4 }} />
-              <Text className="text-[#00f1a1] text-xs font-bold">Edit Profile</Text>
+              <Pencil size={12} color={primaryColor} style={{ marginRight: 4 }} />
+              <Text className={`${primaryTextClass} text-xs font-bold`}>Edit Profile</Text>
             </Pressable>
 
-            <View className="w-8 h-8 rounded-full bg-[#00f1a1]/10 border border-[#00f1a1]/30 items-center justify-center">
+            <View className={`w-8 h-8 rounded-full items-center justify-center ${primaryBadgeClass}`}>
               {isDetailsExpanded ? (
-                <ChevronUp size={18} color="#00f1a1" />
+                <ChevronUp size={18} color={primaryColor} />
               ) : (
-                <ChevronDown size={18} color="#00f1a1" />
+                <ChevronDown size={18} color={primaryColor} />
               )}
             </View>
           </View>
@@ -576,7 +586,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
 
         {/* INLINE COLLAPSIBLE STUDENT PROFILE DETAILS SECTION */}
         {isDetailsExpanded && (
-          <View className="bg-[#101415]/95 border border-[#00f1a1]/40 rounded-3xl p-5 mb-8 shadow-2xl">
+          <View className={`bg-[#101415]/95 border rounded-3xl p-5 mb-8 shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
             {/* Header */}
             <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
               <View className="flex-1 mr-2">
@@ -596,8 +606,8 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                       <Text className="text-sky-400 text-[10px] font-bold">Transfer</Text>
                     </View>
                   ) : (
-                    <View className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2.5 py-0.5 rounded-full">
-                      <Text className="text-[#00f1a1] text-[10px] font-bold">{selectedStudent?.status || 'Active'}</Text>
+                    <View className={`px-2.5 py-0.5 rounded-full ${primaryBadgeClass}`}>
+                      <Text className={`${primaryTextClass} text-[10px] font-bold`}>{selectedStudent?.status || 'Active'}</Text>
                     </View>
                   )}
                 </View>
@@ -617,9 +627,9 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                       </View>
                     )
                   ) : (
-                    <View className="bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex-row items-center">
-                      <View className="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5" />
-                      <Text className="text-emerald-400 text-[10px] font-bold">Paid</Text>
+                    <View className={`px-2.5 py-0.5 rounded-full flex-row items-center ${primaryBadgeClass}`}>
+                      <View className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5" />
+                      <Text className={`${primaryTextClass} text-[10px] font-bold`}>Paid</Text>
                     </View>
                   )}
                 </View>
@@ -633,8 +643,8 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 onPress={() => setShowAttendanceCalendar(!showAttendanceCalendar)}
                 className="flex-row items-center"
               >
-                <Calendar size={12} color="#00f1a1" style={{ marginRight: 4 }} />
-                <Text className="text-[#00f1a1] text-[11px] font-bold">
+                <Calendar size={12} color={primaryColor} style={{ marginRight: 4 }} />
+                <Text className={`${primaryTextClass} text-[11px] font-bold`}>
                   {showAttendanceCalendar ? 'Hide Grid View ▲' : 'Calendar Grid View ▼'}
                 </Text>
               </Pressable>
@@ -645,9 +655,9 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 <Text className="text-white/50 text-[10px] uppercase font-semibold">Working</Text>
                 <Text className="text-white font-extrabold text-base mt-1">180</Text>
               </View>
-              <View className="flex-1 min-w-[70px] bg-emerald-500/10 border border-emerald-500/30 p-2.5 rounded-xl items-center">
-                <Text className="text-[#00f1a1] text-[10px] uppercase font-semibold">Present</Text>
-                <Text className="text-[#00f1a1] font-extrabold text-base mt-1">165</Text>
+              <View className={`flex-1 min-w-[70px] p-2.5 rounded-xl items-center ${primaryBadgeClass}`}>
+                <Text className={`${primaryTextClass} text-[10px] uppercase font-semibold`}>Present</Text>
+                <Text className={`${primaryTextClass} font-extrabold text-base mt-1`}>165</Text>
               </View>
               <View className="flex-1 min-w-[70px] bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl items-center">
                 <Text className="text-amber-400 text-[10px] uppercase font-semibold">Half Days</Text>
@@ -666,19 +676,19 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             >
               <View className="flex-row justify-between items-center mb-1.5">
                 <Text className="text-white/90 text-xs font-semibold">Overall Attendance Rate</Text>
-                <Text className="text-[#00f1a1] text-xs font-bold">91.6% (Click to view calendar →)</Text>
+                <Text className={`${primaryTextClass} text-xs font-bold`}>91.6% (Click to view calendar →)</Text>
               </View>
               <View className="h-2 bg-black/40 rounded-full overflow-hidden">
-                <View className="h-full bg-[#00f1a1] rounded-full" style={{ width: '91.6%' }} />
+                <View className={`h-full rounded-full ${primaryBtnClass}`} style={{ width: '91.6%' }} />
               </View>
             </Pressable>
 
             {/* COLOR-CODED ATTENDANCE CALENDAR GRID VIEW */}
             {showAttendanceCalendar && (
-              <View className="bg-[#121817] border border-[#00f1a1]/30 p-4 rounded-2xl mb-5">
+              <View className={`bg-[#121817] border p-4 rounded-2xl mb-5 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`}>
                 <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-white/10">
                   <View className="flex-row items-center">
-                    <Calendar size={15} color="#00f1a1" style={{ marginRight: 8 }} />
+                    <Calendar size={15} color={primaryColor} style={{ marginRight: 8 }} />
                     <Text className="text-white text-xs font-bold">Attendance Calendar (August 2026)</Text>
                   </View>
                   <View className="flex-row items-center" style={{ gap: 4 }}>
@@ -691,8 +701,8 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 {/* Calendar Legend */}
                 <View className="flex-row flex-wrap mb-3" style={{ gap: 10 }}>
                   <View className="flex-row items-center">
-                    <View className="w-2.5 h-2.5 rounded-full bg-[#00f1a1] mr-1.5" />
-                    <Text className="text-[#00f1a1] text-[10px] font-bold">Present (165d)</Text>
+                    <View className={`w-2.5 h-2.5 rounded-full mr-1.5 ${primaryBtnClass}`} />
+                    <Text className={`${primaryTextClass} text-[10px] font-bold`}>Present (165d)</Text>
                   </View>
                   <View className="flex-row items-center">
                     <View className="w-2.5 h-2.5 rounded-full bg-amber-400 mr-1.5" />
@@ -711,8 +721,8 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 {/* 31 Days Grid */}
                 <View className="flex-row flex-wrap" style={{ margin: -2 }}>
                   {calendarDays.map((item) => {
-                    let bgStyle = 'bg-emerald-500/20 border-emerald-500/40';
-                    let textStyle = 'text-[#00f1a1]';
+                    let bgStyle = primaryBadgeClass;
+                    let textStyle = primaryTextClass;
                     if (item.status === 'partial') {
                       bgStyle = 'bg-amber-500/20 border-amber-500/40';
                       textStyle = 'text-amber-400';
@@ -739,7 +749,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             {/* Personal & Academic Details */}
             <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-5">
               <View className="flex-row items-center mb-3 pb-2 border-b border-white/10">
-                <GraduationCap size={16} color="#00f1a1" style={{ marginRight: 10 }} />
+                <GraduationCap size={16} color={primaryColor} style={{ marginRight: 10 }} />
                 <Text className="text-white text-xs font-bold">Personal & Academic Details</Text>
               </View>
               <View className="flex-row flex-wrap" style={{ margin: -4 }}>
@@ -769,7 +779,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
               <View className="flex-row justify-between items-start mb-3 pb-3 border-b border-white/10">
                 <View className="flex-1 mr-3">
                   <View className="flex-row items-center mb-1">
-                    <FileText size={16} color="#00f1a1" style={{ marginRight: 10 }} />
+                    <FileText size={16} color={primaryColor} style={{ marginRight: 10 }} />
                     <Text className="text-white text-sm font-bold">Fee Summary & Ledger</Text>
                   </View>
                   <Text className="text-white/50 text-[11px]">Manage components, payments & concessions</Text>
@@ -789,7 +799,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                   {/* Collect Payment Button */}
                   <Pressable
                     onPress={() => setShowCollectModal(true)}
-                    className="bg-[#00f1a1] px-3 py-2 rounded-xl flex-row items-center active:opacity-90 shadow-[0_0_10px_rgba(0,241,161,0.3)]"
+                    className={`${primaryBtnClass} px-3 py-2 rounded-xl flex-row items-center active:opacity-90 shadow-lg`}
                   >
                     <Clock size={13} color="#101415" style={{ marginRight: 6 }} />
                     <Text className="text-[#101415] text-xs font-extrabold">Collect Payment</Text>
@@ -802,9 +812,9 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                   <Text className="text-white/40 text-[9px] uppercase">Total Fee</Text>
                   <Text className="text-white font-bold text-xs mt-0.5">₹{feeTotals.total.toLocaleString()}</Text>
                 </View>
-                <View className="flex-1 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/30 items-center">
-                  <Text className="text-[#00f1a1] text-[9px] uppercase">Paid</Text>
-                  <Text className="text-[#00f1a1] font-bold text-xs mt-0.5">₹{feeTotals.paid.toLocaleString()}</Text>
+                <View className={`flex-1 p-2.5 rounded-xl border items-center ${primaryBadgeClass}`}>
+                  <Text className={`${primaryTextClass} text-[9px] uppercase`}>Paid</Text>
+                  <Text className={`${primaryTextClass} font-bold text-xs mt-0.5`}>₹{feeTotals.paid.toLocaleString()}</Text>
                 </View>
                 <View className="flex-1 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/30 items-center">
                   <Text className="text-rose-400 text-[9px] uppercase">Due</Text>
@@ -832,9 +842,9 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                       {/* Larger Print Button */}
                       <Pressable
                         onPress={() => handleOpenPrintModal(item)}
-                        className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/40 items-center justify-center active:bg-emerald-500/30"
+                        className={`w-9 h-9 rounded-xl items-center justify-center active:opacity-80 ${primaryBadgeClass}`}
                       >
-                        <Printer size={15} color="#00f1a1" />
+                        <Printer size={15} color={primaryColor} />
                       </Pressable>
 
                       {/* Larger Edit Paid Button */}
@@ -853,8 +863,8 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                         <Trash2 size={15} color="#ff516a" />
                       </Pressable>
 
-                      <View className={`px-2.5 py-1 rounded-md ${isFullyPaid ? 'bg-emerald-500/20 border border-emerald-500/40' : 'bg-rose-500/20 border border-rose-500/40'}`}>
-                        <Text className={`text-[10px] font-bold ${isFullyPaid ? 'text-[#00f1a1]' : 'text-rose-400'}`}>
+                      <View className={`px-2.5 py-1 rounded-md ${isFullyPaid ? primaryBadgeClass : 'bg-rose-500/20 border border-rose-500/40'}`}>
+                        <Text className={`text-[10px] font-bold ${isFullyPaid ? primaryTextClass : 'text-rose-400'}`}>
                           {isFullyPaid ? 'Paid' : `Due: ₹${itemDue.toLocaleString()}`}
                         </Text>
                       </View>
@@ -868,7 +878,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-5">
               <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-white/10">
                 <View className="flex-row items-center">
-                  <History size={16} color="#00f1a1" style={{ marginRight: 10 }} />
+                  <History size={16} color={primaryColor} style={{ marginRight: 10 }} />
                   <Text className="text-white text-xs font-bold">Recent Activity Timeline</Text>
                 </View>
 
@@ -876,36 +886,36 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 <View className="relative">
                   <Pressable
                     onPress={() => setShowTimelineFilterDropdown(!showTimelineFilterDropdown)}
-                    className="bg-[#00f1a1]/15 border border-[#00f1a1]/30 px-2.5 py-1 rounded-lg flex-row items-center"
+                    className={`px-2.5 py-1 rounded-lg flex-row items-center ${primaryBadgeClass}`}
                   >
-                    <Filter size={11} color="#00f1a1" style={{ marginRight: 4 }} />
-                    <Text className="text-[#00f1a1] text-[10px] font-bold capitalize">{timelineFilter} Activities</Text>
-                    <ChevronDown size={12} color="#00f1a1" style={{ marginLeft: 2 }} />
+                    <Filter size={11} color={primaryColor} style={{ marginRight: 4 }} />
+                    <Text className={`${primaryTextClass} text-[10px] font-bold capitalize`}>{timelineFilter} Activities</Text>
+                    <ChevronDown size={12} color={primaryColor} style={{ marginLeft: 2 }} />
                   </Pressable>
 
                   {/* Dropdown Options */}
                   {showTimelineFilterDropdown && (
-                    <View className="absolute right-0 top-8 w-40 bg-[#121817] border border-[#00f1a1]/40 rounded-xl p-1 z-30 shadow-2xl">
+                    <View className={`absolute right-0 top-8 w-40 bg-[#121817] border rounded-xl p-1 z-30 shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
                       <Pressable
                         onPress={() => { setTimelineFilter('all'); setShowTimelineFilterDropdown(false); }}
-                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'all' ? 'bg-[#00f1a1]/20' : ''}`}
+                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'all' ? primaryBadgeClass : ''}`}
                       >
-                        <List size={12} color={timelineFilter === 'all' ? '#00f1a1' : '#ffffff'} style={{ marginRight: 6 }} />
-                        <Text className={`text-xs ${timelineFilter === 'all' ? 'text-[#00f1a1] font-bold' : 'text-white/80'}`}>All Activities</Text>
+                        <List size={12} color={timelineFilter === 'all' ? primaryColor : '#ffffff'} style={{ marginRight: 6 }} />
+                        <Text className={`text-xs ${timelineFilter === 'all' ? `${primaryTextClass} font-bold` : 'text-white/80'}`}>All Activities</Text>
                       </Pressable>
                       <Pressable
                         onPress={() => { setTimelineFilter('payment'); setShowTimelineFilterDropdown(false); }}
-                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'payment' ? 'bg-[#00f1a1]/20' : ''}`}
+                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'payment' ? primaryBadgeClass : ''}`}
                       >
-                        <Banknote size={12} color={timelineFilter === 'payment' ? '#00f1a1' : '#ffffff'} style={{ marginRight: 6 }} />
-                        <Text className={`text-xs ${timelineFilter === 'payment' ? 'text-[#00f1a1] font-bold' : 'text-white/80'}`}>Payments Only</Text>
+                        <Banknote size={12} color={timelineFilter === 'payment' ? primaryColor : '#ffffff'} style={{ marginRight: 6 }} />
+                        <Text className={`text-xs ${timelineFilter === 'payment' ? `${primaryTextClass} font-bold` : 'text-white/80'}`}>Payments Only</Text>
                       </Pressable>
                       <Pressable
                         onPress={() => { setTimelineFilter('concession'); setShowTimelineFilterDropdown(false); }}
-                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'concession' ? 'bg-[#00f1a1]/20' : ''}`}
+                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'concession' ? primaryBadgeClass : ''}`}
                       >
-                        <Percent size={12} color={timelineFilter === 'concession' ? '#00f1a1' : '#ffffff'} style={{ marginRight: 6 }} />
-                        <Text className={`text-xs ${timelineFilter === 'concession' ? 'text-[#00f1a1] font-bold' : 'text-white/80'}`}>Concessions Only</Text>
+                        <Percent size={12} color={timelineFilter === 'concession' ? primaryColor : '#ffffff'} style={{ marginRight: 6 }} />
+                        <Text className={`text-xs ${timelineFilter === 'concession' ? `${primaryTextClass} font-bold` : 'text-white/80'}`}>Concessions Only</Text>
                       </Pressable>
                     </View>
                   )}
@@ -921,9 +931,9 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                       <View className="absolute left-[13px] top-6 bottom-0 w-0.5 bg-white/10" />
                     )}
                     {/* Icon Dot */}
-                    <View className={`w-7 h-7 rounded-full items-center justify-center mr-3 z-10 ${act.type === 'payment' ? 'bg-emerald-500/20 border border-emerald-500/50' : 'bg-purple-500/20 border border-purple-500/50'}`}>
+                    <View className={`w-7 h-7 rounded-full items-center justify-center mr-3 z-10 ${act.type === 'payment' ? primaryBadgeClass : 'bg-purple-500/20 border border-purple-500/50'}`}>
                       {act.type === 'payment' ? (
-                        <Banknote size={12} color="#00f1a1" />
+                        <Banknote size={12} color={primaryColor} />
                       ) : (
                         <Percent size={12} color="#c084fc" />
                       )}
@@ -931,14 +941,14 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                     <View className="flex-1 bg-black/30 p-2.5 rounded-xl border border-white/5">
                       <View className="flex-row justify-between items-center mb-0.5">
                         <Text className="text-white text-xs font-bold">{act.title}</Text>
-                        <Text className={`text-xs font-bold ${act.type === 'payment' ? 'text-[#00f1a1]' : 'text-purple-400'}`}>{act.amount}</Text>
+                        <Text className={`text-xs font-bold ${act.type === 'payment' ? primaryTextClass : 'text-purple-400'}`}>{act.amount}</Text>
                       </View>
                       <Text className="text-white/60 text-[11px] mb-1.5">{act.methodOrReason}</Text>
                       <View className="flex-row items-center justify-between pt-1 border-t border-white/5">
                         <Text className="text-white/40 text-[9.5px] font-medium">{act.date}</Text>
-                        <View className="bg-[#00f1a1]/15 border border-[#00f1a1]/30 px-2 py-0.5 rounded-md flex-row items-center">
-                          <Users size={9} color="#00f1a1" style={{ marginRight: 4 }} />
-                          <Text className="text-[#00f1a1] text-[9px] font-bold">by {act.performedBy}</Text>
+                        <View className={`px-2 py-0.5 rounded-md flex-row items-center ${primaryBadgeClass}`}>
+                          <Users size={9} color={primaryColor} style={{ marginRight: 4 }} />
+                          <Text className={`${primaryTextClass} text-[9px] font-bold`}>by {act.performedBy}</Text>
                         </View>
                       </View>
                     </View>
@@ -950,7 +960,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             {/* Parent & Guardian Details */}
             <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-5">
               <View className="flex-row items-center mb-3 pb-2 border-b border-white/10">
-                <Users size={16} color="#00f1a1" style={{ marginRight: 10 }} />
+                <Users size={16} color={primaryColor} style={{ marginRight: 10 }} />
                 <Text className="text-white text-xs font-bold">Parent / Guardian Details</Text>
               </View>
               <View className="flex-row flex-wrap" style={{ margin: -4 }}>
@@ -975,7 +985,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             {/* Demographics & TC Details */}
             <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-1">
               <View className="flex-row items-center mb-3 pb-2 border-b border-white/10">
-                <FileCheck size={16} color="#00f1a1" style={{ marginRight: 10 }} />
+                <FileCheck size={16} color={primaryColor} style={{ marginRight: 10 }} />
                 <Text className="text-white text-xs font-bold">Demographics & TC Details</Text>
               </View>
               <View className="flex-row flex-wrap" style={{ margin: -4 }}>
@@ -1007,9 +1017,9 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
               <Text className="text-white text-2xl font-bold mb-1">Subject Mastery</Text>
               <Text className="text-white/60 text-[10px] font-bold tracking-widest uppercase">CURRENT SEMESTER SCORE %</Text>
             </View>
-            <View className="bg-[#00f1a1]/10 border border-[#00f1a1]/30 px-4 py-1.5 rounded-full flex-row items-center">
-              <View className="w-1.5 h-1.5 rounded-full bg-[#00f1a1] mr-2 shadow-[0_0_8px_#00f1a1]" />
-              <Text className="text-[#00f1a1] text-[10px] font-bold">Live Data</Text>
+            <View className={`px-4 py-1.5 rounded-full flex-row items-center ${primaryBadgeClass}`}>
+              <View className={`w-1.5 h-1.5 rounded-full mr-2 ${primaryBtnClass}`} />
+              <Text className={`${primaryTextClass} text-[10px] font-bold`}>Live Data</Text>
             </View>
           </View>
 
@@ -1024,7 +1034,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             ].map((item, index) => (
               <View key={index} className="items-center w-[12%]">
                 <View className="w-full bg-[#0d2a24]/60 rounded-t-xl overflow-hidden" style={{ height: 120, justifyContent: 'flex-end' }}>
-                  <View style={{ width: '100%', height: item.height as any, borderTopLeftRadius: 12, borderTopRightRadius: 12, backgroundColor: '#00f1a1' }} />
+                  <View style={{ width: '100%', height: item.height as any, borderTopLeftRadius: 12, borderTopRightRadius: 12, backgroundColor: primaryGold }} />
                 </View>
                 <Text className="text-white/80 text-[10px] font-bold mt-4">{item.label}</Text>
               </View>
@@ -1039,12 +1049,12 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
 
           {/* Mock Chart Area */}
           <View className="h-28 mb-4 justify-center relative">
-            <View className="absolute inset-x-0 top-1/2 h-[3px] bg-[#00f1a1] rounded-full shadow-[0_0_12px_#00f1a1]" style={{ elevation: 10, shadowColor: '#00f1a1', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 8 }} />
+            <View className="absolute inset-x-0 top-1/2 h-[3px] rounded-full" style={{ backgroundColor: primaryGold }} />
             <View className="flex-row justify-between items-center h-full pt-4 relative">
-              <View className="w-3 h-3 rounded-full bg-[#00f1a1] border-[3px] border-[#101415] z-10" style={{ transform: [{ translateY: 15 }] }} />
-              <View className="w-3 h-3 rounded-full bg-[#00f1a1] border-[3px] border-[#101415] z-10" style={{ transform: [{ translateY: -5 }] }} />
-              <View className="w-3 h-3 rounded-full bg-[#00f1a1] border-[3px] border-[#101415] z-10" style={{ transform: [{ translateY: 20 }] }} />
-              <View className="w-3.5 h-3.5 rounded-full bg-white border-[3px] border-[#101415] shadow-[0_0_16px_#fff] z-10" style={{ transform: [{ translateY: -20 }] }} />
+              <View className="w-3 h-3 rounded-full border-[3px] border-[#101415] z-10" style={{ backgroundColor: primaryGold, transform: [{ translateY: 15 }] }} />
+              <View className="w-3 h-3 rounded-full border-[3px] border-[#101415] z-10" style={{ backgroundColor: primaryGold, transform: [{ translateY: -5 }] }} />
+              <View className="w-3 h-3 rounded-full border-[3px] border-[#101415] z-10" style={{ backgroundColor: primaryGold, transform: [{ translateY: 20 }] }} />
+              <View className="w-3.5 h-3.5 rounded-full bg-white border-[3px] border-[#101415] z-10" style={{ transform: [{ translateY: -20 }] }} />
             </View>
           </View>
 
@@ -1058,11 +1068,11 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
           <View className="flex-row justify-between items-end border-t border-white/5 pt-5 mt-2">
             <View>
               <Text className="text-white/60 text-sm mb-1">Current Rank</Text>
-              <Text className="text-[#00f1a1] text-3xl font-bold">#04</Text>
+              <Text className={`${primaryTextClass} text-3xl font-bold`}>#04</Text>
             </View>
-            <View className="bg-[#00f1a1]/20 border border-[#00f1a1]/30 px-4 py-1.5 rounded-full flex-row items-center">
-              <TrendingUp size={14} color="#00f1a1" style={{ marginRight: 4 }} />
-              <Text className="text-[#00f1a1] text-xs font-bold">+2</Text>
+            <View className={`px-4 py-1.5 rounded-full flex-row items-center ${primaryBadgeClass}`}>
+              <TrendingUp size={14} color={primaryColor} style={{ marginRight: 4 }} />
+              <Text className={`${primaryTextClass} text-xs font-bold`}>+2</Text>
             </View>
           </View>
         </View>
@@ -1072,7 +1082,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
           <Text className="text-white text-[28px] font-bold tracking-tight">Benchmarking</Text>
           <View className="flex-row">
             <View className="flex-row items-center mr-4">
-              <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" />
+              <View className={`w-2 h-2 rounded-full mr-1.5 ${primaryBtnClass}`} />
               <Text className="text-white font-bold text-xs">Above</Text>
             </View>
             <View className="flex-row items-center">
@@ -1097,8 +1107,8 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 <Text className="text-white/90 text-sm mb-4 font-medium">{item.subject}</Text>
                 <View className="flex-row items-center">
                   <Text className="text-white text-xl font-bold mr-2">{item.val}</Text>
-                  <View className={`px-2 py-1 rounded-md ${isAbove ? 'bg-[#00f1a1]/20' : 'bg-[#f87171]/20'}`}>
-                    <Text className={`text-[10px] font-bold ${isAbove ? 'text-[#00f1a1]' : 'text-[#f87171]'}`}>{item.type}</Text>
+                  <View className={`px-2 py-1 rounded-md ${isAbove ? primaryBadgeClass : 'bg-[#f87171]/20'}`}>
+                    <Text className={`text-[10px] font-bold ${isAbove ? primaryTextClass : 'text-[#f87171]'}`}>{item.type}</Text>
                   </View>
                 </View>
               </View>
@@ -1135,13 +1145,13 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
         </View>
 
         {/* Progress Note: Chemistry */}
-        <View className="bg-[#101415]/80 border-2 border-[#00f1a1]/30 rounded-[32px] p-6 mb-8 relative overflow-hidden">
+        <View className={`bg-[#101415]/80 border-2 rounded-[32px] p-6 mb-8 relative overflow-hidden ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`}>
           <View className="absolute -right-4 -bottom-4 opacity-[0.03]">
-            <Lightbulb size={140} color="#00f1a1" />
+            <Lightbulb size={140} color={primaryColor} />
           </View>
 
           <View className="flex-row items-center mb-5">
-            <Lightbulb size={24} color="#00f1a1" />
+            <Lightbulb size={24} color={primaryColor} />
             <Text className="text-white text-lg font-bold ml-3">Progress Note: Chemistry</Text>
           </View>
 
@@ -1149,9 +1159,9 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             Steady improvement in stoichiometric calculations, but conceptual gaps remain in organic bonding.
           </Text>
 
-          <View className="bg-emerald-950/30 border border-emerald-500/20 rounded-2xl p-5 flex-row justify-between items-center">
+          <View className={`rounded-2xl p-5 flex-row justify-between items-center ${primaryBadgeClass}`}>
             <Text className="text-white/70 text-sm font-medium">Interactive Quiz Score</Text>
-            <Text className="text-[#00f1a1] text-lg font-bold">74%</Text>
+            <Text className={`${primaryTextClass} text-lg font-bold`}>74%</Text>
           </View>
         </View>
 
@@ -1161,11 +1171,11 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
       {/* 1. COLLECT PAYMENT MODAL (Admin Staff Dark/Neon UI) */}
       <Modal visible={showCollectModal} transparent animationType="slide" onRequestClose={() => setShowCollectModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border border-[#00f1a1]/40 rounded-3xl w-full max-w-md overflow-hidden shadow-[0_0_30px_rgba(0,241,161,0.2)]">
+          <View className={`bg-[#101415] border rounded-3xl w-full max-w-md overflow-hidden ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
             <View className="flex-row justify-between items-center p-5 border-b border-white/10 bg-[#121817]">
               <View>
                 <Text className="text-white text-base font-bold">Collect Student Fee</Text>
-                <Text className="text-[#00f1a1] text-xs font-semibold">{studentName} ({className})</Text>
+                <Text className={`${primaryTextClass} text-xs font-semibold`}>{studentName} ({className})</Text>
               </View>
               <Pressable onPress={() => setShowCollectModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
                 <X size={16} color="#ffffff" />
@@ -1178,10 +1188,10 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 <Pressable
                   key={item.id}
                   onPress={() => setSelectedCollectFeeIds([item.id])}
-                  className={`p-3 rounded-xl mb-2 flex-row justify-between items-center border ${selectedCollectFeeIds.includes(item.id) ? 'bg-[#00f1a1]/20 border-[#00f1a1]' : 'bg-black/30 border-white/10'}`}
+                  className={`p-3 rounded-xl mb-2 flex-row justify-between items-center border ${selectedCollectFeeIds.includes(item.id) ? primaryBadgeClass : 'bg-black/30 border-white/10'}`}
                 >
                   <Text className="text-white text-xs font-bold">{item.name}</Text>
-                  <Text className="text-[#00f1a1] text-xs font-bold">Due: ₹{Math.max(0, item.totalAmount - item.paidAmount - item.concessionAmount).toLocaleString()}</Text>
+                  <Text className={`${primaryTextClass} text-xs font-bold`}>Due: ₹{Math.max(0, item.totalAmount - item.paidAmount - item.concessionAmount).toLocaleString()}</Text>
                 </Pressable>
               ))}
 
@@ -1199,7 +1209,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                   <Pressable
                     key={m}
                     onPress={() => setCollectMethod(m)}
-                    className={`px-3 py-2 rounded-xl border ${collectMethod === m ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                    className={`px-3 py-2 rounded-xl border ${collectMethod === m ? primaryBtnClass : 'bg-white/5 border-white/10'}`}
                   >
                     <Text className={`text-xs font-bold ${collectMethod === m ? 'text-[#101415]' : 'text-white/80'}`}>{m}</Text>
                   </Pressable>
@@ -1220,7 +1230,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
               <Pressable onPress={() => setShowCollectModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleRecordPaymentSubmit} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_10px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleRecordPaymentSubmit} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">Record Payment</Text>
               </Pressable>
             </View>
@@ -1313,7 +1323,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 value={editPaid}
                 onChangeText={setEditPaid}
                 keyboardType="numeric"
-                className="bg-black/50 border border-white/20 rounded-xl px-4 py-2.5 text-[#00f1a1] font-bold text-sm mb-3"
+                className={`bg-black/50 border border-white/20 rounded-xl px-4 py-2.5 ${primaryTextClass} font-bold text-sm mb-3`}
               />
 
               <Text className="text-white/70 text-xs font-semibold mb-1.5">Concession Amount (₹)</Text>
@@ -1329,7 +1339,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
               <Pressable onPress={() => setShowEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleSaveEditFeeSubmit} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center">
+              <Pressable onPress={handleSaveEditFeeSubmit} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center`}>
                 <Text className="text-[#101415] font-extrabold text-xs">Save Changes</Text>
               </Pressable>
             </View>
@@ -1364,10 +1374,10 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
       {/* 5. PRINT RECEIPT PREVIEW MODAL */}
       <Modal visible={showPrintModal} transparent animationType="slide" onRequestClose={() => setShowPrintModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border border-[#00f1a1]/40 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+          <View className={`bg-[#101415] border rounded-3xl w-full max-w-md overflow-hidden shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
             <View className="flex-row justify-between items-center p-5 border-b border-white/10 bg-[#121817]">
               <View className="flex-row items-center">
-                <Printer size={18} color="#00f1a1" style={{ marginRight: 8 }} />
+                <Printer size={18} color={primaryColor} style={{ marginRight: 8 }} />
                 <Text className="text-white text-base font-bold">Fee Receipt Preview</Text>
               </View>
               <Pressable onPress={() => setShowPrintModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
@@ -1376,13 +1386,13 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
             </View>
 
             <View className="p-5 bg-[#121817] border border-white/10 rounded-2xl m-5">
-              <Text className="text-[#00f1a1] text-center font-extrabold text-lg tracking-wider mb-1">KTS INTERNATIONAL SCHOOL</Text>
+              <Text className={`${primaryTextClass} text-center font-extrabold text-lg tracking-wider mb-1`}>KTS INTERNATIONAL SCHOOL</Text>
               <Text className="text-white/50 text-center text-[10px] uppercase tracking-widest mb-4">Official Fee Payment Receipt</Text>
 
               <View className="border-t border-b border-white/10 py-3 mb-4 space-y-1">
                 <View className="flex-row justify-between">
                   <Text className="text-white/50 text-xs">Receipt No:</Text>
-                  <Text className="text-[#00f1a1] text-xs font-mono font-bold">RCP-2026-0891</Text>
+                  <Text className={`${primaryTextClass} text-xs font-mono font-bold`}>RCP-2026-0891</Text>
                 </View>
                 <View className="flex-row justify-between">
                   <Text className="text-white/50 text-xs">Student Name:</Text>
@@ -1401,12 +1411,12 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
               <Text className="text-white/70 text-xs font-bold mb-2">Itemized Component:</Text>
               <View className="bg-black/40 p-3 rounded-xl mb-4 border border-white/5 flex-row justify-between items-center">
                 <Text className="text-white text-xs font-bold">{selectedFee?.name}</Text>
-                <Text className="text-[#00f1a1] text-sm font-bold">₹{selectedFee?.paidAmount.toLocaleString()}</Text>
+                <Text className={`${primaryTextClass} text-sm font-bold`}>₹{selectedFee?.paidAmount.toLocaleString()}</Text>
               </View>
 
-              <View className="bg-emerald-500/10 border border-emerald-500/30 p-3 rounded-xl flex-row justify-between items-center">
-                <Text className="text-[#00f1a1] text-xs font-bold">Total Payment Verified</Text>
-                <Text className="text-[#00f1a1] text-base font-extrabold">₹{selectedFee?.paidAmount.toLocaleString()}</Text>
+              <View className={`p-3 rounded-xl flex-row justify-between items-center ${primaryBadgeClass}`}>
+                <Text className={`${primaryTextClass} text-xs font-bold`}>Total Payment Verified</Text>
+                <Text className={`${primaryTextClass} text-base font-extrabold`}>₹{selectedFee?.paidAmount.toLocaleString()}</Text>
               </View>
             </View>
 
@@ -1414,7 +1424,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
               <Pressable onPress={() => setShowPrintModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Close Preview</Text>
               </Pressable>
-              <Pressable onPress={() => handlePrintNative()} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_10px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={() => handlePrintNative()} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">Print / PDF</Text>
               </Pressable>
             </View>
@@ -1425,12 +1435,12 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
       {/* CUSTOM ADMIN STAFF NOTIFICATION TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : primaryBadgeClass}`}>
               {toastData.type === 'warning' ? (
                 <AlertCircle size={28} color="#f59e0b" />
               ) : (
-                <CheckCircle2 size={28} color="#00f1a1" />
+                <CheckCircle2 size={28} color={primaryColor} />
               )}
             </View>
 
@@ -1439,7 +1449,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
-              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
             </Pressable>

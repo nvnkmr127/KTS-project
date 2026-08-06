@@ -10,6 +10,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { useDiaryStore, DiaryEntry } from '../../store/diaryStore';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface ClassDiarySubmissionSummary {
   classId: string;
@@ -64,6 +65,8 @@ const PERIOD_STRUCTURE_LIST: PeriodStructure[] = [
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const diaryEntries = useDiaryStore((state) => state.diaryEntries);
   const [selectedAcademicYear] = useState('2026-2027 (Current)');
   const [selectedDate, setSelectedDate] = useState('04-08-2026');
@@ -146,10 +149,17 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
 
   const calendarGridDays = generateRealCalendarGrid();
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -166,8 +176,8 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
         title={selectedClassDetail ? `Class ${selectedClassDetail} Submissions` : "Daily Diary Console"}
         subtitle={selectedClassDetail ? "Period-wise breakdown of scheduled teachers and diaries" : `ACADEMIC YEAR: ${selectedAcademicYear}`}
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <BookOpen size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <BookOpen size={20} color={primaryColor} />
           </View>
         }
       />
@@ -180,12 +190,12 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
             {/* Top 3 Web KPI Header Cards */}
             <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
               <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/80 items-center">
-                <View className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 items-center justify-center mb-1.5">
-                  <BookOpen size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mb-1.5 ${primaryBadgeClass}`}>
+                  <BookOpen size={16} color={primaryColor} />
                 </View>
                 <Text className="text-white/50 text-[9px] font-bold uppercase text-center">Diaries Submitted</Text>
                 <Text className="text-white text-xl font-extrabold mt-0.5">{classesSubmittedCount}</Text>
-                <Text className="text-[#00f1a1] text-[9px] font-semibold text-center mt-0.5">Out of {totalClasses} classes</Text>
+                <Text className={`${primaryTextClass} text-[9px] font-semibold text-center mt-0.5`}>Out of {totalClasses} classes</Text>
               </GlassCard>
 
               <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/80 items-center">
@@ -218,15 +228,15 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                 {/* Interactive Calendar View Date Picker Trigger */}
                 <Pressable
                   onPress={() => setShowDatePickerModal(true)}
-                  className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center"
+                  className={`${isSuperAdmin ? 'bg-[#f0c110]/15 border border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border border-[#00f1a1]/40'} px-3 py-1.5 rounded-xl flex-row items-center`}
                 >
-                  <Calendar size={13} color="#00f1a1" style={{ marginRight: 5 }} />
-                  <Text className="text-[#00f1a1] text-xs font-bold">{selectedDate}</Text>
+                  <Calendar size={13} color={primaryColor} style={{ marginRight: 5 }} />
+                  <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedDate}</Text>
                 </Pressable>
 
-                <View className="bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl flex-row items-center">
-                  <RefreshCw size={11} color="#00f1a1" style={{ marginRight: 4 }} />
-                  <Text className="text-[#00f1a1] text-[10px] font-bold">Live Sync</Text>
+                <View className={`${primaryPillClass} px-2.5 py-1.5 rounded-xl flex-row items-center`}>
+                  <RefreshCw size={11} color={primaryColor} style={{ marginRight: 4 }} />
+                  <Text className={`${primaryTextClass} text-[10px] font-bold`}>Live Sync</Text>
                 </View>
               </View>
             </View>
@@ -234,7 +244,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
             {/* Search Bar */}
             <View className="px-5 mb-4">
               <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
-                <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+                <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
                 <TextInput
                   placeholder="Search class section..."
                   placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -264,7 +274,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                       <View className="flex-row justify-between items-center">
                         <View className="flex-row items-center flex-1 mr-2">
                           <View className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mr-3">
-                            <Text className="text-[#00f1a1] text-xs font-extrabold">{cls.classId}</Text>
+                            <Text className={`${primaryTextClass} text-xs font-extrabold`}>{cls.classId}</Text>
                           </View>
 
                           <View className="flex-1">
@@ -273,8 +283,8 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                               {isNoSchedule ? (
                                 <Text className="text-white/40 text-[10px] italic">No Schedule</Text>
                               ) : isFullySubmitted ? (
-                                <View className="bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md">
-                                  <Text className="text-[#00f1a1] text-[9px] font-bold">Complete</Text>
+                                <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                                  <Text className={`${primaryTextClass} text-[9px] font-bold`}>Complete</Text>
                                 </View>
                               ) : (
                                 <View className="bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md">
@@ -289,8 +299,8 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                         </View>
 
                         <View className="flex-row items-center">
-                          <Text className="text-[#00f1a1] text-xs font-bold mr-1">Click to view details</Text>
-                          <ChevronRight size={15} color="#00f1a1" />
+                          <Text className={`${primaryTextClass} text-xs font-bold mr-1`}>Click to view details</Text>
+                          <ChevronRight size={15} color={primaryColor} />
                         </View>
                       </View>
                     </GlassCard>
@@ -310,10 +320,10 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
 
               <Pressable
                 onPress={() => setShowDatePickerModal(true)}
-                className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center"
+                className={`${isSuperAdmin ? 'bg-[#f0c110]/15 border border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border border-[#00f1a1]/40'} px-3 py-1.5 rounded-xl flex-row items-center`}
               >
-                <Calendar size={13} color="#00f1a1" style={{ marginRight: 5 }} />
-                <Text className="text-[#00f1a1] text-xs font-bold">{selectedDate}</Text>
+                <Calendar size={13} color={primaryColor} style={{ marginRight: 5 }} />
+                <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedDate}</Text>
               </Pressable>
             </View>
 
@@ -339,12 +349,12 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
               return (
                 <GlassCard key={idx} intensity="low" className="mb-3 p-3.5 border-white/10 bg-[#101415]/90">
                   <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-[#00f1a1] text-xs font-extrabold">
+                    <Text className={`${primaryTextClass} text-xs font-extrabold`}>
                       {pt.periodLabel} ({pt.timeSlot})
                     </Text>
                     {submittedEntry && (
-                      <View className="bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md">
-                        <Text className="text-[#00f1a1] text-[9px] font-bold">Submitted {submittedEntry.submittedAt}</Text>
+                      <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                        <Text className={`${primaryTextClass} text-[9px] font-bold`}>Submitted {submittedEntry.submittedAt}</Text>
                       </View>
                     )}
                   </View>
@@ -386,12 +396,12 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
       {/* FULL MONTHLY CALENDAR GRID VIEW DATE PICKER MODAL */}
       <Modal visible={showDatePickerModal} transparent animationType="slide" onRequestClose={() => setShowDatePickerModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             {/* Header */}
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-3">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <Calendar size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <Calendar size={16} color={primaryColor} />
                 </View>
                 <Text className="text-white font-bold text-base">Calendar Date Picker</Text>
               </View>
@@ -403,11 +413,11 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
             {/* Month Year Ribbon */}
             <View className="flex-row justify-between items-center bg-white/5 p-2.5 rounded-2xl mb-3 border border-white/10">
               <Pressable onPress={handlePrevMonth} className="p-1 border border-white/10 rounded-lg bg-white/5">
-                <ChevronLeft size={16} color="#00f1a1" />
+                <ChevronLeft size={16} color={primaryColor} />
               </Pressable>
               <Text className="text-white font-extrabold text-sm">{monthYearDisplay}</Text>
               <Pressable onPress={handleNextMonth} className="p-1 border border-white/10 rounded-lg bg-white/5">
-                <ChevronRight size={16} color="#00f1a1" />
+                <ChevronRight size={16} color={primaryColor} />
               </Pressable>
             </View>
 
@@ -435,7 +445,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                         setSelectedDate(cell.dateStr);
                         setShowDatePickerModal(false);
                       }}
-                      className={`w-full h-full rounded-xl items-center justify-center border ${isSelected ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                      className={`w-full h-full rounded-xl items-center justify-center border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
                     >
                       <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white'}`}>
                         {cell.dayNum}

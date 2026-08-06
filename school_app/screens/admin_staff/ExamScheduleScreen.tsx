@@ -8,6 +8,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface ExamScheduleItem {
   id: string;
@@ -29,6 +30,15 @@ const MOCK_EXAM_SCHEDULES: ExamScheduleItem[] = [
 ];
 
 export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+
   const [examSchedules, setExamSchedules] = useState<ExamScheduleItem[]>(MOCK_EXAM_SCHEDULES);
   const [activeTab, setActiveTab] = useState<'schedules' | 'invigilation' | 'results'>('schedules');
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,12 +116,13 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
     setShowAddEditModal(true);
   };
 
-  const handleSaveExamSchedule = () => {
+  const handleSaveExamSchedule = async () => {
     if (!formExamName.trim() || !formSubject.trim()) {
-      showToast('Missing Fields', 'Please fill exam name and subject.', 'warning');
+      showToast('Missing Fields', 'Please fill in exam title and subject.', 'warning');
       return;
     }
-    const marks = parseInt(formMaxMarks) || 100;
+
+    const marksNum = parseInt(formMaxMarks, 10) || 100;
 
     if (editingExam) {
       setExamSchedules(prev => prev.map(e => e.id === editingExam.id ? {
@@ -119,26 +130,55 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
         examName: formExamName,
         className: formClass,
         subject: formSubject,
-        date: formDate || '2026-06-15',
-        timeSlot: formTimeSlot || '09:30 AM - 12:30 PM',
-        maxMarks: marks,
-        roomNo: formRoom || 'Room 12'
+        date: formDate,
+        timeSlot: formTimeSlot,
+        maxMarks: marksNum,
+        roomNo: formRoom
       } : e));
+
+      try {
+        await api.updateResource('exam-schedules', editingExam.id, {
+          exam_name: formExamName,
+          class_name: formClass,
+          subject: formSubject,
+          date: formDate,
+          time_slot: formTimeSlot,
+          max_marks: marksNum,
+          room_no: formRoom,
+        });
+      } catch (err) {
+        console.log('Error updating exam schedule in DB:', err);
+      }
       showToast('Schedule Updated', `${formSubject} exam schedule updated.`, 'success');
     } else {
-      const newEx: ExamScheduleItem = {
+      const newExam: ExamScheduleItem = {
         id: `ex_${Date.now()}`,
         examName: formExamName,
         className: formClass,
         subject: formSubject,
-        date: formDate || '2026-06-15',
-        timeSlot: formTimeSlot || '09:30 AM - 12:30 PM',
-        maxMarks: marks,
-        roomNo: formRoom || 'Room 12',
+        date: formDate,
+        timeSlot: formTimeSlot,
+        maxMarks: marksNum,
+        roomNo: formRoom,
         status: 'Upcoming'
       };
-      setExamSchedules(prev => [newEx, ...prev]);
-      showToast('Exam Scheduled', `${formSubject} added to exam timetable.`, 'success');
+      setExamSchedules(prev => [newExam, ...prev]);
+
+      try {
+        await api.createResource('exam-schedules', {
+          exam_name: formExamName,
+          class_name: formClass,
+          subject: formSubject,
+          date: formDate,
+          time_slot: formTimeSlot,
+          max_marks: marksNum,
+          room_no: formRoom,
+          status: 'Upcoming',
+        });
+      } catch (err) {
+        console.log('Error creating exam schedule in DB:', err);
+      }
+      showToast('Exam Scheduled', `${formSubject} exam added to timetable.`, 'success');
     }
 
     setShowAddEditModal(false);
@@ -161,9 +201,9 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -172,10 +212,10 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
         title="Examinations Console"
-        subtitle="Schedules,Invigilation & Marks Management"
+        subtitle={isSuperAdmin ? "Super Admin Examinations Terminal" : "Schedules, Invigilation & Marks Management"}
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <Award size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <Award size={20} color={primaryColor} />
           </View>
         }
       />
@@ -187,7 +227,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
           <View className="flex-row bg-[#101415] p-1.5 rounded-2xl border border-white/10" style={{ gap: 6 }}>
             <Pressable
               onPress={() => setActiveTab('schedules')}
-              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'schedules' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'schedules' ? primaryBtnClass : 'bg-transparent'}`}
             >
               <Text className={`text-xs font-extrabold ${activeTab === 'schedules' ? 'text-[#101415]' : 'text-white/60'}`}>
                 Exam Schedules
@@ -196,7 +236,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setActiveTab('invigilation')}
-              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'invigilation' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'invigilation' ? primaryBtnClass : 'bg-transparent'}`}
             >
               <Text className={`text-xs font-extrabold ${activeTab === 'invigilation' ? 'text-[#101415]' : 'text-white/60'}`}>
                 Invigilation Duties
@@ -205,7 +245,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setActiveTab('results')}
-              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'results' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'results' ? primaryBtnClass : 'bg-transparent'}`}
             >
               <Text className={`text-xs font-extrabold ${activeTab === 'results' ? 'text-[#101415]' : 'text-white/60'}`}>
                 Results & Ranks
@@ -219,8 +259,8 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
             {/* Search & Add Action Header */}
             <View className="px-5 mb-4">
               <View className="flex-row justify-between items-center mb-3">
-                <View className="flex-1 bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 mr-3 shadow-md">
-                  <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+                <View className={`flex-1 bg-[#101415] border rounded-2xl flex-row items-center px-3.5 py-2.5 mr-3 shadow-md ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/15'}`}>
+                  <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
                   <TextInput
                     placeholder="Search exam name or subject..."
                     placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -238,7 +278,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
 
                 <Pressable
                   onPress={handleOpenAdd}
-                  className="bg-[#00f1a1] px-4 py-2.5 rounded-2xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+                  className={`${primaryBtnClass} px-4 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
                 >
                   <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
                   <Text className="text-[#101415] text-xs font-extrabold">Schedule Exam</Text>
@@ -254,7 +294,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
                       <Pressable
                         key={cls}
                         onPress={() => setSelectedClassFilter(cls)}
-                        className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                        className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                       >
                         <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white/70'}`}>
                           {cls === 'All' ? 'All Classes' : `Class ${cls}`}
@@ -271,11 +311,11 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
               <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Configured Exam Timetable ({filteredExams.length})</Text>
 
               {filteredExams.map(ex => (
-                <GlassCard key={ex.id} intensity="low" className="mb-4 p-4 border-white/10 bg-[#101415]/90">
+                <GlassCard key={ex.id} intensity="low" className={`mb-4 p-4 border bg-[#101415]/90 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
                   <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
                     <View className="flex-row items-center flex-1 mr-2">
-                      <View className="w-10 h-10 rounded-2xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
-                        <BookOpen size={20} color="#00f1a1" />
+                      <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                        <BookOpen size={20} color={primaryColor} />
                       </View>
                       <View className="flex-1">
                         <View className="flex-row items-center">
@@ -284,7 +324,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
                             <Text className="text-sky-300 text-[9.5px] font-bold">{ex.className}</Text>
                           </View>
                         </View>
-                        <Text className="text-[#00f1a1] text-xs font-bold mt-0.5">{ex.examName}</Text>
+                        <Text className={`${primaryTextClass} text-xs font-bold mt-0.5`}>{ex.examName}</Text>
                       </View>
                     </View>
 
@@ -308,7 +348,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
                   {/* Date & Time Slot Grid */}
                   <View className="flex-row justify-between bg-black/40 p-3 rounded-2xl border border-white/5 mb-2">
                     <View className="flex-row items-center">
-                      <Calendar size={14} color="#00f1a1" style={{ marginRight: 6 }} />
+                      <Calendar size={14} color={primaryColor} style={{ marginRight: 6 }} />
                       <Text className="text-white text-xs font-semibold">{ex.date}</Text>
                     </View>
 
@@ -330,7 +370,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
 
         {activeTab === 'invigilation' && (
           <View className="px-5">
-            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-4">
+            <GlassCard intensity="low" className={`p-4 border bg-[#101415]/90 mb-4 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
               <Text className="text-white font-extrabold text-sm mb-1">Faculty Invigilation Roster</Text>
               <Text className="text-white/50 text-xs mb-3">Assigned exam room supervision for staff members</Text>
 
@@ -339,8 +379,8 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
                   <Text className="text-white font-bold text-xs">Mrs. Anita Sharma</Text>
                   <Text className="text-white/40 text-[10px]">Mathematics • Room 12 (09:30 AM)</Text>
                 </View>
-                <View className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-xl">
-                  <Text className="text-[#00f1a1] text-[10px] font-bold">Assigned</Text>
+                <View className={`px-2.5 py-1 rounded-xl ${primaryBadgeClass}`}>
+                  <Text className={`${primaryTextClass} text-[10px] font-bold`}>Assigned</Text>
                 </View>
               </View>
 
@@ -349,8 +389,8 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
                   <Text className="text-white font-bold text-xs">Mr. Rajesh Kumar</Text>
                   <Text className="text-white/40 text-[10px]">Physics Lab • Room 15 (09:30 AM)</Text>
                 </View>
-                <View className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-xl">
-                  <Text className="text-[#00f1a1] text-[10px] font-bold">Assigned</Text>
+                <View className={`px-2.5 py-1 rounded-xl ${primaryBadgeClass}`}>
+                  <Text className={`${primaryTextClass} text-[10px] font-bold`}>Assigned</Text>
                 </View>
               </View>
             </GlassCard>
@@ -359,14 +399,14 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
 
         {activeTab === 'results' && (
           <View className="px-5">
-            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
+            <GlassCard intensity="low" className={`p-4 border bg-[#101415]/90 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
               <Text className="text-white font-extrabold text-sm mb-1">Class Rank & Performance Results</Text>
               <Text className="text-white/50 text-xs mb-3">Published examination marks and rank cards</Text>
 
               <View className="bg-black/40 p-3 rounded-2xl border border-white/5 mb-2 flex-row justify-between items-center">
                 <View>
                   <Text className="text-white font-bold text-xs">Priya Sharma (Roll: 10A01)</Text>
-                  <Text className="text-[#00f1a1] text-[11px] font-extrabold mt-0.5">Rank 1 • 94.5% (A+ Grade)</Text>
+                  <Text className={`${primaryTextClass} text-[11px] font-extrabold mt-0.5`}>Rank 1 • 94.5% (A+ Grade)</Text>
                 </View>
                 <View className="bg-purple-500/20 border border-purple-500/40 px-3 py-1 rounded-xl">
                   <Text className="text-purple-300 text-[10px] font-bold">Grade A+</Text>
@@ -382,7 +422,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
       {/* ADD / EDIT EXAM MODAL */}
       <Modal visible={showAddEditModal} transparent animationType="slide" onRequestClose={() => setShowAddEditModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <Text className="text-white font-bold text-base">{editingExam ? 'Edit Exam Schedule' : 'Schedule Examination'}</Text>
               <Pressable onPress={() => setShowAddEditModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
@@ -480,7 +520,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={() => setShowAddEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleSaveExamSchedule} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleSaveExamSchedule} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">
                   {editingExam ? 'Update Schedule' : 'Save Schedule'}
                 </Text>
@@ -518,12 +558,12 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
       {/* CUSTOM TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : primaryBadgeClass}`}>
               {toastData.type === 'warning' ? (
                 <AlertCircle size={28} color="#f59e0b" />
               ) : (
-                <CheckCircle2 size={28} color="#00f1a1" />
+                <CheckCircle2 size={28} color={primaryColor} />
               )}
             </View>
 
@@ -532,7 +572,7 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
-              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
             </Pressable>

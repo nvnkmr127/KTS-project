@@ -7,6 +7,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface FeeCategoryItem {
   id: string;
@@ -26,6 +27,8 @@ const MOCK_FEE_CATEGORIES: FeeCategoryItem[] = [
 ];
 
 export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [categories, setCategories] = useState<FeeCategoryItem[]>(MOCK_FEE_CATEGORIES);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -112,10 +115,16 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -123,11 +132,11 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
 
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
-        title="Fee Categories Console"
-        subtitle="Structure, Breakdown & Tuition Allocation"
+        title="Fee Structure & Categories"
+        subtitle={isSuperAdmin ? "Super Admin Category Allotments" : "School Fee Allotments & Amounts"}
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <Tags size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <Tags size={20} color={primaryColor} />
           </View>
         }
       />
@@ -137,8 +146,8 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
         {/* Header Ribbon & Add Button */}
         <View className="px-5 mb-5 flex-row justify-between items-center">
           <View className="flex-1 mr-3">
-            <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
-              <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+            <View className={`bg-[#101415] border rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/15'}`}>
+              <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
               <TextInput
                 placeholder="Search category name or description..."
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -157,7 +166,7 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
 
           <Pressable
             onPress={handleOpenAdd}
-            className="bg-[#00f1a1] px-4 py-2.5 rounded-2xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+            className={`${primaryBtnClass} px-4 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
           >
             <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
             <Text className="text-[#101415] text-xs font-extrabold">Add Category</Text>
@@ -169,20 +178,20 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
           <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Configured Fee Structure Categories ({filteredCategories.length})</Text>
 
           {filteredCategories.map(cat => (
-            <GlassCard key={cat.id} intensity="low" className="mb-4 p-4 border-white/10 bg-[#101415]/90">
+            <GlassCard key={cat.id} intensity="low" className={`mb-4 p-4 border bg-[#101415]/90 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
               <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
                 <View className="flex-row items-center flex-1 mr-2">
-                  <View className="w-10 h-10 rounded-2xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
-                    <Tags size={20} color="#00f1a1" />
+                  <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                    <Tags size={20} color={primaryColor} />
                   </View>
                   <View className="flex-1">
                     <View className="flex-row items-center">
                       <Text className="text-white font-extrabold text-base mr-2">{cat.name}</Text>
-                      <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-                        <Text className="text-[#00f1a1] text-[9.5px] font-bold">{cat.status}</Text>
+                      <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                        <Text className={`${primaryTextClass} text-[9.5px] font-bold`}>{cat.status}</Text>
                       </View>
                     </View>
-                    <Text className="text-[#00f1a1] font-extrabold text-sm mt-0.5">₹{cat.amount.toLocaleString()} <Text className="text-white/40 text-[10px] font-normal">/ student</Text></Text>
+                    <Text className={`${primaryTextClass} font-extrabold text-sm mt-0.5`}>₹{cat.amount.toLocaleString()} <Text className="text-white/40 text-[10px] font-normal">/ student</Text></Text>
                   </View>
                 </View>
 
@@ -219,7 +228,7 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
       {/* ADD / EDIT CATEGORY MODAL */}
       <Modal visible={showAddEditModal} transparent animationType="slide" onRequestClose={() => setShowAddEditModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <Text className="text-white font-bold text-base">{editingCat ? 'Edit Fee Category' : 'Create Fee Category'}</Text>
               <Pressable onPress={() => setShowAddEditModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
@@ -281,7 +290,7 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={() => setShowAddEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleSaveCategory} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleSaveCategory} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">
                   {editingCat ? 'Update Category' : 'Save Category'}
                 </Text>
@@ -319,12 +328,12 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
       {/* CUSTOM TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : primaryBadgeClass}`}>
               {toastData.type === 'warning' ? (
                 <AlertCircle size={28} color="#f59e0b" />
               ) : (
-                <CheckCircle2 size={28} color="#00f1a1" />
+                <CheckCircle2 size={28} color={primaryColor} />
               )}
             </View>
 
@@ -333,7 +342,7 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
-              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
             </Pressable>

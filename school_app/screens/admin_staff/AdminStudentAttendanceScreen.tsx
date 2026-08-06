@@ -10,6 +10,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface ClassItemSummary {
   id: string;
@@ -69,6 +70,8 @@ const MOCK_CLASS_STUDENTS: StudentAttendanceRecord[] = [
 ];
 
 export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   // Navigation level: 1 = Class Directory, 2 = Class Student List, 3 = Student Monthly Grid
   const [viewLevel, setViewLevel] = useState<1 | 2 | 3>(1);
   const [selectedClass, setSelectedClass] = useState<ClassItemSummary | null>(null);
@@ -142,10 +145,17 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
     setViewLevel(3);
   };
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -175,8 +185,8 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
             : `ACADEMIC YEAR: ${academicYear}`
         }
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <UserCheck size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <UserCheck size={20} color={primaryColor} />
           </View>
         }
       />
@@ -188,9 +198,9 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
             <View className="flex-row items-center justify-between mb-1">
               <Text className="text-white/40 text-[10px] font-bold uppercase">Present Today</Text>
-              <CheckCircle2 size={14} color="#00f1a1" />
+              <CheckCircle2 size={14} color={primaryColor} />
             </View>
-            <Text className="text-[#00f1a1] text-xl font-extrabold">{totalPresentAll}</Text>
+            <Text className={`${primaryTextClass} text-xl font-extrabold`}>{totalPresentAll}</Text>
             <Text className="text-white/50 text-[10px]">Out of {totalEnrolledAll}</Text>
           </GlassCard>
 
@@ -233,17 +243,17 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
 
               <Pressable
                 onPress={() => setShowDatePickerModal(true)}
-                className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center"
+                className={`${isSuperAdmin ? 'bg-[#f0c110]/15 border border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border border-[#00f1a1]/40'} px-3 py-1.5 rounded-xl flex-row items-center`}
               >
-                <Calendar size={13} color="#00f1a1" style={{ marginRight: 5 }} />
-                <Text className="text-[#00f1a1] text-xs font-bold">{selectedDate}</Text>
+                <Calendar size={13} color={primaryColor} style={{ marginRight: 5 }} />
+                <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedDate}</Text>
               </Pressable>
             </View>
 
             {/* Search Input */}
             <View className="px-5 mb-4">
               <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
-                <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+                <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
                 <TextInput
                   placeholder="Search classes..."
                   placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -264,8 +274,8 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   className="w-[48%] bg-[#101415]/90 border border-white/10 rounded-2xl p-3.5 shadow-lg active:opacity-80"
                 >
                   <View className="flex-row items-center mb-2">
-                    <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2">
-                      <School size={16} color="#00f1a1" />
+                    <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2 ${primaryBadgeClass}`}>
+                      <School size={16} color={primaryColor} />
                     </View>
                     <Text className="text-white font-extrabold text-sm flex-1">{cls.className}</Text>
                   </View>
@@ -279,8 +289,8 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
 
                   {/* Attendance Pills */}
                   <View className="flex-row items-center justify-between pt-2 border-t border-white/5">
-                    <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-                      <Text className="text-[#00f1a1] text-[9.5px] font-bold">{cls.presentToday} Present</Text>
+                    <View className={`px-2 py-0.5 rounded-md ${primaryPillClass}`}>
+                      <Text className={`${primaryTextClass} text-[9.5px] font-bold`}>{cls.presentToday} Present</Text>
                     </View>
                     <View className="bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-md">
                       <Text className="text-rose-400 text-[9.5px] font-bold">{cls.absentToday} Absent</Text>
@@ -288,8 +298,8 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   </View>
 
                   <View className="mt-2.5 flex-row items-center justify-end">
-                    <Text className="text-[#00f1a1] text-[10px] font-bold mr-1">View Attendance</Text>
-                    <ChevronRight size={12} color="#00f1a1" />
+                    <Text className={`${primaryTextClass} text-[10px] font-bold mr-1`}>View Attendance</Text>
+                    <ChevronRight size={12} color={primaryColor} />
                   </View>
                 </Pressable>
               ))}
@@ -310,7 +320,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     return (
                       <GlassCard key={gradeLabel} intensity="low" className="p-3.5 w-28 items-center border-white/10 bg-[#101415]/80">
                         <Text className="text-white/60 text-xs font-bold mb-1">{gradeLabel}</Text>
-                        <Text className="text-[#00f1a1] text-base font-extrabold">{avg}</Text>
+                        <Text className={`${primaryTextClass} text-base font-extrabold`}>{avg}</Text>
                       </GlassCard>
                     );
                   })}
@@ -346,8 +356,8 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 className="bg-[#101415]/90 border border-white/10 p-3.5 rounded-2xl mb-2.5 flex-row items-center justify-between active:bg-white/5"
               >
                 <View className="flex-row items-center flex-1 mr-2">
-                  <View className="w-9 h-9 rounded-full bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
-                    <Text className="text-[#00f1a1] text-xs font-extrabold">{st.initials}</Text>
+                  <View className={`w-9 h-9 rounded-full items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} text-xs font-extrabold`}>{st.initials}</Text>
                   </View>
                   <View className="flex-1">
                     <Text className="text-white text-xs font-bold">{st.name}</Text>
@@ -356,9 +366,9 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 </View>
 
                 <View className="items-end">
-                  <Text className="text-[#00f1a1] text-xs font-extrabold">{st.overallPct}% Overall</Text>
+                  <Text className={`${primaryTextClass} text-xs font-extrabold`}>{st.overallPct}% Overall</Text>
                   <View className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden mt-1">
-                    <View className="h-full rounded-full bg-[#00f1a1]" style={{ width: `${st.overallPct}%` }} />
+                    <View className={`h-full rounded-full ${isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]'}`} style={{ width: `${st.overallPct}%` }} />
                   </View>
                 </View>
               </Pressable>
@@ -375,7 +385,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 <Text className="text-white font-extrabold text-sm">Monthly Attendance Grid</Text>
                 <View className="flex-row items-center" style={{ gap: 8 }}>
                   <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1" />
+                    <View className={`w-2 h-2 rounded-full mr-1 ${isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]'}`} />
                     <Text className="text-white/60 text-[9px]">Present</Text>
                   </View>
                   <View className="flex-row items-center">
@@ -392,11 +402,11 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
               {/* Month Navigation */}
               <View className="flex-row justify-between items-center mb-4">
                 <Pressable className="p-1.5 rounded-lg bg-white/5 border border-white/10">
-                  <ChevronLeft size={16} color="#00f1a1" />
+                  <ChevronLeft size={16} color={primaryColor} />
                 </Pressable>
                 <Text className="text-white font-bold text-xs">August 2026</Text>
                 <Pressable className="p-1.5 rounded-lg bg-white/5 border border-white/10">
-                  <ChevronRight size={16} color="#00f1a1" />
+                  <ChevronRight size={16} color={primaryColor} />
                 </Pressable>
               </View>
 
@@ -418,9 +428,9 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                       onPress={() => setSelectedCalendarDay(dayNum)}
                       className={`w-[13%] h-10 rounded-xl items-center justify-center border ${
                         isSelected 
-                          ? 'border-[#00f1a1] bg-[#00f1a1]/20' 
+                          ? (isSuperAdmin ? 'border-[#f0c110] bg-[#f0c110]/20' : 'border-[#00f1a1] bg-[#00f1a1]/20')
                           : status === 'present' 
-                          ? 'bg-emerald-500/10 border-emerald-500/30' 
+                          ? (isSuperAdmin ? 'bg-amber-500/10 border-amber-500/30' : 'bg-emerald-500/10 border-emerald-500/30')
                           : status === 'absent' 
                           ? 'bg-rose-500/10 border-rose-500/30' 
                           : status === 'partial'
@@ -428,7 +438,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                           : 'bg-white/5 border-white/5'
                       }`}
                     >
-                      <Text className={`text-xs font-bold ${status === 'present' ? 'text-[#00f1a1]' : status === 'absent' ? 'text-rose-400' : status === 'partial' ? 'text-amber-400' : 'text-white/40'}`}>
+                      <Text className={`text-xs font-bold ${status === 'present' ? primaryTextClass : status === 'absent' ? 'text-rose-400' : status === 'partial' ? 'text-amber-400' : 'text-white/40'}`}>
                         {dayNum}
                       </Text>
                     </Pressable>
@@ -440,7 +450,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
             {/* Bottom Section: Period-Wise Breakdown for Selected Date */}
             <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
               <View className="flex-row items-center mb-3">
-                <Clock size={14} color="#00f1a1" style={{ marginRight: 6 }} />
+                <Clock size={14} color={primaryColor} style={{ marginRight: 6 }} />
                 <Text className="text-white text-xs font-bold">
                   Period-wise breakdown on Aug {selectedCalendarDay}, 2026
                 </Text>
@@ -482,11 +492,11 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
       {/* INTERACTIVE DATE PICKER SELECTION MODAL */}
       <Modal visible={showDatePickerModal} transparent animationType="slide" onRequestClose={() => setShowDatePickerModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <Calendar size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <Calendar size={16} color={primaryColor} />
                 </View>
                 <Text className="text-white font-bold text-base">Select Attendance Date</Text>
               </View>
@@ -507,7 +517,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 }}
                 className="p-1 border border-white/10 rounded-lg bg-white/5"
               >
-                <ChevronLeft size={16} color="#00f1a1" />
+                <ChevronLeft size={16} color={primaryColor} />
               </Pressable>
               <Text className="text-white font-extrabold text-sm">{selectedDate}</Text>
               <Pressable 
@@ -520,7 +530,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 }}
                 className="p-1 border border-white/10 rounded-lg bg-white/5"
               >
-                <ChevronRight size={16} color="#00f1a1" />
+                <ChevronRight size={16} color={primaryColor} />
               </Pressable>
             </View>
 
@@ -535,7 +545,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                       setCustomDateInput(qd);
                       setShowDatePickerModal(false);
                     }}
-                    className={`px-3 py-2 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                    className={`px-3 py-2 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                   >
                     <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>{qd}</Text>
                   </Pressable>
@@ -561,7 +571,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   setSelectedDate(customDateInput);
                   setShowDatePickerModal(false);
                 }} 
-                className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+                className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
               >
                 <Text className="text-[#101415] font-extrabold text-xs">Set Target Date</Text>
               </Pressable>

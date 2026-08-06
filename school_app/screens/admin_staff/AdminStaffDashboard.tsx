@@ -176,27 +176,35 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const isSuperAdmin = user?.role === 'super_admin';
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   const quickActions: QuickAction[] = [
-    { title: 'Student Profiles', icon: <UserSquare2 size={24} color="#00f1a1" />, route: 'StudentDirectory' },
-    { title: 'Add Student', icon: <UserPlus size={24} color="#00f1a1" />, route: 'AddStudent' },
-    { title: 'Classes', icon: <School size={24} color="#00f1a1" />, route: 'ClassManagement' },
-    { title: 'Student Attendance', icon: <UserCheck size={24} color="#00f1a1" />, route: 'AdminStudentAttendance' },
-    { title: 'Daily Diary View', icon: <BookOpen size={24} color="#00f1a1" />, route: 'AdminDailyDiary' },
-    { title: 'Classes Promotions', icon: <TrendingUp size={24} color="#00f1a1" />, route: 'ClassPromotions' },
-    { title: 'Alumni', icon: <GraduationCap size={24} color="#00f1a1" />, route: 'AlumniManagement' },
-    { title: 'Fee Collection', icon: <Wallet size={24} color="#00f1a1" />, route: 'FeeList' },
-    { title: 'Fee Category', icon: <Tag size={24} color="#00f1a1" />, route: 'FeeCategory' },
-    { title: 'Holiday Calendar', icon: <CalendarDays size={24} color="#00f1a1" />, route: 'HolidayCalendar' },
-    { title: 'Staff Leaves', icon: <CalendarOff size={24} color="#00f1a1" />, route: 'AdminStaffLeaves' },
-    { title: 'Timetable Builder', icon: <CalendarRange size={24} color="#00f1a1" />, route: 'TimetableBuilder' },
-    { title: 'Exam Schedule', icon: <FileEdit size={24} color="#00f1a1" />, route: 'ExamSchedule' },
-    { title: 'Substitution Assign', icon: <ArrowLeftRight size={24} color="#00f1a1" />, route: 'SubstitutionManagement' },
-    { title: 'Circulars', icon: <Megaphone size={24} color="#00f1a1" />, route: 'AdminAlertConfiguration' },
-    { title: 'Enquiry Leads', icon: <UserSearch size={24} color="#00f1a1" />, route: 'EnquiryLeads' },
-    { title: 'Staff Attendance', icon: <UserCheck size={24} color="#00f1a1" />, route: 'StaffAttendance' },
-    { title: 'Bus Tracking', icon: <Bus size={24} color="#00f1a1" />, route: 'AdminBusTracking' },
-    { title: 'Reports & Analytics', icon: <FileBarChart size={24} color="#00f1a1" />, route: 'AdminReportsAnalytics' },
-    { title: 'Recycle Bin', icon: <Trash2 size={24} color="#00f1a1" />, route: 'RecycleBin' },
+    { title: 'Student Profiles', icon: <UserSquare2 size={24} color={primaryColor} />, route: 'StudentDirectory' },
+    { title: 'Add Student', icon: <UserPlus size={24} color={primaryColor} />, route: 'AddStudent' },
+    { title: 'Classes', icon: <School size={24} color={primaryColor} />, route: 'ClassManagement' },
+    { title: 'Student Attendance', icon: <UserCheck size={24} color={primaryColor} />, route: 'AdminStudentAttendance' },
+    { title: 'Daily Diary View', icon: <BookOpen size={24} color={primaryColor} />, route: 'AdminDailyDiary' },
+    { title: 'Classes Promotions', icon: <TrendingUp size={24} color={primaryColor} />, route: 'ClassPromotions' },
+    { title: 'Alumni', icon: <GraduationCap size={24} color={primaryColor} />, route: 'AlumniManagement' },
+    { title: 'Fee Collection', icon: <Wallet size={24} color={primaryColor} />, route: 'FeeList' },
+    { title: 'Fee Category', icon: <Tag size={24} color={primaryColor} />, route: 'FeeCategory' },
+    { title: 'Holiday Calendar', icon: <CalendarDays size={24} color={primaryColor} />, route: 'HolidayCalendar' },
+    { title: 'Staff Leaves', icon: <CalendarOff size={24} color={primaryColor} />, route: 'AdminStaffLeaves' },
+    { title: 'Timetable Builder', icon: <CalendarRange size={24} color={primaryColor} />, route: 'TimetableBuilder' },
+    { title: 'Exam Schedule', icon: <FileEdit size={24} color={primaryColor} />, route: 'ExamSchedule' },
+    { title: 'Substitution Assign', icon: <ArrowLeftRight size={24} color={primaryColor} />, route: 'SubstitutionManagement' },
+    { title: 'Circulars', icon: <Megaphone size={24} color={primaryColor} />, route: 'AdminAlertConfiguration' },
+    { title: 'Enquiry Leads', icon: <UserSearch size={24} color={primaryColor} />, route: 'EnquiryLeads' },
+    { title: 'Staff Attendance', icon: <UserCheck size={24} color={primaryColor} />, route: 'StaffAttendance' },
+    { title: 'Bus Tracking', icon: <Bus size={24} color={primaryColor} />, route: 'AdminBusTracking' },
+    { title: 'Reports & Analytics', icon: <FileBarChart size={24} color={primaryColor} />, route: 'AdminReportsAnalytics' },
+    { title: 'Recycle Bin', icon: <Trash2 size={24} color={primaryColor} />, route: 'RecycleBin' },
   ];
 
   const filteredNotifications = notifications.filter(n => 
@@ -204,9 +212,9 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -214,18 +222,18 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
       <AdminStaffHeader 
         onIconPress={() => setShowSidebarModal(true)}
         title="EduVision"
-        subtitle="Admin Staff Terminal"
+        subtitle={isSuperAdmin ? "Super Admin Terminal" : "Admin Staff Terminal"}
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1] items-center justify-center shadow-[0_0_10px_rgba(0,241,161,0.5)]">
-            <ShieldCheck size={22} color="#101415" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <ShieldCheck size={22} color={primaryColor} />
           </View>
         }
         rightAction={
           <Pressable 
             onPress={() => setShowNotificationModal(true)}
-            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative active:bg-white/10 shadow-[0_0_10px_rgba(0,241,161,0.1)]"
+            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative active:bg-white/10"
           >
-            <Bell size={18} color="#00f1a1" />
+            <Bell size={18} color={primaryColor} />
             {unreadCount > 0 && (
               <View className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#ff516a] rounded-full items-center justify-center shadow-[0_0_6px_rgba(255,81,106,0.8)]" />
             )}
@@ -251,14 +259,14 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
           <AdminStatCard 
             title="STUDENTS" 
             value={stats.studentsCount} 
-            icon={<Users size={20} color="#00f1a1" />}
+            icon={<Users size={20} color={primaryColor} />}
             progress={0.65}
             onPress={() => navigation.navigate('StudentDirectory')}
           />
           <AdminStatCard 
             title="FEES DUE" 
             value={stats.feesDue} 
-            icon={<Banknote size={20} color="#00f1a1" />}
+            icon={<Banknote size={20} color={primaryColor} />}
             trend="Live database sync"
             onPress={() => navigation.navigate('FeeList')}
           />
@@ -268,14 +276,14 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
           <AdminStatCard 
             title="PENDING LEAVES" 
             value={stats.pendingLeaves} 
-            icon={<CalendarDays size={20} color="#00f1a1" />}
+            icon={<CalendarDays size={20} color={primaryColor} />}
             progress={0.25}
             onPress={() => navigation.navigate('AdminStaffLeaves')}
           />
           <AdminStatCard 
             title="ACTIVE BUSES" 
             value={stats.activeBuses} 
-            icon={<Bus size={20} color="#00f1a1" />}
+            icon={<Bus size={20} color={primaryColor} />}
             trend="GPS Live"
             onPress={() => navigation.navigate('AdminBusTracking')}
           />
@@ -302,15 +310,15 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
           {feeDefaulters.map((item) => (
             <GlassCard key={item.id} className="p-3 mb-2 flex-row justify-between items-center bg-[#101415]/90 border-white/10" intensity="low">
               <View className="flex-row items-center gap-3">
-                <View className={`w-9 h-9 rounded-xl ${item.color} items-center justify-center border border-emerald-500/20`}>
-                  <Text className="font-bold text-xs">{item.initials}</Text>
+                <View className={`w-9 h-9 rounded-xl ${primaryBadgeClass} items-center justify-center`}>
+                  <Text className={`${primaryTextClass} font-bold text-xs`}>{item.initials}</Text>
                 </View>
                 <View>
                   <Text className="text-white font-bold text-sm">{item.name}</Text>
                   <Text className="text-white/50 text-xs">Class {item.classInfo}</Text>
                 </View>
               </View>
-              <Text className="text-[#00f1a1] font-extrabold text-sm">{item.amount}</Text>
+              <Text className={`${primaryTextClass} font-extrabold text-sm`}>{item.amount}</Text>
             </GlassCard>
           ))}
         </View>
@@ -325,8 +333,8 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                   <Text className="text-white font-bold text-sm">{item.name}</Text>
                   <Text className="text-white/50 text-xs">{item.type} • {item.date}</Text>
                 </View>
-                <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="p-2 bg-[#00f1a1]/20 border border-[#00f1a1]/40 rounded-xl">
-                  <Check size={16} color="#00f1a1" />
+                <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className={`p-2 rounded-xl ${primaryBadgeClass}`}>
+                  <Check size={16} color={primaryColor} />
                 </Pressable>
               </View>
             </GlassCard>
@@ -346,12 +354,12 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
               <View>
                 <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5 pt-4">
                   <View className="flex-row items-center">
-                    <View className="w-9 h-9 rounded-xl bg-[#00f1a1] items-center justify-center mr-2.5 shadow-[0_0_10px_rgba(0,241,161,0.4)]">
-                      <ShieldCheck size={20} color="#101415" />
+                    <View className={`w-9 h-9 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                      <ShieldCheck size={20} color={primaryColor} />
                     </View>
                     <View>
                       <Text className="text-white font-extrabold text-sm">EduVision</Text>
-                      <Text className="text-[#00f1a1] text-[9px] font-bold">Admin Staff Portal</Text>
+                      <Text className={`${primaryTextClass} text-[9px] font-bold`}>{isSuperAdmin ? "Super Admin Console" : "Admin Staff Portal"}</Text>
                     </View>
                   </View>
                   <Pressable onPress={() => setShowSidebarModal(false)} className="p-1">
@@ -361,16 +369,16 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
 
                 {/* Profile Avatar Card */}
                 <View className="bg-black/60 p-4 rounded-3xl border border-white/10 mb-5 items-center">
-                  <View className="w-16 h-16 rounded-full bg-[#00f1a1]/20 border-2 border-[#00f1a1] items-center justify-center mb-3 shadow-[0_0_15px_rgba(0,241,161,0.3)]">
-                    <Text className="text-[#00f1a1] font-extrabold text-xl">
+                  <View className={`w-16 h-16 rounded-full items-center justify-center mb-3 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} font-extrabold text-xl`}>
                       {(user?.name || 'Sarah Jenkins').split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </Text>
                   </View>
                   <Text className="text-white font-extrabold text-base text-center">{user?.name || 'Sarah Jenkins'}</Text>
                   <Text className="text-white/50 text-xs text-center mt-0.5">{user?.email || 'sarah.jenkins@kts.edu.in'}</Text>
 
-                  <View className="bg-[#00f1a1]/20 border border-[#00f1a1]/40 px-3 py-1 rounded-xl mt-3">
-                    <Text className="text-[#00f1a1] text-[10px] font-black uppercase">ADMIN STAFF CONSOLE</Text>
+                  <View className={`px-3 py-1 rounded-xl mt-3 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} text-[10px] font-black uppercase`}>{isSuperAdmin ? "SUPER ADMIN CONSOLE" : "ADMIN STAFF CONSOLE"}</Text>
                   </View>
                 </View>
 
@@ -383,7 +391,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
 
                   <View className="flex-row items-center justify-between">
                     <Text className="text-white/50 text-xs font-semibold">Department</Text>
-                    <Text className="text-[#00f1a1] font-bold text-xs">Administration</Text>
+                    <Text className={`${primaryTextClass} font-bold text-xs`}>{isSuperAdmin ? "Super Administration" : "Administration"}</Text>
                   </View>
 
                   <View className="flex-row items-center justify-between">
@@ -408,7 +416,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                   className="w-full py-3.5 px-4 mb-2.5 bg-white/5 border border-white/15 rounded-2xl flex-row items-center justify-between active:bg-white/10"
                 >
                   <View className="flex-row items-center">
-                    <Settings size={18} color="#00f1a1" style={{ marginRight: 10 }} />
+                    <Settings size={18} color={primaryColor} style={{ marginRight: 10 }} />
                     <Text className="text-white font-extrabold text-xs">Settings</Text>
                   </View>
                   <ChevronRight size={16} color="rgba(255,255,255,0.6)" />
@@ -419,18 +427,18 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                     setShowSidebarModal(false);
                     navigation.navigate('AdminActivityLog');
                   }}
-                  className="w-full py-3.5 px-4 mb-2.5 bg-[#00f1a1]/15 border border-[#00f1a1]/40 rounded-2xl flex-row items-center justify-between active:bg-[#00f1a1]/25"
+                  className={`w-full py-3.5 px-4 mb-2.5 rounded-2xl flex-row items-center justify-between ${primaryBadgeClass}`}
                 >
                   <View className="flex-row items-center">
-                    <History size={18} color="#00f1a1" style={{ marginRight: 10 }} />
-                    <Text className="text-[#00f1a1] font-extrabold text-xs">Activity Log</Text>
+                    <History size={18} color={primaryColor} style={{ marginRight: 10 }} />
+                    <Text className={`${primaryTextClass} font-extrabold text-xs`}>Activity Log</Text>
                   </View>
-                  <ChevronRight size={16} color="#00f1a1" />
+                  <ChevronRight size={16} color={primaryColor} />
                 </Pressable>
 
                 <Pressable
                   onPress={handleSignOut}
-                  className="w-full py-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30 shadow-[0_0_15px_rgba(255,81,106,0.3)]"
+                  className="w-full py-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30"
                 >
                   <LogOut size={18} color="#ff516a" style={{ marginRight: 8 }} />
                   <Text className="text-[#ff516a] font-extrabold text-xs uppercase tracking-wider">Sign Out</Text>
@@ -454,19 +462,19 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
           >
             <Pressable 
               onPress={(e) => e.stopPropagation()} 
-              className="w-[92%] max-w-sm p-4 border border-white/20 rounded-3xl shadow-2xl" 
+              className={`w-[92%] max-w-sm p-4 border rounded-3xl shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-white/20'}`} 
               style={{ backgroundColor: '#101415', marginTop: 8 }}
             >
               
               {/* Header Bar */}
               <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
                 <View className="flex-row items-center">
-                  <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                    <Bell size={16} color="#00f1a1" />
+                  <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                    <Bell size={16} color={primaryColor} />
                   </View>
                   <View>
                     <Text className="text-white font-extrabold text-base">Notification Center</Text>
-                    <Text className="text-[#00f1a1] text-[10px] font-bold">{unreadCount} Unread System Alerts</Text>
+                    <Text className={`${primaryTextClass} text-[10px] font-bold`}>{unreadCount} Unread System Alerts</Text>
                   </View>
                 </View>
                 
@@ -484,7 +492,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                       <Pressable
                         key={cat}
                         onPress={() => setNotificationFilter(cat)}
-                        className={`px-3 py-1.5 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                        className={`px-3 py-1.5 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
                       >
                         <Text className={`text-[10px] font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>{cat}</Text>
                       </Pressable>
@@ -504,7 +512,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                     <View 
                       key={n.id} 
                       className={`p-3 rounded-2xl mb-2.5 border ${
-                        n.read ? 'bg-white/5 border-white/5' : 'bg-[#00f1a1]/10 border-[#00f1a1]/30'
+                        n.read ? 'bg-white/5 border-white/5' : primaryBadgeClass
                       }`}
                     >
                       <View className="flex-row justify-between items-start mb-1">
@@ -523,13 +531,13 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                   onPress={handleMarkAllRead}
                   className="flex-1 py-2.5 bg-white/10 rounded-xl items-center flex-row justify-center"
                 >
-                  <CheckCircle2 size={14} color="#00f1a1" style={{ marginRight: 4 }} />
+                  <CheckCircle2 size={14} color={primaryColor} style={{ marginRight: 4 }} />
                   <Text className="text-white text-xs font-bold">Mark All Read</Text>
                 </Pressable>
 
                 <Pressable
                   onPress={() => setShowNotificationModal(false)}
-                  className="flex-1 py-2.5 bg-[#00f1a1] rounded-xl items-center"
+                  className={`flex-1 py-2.5 rounded-xl items-center ${primaryBtnClass}`}
                 >
                   <Text className="text-[#101415] text-xs font-extrabold uppercase">Close</Text>
                 </Pressable>

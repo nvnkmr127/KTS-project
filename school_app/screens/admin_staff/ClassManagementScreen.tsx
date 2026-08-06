@@ -10,6 +10,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface SubjectTeacher {
   subject: string;
@@ -197,6 +198,8 @@ const MOCK_CLASSES: ClassItem[] = [
 ];
 
 export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [classList, setClassList] = useState<ClassItem[]>(MOCK_CLASSES);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('2026-2027');
@@ -398,10 +401,17 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
     f.subject.toLowerCase().includes(facultySearch.toLowerCase())
   );
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -411,8 +421,8 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
         title="Class Management"
         subtitle="Classes, Sections & Teacher Directory"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <School size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <School size={20} color={primaryColor} />
           </View>
         }
       />
@@ -424,9 +434,9 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
             <Text className="text-white text-lg font-extrabold">Academic Overview</Text>
             <Text className="text-white/50 text-xs">Managing {classList.length} active class sections</Text>
           </View>
-          <View className="bg-[#101415] border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center">
-            <Calendar size={13} color="#00f1a1" style={{ marginRight: 6 }} />
-            <Text className="text-[#00f1a1] text-xs font-bold">{selectedAcademicYear}</Text>
+          <View className={`px-3 py-1.5 rounded-xl flex-row items-center ${primaryBadgeClass}`}>
+            <Calendar size={13} color={primaryColor} style={{ marginRight: 6 }} />
+            <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedAcademicYear}</Text>
           </View>
         </View>
 
@@ -435,10 +445,10 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
             <View className="flex-row items-center justify-between mb-1">
               <Text className="text-white/40 text-[10px] font-bold uppercase">Total Classes</Text>
-              <School size={14} color="#00f1a1" />
+              <School size={14} color={primaryColor} />
             </View>
             <Text className="text-white text-xl font-extrabold">{classList.length} Sections</Text>
-            <Text className="text-[#00f1a1] text-[10px] font-semibold mt-0.5">● 100% Teachers Assigned</Text>
+            <Text className={`${primaryTextClass} text-[10px] font-semibold mt-0.5`}>● 100% Teachers Assigned</Text>
           </GlassCard>
 
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
@@ -453,10 +463,10 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
             <View className="flex-row items-center justify-between mb-1">
               <Text className="text-white/40 text-[10px] font-bold uppercase">Today Attendance</Text>
-              <UserCheck size={14} color="#00f1a1" />
+              <UserCheck size={14} color={primaryColor} />
             </View>
             <Text className="text-white text-xl font-extrabold">96.5%</Text>
-            <Text className="text-[#00f1a1] text-[10px] font-semibold mt-0.5">● 1,204 Present Today</Text>
+            <Text className={`${primaryTextClass} text-[10px] font-semibold mt-0.5`}>● 1,204 Present Today</Text>
           </GlassCard>
 
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
@@ -473,7 +483,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
         <View className="px-5 mb-5">
           <View className="flex-row justify-between items-center mb-3">
             <View className="flex-1 bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 mr-3 shadow-md">
-              <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+              <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
               <TextInput
                 placeholder="Search class, section, teacher, room..."
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -491,7 +501,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={handleOpenAddModal}
-              className="bg-[#00f1a1] px-4 py-2.5 rounded-2xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+              className={`${primaryBtnClass} px-4 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
             >
               <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
               <Text className="text-[#101415] text-xs font-extrabold">Add Class</Text>
@@ -507,7 +517,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={wing}
                     onPress={() => setSelectedWingFilter(wing)}
-                    className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                    className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                   >
                     <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white/70'}`}>
                       {wing}
@@ -530,15 +540,15 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
                   <View className="flex-row items-center flex-1 mr-2">
                     <View
                       className="w-11 h-11 rounded-2xl items-center justify-center mr-3 border border-white/20 shadow-md"
-                      style={{ backgroundColor: `${cls.avatarColor}20` }}
+                      style={{ backgroundColor: isSuperAdmin ? '#f0c11020' : `${cls.avatarColor}20` }}
                     >
-                      <School size={22} color={cls.avatarColor} />
+                      <School size={22} color={primaryColor} />
                     </View>
                     <View className="flex-1">
                       <View className="flex-row items-center">
                         <Text className="text-white font-extrabold text-lg mr-2">{cls.grade}</Text>
-                        <View className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2.5 py-0.5 rounded-md mr-2">
-                          <Text className="text-[#00f1a1] text-[10px] font-bold">{cls.section}</Text>
+                        <View className={`px-2.5 py-0.5 rounded-md mr-2 ${primaryBadgeClass}`}>
+                          <Text className={`${primaryTextClass} text-[10px] font-bold`}>{cls.section}</Text>
                         </View>
                         <View className="bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 rounded-md">
                           <Text className="text-sky-400 text-[9px] font-bold">{cls.wing}</Text>
@@ -569,22 +579,22 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
                 <View className="bg-black/40 p-3 rounded-2xl mb-3 border border-white/5">
                   <View className="flex-row justify-between items-center mb-2 pb-2 border-b border-white/5">
                     <View className="flex-row items-center">
-                      <UserCheck size={13} color="#00f1a1" style={{ marginRight: 5 }} />
+                      <UserCheck size={13} color={primaryColor} style={{ marginRight: 5 }} />
                       <Text className="text-white/70 text-xs font-bold">Class Teacher Assignment</Text>
                     </View>
                     <Pressable
                       onPress={() => handleOpenReassignModal(cls)}
-                      className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2.5 py-1 rounded-xl flex-row items-center"
+                      className={`px-2.5 py-1 rounded-xl flex-row items-center ${primaryBadgeClass}`}
                     >
-                      <UserPlus size={12} color="#00f1a1" style={{ marginRight: 4 }} />
-                      <Text className="text-[#00f1a1] text-[10px] font-extrabold">Reassign</Text>
+                      <UserPlus size={12} color={primaryColor} style={{ marginRight: 4 }} />
+                      <Text className={`${primaryTextClass} text-[10px] font-extrabold`}>Reassign</Text>
                     </Pressable>
                   </View>
 
                   <View className="flex-row justify-between items-center">
                     <View className="flex-row items-center flex-1 mr-2">
-                      <View className="w-9 h-9 rounded-full bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
-                        <Text className="text-[#00f1a1] text-xs font-extrabold">{cls.classTeacher.slice(4, 6).toUpperCase()}</Text>
+                      <View className={`w-9 h-9 rounded-full items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                        <Text className={`${primaryTextClass} text-xs font-extrabold`}>{cls.classTeacher.slice(4, 6).toUpperCase()}</Text>
                       </View>
                       <View className="flex-1">
                         <Text className="text-white text-xs font-bold">{cls.classTeacher}</Text>
@@ -594,9 +604,9 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
                     </View>
 
                     <View className="items-end">
-                      <View className="flex-row items-center bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full mb-1">
-                        <Award size={10} color="#00f1a1" style={{ marginRight: 4 }} />
-                        <Text className="text-[#00f1a1] text-[9.5px] font-bold">{cls.classRank}</Text>
+                      <View className={`flex-row items-center px-2 py-0.5 rounded-full mb-1 ${primaryBadgeClass}`}>
+                        <Award size={10} color={primaryColor} style={{ marginRight: 4 }} />
+                        <Text className={`${primaryTextClass} text-[9.5px] font-bold`}>{cls.classRank}</Text>
                       </View>
                       <Text className="text-white/40 text-[9px]">{cls.attendanceRate} Attendance</Text>
                     </View>
@@ -609,12 +619,12 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
                     <Text className="text-white/60 text-[11px] font-semibold">
                       Student Occupancy: <Text className="text-white font-bold">{cls.totalStudents} / {cls.maxCapacity} Seats</Text>
                     </Text>
-                    <Text className="text-[#00f1a1] text-[11px] font-bold">{occupancyPct}% Full</Text>
+                    <Text className={`${primaryTextClass} text-[11px] font-bold`}>{occupancyPct}% Full</Text>
                   </View>
                   {/* Progress Bar */}
                   <View className="w-full h-2 rounded-full bg-white/10 overflow-hidden mb-2">
                     <View 
-                      className="h-full rounded-full bg-[#00f1a1]" 
+                      className={`h-full rounded-full ${primaryBtnClass}`} 
                       style={{ width: `${occupancyPct}%` }} 
                     />
                   </View>
@@ -628,10 +638,10 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
                 <View className="flex-row justify-between items-center" style={{ gap: 8 }}>
                   <Pressable
                     onPress={() => navigation.navigate('StudentDirectory')}
-                    className="flex-1 bg-[#00f1a1]/15 border border-[#00f1a1]/40 py-2.5 rounded-xl flex-row items-center justify-center"
+                    className={`flex-1 py-2.5 rounded-xl flex-row items-center justify-center ${primaryBadgeClass}`}
                   >
-                    <Users size={14} color="#00f1a1" style={{ marginRight: 5 }} />
-                    <Text className="text-[#00f1a1] text-xs font-bold">Students ({cls.totalStudents})</Text>
+                    <Users size={14} color={primaryColor} style={{ marginRight: 5 }} />
+                    <Text className={`${primaryTextClass} text-xs font-bold`}>Students ({cls.totalStudents})</Text>
                   </Pressable>
 
                   <Pressable
@@ -660,16 +670,16 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* REASSIGN CLASS TEACHER MODAL */}
       <Modal visible={Boolean(reassigningClass)} transparent animationType="slide" onRequestClose={() => setReassigningClass(null)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             {/* Header */}
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <UserPlus size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <UserPlus size={16} color={primaryColor} />
                 </View>
                 <View>
                   <Text className="text-white font-bold text-base">Reassign Class Teacher</Text>
-                  <Text className="text-[#00f1a1] text-[11px] font-bold">
+                  <Text className={`${primaryTextClass} text-[11px] font-bold`}>
                     {reassigningClass?.grade} {reassigningClass?.section} • Current: {reassigningClass?.classTeacher}
                   </Text>
                 </View>
@@ -681,7 +691,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
 
             {/* Search Faculty */}
             <View className="bg-black/40 border border-white/15 rounded-xl flex-row items-center px-3 py-2 mb-3">
-              <Search size={14} color="#00f1a1" style={{ marginRight: 6 }} />
+              <Search size={14} color={primaryColor} style={{ marginRight: 6 }} />
               <TextInput
                 placeholder="Search available faculty members..."
                 placeholderTextColor="rgba(255,255,255,0.4)"
@@ -701,10 +711,10 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={idx}
                     onPress={() => setSelectedNewTeacher(fac)}
-                    className={`p-3 rounded-2xl mb-2 flex-row justify-between items-center border ${isSelected ? 'bg-[#00f1a1]/15 border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                    className={`p-3 rounded-2xl mb-2 flex-row justify-between items-center border ${isSelected ? primaryBadgeClass : 'bg-white/5 border-white/10'}`}
                   >
                     <View className="flex-row items-center flex-1 mr-2">
-                      <View className={`w-8 h-8 rounded-full items-center justify-center mr-2.5 ${isSelected ? 'bg-[#00f1a1] text-[#101415]' : 'bg-white/10 text-white'}`}>
+                      <View className={`w-8 h-8 rounded-full items-center justify-center mr-2.5 ${isSelected ? `${primaryBtnClass} text-[#101415]` : 'bg-white/10 text-white'}`}>
                         <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white'}`}>{fac.name.slice(4, 6).toUpperCase()}</Text>
                       </View>
                       <View className="flex-1">
@@ -714,7 +724,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
                     </View>
 
                     {isSelected && (
-                      <View className="w-6 h-6 rounded-full bg-[#00f1a1] items-center justify-center">
+                      <View className={`w-6 h-6 rounded-full items-center justify-center ${primaryBtnClass}`}>
                         <Check size={14} color="#101415" />
                       </View>
                     )}
@@ -728,7 +738,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={() => setReassigningClass(null)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleConfirmReassignTeacher} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleConfirmReassignTeacher} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">Assign Teacher</Text>
               </Pressable>
             </View>
@@ -739,7 +749,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* VIEW SUBJECT TEACHERS MODAL */}
       <Modal visible={Boolean(viewingSubjectTeachersClass)} transparent animationType="slide" onRequestClose={() => setViewingSubjectTeachersClass(null)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
                 <View className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 items-center justify-center mr-2.5">
@@ -761,7 +771,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
               {viewingSubjectTeachersClass?.subjectTeachers.map((st, idx) => (
                 <View key={idx} className="bg-white/5 border border-white/10 p-3 rounded-2xl mb-2.5 flex-row justify-between items-center">
                   <View className="flex-1 mr-2">
-                    <Text className="text-[#00f1a1] text-xs font-bold">{st.subject}</Text>
+                    <Text className={`${primaryTextClass} text-xs font-bold`}>{st.subject}</Text>
                     <Text className="text-white font-semibold text-xs mt-0.5">{st.teacherName}</Text>
                     <Text className="text-white/40 text-[10px]">{st.phone}</Text>
                   </View>
@@ -772,7 +782,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
               ))}
             </ScrollView>
 
-            <Pressable onPress={() => setViewingSubjectTeachersClass(null)} className="w-full py-3 rounded-xl bg-[#00f1a1] items-center mt-3 shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+            <Pressable onPress={() => setViewingSubjectTeachersClass(null)} className={`w-full py-3 rounded-xl ${primaryBtnClass} items-center mt-3 shadow-lg`}>
               <Text className="text-[#101415] font-extrabold text-xs">Close Directory</Text>
             </Pressable>
           </View>
@@ -782,11 +792,11 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* ADD / EDIT CLASS MODAL */}
       <Modal visible={showAddModal} transparent animationType="slide" onRequestClose={() => setShowAddModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <School size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <School size={16} color={primaryColor} />
                 </View>
                 <Text className="text-white font-bold text-base">
                   {editingClass ? 'Edit Class Details' : 'Create New Class / Section'}
@@ -884,7 +894,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={() => setShowAddModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleSaveClass} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleSaveClass} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">
                   {editingClass ? 'Update Class' : 'Create Class'}
                 </Text>
@@ -922,12 +932,12 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* CUSTOM ADMIN STAFF TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : primaryBadgeClass}`}>
               {toastData.type === 'warning' ? (
                 <AlertCircle size={28} color="#f59e0b" />
               ) : (
-                <CheckCircle2 size={28} color="#00f1a1" />
+                <CheckCircle2 size={28} color={primaryColor} />
               )}
             </View>
 
@@ -936,7 +946,7 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
-              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
             </Pressable>

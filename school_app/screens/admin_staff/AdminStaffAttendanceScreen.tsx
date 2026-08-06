@@ -8,6 +8,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface StaffAttendanceItem {
   id: string;
@@ -86,6 +87,8 @@ const INITIAL_STAFF_MEMBERS: StaffAttendanceItem[] = [
 ];
 
 export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [selectedDate, setSelectedDate] = useState('2026-08-05');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<'All' | 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support'>('All');
@@ -172,10 +175,17 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const absentCount = staffMembers.filter(s => s.status === 'Absent' || s.status === 'Leave').length;
   const halfDayCount = staffMembers.filter(s => s.status === 'Half Day').length;
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -184,10 +194,10 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
         title="Staff Attendance Console"
-        subtitle="View Only • Employee Attendance Records"
+        subtitle="Biometric Logs & Daily Staff Roster"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <UserCheck size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <UserCheck size={20} color={primaryColor} />
           </View>
         }
       />
@@ -216,7 +226,7 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
 
           <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
             <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Present</Text>
-            <Text className="text-[#00f1a1] text-lg font-extrabold mt-0.5">{presentCount}</Text>
+            <Text className={`${primaryTextClass} text-lg font-extrabold mt-0.5`}>{presentCount}</Text>
           </GlassCard>
 
           <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
@@ -233,20 +243,20 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
         {/* Date Selector */}
         <View className="px-5 mb-4 flex-row justify-between items-center">
           <View className="flex-row items-center bg-[#101415]/90 border border-white/10 px-3 py-1.5 rounded-xl">
-            <Calendar size={14} color="#00f1a1" style={{ marginRight: 6 }} />
+            <Calendar size={14} color={primaryColor} style={{ marginRight: 6 }} />
             <Text className="text-white font-extrabold text-xs">{selectedDate}</Text>
           </View>
 
-          <View className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl flex-row items-center">
-            <ShieldCheck size={13} color="#00f1a1" style={{ marginRight: 4 }} />
-            <Text className="text-[#00f1a1] text-[10px] font-bold">Biometric e-TimeOffice</Text>
+          <View className={`px-3 py-1 rounded-xl flex-row items-center ${primaryBadgeClass}`}>
+            <ShieldCheck size={13} color={primaryColor} style={{ marginRight: 4 }} />
+            <Text className={`${primaryTextClass} text-[10px] font-bold`}>Biometric e-TimeOffice</Text>
           </View>
         </View>
 
         {/* Search Bar */}
         <View className="px-5 mb-4">
           <View className="bg-[#101415]/90 border border-white/10 rounded-2xl px-3.5 py-2.5 flex-row items-center">
-            <Search size={16} color="rgba(255,255,255,0.4)" style={{ marginRight: 8 }} />
+            <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -267,7 +277,7 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={d}
                     onPress={() => setSelectedDeptFilter(d)}
-                    className={`px-3 py-1.5 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-[#101415]/90 border-white/10'}`}
+                    className={`px-3 py-1.5 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-[#101415]/90 border-white/10'}`}
                   >
                     <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
                       {d}
@@ -298,18 +308,18 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     />
                     <View className="flex-1">
                       <Text className="text-white font-extrabold text-sm">{staff.name}</Text>
-                      <Text className="text-[#00f1a1] text-[10px] font-extrabold uppercase mt-0.5">{staff.role} • {staff.empCode}</Text>
+                      <Text className={`${primaryTextClass} text-[10px] font-extrabold uppercase mt-0.5`}>{staff.role} • {staff.empCode}</Text>
                     </View>
                   </View>
 
                   <View className={`px-2.5 py-1 rounded-full border ${
-                    staff.status === 'Present' ? 'bg-emerald-500/20 border-emerald-500/40' :
+                    staff.status === 'Present' ? primaryBadgeClass :
                     staff.status === 'Absent' ? 'bg-rose-500/20 border-rose-500/40' :
                     staff.status === 'Half Day' ? 'bg-amber-500/20 border-amber-500/40' :
                     'bg-sky-500/20 border-sky-500/40'
                   }`}>
                     <Text className={`text-[10px] font-extrabold uppercase ${
-                      staff.status === 'Present' ? 'text-[#00f1a1]' :
+                      staff.status === 'Present' ? primaryTextClass :
                       staff.status === 'Absent' ? 'text-rose-400' :
                       staff.status === 'Half Day' ? 'text-amber-400' : 'text-sky-400'
                     }`}>
@@ -321,13 +331,13 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 {/* Timing Info & Biometric Sync Tag */}
                 <View className="flex-row justify-between items-center bg-black/40 p-2.5 rounded-xl border border-white/5">
                   <View className="flex-row items-center">
-                    <Clock size={13} color="#00f1a1" style={{ marginRight: 4 }} />
+                    <Clock size={13} color={primaryColor} style={{ marginRight: 4 }} />
                     <Text className="text-white/70 text-xs font-bold">IN: {staff.inTime}  |  OUT: {staff.outTime}</Text>
                   </View>
 
                   <View className="flex-row items-center">
-                    <Fingerprint size={12} color={staff.biometricSynced ? '#00f1a1' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 3 }} />
-                    <Text className={`text-[9px] font-bold ${staff.biometricSynced ? 'text-[#00f1a1]' : 'text-white/40'}`}>
+                    <Fingerprint size={12} color={staff.biometricSynced ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 3 }} />
+                    <Text className={`text-[9px] font-bold ${staff.biometricSynced ? primaryTextClass : 'text-white/40'}`}>
                       {staff.biometricSynced ? 'e-TimeOffice Live' : 'Recorded'}
                     </Text>
                   </View>

@@ -6,8 +6,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [customAlert, setCustomAlert] = useState({
     visible: false,
@@ -120,10 +123,16 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
   const approvedCount = leaves.filter(l => l.status === 'approved').length;
   const rejectedCount = leaves.filter(l => l.status === 'rejected').length;
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -134,8 +143,8 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
         title="Staff Leaves Management"
         subtitle="Review & Process Absence Requests"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <Calendar size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <Calendar size={20} color={primaryColor} />
           </View>
         }
       />
@@ -153,7 +162,7 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
             <Pressable
               onPress={() => setActiveTab('pending')}
               className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${
-                activeTab === 'pending' ? 'bg-[#00f1a1]' : ''
+                activeTab === 'pending' ? (isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]') : ''
               }`}
             >
               <Text className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'pending' ? 'text-[#101415]' : 'text-white/40'}`}>Pending</Text>
@@ -165,7 +174,7 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
             <Pressable
               onPress={() => setActiveTab('approved')}
               className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${
-                activeTab === 'approved' ? 'bg-[#00f1a1]' : ''
+                activeTab === 'approved' ? (isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]') : ''
               }`}
             >
               <Text className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'approved' ? 'text-[#101415]' : 'text-white/40'}`}>Approved</Text>
@@ -177,7 +186,7 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
             <Pressable
               onPress={() => setActiveTab('rejected')}
               className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${
-                activeTab === 'rejected' ? 'bg-[#00f1a1]' : ''
+                activeTab === 'rejected' ? (isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]') : ''
               }`}
             >
               <Text className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'rejected' ? 'text-[#101415]' : 'text-white/40'}`}>Rejected</Text>
@@ -207,7 +216,7 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
                     />
                     <View className="flex-1">
                       <Text className="text-white font-extrabold text-sm">{l.name}</Text>
-                      <Text className="text-[#00f1a1] text-[10px] font-extrabold uppercase mt-0.5">{l.role}</Text>
+                      <Text className={`${primaryTextClass} text-[10px] font-extrabold uppercase mt-0.5`}>{l.role}</Text>
                     </View>
                   </View>
 
@@ -220,11 +229,11 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
                 <View className="mb-4">
                   <View className="flex-row items-center justify-between mb-2">
                     <View className="flex-row items-center">
-                      <Calendar size={13} color="#00f1a1" style={{ marginRight: 4 }} />
+                      <Calendar size={13} color={primaryColor} style={{ marginRight: 4 }} />
                       <Text className="text-white text-xs font-bold">{l.dates}</Text>
                     </View>
                     <View className="bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-lg">
-                      <Text className="text-[#00f1a1] font-bold text-xs">{l.days}</Text>
+                      <Text className={`${primaryTextClass} font-bold text-xs`}>{l.days}</Text>
                     </View>
                   </View>
 
@@ -241,7 +250,7 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
                   <View className="flex-row" style={{ gap: 8 }}>
                     <Pressable
                       onPress={() => handleAction(l.id, l.name, 'approved')}
-                      className="flex-1 bg-[#00f1a1] py-3 rounded-xl items-center justify-center flex-row shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+                      className={`flex-1 ${primaryBtnClass} py-3 rounded-xl items-center justify-center flex-row shadow-lg`}
                     >
                       <CheckCircle2 size={14} color="#101415" style={{ marginRight: 4 }} />
                       <Text className="text-[#101415] font-extrabold text-xs uppercase tracking-wider">Approve</Text>

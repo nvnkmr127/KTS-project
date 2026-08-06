@@ -9,6 +9,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface HolidayItem {
   id: string;
@@ -38,6 +39,8 @@ const HIGHLIGHT_COLORS = ['#ef4444', '#3b82f6', '#00f1a1', '#a855f7', '#f59e0b']
 
 export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const navigation = useNavigation<any>() || propNavigation;
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [holidays, setHolidays] = useState<HolidayItem[]>(MOCK_HOLIDAYS);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -274,10 +277,16 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
     return matchesSearch && matchesType;
   });
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -288,8 +297,8 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
         title="Holiday Calendar Console"
         subtitle="School Holidays & Academic Events"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <Calendar size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <Calendar size={20} color={primaryColor} />
           </View>
         }
       />
@@ -300,7 +309,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
         <View className="px-5 mb-4">
           <View className="flex-row items-center justify-between mb-3" style={{ gap: 10 }}>
             <View className="flex-1 bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5">
-              <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+              <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
               <TextInput
                 placeholder="Search holiday name, date, description..."
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -313,7 +322,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
 
             <Pressable
               onPress={handleOpenAdd}
-              className="bg-[#00f1a1] px-4 py-2.5 rounded-2xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+              className={`${primaryBtnClass} px-4 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
             >
               <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
               <Text className="text-[#101415] text-xs font-extrabold">Add Holiday</Text>
@@ -329,7 +338,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
                   <Pressable
                     key={tf}
                     onPress={() => setTypeFilter(tf)}
-                    className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                    className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                   >
                     <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white/70'}`}>
                       {tf === 'All' ? 'All Holidays' : tf === 'Calendar' ? 'Calendar' : tf}
@@ -350,22 +359,22 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
               <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-white/10">
                 <View className="flex-1 mr-2">
                   <View className="flex-row items-center">
-                    <Sparkles size={16} color="#00f1a1" style={{ marginRight: 6 }} />
+                    <Sparkles size={16} color={primaryColor} style={{ marginRight: 6 }} />
                     <Text className="text-white font-extrabold text-base">School Holidays Designer</Text>
                   </View>
                   <Text className="text-white/50 text-[10px] mt-0.5">Tap on any date to configure custom holidays, or view Sundays.</Text>
                 </View>
 
                 {/* Month Navigator: < June 2026 > */}
-                <View className="flex-row items-center bg-black/60 border border-[#00f1a1]/30 px-3 py-1.5 rounded-2xl shadow-lg">
+                <View className={`flex-row items-center bg-black/60 border ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'} px-3 py-1.5 rounded-2xl shadow-lg`}>
                   <Pressable onPress={handlePrevMonth} className="p-1 active:opacity-60">
-                    <ChevronLeft size={16} color="#00f1a1" />
+                    <ChevronLeft size={16} color={primaryColor} />
                   </Pressable>
                   <Text className="text-white font-extrabold text-xs mx-2.5">
                     {MONTH_NAMES[calendarMonth]} {calendarYear}
                   </Text>
                   <Pressable onPress={handleNextMonth} className="p-1 active:opacity-60">
-                    <ChevronRight size={16} color="#00f1a1" />
+                    <ChevronRight size={16} color={primaryColor} />
                   </Pressable>
                 </View>
               </View>
@@ -412,7 +421,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
                           isSunday 
                             ? 'bg-rose-500/15 border-rose-500/40' 
                             : holidayOnDay 
-                            ? 'bg-[#00f1a1]/15 border-[#00f1a1]/40' 
+                            ? (isSuperAdmin ? 'bg-[#f0c110]/15 border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border-[#00f1a1]/40')
                             : 'bg-white/5 border-white/10 active:bg-white/15'
                         }`}
                       >
@@ -421,7 +430,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
                             {dayNum}
                           </Text>
                           {holidayOnDay && (
-                            <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: holidayOnDay.color || '#00f1a1' }} />
+                            <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: holidayOnDay.color || primaryGold }} />
                           )}
                         </View>
 
@@ -430,7 +439,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
                             <Text className="text-rose-300 text-[6.5px] font-black uppercase text-center" numberOfLines={1}>SUNDAY</Text>
                           </View>
                         ) : holidayOnDay ? (
-                          <View className="px-1 py-0.5 rounded-md" style={{ backgroundColor: holidayOnDay.color || '#00f1a1' }}>
+                          <View className="px-1 py-0.5 rounded-md" style={{ backgroundColor: holidayOnDay.color || primaryGold }}>
                             <Text className="text-[#101415] text-[7px] font-black text-center" numberOfLines={1}>
                               {holidayOnDay.title}
                             </Text>
@@ -455,7 +464,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
               </GlassCard>
             ) : (
               filteredHolidays.map(hol => {
-                const badgeStyle = hol.type === 'National' ? 'bg-[#00f1a1]/20 border-[#00f1a1]/40 text-[#00f1a1]' :
+                const badgeStyle = hol.type === 'National' ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]/40 text-[#ffe5a0]' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40 text-[#00f1a1]') :
                                   hol.type === 'Festival' ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' :
                                   hol.type === 'Vacation' ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' :
                                   'bg-sky-500/20 border-sky-500/40 text-sky-400';
@@ -464,14 +473,14 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
                   <GlassCard key={hol.id} intensity="low" className="mb-4 p-4 border-white/10 bg-[#101415]/90">
                     <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
                       <View className="flex-row items-center flex-1 mr-2">
-                        <View className="w-10 h-10 rounded-2xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-3">
-                          <Calendar size={20} color="#00f1a1" />
+                        <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                          <Calendar size={20} color={primaryColor} />
                         </View>
                         <View className="flex-1">
                           <View className="flex-row items-center">
                             <Text className="text-white font-extrabold text-base mr-2">{hol.title}</Text>
                           </View>
-                          <Text className="text-[#00f1a1] text-xs font-bold mt-0.5">{hol.dateRange}</Text>
+                          <Text className={`${primaryTextClass} text-xs font-bold mt-0.5`}>{hol.dateRange}</Text>
                         </View>
                       </View>
 
@@ -517,7 +526,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
               <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-4">
                 <View>
                   <Text className="text-white font-extrabold text-base">Configure School Holiday</Text>
-                  <Text className="text-[#00f1a1] text-xs font-bold mt-0.5">{selectedConfigDate}</Text>
+                  <Text className={`${primaryTextClass} text-xs font-bold mt-0.5`}>{selectedConfigDate}</Text>
                 </View>
                 <Pressable onPress={() => setShowConfigModal(false)} className="p-1">
                   <X size={20} color="rgba(255,255,255,0.6)" />
@@ -530,7 +539,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
                 className="flex-row items-center mb-4 bg-black/60 p-3 rounded-2xl border border-white/10"
               >
                 <View className={`w-5 h-5 rounded-md border flex-row items-center justify-center mr-3 ${
-                  isMarkedAsHoliday ? 'bg-[#00f1a1] border-[#00f1a1]' : 'border-white/40 bg-transparent'
+                  isMarkedAsHoliday ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'border-white/40 bg-transparent'
                 }`}>
                   {isMarkedAsHoliday && <Check size={12} color="#101415" />}
                 </View>
@@ -597,7 +606,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
 
                 <Pressable
                   onPress={handleSaveHolidayConfig}
-                  className="flex-1 py-3 bg-[#00f1a1] rounded-xl items-center shadow-[0_0_15px_rgba(0,241,161,0.4)]"
+                  className={`flex-1 py-3 ${primaryBtnClass} rounded-xl items-center shadow-lg`}
                 >
                   <Text className="text-[#101415] font-extrabold text-xs">Save Holiday Config</Text>
                 </Pressable>
@@ -650,7 +659,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
                       <Pressable
                         key={t}
                         onPress={() => setFormType(t)}
-                        className={`px-3 py-1.5 rounded-xl border ${formType === t ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                        className={`px-3 py-1.5 rounded-xl border ${formType === t ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
                       >
                         <Text className={`text-[10px] font-bold ${formType === t ? 'text-[#101415]' : 'text-white/70'}`}>{t}</Text>
                       </Pressable>
@@ -675,7 +684,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
 
               <Pressable
                 onPress={handleSaveHoliday}
-                className="bg-[#00f1a1] py-3 rounded-xl items-center mt-2 shadow-[0_0_15px_rgba(0,241,161,0.4)]"
+                className={`${primaryBtnClass} py-3 rounded-xl items-center mt-2 shadow-lg`}
               >
                 <Text className="text-[#101415] font-extrabold text-xs uppercase">{editingHoliday ? 'Save Changes' : 'Create Holiday'}</Text>
               </Pressable>
@@ -719,7 +728,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
 
       {/* TOAST NOTIFICATION */}
       {toastData.visible && (
-        <View className="absolute bottom-6 left-5 right-5 bg-[#00f1a1] p-3.5 rounded-2xl flex-row items-center justify-between shadow-[0_0_20px_rgba(0,241,161,0.5)]">
+        <View className={`absolute bottom-6 left-5 right-5 ${primaryBtnClass} p-3.5 rounded-2xl flex-row items-center justify-between shadow-lg`}>
           <View>
             <Text className="text-[#101415] font-extrabold text-xs">{toastData.title}</Text>
             <Text className="text-[#101415]/80 text-[10px]">{toastData.message}</Text>

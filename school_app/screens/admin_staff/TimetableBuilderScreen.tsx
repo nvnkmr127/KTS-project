@@ -10,6 +10,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import * as Print from 'expo-print';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface PeriodTiming {
   period: number;
@@ -88,6 +89,8 @@ const SUBJECT_COLORS: Record<string, { bg: string; border: string; text: string 
 };
 
 export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [selectedClass, setSelectedClass] = useState('10A');
   const [activeDay, setActiveDay] = useState('Monday');
   const [periodTimings, setPeriodTimings] = useState<PeriodTiming[]>(DEFAULT_PERIOD_TIMINGS);
@@ -472,10 +475,17 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
 
   const currentDaySchedule = timetableData[selectedClass]?.[activeDay] || {};
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -486,8 +496,8 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
         title="Timetable Designer"
         subtitle={`Class Teacher: ${CLASS_TEACHERS[selectedClass] || 'Not Allotted'}`}
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <Calendar size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <Calendar size={20} color={primaryColor} />
           </View>
         }
       />
@@ -505,7 +515,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={cls}
                     onPress={() => setSelectedClass(cls)}
-                    className={`px-4 py-2.5 rounded-2xl border ${isSelected ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                    className={`px-4 py-2.5 rounded-2xl border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                   >
                     <Text className={`text-xs font-extrabold ${isSelected ? 'text-[#101415]' : 'text-white/70'}`}>
                       Class {cls}
@@ -536,8 +546,8 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                 onPress={handleMobilePrintSchedule}
                 className="bg-white/5 border border-white/15 px-3 py-1.5 rounded-xl flex-row items-center"
               >
-                <Printer size={13} color="#00f1a1" style={{ marginRight: 5 }} />
-                <Text className="text-[#00f1a1] text-xs font-bold">Print Schedule</Text>
+                <Printer size={13} color={primaryColor} style={{ marginRight: 5 }} />
+                <Text className={`${primaryTextClass} text-xs font-bold`}>Print Schedule</Text>
               </Pressable>
             </View>
 
@@ -557,7 +567,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
               <Pressable
                 onPress={handleSaveAllTimetable}
                 disabled={isSaving}
-                className="flex-1 bg-[#00f1a1] py-2.5 rounded-xl flex-row items-center justify-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+                className={`flex-1 ${primaryBtnClass} py-2.5 rounded-xl flex-row items-center justify-center shadow-lg`}
               >
                 {isSaving ? (
                   <ActivityIndicator size="small" color="#101415" />
@@ -582,9 +592,9 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={day}
                     onPress={() => setActiveDay(day)}
-                    className={`px-3.5 py-2 rounded-xl border ${isSelected ? 'bg-[#00f1a1]/20 border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                    className={`px-3.5 py-2 rounded-xl border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
                   >
-                    <Text className={`text-xs font-bold ${isSelected ? 'text-[#00f1a1]' : 'text-white/60'}`}>
+                    <Text className={`text-xs font-bold ${isSelected ? primaryTextClass : 'text-white/60'}`}>
                       {day}
                     </Text>
                   </Pressable>
@@ -623,7 +633,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                   {/* Period Time Slot */}
                   <View className="flex-row items-center flex-1 mr-2">
                     <View className="w-12 h-11 rounded-xl bg-white/5 border border-white/10 items-center justify-center mr-3">
-                      <Text className="text-[#00f1a1] text-xs font-extrabold">P{displayPeriodIndex}</Text>
+                      <Text className={`${primaryTextClass} text-xs font-extrabold`}>P{displayPeriodIndex}</Text>
                       <Text className="text-white/40 text-[8px] font-mono mt-0.5" numberOfLines={1}>{timing.start}</Text>
                     </View>
 
@@ -648,7 +658,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                   {/* Assign / Edit Action Button */}
                   <Pressable
                     onPress={() => handleOpenCellEdit(activeDay, pIdx)}
-                    className={`px-3.5 py-2 rounded-xl flex-row items-center border ${cell ? 'bg-white/5 border-white/15' : 'bg-[#00f1a1]/15 border-[#00f1a1]/40'}`}
+                    className={`px-3.5 py-2 rounded-xl flex-row items-center border ${cell ? 'bg-white/5 border-white/15' : (isSuperAdmin ? 'bg-[#f0c110]/15 border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border-[#00f1a1]/40')}`}
                   >
                     {cell ? (
                       <>
@@ -657,8 +667,8 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                       </>
                     ) : (
                       <>
-                        <Plus size={13} color="#00f1a1" style={{ marginRight: 5 }} />
-                        <Text className="text-[#00f1a1] text-xs font-extrabold">Assign</Text>
+                        <Plus size={13} color={primaryColor} style={{ marginRight: 5 }} />
+                        <Text className={`${primaryTextClass} text-xs font-extrabold`}>Assign</Text>
                       </>
                     )}
                   </Pressable>
@@ -674,7 +684,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
           <View className="flex-row flex-wrap" style={{ gap: 8 }}>
             {Object.keys(SUBJECT_COLORS).slice(0, 8).map((subKey) => (
               <View key={subKey} className="flex-row items-center bg-white/5 px-2.5 py-1 rounded-lg border border-white/5">
-                <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" />
+                <View className={`w-2 h-2 rounded-full mr-1.5 ${isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]'}`} />
                 <Text className="text-white/60 text-[10px] font-semibold">{subKey}</Text>
               </View>
             ))}
@@ -687,15 +697,15 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
       {/* EDIT PERIOD CELL MODAL (WITH MANUAL ROOM OPTION) */}
       <Modal visible={showCellEditModal} transparent animationType="slide" onRequestClose={() => setShowCellEditModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <BookOpen size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <BookOpen size={16} color={primaryColor} />
                 </View>
                 <View>
                   <Text className="text-white font-bold text-base">Edit Period Cell</Text>
-                  <Text className="text-[#00f1a1] text-[11px] font-bold">
+                  <Text className={`${primaryTextClass} text-[11px] font-bold`}>
                     Class {selectedClass} • {editingCellTarget?.day} (Slot {(editingCellTarget?.periodIdx ?? 0) + 1})
                   </Text>
                 </View>
@@ -716,7 +726,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                       <Pressable
                         key={sub}
                         onPress={() => setFormSubject(sub)}
-                        className={`px-3 py-1.5 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                        className={`px-3 py-1.5 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                       >
                         <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>{sub}</Text>
                       </Pressable>
@@ -736,10 +746,10 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                     <Pressable
                       key={fac.id}
                       onPress={() => setFormTeacherId(fac.id)}
-                      className={`p-2.5 rounded-xl border flex-row justify-between items-center ${isSel ? 'bg-[#00f1a1]/20 border-[#00f1a1]' : isBusy ? 'bg-rose-500/10 border-rose-500/30' : 'bg-white/5 border-white/10'}`}
+                      className={`p-2.5 rounded-xl border flex-row justify-between items-center ${isSel ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : isBusy ? 'bg-rose-500/10 border-rose-500/30' : 'bg-white/5 border-white/10'}`}
                     >
                       <View>
-                        <Text className={`text-xs font-bold ${isSel ? 'text-[#00f1a1]' : 'text-white'}`}>{fac.name}</Text>
+                        <Text className={`text-xs font-bold ${isSel ? primaryTextClass : 'text-white'}`}>{fac.name}</Text>
                         <Text className="text-white/40 text-[10px]">{fac.subject}</Text>
                       </View>
 
@@ -748,8 +758,8 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                           <Text className="text-rose-400 text-[9px] font-bold">Busy elsewhere</Text>
                         </View>
                       ) : (
-                        <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-                          <Text className="text-[#00f1a1] text-[9px] font-bold">Available</Text>
+                        <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                          <Text className={`${primaryTextClass} text-[9px] font-bold`}>Available</Text>
                         </View>
                       )}
                     </Pressable>
@@ -761,7 +771,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
               <View className="flex-row justify-between items-center mb-1.5">
                 <Text className="text-white/70 text-xs font-bold">Classroom / Room No *</Text>
                 <Pressable onPress={() => setIsManualRoomMode(!isManualRoomMode)}>
-                  <Text className="text-[#00f1a1] text-[10px] font-bold">
+                  <Text className={`${primaryTextClass} text-[10px] font-bold`}>
                     {isManualRoomMode ? 'Select from list' : '+ Custom Room'}
                   </Text>
                 </Pressable>
@@ -784,7 +794,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                         <Pressable
                           key={rm}
                           onPress={() => setFormRoom(rm)}
-                          className={`px-3 py-1.5 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                          className={`px-3 py-1.5 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                         >
                           <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>{rm}</Text>
                         </Pressable>
@@ -805,7 +815,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={() => setShowCellEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleSaveCell} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleSaveCell} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">Save Period</Text>
               </Pressable>
             </View>
@@ -816,11 +826,11 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
       {/* EDIT PERIOD TIMINGS MODAL (FULL WEB MATCH WITH DYNAMIC ADD/REMOVE AND BREAK TYPE) */}
       <Modal visible={showEditTimingsModal} transparent animationType="slide" onRequestClose={() => setShowEditTimingsModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <Clock size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <Clock size={16} color={primaryColor} />
                 </View>
                 <View>
                   <Text className="text-white font-bold text-base">Edit Period Timings</Text>
@@ -897,8 +907,8 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
             {/* Dynamic Add / Remove Period Controls */}
             <View className="flex-row justify-between items-center py-2.5 border-t border-b border-white/10 my-2 px-1">
               <Pressable onPress={handleAddPeriodTiming} className="flex-row items-center">
-                <Plus size={14} color="#00f1a1" style={{ marginRight: 4 }} />
-                <Text className="text-[#00f1a1] text-xs font-bold">+ Add Period</Text>
+                <Plus size={14} color={primaryColor} style={{ marginRight: 4 }} />
+                <Text className={`${primaryTextClass} text-xs font-bold`}>+ Add Period</Text>
               </Pressable>
 
               {tempTimings.length > 1 && (
@@ -913,7 +923,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={() => setShowEditTimingsModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleSavePeriodTimings} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleSavePeriodTimings} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">Save Timings</Text>
               </Pressable>
             </View>
@@ -924,11 +934,11 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
       {/* PRINT SCHEDULE PREVIEW MODAL */}
       <Modal visible={showPrintModal} transparent animationType="slide" onRequestClose={() => setShowPrintModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <Printer size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <Printer size={16} color={primaryColor} />
                 </View>
                 <View>
                   <Text className="text-white font-bold text-base">Class {selectedClass} Timetable Schedule</Text>
@@ -945,7 +955,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                 const daySchedule = timetableData[selectedClass]?.[day] || {};
                 return (
                   <View key={day} className="mb-3 bg-white/5 p-3 rounded-2xl border border-white/10">
-                    <Text className="text-[#00f1a1] font-bold text-xs mb-1.5 uppercase">{day}</Text>
+                    <Text className={`${primaryTextClass} font-bold text-xs mb-1.5 uppercase`}>{day}</Text>
                     {Object.keys(daySchedule).length > 0 ? (
                       Object.entries(daySchedule).map(([pIdx, cell]) => (
                         <View key={pIdx} className="flex-row justify-between py-1 border-b border-white/5">
@@ -966,7 +976,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
                 setShowPrintModal(false);
                 handleMobilePrintSchedule();
               }}
-              className="w-full py-3 rounded-xl bg-[#00f1a1] items-center mt-3 shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3 rounded-xl ${primaryBtnClass} items-center mt-3 shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-xs">Print / Export PDF</Text>
             </Pressable>
@@ -977,12 +987,12 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
       {/* CUSTOM ADMIN STAFF TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : primaryBadgeClass}`}>
               {toastData.type === 'warning' ? (
                 <AlertCircle size={28} color="#f59e0b" />
               ) : (
-                <CheckCircle2 size={28} color="#00f1a1" />
+                <CheckCircle2 size={28} color={primaryColor} />
               )}
             </View>
 
@@ -991,7 +1001,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
-              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
             </Pressable>

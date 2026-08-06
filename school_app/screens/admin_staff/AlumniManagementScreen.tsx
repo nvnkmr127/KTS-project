@@ -9,6 +9,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface AlumniMember {
   id: string;
@@ -75,6 +76,8 @@ const MOCK_ALUMNI: AlumniMember[] = [
 ];
 
 export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [alumniList, setAlumniList] = useState<AlumniMember[]>(MOCK_ALUMNI);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYearFilter, setSelectedYearFilter] = useState('All');
@@ -211,10 +214,17 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
     showToast('Alumni Deleted', `${name} record removed from directory.`, 'warning');
   };
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -225,8 +235,8 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
         title="Alumni Directory"
         subtitle="Graduates, Higher Education & Career Tracking"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <GraduationCap size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <GraduationCap size={20} color={primaryColor} />
           </View>
         }
       />
@@ -238,10 +248,10 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
             <View className="flex-row items-center justify-between mb-1">
               <Text className="text-white/40 text-[10px] font-bold uppercase">Total Alumni</Text>
-              <GraduationCap size={14} color="#00f1a1" />
+              <GraduationCap size={14} color={primaryColor} />
             </View>
             <Text className="text-white text-xl font-extrabold">{alumniList.length} Graduates</Text>
-            <Text className="text-[#00f1a1] text-[10px] font-semibold mt-0.5">● 100% Tracked</Text>
+            <Text className={`${primaryTextClass} text-[10px] font-semibold mt-0.5`}>● 100% Tracked</Text>
           </GlassCard>
 
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
@@ -276,7 +286,7 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
         <View className="px-5 mb-5">
           <View className="flex-row justify-between items-center mb-3">
             <View className="flex-1 bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 mr-3 shadow-md">
-              <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+              <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
               <TextInput
                 placeholder="Search alumni name, occupation, institute..."
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -294,7 +304,7 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={handleOpenAddModal}
-              className="bg-[#00f1a1] px-3.5 py-2.5 rounded-2xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+              className={`${primaryBtnClass} px-3.5 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
             >
               <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
               <Text className="text-[#101415] text-xs font-extrabold">Add Alumni</Text>
@@ -310,7 +320,7 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={yr}
                     onPress={() => setSelectedYearFilter(yr)}
-                    className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'}`}
+                    className={`px-3.5 py-1.5 rounded-xl border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                   >
                     <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white/70'}`}>
                       {yr === 'All' ? 'All Batches' : `Batch ${yr}`}
@@ -331,15 +341,15 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
                 <View className="flex-row items-center flex-1 mr-2">
                   <View
                     className="w-11 h-11 rounded-2xl items-center justify-center mr-3 border border-white/20"
-                    style={{ backgroundColor: `${alm.avatarColor}20` }}
+                    style={{ backgroundColor: `${isSuperAdmin ? '#f0c110' : alm.avatarColor}20` }}
                   >
-                    <GraduationCap size={22} color={alm.avatarColor} />
+                    <GraduationCap size={22} color={isSuperAdmin ? '#ffe5a0' : alm.avatarColor} />
                   </View>
                   <View className="flex-1">
                     <View className="flex-row items-center">
                       <Text className="text-white font-extrabold text-base mr-2">{alm.name}</Text>
-                      <View className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-2 py-0.5 rounded-md">
-                        <Text className="text-[#00f1a1] text-[9.5px] font-bold">Batch {alm.passoutYear}</Text>
+                      <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                        <Text className={`${primaryTextClass} text-[9.5px] font-bold`}>Batch {alm.passoutYear}</Text>
                       </View>
                     </View>
                     <Text className="text-white/50 text-[11px] mt-0.5">{alm.graduatedClass} • {alm.city}</Text>
@@ -366,7 +376,7 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
               {/* Career & Higher Education Box */}
               <View className="bg-black/40 p-3 rounded-2xl mb-3 border border-white/5">
                 <View className="flex-row items-center mb-1">
-                  <Briefcase size={13} color="#00f1a1" style={{ marginRight: 6 }} />
+                  <Briefcase size={13} color={primaryColor} style={{ marginRight: 6 }} />
                   <Text className="text-white text-xs font-bold">{alm.occupation}</Text>
                 </View>
                 <Text className="text-white/60 text-[11px] ml-5">{alm.companyOrInstitute}</Text>
@@ -376,10 +386,10 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
               <View className="flex-row justify-between items-center" style={{ gap: 8 }}>
                 <Pressable
                   onPress={() => setViewingAlumni(alm)}
-                  className="flex-1 bg-[#00f1a1]/15 border border-[#00f1a1]/40 py-2.5 rounded-xl flex-row items-center justify-center"
+                  className={`flex-1 ${primaryBadgeClass} py-2.5 rounded-xl flex-row items-center justify-center`}
                 >
-                  <Eye size={14} color="#00f1a1" style={{ marginRight: 5 }} />
-                  <Text className="text-[#00f1a1] text-xs font-bold">View Profile</Text>
+                  <Eye size={14} color={primaryColor} style={{ marginRight: 5 }} />
+                  <Text className={`${primaryTextClass} text-xs font-bold`}>View Profile</Text>
                 </Pressable>
 
                 <Pressable
@@ -400,11 +410,11 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* VIEW ALUMNI PROFILE MODAL */}
       <Modal visible={Boolean(viewingAlumni)} transparent animationType="slide" onRequestClose={() => setViewingAlumni(null)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <GraduationCap size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <GraduationCap size={16} color={primaryColor} />
                 </View>
                 <Text className="text-white font-bold text-base">{viewingAlumni?.name}</Text>
               </View>
@@ -415,14 +425,14 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
               <View className="bg-white/5 border border-white/10 p-3.5 rounded-2xl mb-3">
-                <Text className="text-[#00f1a1] text-xs font-bold mb-1">{viewingAlumni?.occupation}</Text>
+                <Text className={`${primaryTextClass} text-xs font-bold mb-1`}>{viewingAlumni?.occupation}</Text>
                 <Text className="text-white text-xs font-semibold">{viewingAlumni?.companyOrInstitute}</Text>
                 <Text className="text-white/40 text-[10px] mt-1">Graduate Batch of {viewingAlumni?.passoutYear} ({viewingAlumni?.graduatedClass})</Text>
               </View>
 
               <View className="bg-black/40 border border-white/5 p-3.5 rounded-2xl mb-3" style={{ gap: 8 }}>
                 <View className="flex-row items-center">
-                  <Phone size={14} color="#00f1a1" style={{ marginRight: 8 }} />
+                  <Phone size={14} color={primaryColor} style={{ marginRight: 8 }} />
                   <Text className="text-white text-xs font-medium">{viewingAlumni?.phone}</Text>
                 </View>
                 <View className="flex-row items-center">
@@ -436,7 +446,7 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
               </View>
             </ScrollView>
 
-            <Pressable onPress={() => setViewingAlumni(null)} className="w-full py-3 rounded-xl bg-[#00f1a1] items-center mt-2 shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+            <Pressable onPress={() => setViewingAlumni(null)} className={`w-full py-3 rounded-xl ${primaryBtnClass} items-center mt-2 shadow-lg`}>
               <Text className="text-[#101415] font-extrabold text-xs">Close Profile</Text>
             </Pressable>
           </View>
@@ -446,7 +456,7 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* ADD / EDIT ALUMNI MODAL */}
       <Modal visible={showAddEditModal} transparent animationType="slide" onRequestClose={() => setShowAddEditModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <Text className="text-white font-bold text-base">{editingAlumni ? 'Edit Alumni Profile' : 'Register Alumni Member'}</Text>
               <Pressable onPress={() => setShowAddEditModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
@@ -539,7 +549,7 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={() => setShowAddEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleSaveAlumni} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleSaveAlumni} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">
                   {editingAlumni ? 'Update Alumni' : 'Save Alumni'}
                 </Text>
@@ -577,12 +587,12 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* CUSTOM TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : primaryBadgeClass}`}>
               {toastData.type === 'warning' ? (
                 <AlertCircle size={28} color="#f59e0b" />
               ) : (
-                <CheckCircle2 size={28} color="#00f1a1" />
+                <CheckCircle2 size={28} color={primaryColor} />
               )}
             </View>
 
@@ -591,7 +601,7 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
-              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
             </Pressable>

@@ -8,6 +8,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export interface AbsentTeacherItem {
   id: string;
@@ -38,6 +39,8 @@ const MOCK_FREE_TEACHERS: AvailableTeacherItem[] = [
 ];
 
 export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
+  const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
   const [absentTeachers, setAbsentTeachers] = useState<AbsentTeacherItem[]>(MOCK_ABSENT_TEACHERS);
   const [availableTeachers] = useState<AvailableTeacherItem[]>(MOCK_FREE_TEACHERS);
 
@@ -101,10 +104,17 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
     );
   };
 
+  const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
+  const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
+  const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
+  const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
       <LinearGradient
-        colors={['#0d2a24', '#121414']}
+        colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
@@ -115,8 +125,8 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
         title="Teacher Substitutions Console"
         subtitle="Absenteeism Coverage & Period Allotment"
         icon={
-          <View className="w-10 h-10 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center">
-            <Users size={20} color="#00f1a1" />
+          <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+            <Users size={20} color={primaryColor} />
           </View>
         }
       />
@@ -137,10 +147,10 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
             <View className="flex-row items-center justify-between mb-1">
               <Text className="text-white/40 text-[10px] font-bold uppercase">Active Subs</Text>
-              <CheckCircle2 size={14} color="#00f1a1" />
+              <CheckCircle2 size={14} color={primaryColor} />
             </View>
-            <Text className="text-[#00f1a1] text-xl font-extrabold">{activeSubstitutions.length} Allotted</Text>
-            <Text className="text-[#00f1a1] text-[10px] font-semibold mt-0.5">● Period Covered</Text>
+            <Text className={`${primaryTextClass} text-xl font-extrabold`}>{activeSubstitutions.length} Allotted</Text>
+            <Text className={`${primaryTextClass} text-[10px] font-semibold mt-0.5`}>● Period Covered</Text>
           </GlassCard>
         </View>
 
@@ -159,13 +169,13 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
                         <Text className="text-rose-400 text-[9.5px] font-bold">{ab.unassignedPeriod}</Text>
                       </View>
                     </View>
-                    <Text className="text-[#00f1a1] text-xs font-bold mt-0.5">{ab.timeSlot}</Text>
+                    <Text className={`${primaryTextClass} text-xs font-bold mt-0.5`}>{ab.timeSlot}</Text>
                     <Text className="text-white/50 text-[11px] mt-0.5">Absent: {ab.name} ({ab.subject})</Text>
                   </View>
 
                   <Pressable
                     onPress={() => handleOpenAssignModal(ab)}
-                    className="bg-[#00f1a1] px-3.5 py-2 rounded-xl flex-row items-center shadow-[0_0_12px_rgba(0,241,161,0.3)]"
+                    className={`${primaryBtnClass} px-3.5 py-2 rounded-xl flex-row items-center shadow-lg`}
                   >
                     <UserPlus size={13} color="#101415" style={{ marginRight: 5 }} />
                     <Text className="text-[#101415] text-xs font-extrabold">Assign Sub</Text>
@@ -175,7 +185,7 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
             ))
           ) : (
             <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 items-center justify-center">
-              <CheckCircle2 size={24} color="#00f1a1" style={{ marginBottom: 6 }} />
+              <CheckCircle2 size={24} color={primaryColor} style={{ marginBottom: 6 }} />
               <Text className="text-white font-bold text-xs">All Absent Periods Covered!</Text>
               <Text className="text-white/40 text-[10px] mt-0.5">No unassigned period slots remaining today.</Text>
             </GlassCard>
@@ -192,15 +202,15 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
                 <View className="flex-1">
                   <View className="flex-row items-center">
                     <Text className="text-white font-extrabold text-sm mr-2">{sub.targetClass}</Text>
-                    <Text className="text-[#00f1a1] text-xs font-bold">{sub.period}</Text>
+                    <Text className={`${primaryTextClass} text-xs font-bold`}>{sub.period}</Text>
                   </View>
                   <Text className="text-white/60 text-xs mt-1">
                     Substitute: <Text className="text-white font-bold">{sub.subTeacher}</Text> (for {sub.originalTeacher})
                   </Text>
                 </View>
 
-                <View className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-1 rounded-xl">
-                  <Text className="text-[#00f1a1] text-[10px] font-bold">Active ✓</Text>
+                <View className={`px-2.5 py-1 rounded-xl ${primaryBadgeClass}`}>
+                  <Text className={`${primaryTextClass} text-[10px] font-bold`}>Active ✓</Text>
                 </View>
               </View>
             </GlassCard>
@@ -213,15 +223,15 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* ASSIGN SUBSTITUTE MODAL */}
       <Modal visible={Boolean(selectedUnassigned)} transparent animationType="slide" onRequestClose={() => setSelectedUnassigned(null)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-md p-5 shadow-[0_0_30px_rgba(0,241,161,0.3)]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
-                  <UserPlus size={16} color="#00f1a1" />
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <UserPlus size={16} color={primaryColor} />
                 </View>
                 <View>
                   <Text className="text-white font-bold text-base">Assign Substitute</Text>
-                  <Text className="text-[#00f1a1] text-[11px] font-bold">{selectedUnassigned?.targetClass} • {selectedUnassigned?.unassignedPeriod}</Text>
+                  <Text className={`${primaryTextClass} text-[11px] font-bold`}>{selectedUnassigned?.targetClass} • {selectedUnassigned?.unassignedPeriod}</Text>
                 </View>
               </View>
               <Pressable onPress={() => setSelectedUnassigned(null)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
@@ -238,15 +248,15 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={ft.id}
                     onPress={() => setSelectedSubTeacherId(ft.id)}
-                    className={`p-3 rounded-2xl border mb-2.5 flex-row justify-between items-center ${isSel ? 'bg-[#00f1a1]/20 border-[#00f1a1]' : 'bg-white/5 border-white/10'}`}
+                    className={`p-3 rounded-2xl border mb-2.5 flex-row justify-between items-center ${isSel ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
                   >
                     <View>
-                      <Text className={`text-xs font-extrabold ${isSel ? 'text-[#00f1a1]' : 'text-white'}`}>{ft.name}</Text>
+                      <Text className={`text-xs font-extrabold ${isSel ? primaryTextClass : 'text-white'}`}>{ft.name}</Text>
                       <Text className="text-white/40 text-[10px]">{ft.subject} • {ft.freeStatus}</Text>
                     </View>
 
-                    <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-                      <Text className="text-[#00f1a1] text-[9px] font-bold">Free Slot</Text>
+                    <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                      <Text className={`${primaryTextClass} text-[9px] font-bold`}>Free Slot</Text>
                     </View>
                   </Pressable>
                 );
@@ -257,7 +267,7 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={() => setSelectedUnassigned(null)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleConfirmSubstitute} className="flex-1 py-3 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]">
+              <Pressable onPress={handleConfirmSubstitute} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">Confirm Sub</Text>
               </Pressable>
             </View>
@@ -268,12 +278,12 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
       {/* CUSTOM TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border-2 border-[#00f1a1]/40 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(0,241,161,0.3)]">
-            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : 'bg-[#00f1a1]/20 border-[#00f1a1]/40'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : primaryBadgeClass}`}>
               {toastData.type === 'warning' ? (
                 <AlertCircle size={28} color="#f59e0b" />
               ) : (
-                <CheckCircle2 size={28} color="#00f1a1" />
+                <CheckCircle2 size={28} color={primaryColor} />
               )}
             </View>
 
@@ -282,7 +292,7 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
-              className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
               <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
             </Pressable>
