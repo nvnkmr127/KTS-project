@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, GraduationCap } from 'lucide-react';
+import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, GraduationCap, RotateCcw } from 'lucide-react';
 // @ts-ignore
 import * as XLSX from 'xlsx-js-style';
 import { downloadSheet } from '../utils/excel';
@@ -197,20 +197,23 @@ export function FeeManagement() {
   const [showEditPaidModal, setShowEditPaidModal] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedEditFee, setSelectedEditFee] = useState<any | null>(null);
+  const [editFeeTotalAmount, setEditFeeTotalAmount] = useState('');
   const [editPaidAmount, setEditPaidAmount] = useState('');
   const [savingEditPaid, setSavingEditPaid] = useState(false);
 
   const handleEditPaidSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedEditFee || editPaidAmount === '') return;
+    if (!selectedEditFee || editFeeTotalAmount === '') return;
     setSavingEditPaid(true);
     try {
       await api.updateResource('student-fees', selectedEditFee.id, {
-        paid_amount: Number(editPaidAmount),
-        remarks: JSON.stringify({ text: 'Updated paid amount', collectedBy: user?.name || 'Super Admin' }),
+        amount: Number(editFeeTotalAmount),
+        paid_amount: Number(editPaidAmount || 0),
+        remarks: JSON.stringify({ text: 'Updated fee category details', collectedBy: user?.name || 'Super Admin' }),
       });
       setShowEditPaidModal(false);
       setSelectedEditFee(null);
+      setEditFeeTotalAmount('');
       setEditPaidAmount('');
 
       // Reload details
@@ -219,7 +222,7 @@ export function FeeManagement() {
       }
       loadFeesData();
     } catch (err) {
-      console.error('Error updating paid amount:', err);
+      console.error('Error updating fee details:', err);
     } finally {
       setSavingEditPaid(false);
     }
@@ -452,11 +455,18 @@ export function FeeManagement() {
       try {
         const admittedStudent = JSON.parse(admittedStudentStr);
         if (admittedStudent && admittedStudent.id) {
-          // Open the assign modal, select the student
+          const targetId = String(admittedStudent.id);
           setAssignType('student');
-          setModalStudentId(String(admittedStudent.id));
+          setAssignedItems([]);
+          setCurrentAmount('8500');
+          setModalStudentId(targetId);
           setShowAssignModal(true);
           sessionStorage.removeItem('admitted_student');
+
+          const targetStudent = students.find(s => String(s.studentId) === targetId);
+          if (targetStudent) {
+            handleViewStudentDetails(targetStudent);
+          }
         }
       } catch (e) {
         console.error(e);
@@ -728,6 +738,9 @@ export function FeeManagement() {
       setShowAssignModal(false);
       setAssignedItems([]);
       await loadFeesData();
+      if (activeDetailStudent) {
+        loadStudentFees(activeDetailStudent.studentId);
+      }
       if (type === 'student' && targetStudent) {
         setAssignedStudentForPayment({
           studentId: studentId,
@@ -1249,8 +1262,23 @@ export function FeeManagement() {
 
               {/* Fee & Concession Summary */}
               <Card className="space-y-4 lg:h-[400px] lg:flex lg:flex-col">
-                <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center gap-1.5 flex-shrink-0">
-                  <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
+                <div className="text-[12.5px] font-bold text-[var(--tx)] pb-2 border-b border-[var(--b)] flex items-center justify-between gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1.5">
+                    <FileText size={13} className="text-[var(--tx3)]" /> Fee Summary & Ledger
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAssignType('student');
+                      setAssignedItems([]);
+                      setCurrentAmount('8500');
+                      setModalStudentId(std.studentId);
+                      setShowAssignModal(true);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 text-[10.5px] bg-[var(--blue)] text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer font-semibold"
+                  >
+                    <Plus size={11} /> Assign Fee
+                  </button>
                 </div>
 
                 {/* Overall totals */}
@@ -1306,21 +1334,22 @@ export function FeeManagement() {
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
-                              <div className="flex items-center gap-2 justify-end mb-1">
+                              <div className="flex items-center gap-1.5 justify-end mb-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedEditFee(fee);
+                                    setEditFeeTotalAmount(String(fee.amount));
+                                    setEditPaidAmount(String(fee.paid_amount || 0));
+                                    setShowEditPaidModal(true);
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
+                                  title="Edit Fee Category / Amount"
+                                >
+                                  <Edit size={12} />
+                                </button>
                                 {Number(fee.paid_amount) > 0 && (
                                   <>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedEditFee(fee);
-                                        setEditPaidAmount(String(fee.paid_amount));
-                                        setShowEditPaidModal(true);
-                                      }}
-                                      className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--tx2)] hover:text-[var(--tx)] rounded-lg transition-colors cursor-pointer"
-                                      title="Edit Paid Amount"
-                                    >
-                                      <Edit size={12} />
-                                    </button>
                                     <button
                                       type="button"
                                       onClick={() => handlePrint({
@@ -1332,7 +1361,7 @@ export function FeeManagement() {
                                         }],
                                         totalPaid: Number(fee.paid_amount)
                                       })}
-                                      className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
+                                      className="w-8 h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--blue-tx)] rounded-lg transition-colors cursor-pointer"
                                       title="Print Receipt"
                                     >
                                       <Printer size={12} />
@@ -1340,7 +1369,7 @@ export function FeeManagement() {
                                     <button
                                       type="button"
                                       onClick={async () => {
-                                        if (await confirm(`Are you sure you want to delete/reverse the payment of ₹${Number(fee.paid_amount).toLocaleString()} for ${feeName}?`, 'Reverse Payment', true)) {
+                                        if (await confirm(`Are you sure you want to reverse the payment of ₹${Number(fee.paid_amount).toLocaleString()} for ${feeName}? This will reset paid amount to ₹0 without deleting the fee category.`, 'Reverse Payment', true)) {
                                           try {
                                             await api.updateResource('student-fees', fee.id, {
                                               paid_amount: 0,
@@ -1349,19 +1378,41 @@ export function FeeManagement() {
                                             });
                                             loadFeesData();
                                             loadStudentFees(std.studentId);
-                                            await alert('Payment deleted successfully!', 'Payment Deleted');
+                                            await alert('Payment reversed successfully!', 'Payment Reversed');
                                           } catch (err) {
-                                            console.error('Failed to delete payment:', err);
+                                            console.error('Failed to reverse payment:', err);
                                           }
                                         }
                                       }}
-                                      className="w-11 h-11 sm:w-8 sm:h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--red-tx)] rounded-lg transition-colors cursor-pointer"
-                                      title="Delete/Reverse Payment"
+                                      className="w-8 h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--amber-tx)] rounded-lg transition-colors cursor-pointer"
+                                      title="Reverse Payment (Reset Paid Amount)"
                                     >
-                                      <Trash2 size={12} />
+                                      <RotateCcw size={12} />
                                     </button>
                                   </>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const confirmMsg = Number(fee.paid_amount) > 0
+                                      ? `This fee category '${feeName}' has a paid amount of ₹${Number(fee.paid_amount).toLocaleString()}. Deleting it will permanently remove the fee category and all associated payment records for this student. Are you sure you want to delete this fee category?`
+                                      : `Are you sure you want to delete the fee category '${feeName}' (Amount: ₹${Number(fee.amount).toLocaleString()}) for this student?`;
+                                    if (await confirm(confirmMsg, 'Delete Fee Category', true)) {
+                                      try {
+                                        await api.deleteResource('student-fees', fee.id);
+                                        loadFeesData();
+                                        loadStudentFees(std.studentId);
+                                        await alert('Fee category deleted successfully!', 'Fee Category Deleted');
+                                      } catch (err) {
+                                        console.error('Failed to delete fee category:', err);
+                                      }
+                                    }
+                                  }}
+                                  className="w-8 h-8 flex items-center justify-center hover:bg-[var(--surf3)] text-[var(--red-tx)] rounded-lg transition-colors cursor-pointer"
+                                  title="Delete Fee Category"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                                 {bal > 0 ? (
                                   <Badge variant="red">Due: ₹{bal.toLocaleString()}</Badge>
                                 ) : (
@@ -2340,10 +2391,10 @@ export function FeeManagement() {
 
       {showEditPaidModal && selectedEditFee && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <form onSubmit={handleEditPaidSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] max-h-[90vh] overflow-y-auto shadow-2xl">
+          <form onSubmit={handleEditPaidSubmit} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
               <div>
-                <div className="text-[14px] font-bold text-[var(--tx)]">Edit Paid Amount</div>
+                <div className="text-[14px] font-bold text-[var(--tx)]">Edit Fee Category Details</div>
                 <div className="text-[11px] text-[var(--tx3)]">
                   {selectedEditFee.fee_category?.name || selectedEditFee.feeCategory?.name || selectedEditFee.category || 'School Fee'}
                 </div>
@@ -2360,33 +2411,40 @@ export function FeeManagement() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-[11.5px] bg-[var(--surf2)] p-3 rounded-xl">
-                <div>
-                  <span className="text-[var(--tx3)] block">Assigned Amount:</span>
-                  <span className="font-semibold text-[var(--tx)]">₹{Number(selectedEditFee.amount).toLocaleString()}</span>
-                </div>
-                {Number(selectedEditFee.concession_amount) > 0 && (
-                  <div>
-                    <span className="text-[var(--tx3)] block">Concession:</span>
-                    <span className="font-semibold text-[var(--purple-tx)]">₹{Number(selectedEditFee.concession_amount).toLocaleString()}</span>
-                  </div>
-                )}
-              </div>
               <div>
-                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Paid Amount (₹) *</label>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Total Fee Amount (₹) *</label>
                 <input
                   type="number"
                   required
                   min="0"
-                  max={Number(selectedEditFee.amount) - (Number(selectedEditFee.concession_amount) || 0)}
+                  value={editFeeTotalAmount}
+                  onChange={(e) => setEditFeeTotalAmount(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-bold text-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Paid Amount (₹)</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  max={Math.max(0, Number(editFeeTotalAmount) - (Number(selectedEditFee.concession_amount) || 0))}
                   value={editPaidAmount}
                   onChange={(e) => setEditPaidAmount(e.target.value)}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-bold text-lg"
                 />
                 <span className="text-[10px] text-[var(--tx3)] mt-1.5 block">
-                  Maximum allowed: ₹{(Number(selectedEditFee.amount) - (Number(selectedEditFee.concession_amount) || 0)).toLocaleString()}
+                  Maximum allowed: ₹{Math.max(0, Number(editFeeTotalAmount) - (Number(selectedEditFee.concession_amount) || 0)).toLocaleString()}
                 </span>
               </div>
+
+              {Number(selectedEditFee.concession_amount) > 0 && (
+                <div className="text-[11.5px] bg-[var(--surf2)] p-3 rounded-xl flex items-center justify-between">
+                  <span className="text-[var(--tx3)]">Applied Concession:</span>
+                  <span className="font-semibold text-[var(--purple-tx)]">₹{Number(selectedEditFee.concession_amount).toLocaleString()}</span>
+                </div>
+              )}
             </div>
             <div className="flex gap-2 p-5 pt-0">
               <button
