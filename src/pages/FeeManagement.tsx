@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, GraduationCap, RotateCcw, MapPin } from 'lucide-react';
+import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, GraduationCap, RotateCcw, MapPin, Bus } from 'lucide-react';
 // @ts-ignore
 import * as XLSX from 'xlsx-js-style';
 import { downloadSheet } from '../utils/excel';
@@ -145,7 +145,7 @@ export function FeeManagement() {
 
   // Modals state
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [assignType, setAssignType] = useState<'student' | 'class'>('student');
+  const [assignType, setAssignType] = useState<'student' | 'class' | 'transport'>('student');
   const [assignedStudentForPayment, setAssignedStudentForPayment] = useState<{ studentId: string; name: string } | null>(null);
   const [collectStudent, setCollectStudent] = useState<StudentFeeDisplay | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -246,6 +246,7 @@ export function FeeManagement() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [villageRatesMap, setVillageRatesMap] = useState<Record<string, any[]>>({});
   const [selectedVillageArea, setSelectedVillageArea] = useState<string>('');
+  const [selectedTransportStudentIds, setSelectedTransportStudentIds] = useState<string[]>([]);
 
   useEffect(() => {
     const loadRates = async () => {
@@ -834,10 +835,55 @@ export function FeeManagement() {
   const handleAssignFeeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const assignType = fd.get('assignType') as string;
+    const assignTypeVal = (fd.get('assignType') as string) || assignType;
     const studentIdVal = fd.get('studentId') as string;
     const classNameVal = fd.get('className') as string;
     const dueDateVal = fd.get('dueDate') as string;
+
+    if (assignTypeVal === 'transport') {
+      if (!selectedVillageArea) {
+        alert('Please select a Route / Village Area.');
+        return;
+      }
+      if (selectedTransportStudentIds.length === 0) {
+        alert('Please select at least one student to assign the transport fee.');
+        return;
+      }
+      const transportCategoryLabel = `Transport Fee (${selectedVillageArea})`;
+      const transportAmount = Number(currentAmount || 0);
+
+      if (transportAmount <= 0) {
+        alert('Please enter a valid transport fee amount.');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        await Promise.all(
+          selectedTransportStudentIds.map(stdId =>
+            api.createResource('student-fees', {
+              category: transportCategoryLabel,
+              amount: transportAmount,
+              due_date: dueDateVal || new Date().toISOString().slice(0, 10),
+              student_id: Number(stdId)
+            })
+          )
+        );
+        setShowAssignModal(false);
+        setAssignedItems([]);
+        setSelectedTransportStudentIds([]);
+        setSelectedVillageArea('');
+        await loadFeesData();
+        if (activeDetailStudent) {
+          loadStudentFees(activeDetailStudent.studentId);
+        }
+      } catch (err) {
+        console.error('Error assigning transport fee:', err);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     const itemsToAssign = [...assignedItems];
 
@@ -847,7 +893,7 @@ export function FeeManagement() {
 
     if (itemsToAssign.length === 0) return;
 
-    if (assignType === 'student') {
+    if (assignTypeVal === 'student') {
       const duplicates = itemsToAssign.filter(item =>
         existingFees.some(f => (f.fee_category?.name || f.feeCategory?.name || f.category || '').toLowerCase() === item.category.toLowerCase())
       );
@@ -857,7 +903,7 @@ export function FeeManagement() {
         );
         setPendingAssignData({
           items: itemsToAssign,
-          type: assignType,
+          type: assignTypeVal,
           studentId: studentIdVal,
           className: classNameVal,
           dueDate: dueDateVal
@@ -867,7 +913,7 @@ export function FeeManagement() {
       }
     }
 
-    await executeAssignFee(itemsToAssign, assignType, studentIdVal, classNameVal, dueDateVal);
+    await executeAssignFee(itemsToAssign, assignTypeVal, studentIdVal, classNameVal, dueDateVal);
   };
 
   // Filter students based on search, tabs, class, and fee category filters
@@ -1260,7 +1306,7 @@ export function FeeManagement() {
           {/* Attendance Overview Cards */}
           <div className="flex-1 flex justify-center xl:justify-end w-full xl:w-1/2">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full max-w-md">
-              
+
               <div className="bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-2.5 flex flex-col items-center justify-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[var(--tx)]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                 <div className="text-[9.5px] font-semibold text-[var(--tx2)] mb-0.5 whitespace-nowrap uppercase tracking-wider">Working</div>
@@ -2064,57 +2110,64 @@ export function FeeManagement() {
               {/* Toggle target */}
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Assign Target *</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="flex items-center justify-center gap-2 p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg cursor-pointer text-[12px]">
+                <div className="grid grid-cols-3 gap-1.5">
+                  <label className={`flex items-center justify-center gap-1 p-2 border rounded-xl cursor-pointer text-[11px] font-medium transition-all ${assignType === 'student' ? 'bg-[var(--blue-bg)] border-[var(--blue-tx)] text-[var(--blue-tx)] font-bold shadow-sm' : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)]'}`}>
                     <input
                       type="radio"
                       name="assignType"
                       value="student"
                       checked={assignType === 'student'}
                       onChange={() => setAssignType('student')}
-                      className="accent-[var(--blue)]"
+                      className="hidden"
                     />
                     <span>Single Student</span>
                   </label>
-                  <label className="flex items-center justify-center gap-2 p-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg cursor-pointer text-[12px]">
+                  <label className={`flex items-center justify-center gap-1 p-2 border rounded-xl cursor-pointer text-[11px] font-medium transition-all ${assignType === 'class' ? 'bg-[var(--blue-bg)] border-[var(--blue-tx)] text-[var(--blue-tx)] font-bold shadow-sm' : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)]'}`}>
                     <input
                       type="radio"
                       name="assignType"
                       value="class"
                       checked={assignType === 'class'}
                       onChange={() => setAssignType('class')}
-                      className="accent-[var(--blue)]"
+                      className="hidden"
                     />
                     <span>Whole Class</span>
+                  </label>
+                  <label className={`flex items-center justify-center gap-1 p-2 border rounded-xl cursor-pointer text-[11px] font-medium transition-all ${assignType === 'transport' ? 'bg-[var(--purple-bg)] border-[var(--purple-tx)] text-[var(--purple-tx)] font-bold shadow-sm' : 'bg-[var(--surf2)] border-[var(--b)] text-[var(--tx2)]'}`}>
+                    <input
+                      type="radio"
+                      name="assignType"
+                      value="transport"
+                      checked={assignType === 'transport'}
+                      onChange={() => setAssignType('transport')}
+                      className="hidden"
+                    />
+                    <span className="flex items-center gap-1"><Bus size={12} /> Transport Fee</span>
                   </label>
                 </div>
               </div>
 
-              {/* Conditional targets */}
-              <div>
-                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Student</label>
-                {assignType === 'class' ? (
-                  <select name="studentId" disabled className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none opacity-60 cursor-not-allowed">
-                    <option value="all">All</option>
-                  </select>
-                ) : (
+              {/* Conditional targets for Single Student or Whole Class */}
+              {assignType === 'student' && (
+                <div>
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Student *</label>
                   <select
                     name="studentId"
                     value={modalStudentId}
                     onChange={(e) => setModalStudentId(e.target.value)}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)] font-medium"
                   >
                     {students.map((s) => (
                       <option key={s.studentId} value={s.studentId}>{s.name} ({s.cls})</option>
                     ))}
                   </select>
-                )}
-              </div>
+                </div>
+              )}
 
               {assignType === 'class' && (
                 <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Class (For Bulk Assignment)</label>
-                  <select name="className" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Class (For Bulk Assignment) *</label>
+                  <select name="className" className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)] font-medium">
                     {classes.map((cls) => (
                       <option key={cls} value={cls}>Class {cls}</option>
                     ))}
@@ -2122,147 +2175,212 @@ export function FeeManagement() {
                 </div>
               )}
 
-              {/* Fee category details */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)]">Fee Category *</label>
-                  <span className="text-[10px] text-[var(--purple-tx)] font-semibold">
-                    💡 Transport/Bus fees include village route selector
-                  </span>
-                </div>
-                {categories.length > 0 ? (
-                  <select
-                    value={currentCategory}
-                    onChange={(e) => {
-                      setCurrentCategory(e.target.value);
-                      setSelectedVillageArea('');
-                    }}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)] font-medium"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.name}>{cat.name}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    value={currentCategory}
-                    onChange={(e) => {
-                      setCurrentCategory(e.target.value);
-                      setSelectedVillageArea('');
-                    }}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-medium"
-                    placeholder="Tuition Fee"
-                  />
-                )}
-
-                {/* Dynamic Route / Village Area Selector for Bus / Transport Fee Categories */}
-                {(() => {
-                  const catKey = (currentCategory || '').trim().toLowerCase();
-                  const selectedCatObj = categories.find(c => c.name.trim().toLowerCase() === catKey);
-                  const isTransportCat = catKey.includes('bus') || catKey.includes('transport') || catKey.includes('route') || catKey.includes('village') || catKey.includes('van');
-
-                  let catRates = villageRatesMap[catKey] || (selectedCatObj?.id ? villageRatesMap[selectedCatObj.id] : []);
-
-                  if ((!catRates || catRates.length === 0) && isTransportCat) {
-                    const anyRates = Object.values(villageRatesMap).find(v => Array.isArray(v) && v.length > 0);
-                    if (anyRates && anyRates.length > 0) {
-                      catRates = anyRates;
-                    } else {
-                      catRates = DEFAULT_VILLAGE_RATES;
-                    }
-                  }
-
-                  if (!isTransportCat && (!catRates || catRates.length === 0)) return null;
-                  if (!catRates || catRates.length === 0) return null;
-
-                  // Active student address match check
-                  const targetStudentObj = students.find(s => String(s.studentId) === String(modalStudentId));
-                  const studentAddrStr = [
-                    targetStudentObj?.address,
-                    targetStudentObj?.parent,
-                    targetStudentObj?.name
-                  ].filter(Boolean).join(' ').toLowerCase();
-
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const autoMatch = studentAddrStr ? catRates.find((r: any) => r.village && r.village.trim() && studentAddrStr.includes(r.village.trim().toLowerCase())) : null;
-
-                  return (
-                    <div className="mt-2.5 p-2.5 bg-[var(--purple-bg)]/25 border border-[var(--purple-tx)]/20 rounded-xl space-y-1.5">
-                      <div className="flex items-center justify-between text-[11.5px]">
-                        <label className="font-bold text-[var(--purple-tx)] flex items-center gap-1">
-                          <MapPin size={12} /> Select Route / Village Area
-                        </label>
-                        <span className="text-[10px] text-[var(--tx3)] font-medium">
-                          {catRates.length} Village Rates Available
-                        </span>
-                      </div>
-                      <select
-                        value={selectedVillageArea}
-                        onChange={(e) => {
-                          const vName = e.target.value;
-                          setSelectedVillageArea(vName);
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          const match = catRates.find((r: any) => r.village === vName);
-                          if (match) {
-                            setCurrentAmount(String(match.amount));
-                          }
-                        }}
-                        className="w-full bg-[var(--surf)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--purple)] font-semibold"
-                      >
-                        <option value="">-- Select Village Route --</option>
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                        {catRates.map((r: any) => (
+              {/* Assign Transport Fee Section */}
+              {assignType === 'transport' && (
+                <div className="space-y-3.5">
+                  {/* Select Route / Village Area Dropdown */}
+                  <div className="p-3 bg-[var(--purple-bg)]/20 border border-[var(--purple-tx)]/25 rounded-xl space-y-1.5">
+                    <div className="flex items-center justify-between text-[11.5px]">
+                      <label className="font-bold text-[var(--purple-tx)] flex items-center gap-1">
+                        <MapPin size={13} /> Select Route / Village Area *
+                      </label>
+                      <span className="text-[10px] text-[var(--tx3)] font-medium">
+                        {(() => {
+                          const allRates = Object.values(villageRatesMap).flat();
+                          return (allRates.length > 0 ? allRates : DEFAULT_VILLAGE_RATES).length;
+                        })()} Village Rates Available
+                      </span>
+                    </div>
+                    <select
+                      value={selectedVillageArea}
+                      onChange={(e) => {
+                        const vName = e.target.value;
+                        setSelectedVillageArea(vName);
+                        const allRates = Object.values(villageRatesMap).flat();
+                        const ratesList = allRates.length > 0 ? allRates : DEFAULT_VILLAGE_RATES;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const match = ratesList.find((r: any) => r.village === vName);
+                        if (match) {
+                          setCurrentAmount(String(match.amount));
+                        }
+                        const vLower = vName.toLowerCase();
+                        if (vLower) {
+                          const matching = students.filter(s => {
+                            const addr = (s.address || '').toLowerCase();
+                            return addr.includes(vLower) || vLower.includes(addr);
+                          }).map(s => s.studentId);
+                          setSelectedTransportStudentIds(matching);
+                        } else {
+                          setSelectedTransportStudentIds([]);
+                        }
+                      }}
+                      className="w-full bg-[var(--surf)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--purple)] font-semibold"
+                    >
+                      <option value="">-- Select Village Route --</option>
+                      {(() => {
+                        const allRates = Object.values(villageRatesMap).flat();
+                        const ratesList = allRates.length > 0 ? allRates : DEFAULT_VILLAGE_RATES;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        return ratesList.map((r: any) => (
                           <option key={r.village} value={r.village}>
                             {r.village} — ₹{r.amount.toLocaleString()}
                           </option>
-                        ))}
-                      </select>
+                        ));
+                      })()}
+                    </select>
+                  </div>
 
-                      {autoMatch && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedVillageArea(autoMatch.village);
-                            setCurrentAmount(String(autoMatch.amount));
-                          }}
-                          className="w-full mt-1 p-1.5 bg-[var(--purple-bg)] text-[var(--purple-tx)] border border-[var(--purple-tx)]/30 rounded-lg text-[10.5px] font-bold flex items-center justify-between hover:bg-[var(--purple-bg)]/80 cursor-pointer transition-colors shadow-sm"
-                        >
-                          <span className="flex items-center gap-1">
-                            📍 Matched Student Village: <strong>{autoMatch.village}</strong>
-                          </span>
-                          <span>Apply ₹{autoMatch.amount.toLocaleString()} →</span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 items-end">
-                <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-                  <div className="flex-1">
-                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Amount (₹) *</label>
+                  {/* Transport Amount */}
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Transport Fee Amount (₹) *</label>
                     <input
                       type="number"
                       value={currentAmount}
                       onChange={(e) => setCurrentAmount(e.target.value)}
-                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                      placeholder="Select village route above"
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-bold"
                     />
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddFeeItem}
-                    className="p-2.5 bg-[var(--blue)] text-white rounded-lg hover:opacity-90 flex items-center justify-center h-[38px] w-[38px] cursor-pointer"
-                    title="Add Item"
-                  >
-                    <Plus size={16} />
-                  </button>
+
+                  {/* Filtered Students List with Checkboxes & Address */}
+                  {selectedVillageArea && (() => {
+                    const vLower = selectedVillageArea.trim().toLowerCase();
+                    const areaStudents = students.filter(s => {
+                      const addr = (s.address || '').toLowerCase();
+                      return addr.includes(vLower) || vLower.includes(addr);
+                    });
+                    const displayStudents = areaStudents.length > 0 ? areaStudents : students;
+
+                    return (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between text-[11.5px]">
+                          <label className="font-bold text-[var(--tx)] flex items-center gap-1">
+                            <Users size={12} /> Students in {selectedVillageArea} ({areaStudents.length} Matched)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (selectedTransportStudentIds.length === displayStudents.length) {
+                                setSelectedTransportStudentIds([]);
+                              } else {
+                                setSelectedTransportStudentIds(displayStudents.map(s => s.studentId));
+                              }
+                            }}
+                            className="text-[10.5px] font-bold text-[var(--purple-tx)] hover:underline cursor-pointer"
+                          >
+                            {selectedTransportStudentIds.length === displayStudents.length ? 'Deselect All' : 'Select All'}
+                          </button>
+                        </div>
+
+                        {areaStudents.length === 0 && (
+                          <div className="p-2.5 bg-[var(--amber-bg)]/20 border border-[var(--amber-tx)]/20 rounded-xl text-[10.5px] text-[var(--amber-tx)]">
+                            ℹ No students registered with "{selectedVillageArea}" in address. (Showing active students to select manually)
+                          </div>
+                        )}
+
+                        <div className="max-h-[200px] overflow-y-auto space-y-1.5 border border-[var(--b)] rounded-xl p-2 bg-[var(--surf)]">
+                          {displayStudents.map((s) => {
+                            const isChecked = selectedTransportStudentIds.includes(s.studentId);
+                            return (
+                              <label
+                                key={s.studentId}
+                                className={`flex items-start justify-between p-2 rounded-lg cursor-pointer border text-[11.5px] transition-all ${isChecked
+                                    ? 'bg-[var(--purple-bg)]/30 border-[var(--purple-tx)]/40 text-[var(--tx)] font-semibold shadow-sm'
+                                    : 'bg-[var(--surf2)]/50 border-transparent text-[var(--tx2)] hover:bg-[var(--surf2)]'
+                                  }`}
+                              >
+                                <div className="flex items-start gap-2.5 overflow-hidden">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedTransportStudentIds(prev => [...prev, s.studentId]);
+                                      } else {
+                                        setSelectedTransportStudentIds(prev => prev.filter(id => id !== s.studentId));
+                                      }
+                                    }}
+                                    className="accent-[var(--purple)] mt-0.5 flex-shrink-0 cursor-pointer"
+                                  />
+                                  <div>
+                                    <div className="font-bold text-[var(--tx)]">{s.name} <span className="text-[10px] font-normal text-[var(--tx3)]">({s.cls})</span></div>
+                                    <div className="text-[10.5px] text-[var(--purple-tx)] font-medium flex items-center gap-1 mt-0.5">
+                                      <MapPin size={10} /> Full Address: {s.address || s.parent || 'Village N/A'}
+                                    </div>
+                                  </div>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+
+                        <div className="text-[11px] font-bold text-[var(--purple-tx)] flex items-center justify-between px-1">
+                          <span>{selectedTransportStudentIds.length} Students Selected</span>
+                          <span>Total: ₹{(selectedTransportStudentIds.length * Number(currentAmount || 0)).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
-                <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Due Date *</label>
-                  <input type="date" name="dueDate" required defaultValue={new Date().toISOString().slice(0, 10)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
-                </div>
-              </div>
+              )}
+
+              {/* Non-transport fee category details */}
+              {assignType !== 'transport' && (
+                <>
+                  <div>
+                    <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Fee Category *</label>
+                    {categories.length > 0 ? (
+                      <select
+                        value={currentCategory}
+                        onChange={(e) => setCurrentCategory(e.target.value)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)] font-medium"
+                      >
+                        {categories
+                          .filter(cat => {
+                            const k = cat.name.trim().toLowerCase();
+                            return !(k.includes('bus') || k.includes('transport') || k.includes('route') || k.includes('village') || k.includes('van'));
+                          })
+                          .map((cat) => (
+                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                          ))}
+                      </select>
+                    ) : (
+                      <input
+                        value={currentCategory}
+                        onChange={(e) => setCurrentCategory(e.target.value)}
+                        className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-medium"
+                        placeholder="Tuition Fee"
+                      />
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 items-end">
+                    <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Amount (₹) *</label>
+                        <input
+                          type="number"
+                          value={currentAmount}
+                          onChange={(e) => setCurrentAmount(e.target.value)}
+                          className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddFeeItem}
+                        className="p-2.5 bg-[var(--blue)] text-white rounded-lg hover:opacity-90 flex items-center justify-center h-[38px] w-[38px] cursor-pointer"
+                        title="Add Item"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Due Date *</label>
+                      <input type="date" name="dueDate" required defaultValue={new Date().toISOString().slice(0, 10)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]" />
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Added Fee Items List */}
               {assignedItems.length > 0 && (
