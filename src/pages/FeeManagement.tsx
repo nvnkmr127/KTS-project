@@ -473,7 +473,7 @@ export function FeeManagement() {
           admissionDate: s.admission_date ? s.admission_date.slice(0, 10) : '',
           parent: s.father_name || 'N/A',
           phone: s.student_mobile || '',
-          address: s.village || '',
+          address: (s.address || s.village || s.locality || s.city || s.town || '').trim(),
           roll: s.enrollment_number || 'N/A',
           batchId: s.batch_id,
           assignedCategories: studentFeesMap.get(String(s.id)) || [],
@@ -2203,10 +2203,11 @@ export function FeeManagement() {
                         if (match) {
                           setCurrentAmount(String(match.amount));
                         }
-                        const vLower = vName.toLowerCase();
+                        const vLower = vName.trim().toLowerCase();
                         if (vLower) {
                           const matching = students.filter(s => {
-                            const addr = (s.address || '').toLowerCase();
+                            const addr = (s.address || '').trim().toLowerCase();
+                            if (!addr) return false;
                             return addr.includes(vLower) || vLower.includes(addr);
                           }).map(s => s.studentId);
                           setSelectedTransportStudentIds(matching);
@@ -2246,10 +2247,10 @@ export function FeeManagement() {
                   {selectedVillageArea && (() => {
                     const vLower = selectedVillageArea.trim().toLowerCase();
                     const areaStudents = students.filter(s => {
-                      const addr = (s.address || '').toLowerCase();
+                      const addr = (s.address || '').trim().toLowerCase();
+                      if (!addr) return false;
                       return addr.includes(vLower) || vLower.includes(addr);
                     });
-                    const displayStudents = areaStudents.length > 0 ? areaStudents : students;
 
                     return (
                       <div className="space-y-2 pt-1">
@@ -2257,67 +2258,71 @@ export function FeeManagement() {
                           <label className="font-bold text-[var(--tx)] flex items-center gap-1">
                             <Users size={12} /> Students in {selectedVillageArea} ({areaStudents.length} Matched)
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (selectedTransportStudentIds.length === displayStudents.length) {
-                                setSelectedTransportStudentIds([]);
-                              } else {
-                                setSelectedTransportStudentIds(displayStudents.map(s => s.studentId));
-                              }
-                            }}
-                            className="text-[10.5px] font-bold text-[var(--purple-tx)] hover:underline cursor-pointer"
-                          >
-                            {selectedTransportStudentIds.length === displayStudents.length ? 'Deselect All' : 'Select All'}
-                          </button>
+                          {areaStudents.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (selectedTransportStudentIds.length === areaStudents.length) {
+                                  setSelectedTransportStudentIds([]);
+                                } else {
+                                  setSelectedTransportStudentIds(areaStudents.map(s => s.studentId));
+                                }
+                              }}
+                              className="text-[10.5px] font-bold text-[var(--purple-tx)] hover:underline cursor-pointer"
+                            >
+                              {selectedTransportStudentIds.length === areaStudents.length ? 'Deselect All' : 'Select All'}
+                            </button>
+                          )}
                         </div>
 
-                        {areaStudents.length === 0 && (
-                          <div className="p-2.5 bg-[var(--amber-bg)]/20 border border-[var(--amber-tx)]/20 rounded-xl text-[10.5px] text-[var(--amber-tx)]">
-                            ℹ No students registered with "{selectedVillageArea}" in address. (Showing active students to select manually)
+                        {areaStudents.length === 0 ? (
+                          <div className="p-3 bg-[var(--amber-bg)]/20 border border-[var(--amber-tx)]/20 rounded-xl text-[11px] text-[var(--amber-tx)] font-medium text-center">
+                            ℹ No students registered with address matching "{selectedVillageArea}".
+                          </div>
+                        ) : (
+                          <div className="max-h-[200px] overflow-y-auto space-y-1.5 border border-[var(--b)] rounded-xl p-2 bg-[var(--surf)]">
+                            {areaStudents.map((s) => {
+                              const isChecked = selectedTransportStudentIds.includes(s.studentId);
+                              return (
+                                <label
+                                  key={s.studentId}
+                                  className={`flex items-start justify-between p-2 rounded-lg cursor-pointer border text-[11.5px] transition-all ${isChecked
+                                      ? 'bg-[var(--purple-bg)]/30 border-[var(--purple-tx)]/40 text-[var(--tx)] font-semibold shadow-sm'
+                                      : 'bg-[var(--surf2)]/50 border-transparent text-[var(--tx2)] hover:bg-[var(--surf2)]'
+                                    }`}
+                                >
+                                  <div className="flex items-start gap-2.5 overflow-hidden">
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedTransportStudentIds(prev => [...prev, s.studentId]);
+                                        } else {
+                                          setSelectedTransportStudentIds(prev => prev.filter(id => id !== s.studentId));
+                                        }
+                                      }}
+                                      className="accent-[var(--purple)] mt-0.5 flex-shrink-0 cursor-pointer"
+                                    />
+                                    <div>
+                                      <div className="font-bold text-[var(--tx)]">{s.name} <span className="text-[10px] font-normal text-[var(--tx3)]">({s.cls})</span></div>
+                                      <div className="text-[10.5px] text-[var(--purple-tx)] font-medium flex items-center gap-1 mt-0.5">
+                                        <MapPin size={10} /> Full Address: {s.address}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </label>
+                              );
+                            })}
                           </div>
                         )}
 
-                        <div className="max-h-[200px] overflow-y-auto space-y-1.5 border border-[var(--b)] rounded-xl p-2 bg-[var(--surf)]">
-                          {displayStudents.map((s) => {
-                            const isChecked = selectedTransportStudentIds.includes(s.studentId);
-                            return (
-                              <label
-                                key={s.studentId}
-                                className={`flex items-start justify-between p-2 rounded-lg cursor-pointer border text-[11.5px] transition-all ${isChecked
-                                    ? 'bg-[var(--purple-bg)]/30 border-[var(--purple-tx)]/40 text-[var(--tx)] font-semibold shadow-sm'
-                                    : 'bg-[var(--surf2)]/50 border-transparent text-[var(--tx2)] hover:bg-[var(--surf2)]'
-                                  }`}
-                              >
-                                <div className="flex items-start gap-2.5 overflow-hidden">
-                                  <input
-                                    type="checkbox"
-                                    checked={isChecked}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedTransportStudentIds(prev => [...prev, s.studentId]);
-                                      } else {
-                                        setSelectedTransportStudentIds(prev => prev.filter(id => id !== s.studentId));
-                                      }
-                                    }}
-                                    className="accent-[var(--purple)] mt-0.5 flex-shrink-0 cursor-pointer"
-                                  />
-                                  <div>
-                                    <div className="font-bold text-[var(--tx)]">{s.name} <span className="text-[10px] font-normal text-[var(--tx3)]">({s.cls})</span></div>
-                                    <div className="text-[10.5px] text-[var(--purple-tx)] font-medium flex items-center gap-1 mt-0.5">
-                                      <MapPin size={10} /> Full Address: {s.address || s.parent || 'Village N/A'}
-                                    </div>
-                                  </div>
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-
-                        <div className="text-[11px] font-bold text-[var(--purple-tx)] flex items-center justify-between px-1">
-                          <span>{selectedTransportStudentIds.length} Students Selected</span>
-                          <span>Total: ₹{(selectedTransportStudentIds.length * Number(currentAmount || 0)).toLocaleString()}</span>
-                        </div>
+                        {areaStudents.length > 0 && (
+                          <div className="text-[11px] font-bold text-[var(--purple-tx)] flex items-center justify-between px-1">
+                            <span>{selectedTransportStudentIds.length} Students Selected</span>
+                            <span>Total: ₹{(selectedTransportStudentIds.length * Number(currentAmount || 0)).toLocaleString()}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
