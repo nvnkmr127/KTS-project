@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'teacher';
+export type Role = 'admin' | 'teacher' | 'superadmin' | 'super_admin' | 'super-admin' | (string & {});
 
 export type { PageId } from './routes';
 

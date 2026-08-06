@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, GraduationCap, RotateCcw } from 'lucide-react';
+import { CheckCircle, Clock, Users, FileText, Download, Plus, Search, X, Loader2, Trash2, ArrowLeft, Percent, User, AlertTriangle, Printer, Edit, ChevronLeft, ChevronRight, Upload, History, Filter, ChevronDown, ChevronUp, Banknote, List, GraduationCap, RotateCcw, MapPin } from 'lucide-react';
 // @ts-ignore
 import * as XLSX from 'xlsx-js-style';
 import { downloadSheet } from '../utils/excel';
@@ -201,6 +201,37 @@ export function FeeManagement() {
   const [editPaidAmount, setEditPaidAmount] = useState('');
   const [savingEditPaid, setSavingEditPaid] = useState(false);
 
+  // Village/Area transport rates state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [villageRatesMap, setVillageRatesMap] = useState<Record<string, any[]>>({});
+  const [selectedVillageArea, setSelectedVillageArea] = useState<string>('');
+
+  useEffect(() => {
+    const loadRates = async () => {
+      try {
+        const res = await api.getResources('settings', { key: 'kts_fee_category_village_rates' });
+        if (Array.isArray(res) && res.length > 0 && res[0].value) {
+          setVillageRatesMap(JSON.parse(res[0].value));
+        } else {
+          const local = localStorage.getItem('kts_fee_category_village_rates');
+          if (local) setVillageRatesMap(JSON.parse(local));
+        }
+      } catch {
+        const local = localStorage.getItem('kts_fee_category_village_rates');
+        if (local) setVillageRatesMap(JSON.parse(local));
+      }
+    };
+    loadRates();
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'kts_fee_category_village_rates' && e.newValue) {
+        setVillageRatesMap(JSON.parse(e.newValue));
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const handleEditPaidSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedEditFee || editFeeTotalAmount === '') return;
@@ -333,11 +364,16 @@ export function FeeManagement() {
 
   const handleAddFeeItem = () => {
     if (!currentCategory.trim() || !currentAmount || Number(currentAmount) <= 0) return;
+    const categoryLabel = selectedVillageArea
+      ? `${currentCategory.trim()} (${selectedVillageArea})`
+      : currentCategory.trim();
+
     setAssignedItems((prev) => [
       ...prev,
-      { category: currentCategory.trim(), amount: Number(currentAmount) }
+      { category: categoryLabel, amount: Number(currentAmount) }
     ]);
     setCurrentAmount('');
+    setSelectedVillageArea('');
   };
 
   const handleRemoveFeeItem = (index: number) => {
@@ -2051,7 +2087,10 @@ export function FeeManagement() {
                 {categories.length > 0 ? (
                   <select
                     value={currentCategory}
-                    onChange={(e) => setCurrentCategory(e.target.value)}
+                    onChange={(e) => {
+                      setCurrentCategory(e.target.value);
+                      setSelectedVillageArea('');
+                    }}
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                   >
                     {categories.map((cat) => (
@@ -2061,11 +2100,78 @@ export function FeeManagement() {
                 ) : (
                   <input
                     value={currentCategory}
-                    onChange={(e) => setCurrentCategory(e.target.value)}
+                    onChange={(e) => {
+                      setCurrentCategory(e.target.value);
+                      setSelectedVillageArea('');
+                    }}
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
                     placeholder="Tuition Fee"
                   />
                 )}
+
+                {/* Dynamic Route / Village Area Selector for Bus / Transport Fee Categories */}
+                {(() => {
+                  const catKey = (currentCategory || '').trim().toLowerCase();
+                  const catRates = villageRatesMap[catKey] || [];
+                  
+                  if (catRates.length === 0) return null;
+
+                  // Active student address match check
+                  const targetStudentObj = students.find(s => String(s.studentId) === String(modalStudentId));
+                  const studentAddr = (targetStudentObj?.address || '').trim().toLowerCase();
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const autoMatch = studentAddr ? catRates.find((r: any) => studentAddr.includes(r.village.toLowerCase()) || r.village.toLowerCase().includes(studentAddr)) : null;
+
+                  return (
+                    <div className="mt-2.5 p-2.5 bg-[var(--purple-bg)]/25 border border-[var(--purple-tx)]/20 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between text-[11.5px]">
+                        <label className="font-bold text-[var(--purple-tx)] flex items-center gap-1">
+                          <MapPin size={12} /> Select Route / Village Area
+                        </label>
+                        <span className="text-[10px] text-[var(--tx3)] font-medium">
+                          {catRates.length} Village Rates Configured
+                        </span>
+                      </div>
+                      <select
+                        value={selectedVillageArea}
+                        onChange={(e) => {
+                          const vName = e.target.value;
+                          setSelectedVillageArea(vName);
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          const match = catRates.find((r: any) => r.village === vName);
+                          if (match) {
+                            setCurrentAmount(String(match.amount));
+                          }
+                        }}
+                        className="w-full bg-[var(--surf)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--purple)] font-semibold"
+                      >
+                        <option value="">-- Select Village Route --</option>
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {catRates.map((r: any) => (
+                          <option key={r.village} value={r.village}>
+                            {r.village} — ₹{r.amount.toLocaleString()}
+                          </option>
+                        ))}
+                      </select>
+
+                      {autoMatch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedVillageArea(autoMatch.village);
+                            setCurrentAmount(String(autoMatch.amount));
+                          }}
+                          className="w-full mt-1 p-1.5 bg-[var(--purple-bg)] text-[var(--purple-tx)] border border-[var(--purple-tx)]/30 rounded-lg text-[10.5px] font-bold flex items-center justify-between hover:bg-[var(--purple-bg)]/80 cursor-pointer transition-colors"
+                        >
+                          <span className="flex items-center gap-1">
+                            📍 Matched Student Village: <strong>{autoMatch.village}</strong>
+                          </span>
+                          <span>Apply ₹{autoMatch.amount.toLocaleString()} →</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="grid grid-cols-2 gap-3 items-end">
