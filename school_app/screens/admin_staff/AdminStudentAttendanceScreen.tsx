@@ -1,27 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, BackHandler } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  UserCheck, Users, UserX, Calendar, Search, 
+import { useFocusEffect } from '@react-navigation/native';
+import {
   CheckCircle2, AlertCircle, ChevronRight, ArrowLeft, 
   School, AlertTriangle, ShieldCheck, ChevronLeft, Clock, Info, X
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
-import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export interface ClassItemSummary {
   id: string;
-  className: string;      // e.g. "Class 9A"
-  grade: string;          // e.g. "Class 9"
-  section: string;        // e.g. "Section A"
-  teacherName: string;    // e.g. "Dr. Meenakshi Sundaram"
+  className: string;
+  grade: string;
+  section: string;
+  teacherName: string;
   totalStudents: number;
   presentToday: number;
   absentToday: number;
-  todayAvg: number;       // e.g. 95.5%
+  todayAvg: number;
 }
 
 export interface StudentAttendanceRecord {
@@ -32,21 +30,20 @@ export interface StudentAttendanceRecord {
   totalLectures: number;
   attended: number;
   overallPct: number;
-  // Day status map for August 2026 (day number -> 'present' | 'absent' | 'partial')
   attendanceMap: Record<number, 'present' | 'absent' | 'partial'>;
 }
 
-const MOCK_CLASSES_GRID: ClassItemSummary[] = [
-  { id: 'c1', className: 'Class 1A', grade: 'Class 1', section: 'A', teacherName: 'Mrs. Sunita Rao', totalStudents: 30, presentToday: 28, absentToday: 2, todayAvg: 93.3 },
-  { id: 'c2', className: 'Class 1B', grade: 'Class 1', section: 'B', teacherName: 'Mr. David Miller', totalStudents: 28, presentToday: 27, absentToday: 1, todayAvg: 96.4 },
-  { id: 'c3', className: 'Class 2A', grade: 'Class 2', section: 'A', teacherName: 'Mrs. Anita Sharma', totalStudents: 32, presentToday: 30, absentToday: 2, todayAvg: 93.7 },
-  { id: 'c4', className: 'Class 2B', grade: 'Class 2', section: 'B', teacherName: 'Mr. Rajesh Kumar', totalStudents: 31, presentToday: 29, absentToday: 2, todayAvg: 93.5 },
-  { id: 'c5', className: 'Class 3A', grade: 'Class 3', section: 'A', teacherName: 'Dr. Meenakshi Sundaram', totalStudents: 34, presentToday: 33, absentToday: 1, todayAvg: 97.0 },
-  { id: 'c6', className: 'Class 3B', grade: 'Class 3', section: 'B', teacherName: 'Mr. Vikramaditya Singh', totalStudents: 33, presentToday: 31, absentToday: 2, todayAvg: 93.9 },
-  { id: 'c7', className: 'Class 4A', grade: 'Class 4', section: 'A', teacherName: 'Mrs. Priya Nambiar', totalStudents: 35, presentToday: 34, absentToday: 1, todayAvg: 97.1 },
-  { id: 'c8', className: 'Class 4B', grade: 'Class 4', section: 'B', teacherName: 'Mr. Suresh Verma', totalStudents: 34, presentToday: 32, absentToday: 2, todayAvg: 94.1 },
-  { id: 'c9', className: 'Class 5A', grade: 'Class 5', section: 'A', teacherName: 'Mrs. Sunita Rao', totalStudents: 36, presentToday: 35, absentToday: 1, todayAvg: 97.2 },
-  { id: 'c10', className: 'Class 5B', grade: 'Class 5', section: 'B', teacherName: 'Mr. David Miller', totalStudents: 35, presentToday: 33, absentToday: 2, todayAvg: 94.2 },
+const MOCK_CLASSES: ClassItemSummary[] = [
+  { id: 'c1', className: 'Class 1A', grade: 'Class 1', section: 'A', teacherName: 'Mrs. Anita Sharma', totalStudents: 32, presentToday: 30, absentToday: 2, todayAvg: 93.8 },
+  { id: 'c2', className: 'Class 1B', grade: 'Class 1', section: 'B', teacherName: 'Mr. Rajesh Kumar', totalStudents: 30, presentToday: 28, absentToday: 2, todayAvg: 93.3 },
+  { id: 'c3', className: 'Class 2A', grade: 'Class 2', section: 'A', teacherName: 'Dr. Meenakshi Sundaram', totalStudents: 35, presentToday: 34, absentToday: 1, todayAvg: 97.1 },
+  { id: 'c4', className: 'Class 2B', grade: 'Class 2', section: 'B', teacherName: 'Mrs. Priya Nambiar', totalStudents: 34, presentToday: 31, absentToday: 3, todayAvg: 91.2 },
+  { id: 'c5', className: 'Class 3A', grade: 'Class 3', section: 'A', teacherName: 'Mr. Vikramaditya Singh', totalStudents: 36, presentToday: 35, absentToday: 1, todayAvg: 97.2 },
+  { id: 'c6', className: 'Class 3B', grade: 'Class 3', section: 'B', teacherName: 'Mrs. Anita Sharma', totalStudents: 33, presentToday: 30, absentToday: 3, todayAvg: 90.9 },
+  { id: 'c7', className: 'Class 4A', grade: 'Class 4', section: 'A', teacherName: 'Mr. Rajesh Kumar', totalStudents: 38, presentToday: 37, absentToday: 1, todayAvg: 97.4 },
+  { id: 'c8', className: 'Class 4B', grade: 'Class 4', section: 'B', teacherName: 'Dr. Meenakshi Sundaram', totalStudents: 37, presentToday: 35, absentToday: 2, todayAvg: 94.6 },
+  { id: 'c9', className: 'Class 5A', grade: 'Class 5', section: 'A', teacherName: 'Mrs. Priya Nambiar', totalStudents: 40, presentToday: 38, absentToday: 2, todayAvg: 95.0 },
+  { id: 'c10', className: 'Class 5B', grade: 'Class 5', section: 'B', teacherName: 'Mr. Vikramaditya Singh', totalStudents: 39, presentToday: 36, absentToday: 3, todayAvg: 92.3 },
   { id: 'c11', className: 'Class 6A', grade: 'Class 6', section: 'A', teacherName: 'Mrs. Anita Sharma', totalStudents: 38, presentToday: 37, absentToday: 1, todayAvg: 97.3 },
   { id: 'c12', className: 'Class 6B', grade: 'Class 6', section: 'B', teacherName: 'Mr. Rajesh Kumar', totalStudents: 37, presentToday: 35, absentToday: 2, todayAvg: 94.5 },
   { id: 'c13', className: 'Class 7A', grade: 'Class 7', section: 'A', teacherName: 'Dr. Meenakshi Sundaram', totalStudents: 40, presentToday: 39, absentToday: 1, todayAvg: 97.5 },
@@ -83,6 +80,62 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
   const [customDateInput, setCustomDateInput] = useState('04-08-2026');
 
+  const [gridMonth, setGridMonth] = useState<number>(7); // 7 = August (0-indexed)
+  const [gridYear, setGridYear] = useState<number>(2026);
+
+  const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const handlePrevGridMonth = () => {
+    if (gridMonth === 0) {
+      setGridMonth(11);
+      setGridYear(prev => prev - 1);
+    } else {
+      setGridMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextGridMonth = () => {
+    if (gridMonth === 11) {
+      setGridMonth(0);
+      setGridYear(prev => prev + 1);
+    } else {
+      setGridMonth(prev => prev + 1);
+    }
+  };
+
+  const calendarGridCells = useMemo(() => {
+    const firstDayOfWeek = new Date(gridYear, gridMonth, 1).getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const daysInMonth = new Date(gridYear, gridMonth + 1, 0).getDate();
+
+    const cells: Array<{ day: number | null; status?: 'present' | 'partial' | 'absent' | 'off' }> = [];
+
+    // Empty offset padding cells before Day 1
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      cells.push({ day: null });
+    }
+
+    // Actual days in month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(gridYear, gridMonth, d);
+      const dayOfWeek = dateObj.getDay();
+      let status = selectedStudent?.attendanceMap?.[d];
+
+      if (dayOfWeek === 0) {
+        status = 'off' as any; // Sundays/Holidays always get gray bg
+      } else if (!status) {
+        if ((d + gridMonth) % 9 === 0 || d === 5 || d === 18) status = 'absent';
+        else if ((d + gridMonth) % 6 === 0 || d === 12 || d === 25) status = 'partial';
+        else status = 'present';
+      }
+      cells.push({ day: d, status: status as any });
+    }
+
+    return cells;
+  }, [gridMonth, gridYear, selectedStudent]);
+
   // Handle Hardware Back Button & System Back Gesture (matching chevron left behavior)
   useFocusEffect(
     React.useCallback(() => {
@@ -111,37 +164,43 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
     }, [viewLevel, showDatePickerModal, navigation])
   );
 
-  useEffect(() => {
-    const fetchAttendanceData = async () => {
-      try {
-        const res = await api.getResources('attendance');
-        if (res) {
-          console.log('Attendance data connected with backend API');
-        }
-      } catch (e) {
-        console.log('Error loading attendance from API:', e);
-      }
-    };
-    fetchAttendanceData();
+  // Overall School Stats
+  const overallStats = useMemo(() => {
+    let totalSecs = MOCK_CLASSES.length;
+    let totalStuds = 0;
+    let totalPresent = 0;
+    let totalAbsent = 0;
+
+    MOCK_CLASSES.forEach(c => {
+      totalStuds += c.totalStudents;
+      totalPresent += c.presentToday;
+      totalAbsent += c.absentToday;
+    });
+
+    const avgPct = totalStuds > 0 ? ((totalPresent / totalStuds) * 100).toFixed(1) : '0';
+    return { totalSecs, totalStuds, totalPresent, totalAbsent, avgPct };
   }, []);
 
-  const filteredClasses = MOCK_CLASSES_GRID.filter(c => 
+  // Filtered Classes based on search
+  const filteredClasses = MOCK_CLASSES.filter(c => 
     c.className.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.teacherName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalEnrolledAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.totalStudents, 0);
-  const totalPresentAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.presentToday, 0);
-  const totalAbsentAll = MOCK_CLASSES_GRID.reduce((a, b) => a + b.absentToday, 0);
-  const overallAvgAll = ((totalPresentAll / totalEnrolledAll) * 100).toFixed(1);
+  // Filtered Class Students based on search
+  const filteredStudents = MOCK_CLASS_STUDENTS.filter(s =>
+    s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.rollNo.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const handleSelectClassCard = (cls: ClassItemSummary) => {
-    setSelectedClass(cls);
+  const handleSelectClass = (c: ClassItemSummary) => {
+    setSelectedClass(c);
     setViewLevel(2);
+    setSearchQuery('');
   };
 
-  const handleSelectStudent = (st: StudentAttendanceRecord) => {
-    setSelectedStudent(st);
+  const handleSelectStudent = (s: StudentAttendanceRecord) => {
+    setSelectedStudent(s);
     setViewLevel(3);
   };
 
@@ -150,7 +209,6 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
   const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
   const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
-  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
 
   return (
     <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
@@ -160,223 +218,205 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
-      
-      {/* Top Header */}
-      <AdminStaffHeader 
-        onBackPress={
-          viewLevel === 3 
-            ? () => setViewLevel(2) 
-            : viewLevel === 2 
-            ? () => setViewLevel(1) 
-            : (navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined)
-        }
-        title={
-          viewLevel === 3 
-            ? `${selectedStudent?.name}` 
-            : viewLevel === 2 
-            ? `${selectedClass?.className} — Student Attendance` 
-            : "Student Attendance"
-        }
+
+      <AdminStaffHeader
+        onBackPress={() => {
+          if (viewLevel === 3) setViewLevel(2);
+          else if (viewLevel === 2) setViewLevel(1);
+          else if (navigation?.canGoBack && navigation.canGoBack()) navigation.goBack();
+        }}
+        title="Student Attendance Console"
         subtitle={
-          viewLevel === 3 
-            ? `Roll: ${selectedStudent?.rollNo} | Class: ${selectedClass?.className}` 
+          viewLevel === 1 
+            ? "Class Directory & Real-time Attendance" 
             : viewLevel === 2 
-            ? "Overall Percentages Directory" 
-            : `ACADEMIC YEAR: ${academicYear}`
+            ? `${selectedClass?.className} Student Roster` 
+            : `${selectedStudent?.name} Monthly Attendance`
         }
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
-            <UserCheck size={20} color={primaryColor} />
+            <School size={20} color={primaryColor} />
           </View>
         }
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* TOP SUMMARY METRICS (Visible across all levels matching Web design) */}
-        <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Present Today</Text>
-              <CheckCircle2 size={14} color={primaryColor} />
-            </View>
-            <Text className={`${primaryTextClass} text-xl font-extrabold`}>{totalPresentAll}</Text>
-            <Text className="text-white/50 text-[10px]">Out of {totalEnrolledAll}</Text>
-          </GlassCard>
 
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Absent Today</Text>
-              <UserX size={14} color="#ff516a" />
-            </View>
-            <Text className="text-rose-400 text-xl font-extrabold">{totalAbsentAll}</Text>
-            <Text className="text-white/50 text-[10px]">Alerts sent via WA+SMS</Text>
-          </GlassCard>
-
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Today's Avg</Text>
-              <UserCheck size={14} color="#38bdf8" />
-            </View>
-            <Text className="text-sky-400 text-xl font-extrabold">{overallAvgAll}%</Text>
-            <Text className="text-white/50 text-[10px]">August 2026</Text>
-          </GlassCard>
-
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Low Attendance</Text>
-              <AlertTriangle size={14} color="#f59e0b" />
-            </View>
-            <Text className="text-amber-400 text-xl font-extrabold">1 Class</Text>
-            <Text className="text-white/50 text-[10px]">Requires monthly data</Text>
-          </GlassCard>
-        </View>
-
-        {/* LEVEL 1: SCHOOL DIRECTORY — CLASSES */}
+        {/* TOP LEVEL OVERVIEW SUMMARY CARDS */}
         {viewLevel === 1 && (
-          <View>
-            <View className="px-5 mb-4 flex-row justify-between items-center">
-              <View>
-                <Text className="text-white text-base font-extrabold">School Directory — Classes</Text>
-                <Text className="text-white/50 text-xs">Select a class card to inspect student overall percentages</Text>
-              </View>
-
-              <Pressable
-                onPress={() => setShowDatePickerModal(true)}
-                className={`${isSuperAdmin ? 'bg-[#f0c110]/15 border border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border border-[#00f1a1]/40'} px-3 py-1.5 rounded-xl flex-row items-center`}
-              >
-                <Calendar size={13} color={primaryColor} style={{ marginRight: 5 }} />
-                <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedDate}</Text>
-              </Pressable>
-            </View>
-
-            {/* Search Input */}
-            <View className="px-5 mb-4">
-              <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
-                <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
-                <TextInput
-                  placeholder="Search classes..."
-                  placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  className="flex-1 text-white text-xs"
-                  style={{ paddingVertical: 0 }}
-                />
-              </View>
-            </View>
-
-            {/* Class Cards Grid */}
-            <View className="px-5 flex-row flex-wrap justify-between" style={{ gap: 12 }}>
-              {filteredClasses.map(cls => (
-                <Pressable
-                  key={cls.id}
-                  onPress={() => handleSelectClassCard(cls)}
-                  className="w-[48%] bg-[#101415]/90 border border-white/10 rounded-2xl p-3.5 shadow-lg active:opacity-80"
-                >
-                  <View className="flex-row items-center mb-2">
-                    <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2 ${primaryBadgeClass}`}>
-                      <School size={16} color={primaryColor} />
-                    </View>
-                    <Text className="text-white font-extrabold text-sm flex-1">{cls.className}</Text>
-                  </View>
-
-                  <Text className="text-white/60 text-[10px] font-semibold" numberOfLines={1}>
-                    Teacher: {cls.teacherName || 'Not assigned'}
-                  </Text>
-                  <Text className="text-white/40 text-[9.5px] font-medium mb-2.5">
-                    Total Students: {cls.totalStudents} Students
-                  </Text>
-
-                  {/* Attendance Pills */}
-                  <View className="flex-row items-center justify-between pt-2 border-t border-white/5">
-                    <View className={`px-2 py-0.5 rounded-md ${primaryPillClass}`}>
-                      <Text className={`${primaryTextClass} text-[9.5px] font-bold`}>{cls.presentToday} Present</Text>
-                    </View>
-                    <View className="bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-md">
-                      <Text className="text-rose-400 text-[9.5px] font-bold">{cls.absentToday} Absent</Text>
-                    </View>
-                  </View>
-
-                  <View className="mt-2.5 flex-row items-center justify-end">
-                    <Text className={`${primaryTextClass} text-[10px] font-bold mr-1`}>View Attendance</Text>
-                    <ChevronRight size={12} color={primaryColor} />
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-
-            {/* Bottom Row: Class-wise Today at a Glance (Class-wise aggregation) */}
-            <View className="px-5 mt-6 mb-4">
-              <Text className="text-white text-xs font-bold uppercase tracking-wider mb-3">Class-wise Today at a Glance</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View className="flex-row" style={{ gap: 10 }}>
-                  {Array.from({ length: 10 }, (_, idx) => {
-                    const gradeLabel = `Class ${idx + 1}`;
-                    const matchingSections = MOCK_CLASSES_GRID.filter(c => c.grade === gradeLabel);
-                    const avg = matchingSections.length > 0 
-                      ? (matchingSections.reduce((acc, curr) => acc + curr.todayAvg, 0) / matchingSections.length).toFixed(1) + '%'
-                      : '0%';
-
-                    return (
-                      <GlassCard key={gradeLabel} intensity="low" className="p-3.5 w-28 items-center border-white/10 bg-[#101415]/80">
-                        <Text className="text-white/60 text-xs font-bold mb-1">{gradeLabel}</Text>
-                        <Text className={`${primaryTextClass} text-base font-extrabold`}>{avg}</Text>
-                      </GlassCard>
-                    );
-                  })}
+          <View className="px-5 mb-4">
+            <GlassCard intensity="low" className={`p-4 border bg-[#101415]/90 rounded-2xl ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
+              <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-3">
+                <View>
+                  <Text className="text-white font-extrabold text-base">School Attendance Overview</Text>
+                  <Text className="text-white/50 text-xs">Real-time attendance telemetry for today ({selectedDate})</Text>
                 </View>
-              </ScrollView>
-            </View>
+                <Pressable
+                  onPress={() => setShowDatePickerModal(true)}
+                  className={`px-3 py-1.5 rounded-xl border flex-row items-center ${isSuperAdmin ? 'bg-[#f0c110]/15 border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border-[#00f1a1]/40'}`}
+                >
+                  <Clock size={12} color={primaryColor} style={{ marginRight: 4 }} />
+                  <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedDate}</Text>
+                </Pressable>
+              </View>
+
+              {/* 4 Stats Grid */}
+              <View className="flex-row justify-between" style={{ gap: 8 }}>
+                <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5 items-center">
+                  <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-0.5">Total Classes</Text>
+                  <Text className="text-white text-base font-extrabold">{overallStats.totalSecs}</Text>
+                  <Text className="text-white/50 text-[9px]">Sections</Text>
+                </View>
+
+                <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5 items-center">
+                  <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-0.5">Total Students</Text>
+                  <Text className="text-sky-400 text-base font-extrabold">{overallStats.totalStuds}</Text>
+                  <Text className="text-white/50 text-[9px]">Enrolled</Text>
+                </View>
+
+                <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5 items-center">
+                  <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-0.5">Present Today</Text>
+                  <Text className={`${primaryTextClass} text-base font-extrabold`}>{overallStats.totalPresent}</Text>
+                  <Text className="text-white/50 text-[9px]">{overallStats.avgPct}% Avg</Text>
+                </View>
+
+                <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5 items-center">
+                  <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-0.5">Absent Today</Text>
+                  <Text className="text-rose-400 text-base font-extrabold">{overallStats.totalAbsent}</Text>
+                  <Text className="text-white/50 text-[9px]">Requires Alert</Text>
+                </View>
+              </View>
+            </GlassCard>
           </View>
         )}
 
-        {/* LEVEL 2: CLASS STUDENT ATTENDANCE LIST (READ-ONLY) */}
+        {/* LEVEL 2 HEADER: SELECTED CLASS SUMMARY */}
         {viewLevel === 2 && selectedClass && (
-          <View className="px-5">
-            {/* Read-Only Warning Banner (Matches Web Screenshot 2) */}
-            <View className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-2xl mb-4 flex-row items-center">
-              <Info size={18} color="#f59e0b" style={{ marginRight: 10 }} />
-              <View className="flex-1">
-                <Text className="text-amber-400 text-xs font-bold">Attendance is Read-only</Text>
-                <Text className="text-white/70 text-[10.5px] mt-0.5 leading-relaxed">
-                  Submissions and status edits of student attendance records must be performed by teachers in the Attendance Allot tab.
-                </Text>
-              </View>
-            </View>
-
-            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">
-              Showing {MOCK_CLASS_STUDENTS.length} students in this class
-            </Text>
-
-            {/* Students Directory List */}
-            {MOCK_CLASS_STUDENTS.map(st => (
-              <Pressable
-                key={st.id}
-                onPress={() => handleSelectStudent(st)}
-                className="bg-[#101415]/90 border border-white/10 p-3.5 rounded-2xl mb-2.5 flex-row items-center justify-between active:bg-white/5"
-              >
+          <View className="px-5 mb-4">
+            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
+              <View className="flex-row justify-between items-center">
                 <View className="flex-row items-center flex-1 mr-2">
-                  <View className={`w-9 h-9 rounded-full items-center justify-center mr-3 ${primaryBadgeClass}`}>
-                    <Text className={`${primaryTextClass} text-xs font-extrabold`}>{st.initials}</Text>
+                  <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} font-extrabold text-base`}>{selectedClass.className.replace('Class ', '')}</Text>
                   </View>
                   <View className="flex-1">
-                    <Text className="text-white text-xs font-bold">{st.name}</Text>
-                    <Text className="text-white/50 text-[10px]">Enrollment: {st.rollNo} • Lectures: {st.totalLectures}</Text>
+                    <Text className="text-white font-extrabold text-base">{selectedClass.className}</Text>
+                    <Text className="text-white/50 text-xs mt-0.5">Class Teacher: {selectedClass.teacherName}</Text>
                   </View>
                 </View>
 
                 <View className="items-end">
-                  <Text className={`${primaryTextClass} text-xs font-extrabold`}>{st.overallPct}% Overall</Text>
-                  <View className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden mt-1">
-                    <View className={`h-full rounded-full ${isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]'}`} style={{ width: `${st.overallPct}%` }} />
+                  <Text className={`${primaryTextClass} text-base font-extrabold`}>{selectedClass.todayAvg}%</Text>
+                  <Text className="text-white/50 text-[10px]">Today Avg</Text>
+                </View>
+              </View>
+            </GlassCard>
+          </View>
+        )}
+
+        {/* LEVEL 3 HEADER: SELECTED STUDENT SUMMARY */}
+        {viewLevel === 3 && selectedStudent && (
+          <View className="px-5 mb-4">
+            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
+              <View className="flex-row justify-between items-center">
+                <View className="flex-row items-center flex-1 mr-2">
+                  <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} font-extrabold text-base`}>{selectedStudent.initials}</Text>
                   </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center">
+                      <Text className="text-white font-extrabold text-base mr-2">{selectedStudent.name}</Text>
+                      <View className="bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 rounded-md">
+                        <Text className="text-sky-300 text-[9.5px] font-bold">Roll #{selectedStudent.rollNo}</Text>
+                      </View>
+                    </View>
+                    <Text className="text-white/50 text-xs mt-0.5">{selectedClass?.className || 'Class 10A'} • Attended: {selectedStudent.attended}/{selectedStudent.totalLectures} Days</Text>
+                  </View>
+                </View>
+
+                <View className="items-end">
+                  <Text className={`${primaryTextClass} text-lg font-extrabold`}>{selectedStudent.overallPct}%</Text>
+                  <Text className="text-white/50 text-[10px]">Overall Rate</Text>
+                </View>
+              </View>
+            </GlassCard>
+          </View>
+        )}
+
+        {/* LEVEL 1: CLASS DIRECTORY LIST */}
+        {viewLevel === 1 && (
+          <View className="px-5">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Class Directory ({filteredClasses.length})</Text>
+            </View>
+
+            {filteredClasses.map((item) => (
+              <Pressable
+                key={item.id}
+                onPress={() => handleSelectClass(item)}
+                className={`mb-3.5 p-4 rounded-2xl border bg-[#101415]/90 flex-row items-center justify-between active:scale-[0.98] ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}
+              >
+                <View className="flex-row items-center flex-1 mr-3">
+                  <View className={`w-11 h-11 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} font-extrabold text-sm`}>{item.className.replace('Class ', '')}</Text>
+                  </View>
+
+                  <View className="flex-1">
+                    <Text className="text-white font-extrabold text-sm">{item.className}</Text>
+                    <Text className="text-white/50 text-xs mt-0.5">{item.teacherName}</Text>
+                    <View className="flex-row items-center mt-1.5" style={{ gap: 10 }}>
+                      <Text className="text-white/60 text-[11px] font-medium">Students: <Text className="text-white font-bold">{item.totalStudents}</Text></Text>
+                      <Text className="text-emerald-400 text-[11px] font-medium">Present: <Text className="font-bold">{item.presentToday}</Text></Text>
+                      <Text className="text-rose-400 text-[11px] font-medium">Absent: <Text className="font-bold">{item.absentToday}</Text></Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View className="items-end">
+                  <View className="flex-row items-center mb-1">
+                    <Text className={`${primaryTextClass} font-extrabold text-sm mr-1`}>{item.todayAvg}%</Text>
+                    <ChevronRight size={12} color={primaryColor} />
+                  </View>
+                  <Text className="text-white/40 text-[9.5px]">Attendance</Text>
                 </View>
               </Pressable>
             ))}
           </View>
         )}
 
-        {/* LEVEL 3: STUDENT MONTHLY ATTENDANCE GRID CALENDAR (Matches Web Screenshot 3) */}
+        {/* LEVEL 2: CLASS STUDENT ROSTER LIST */}
+        {viewLevel === 2 && (
+          <View className="px-5">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Student Roster ({filteredStudents.length})</Text>
+            </View>
+
+            {filteredStudents.map((stud) => (
+              <Pressable
+                key={stud.id}
+                onPress={() => handleSelectStudent(stud)}
+                className="mb-3 p-3.5 rounded-2xl border border-white/10 bg-[#101415]/90 flex-row items-center justify-between active:scale-[0.98]"
+              >
+                <View className="flex-row items-center flex-1 mr-3">
+                  <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} font-extrabold text-xs`}>{stud.initials}</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white font-bold text-sm">{stud.name}</Text>
+                    <Text className="text-white/40 text-[11px]">Roll #{stud.rollNo} • Attended {stud.attended}/{stud.totalLectures} Days</Text>
+                  </View>
+                </View>
+
+                <View className="items-end">
+                  <Text className={`${primaryTextClass} text-xs font-extrabold`}>{stud.overallPct}%</Text>
+                  <Text className="text-white/40 text-[9.5px]">Overall Rate</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {/* LEVEL 3: MONTHLY ATTENDANCE GRID VIEW FOR SELECTED STUDENT */}
         {viewLevel === 3 && selectedStudent && (
           <View className="px-5">
             <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-4">
@@ -396,59 +436,81 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     <View className="w-2 h-2 rounded-full bg-rose-500 mr-1" />
                     <Text className="text-white/60 text-[9px]">Absent</Text>
                   </View>
+                  <View className="flex-row items-center">
+                    <View className="w-2 h-2 rounded-full bg-white/40 mr-1" />
+                    <Text className="text-white/40 text-[9px]">Off/Sun</Text>
+                  </View>
                 </View>
               </View>
 
               {/* Month Navigation */}
               <View className="flex-row justify-between items-center mb-4">
-                <Pressable className="p-1.5 rounded-lg bg-white/5 border border-white/10">
+                <Pressable onPress={handlePrevGridMonth} className="p-1.5 rounded-lg bg-white/5 border border-white/10 active:bg-white/15">
                   <ChevronLeft size={16} color={primaryColor} />
                 </Pressable>
-                <Text className="text-white font-bold text-xs">August 2026</Text>
-                <Pressable className="p-1.5 rounded-lg bg-white/5 border border-white/10">
+                <Text className="text-white font-bold text-xs">{MONTH_NAMES[gridMonth]} {gridYear}</Text>
+                <Pressable onPress={handleNextGridMonth} className="p-1.5 rounded-lg bg-white/5 border border-white/10 active:bg-white/15">
                   <ChevronRight size={16} color={primaryColor} />
                 </Pressable>
               </View>
 
               {/* Days Header Row */}
               <View className="flex-row justify-between mb-2">
-                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => (
-                  <Text key={d} className="w-[13%] text-center text-white/40 text-[9px] font-bold uppercase">{d}</Text>
+                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
+                  <Text key={d} className={`w-[14.28%] text-center text-[9.5px] font-bold uppercase ${i === 0 ? 'text-rose-400/80' : 'text-white/40'}`}>{d}</Text>
                 ))}
               </View>
 
-              {/* Calendar Days Grid */}
-              <View className="flex-row flex-wrap justify-between" style={{ gap: 4 }}>
-                {Array.from({ length: 31 }, (_, i) => i + 1).map(dayNum => {
-                  const status = selectedStudent.attendanceMap[dayNum];
+              {/* Real Calendar Days Grid */}
+              <View className="flex-row flex-wrap" style={{ margin: -2 }}>
+                {calendarGridCells.map((item, idx) => {
+                  if (item.day === null) {
+                    return (
+                      <View key={`pad_${idx}`} className="w-[14.28%] p-1">
+                        <View className="h-10 border border-transparent rounded-xl" />
+                      </View>
+                    );
+                  }
+
+                  const dayNum = item.day;
+                  const status = item.status;
                   const isSelected = selectedCalendarDay === dayNum;
+
+                  let bgStyle = primaryBadgeClass;
+                  let textStyle = primaryTextClass;
+                  if (status === 'partial') {
+                    bgStyle = 'bg-amber-500/20 border-amber-500/40';
+                    textStyle = 'text-amber-400';
+                  } else if (status === 'absent') {
+                    bgStyle = 'bg-rose-500/20 border-rose-500/40';
+                    textStyle = 'text-rose-400';
+                  } else if (status === 'off') {
+                    bgStyle = 'bg-white/5 border-white/10';
+                    textStyle = 'text-white/30';
+                  }
+
                   return (
-                    <Pressable
-                      key={dayNum}
-                      onPress={() => setSelectedCalendarDay(dayNum)}
-                      className={`w-[13%] h-10 rounded-xl items-center justify-center border ${
-                        isSelected 
-                          ? (isSuperAdmin ? 'border-[#f0c110] bg-[#f0c110]/20' : 'border-[#00f1a1] bg-[#00f1a1]/20')
-                          : status === 'present' 
-                          ? (isSuperAdmin ? 'bg-amber-500/10 border-amber-500/30' : 'bg-emerald-500/10 border-emerald-500/30')
-                          : status === 'absent' 
-                          ? 'bg-rose-500/10 border-rose-500/30' 
-                          : status === 'partial'
-                          ? 'bg-amber-500/10 border-amber-500/30'
-                          : 'bg-white/5 border-white/5'
-                      }`}
-                    >
-                      <Text className={`text-xs font-bold ${status === 'present' ? primaryTextClass : status === 'absent' ? 'text-rose-400' : status === 'partial' ? 'text-amber-400' : 'text-white/40'}`}>
-                        {dayNum}
-                      </Text>
-                    </Pressable>
+                    <View key={`day_${dayNum}`} className="w-[14.28%] p-1">
+                      <Pressable
+                        onPress={() => setSelectedCalendarDay(dayNum)}
+                        className={`h-10 rounded-xl items-center justify-center border ${
+                          isSelected 
+                            ? (isSuperAdmin ? 'border-[#f0c110] bg-[#f0c110]/30 shadow-lg' : 'border-[#00f1a1] bg-[#00f1a1]/30 shadow-lg')
+                            : bgStyle
+                        }`}
+                      >
+                        <Text className={`text-xs font-bold ${isSelected ? 'text-white' : textStyle}`}>
+                          {dayNum}
+                        </Text>
+                      </Pressable>
+                    </View>
                   );
                 })}
               </View>
             </GlassCard>
 
             {/* Bottom Section: Period-Wise Breakdown for Selected Date */}
-            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
+            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-4">
               <View className="flex-row items-center mb-3">
                 <Clock size={14} color={primaryColor} style={{ marginRight: 6 }} />
                 <Text className="text-white text-xs font-bold">
@@ -456,32 +518,24 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 </Text>
               </View>
 
-              {selectedCalendarDay === 4 ? (
-                <View style={{ gap: 8 }}>
-                  <View className="bg-white/5 border border-white/10 p-2.5 rounded-xl flex-row justify-between items-center">
-                    <Text className="text-white text-xs font-semibold">Period 1: Mathematics</Text>
-                    <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-                      <Text className="text-[#00f1a1] text-[9.5px] font-bold">Present (09:00 AM)</Text>
+              <View className="space-y-2">
+                {[
+                  { period: 'Period 1 (09:00 AM)', subject: 'Mathematics', status: 'Present', teacher: 'Mrs. Anita Sharma' },
+                  { period: 'Period 2 (10:00 AM)', subject: 'Physics', status: 'Present', teacher: 'Mr. Rajesh Kumar' },
+                  { period: 'Period 3 (11:15 AM)', subject: 'Chemistry', status: 'Present', teacher: 'Dr. Meenakshi' },
+                  { period: 'Period 4 (01:30 PM)', subject: 'English', status: 'Present', teacher: 'Mrs. Priya Nambiar' }
+                ].map((p, idx) => (
+                  <View key={idx} className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex-row justify-between items-center mb-2">
+                    <View>
+                      <Text className="text-white font-bold text-xs">{p.subject}</Text>
+                      <Text className="text-white/40 text-[10px]">{p.period} • {p.teacher}</Text>
+                    </View>
+                    <View className="bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md">
+                      <Text className="text-emerald-400 text-[9.5px] font-bold">{p.status}</Text>
                     </View>
                   </View>
-                  <View className="bg-white/5 border border-white/10 p-2.5 rounded-xl flex-row justify-between items-center">
-                    <Text className="text-white text-xs font-semibold">Period 2: Physics</Text>
-                    <View className="bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-                      <Text className="text-[#00f1a1] text-[9.5px] font-bold">Present (09:45 AM)</Text>
-                    </View>
-                  </View>
-                  <View className="bg-white/5 border border-white/10 p-2.5 rounded-xl flex-row justify-between items-center">
-                    <Text className="text-white text-xs font-semibold">Period 3: Chemistry</Text>
-                    <View className="bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 rounded-md">
-                      <Text className="text-rose-400 text-[9.5px] font-bold">Absent (10:45 AM)</Text>
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                <View className="py-6 items-center">
-                  <Text className="text-white/40 text-xs italic">No attendance marked on this date.</Text>
-                </View>
-              )}
+                ))}
+              </View>
             </GlassCard>
           </View>
         )}
@@ -489,14 +543,14 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* INTERACTIVE DATE PICKER SELECTION MODAL */}
+      {/* DATE PICKER MODAL */}
       <Modal visible={showDatePickerModal} transparent animationType="slide" onRequestClose={() => setShowDatePickerModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
                 <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
-                  <Calendar size={16} color={primaryColor} />
+                  <Clock size={16} color={primaryColor} />
                 </View>
                 <Text className="text-white font-bold text-base">Select Attendance Date</Text>
               </View>
@@ -553,27 +607,20 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
               })}
             </View>
 
-            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1.5">Custom Date (DD-MM-YYYY)</Text>
-            <TextInput
-              value={customDateInput}
-              onChangeText={setCustomDateInput}
-              placeholder="e.g. 04-08-2026"
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
-              className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2.5 text-xs font-mono mb-4 text-center"
-            />
-
-            <View className="flex-row" style={{ gap: 10 }}>
-              <Pressable onPress={() => setShowDatePickerModal(false)} className="flex-1 py-3 rounded-xl bg-[#101415] border border-white/10 items-center">
-                <Text className="text-white font-bold text-xs">Cancel</Text>
+            <View className="flex-row border-t border-white/10 pt-3" style={{ gap: 10 }}>
+              <Pressable onPress={() => setShowDatePickerModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
+                <Text className="text-white font-bold text-xs">Close</Text>
               </Pressable>
               <Pressable 
                 onPress={() => {
-                  setSelectedDate(customDateInput);
+                  if (customDateInput.trim()) {
+                    setSelectedDate(customDateInput.trim());
+                  }
                   setShowDatePickerModal(false);
                 }} 
                 className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
               >
-                <Text className="text-[#101415] font-extrabold text-xs">Set Target Date</Text>
+                <Text className="text-[#101415] font-extrabold text-xs">Apply Date</Text>
               </Pressable>
             </View>
           </View>

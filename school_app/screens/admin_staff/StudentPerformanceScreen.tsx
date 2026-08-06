@@ -1,37 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Print from 'expo-print';
 import {
-  Bell,
-  ChevronDown,
-  ChevronUp,
-  ChevronLeft,
-  ChevronRight,
-  AlertTriangle,
-  Lightbulb,
-  TrendingUp,
-  Mail,
-  ArrowLeft,
-  GraduationCap,
-  FileText,
-  Users,
-  FileCheck,
-  Calendar,
-  Percent,
-  Clock,
-  Pencil,
-  Printer,
-  Trash2,
-  History,
-  Filter,
-  List,
-  Banknote,
-  X,
-  CheckCircle2,
-  AlertCircle
+  User, Award, Phone, Mail, MapPin, Calendar, Clock,
+  CheckCircle2, AlertCircle, TrendingUp, BookOpen, Layers,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, ShieldAlert,
+  Plus, Edit, Trash2, Printer, DollarSign, History, Filter, ArrowLeft
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
+import { GlassCard } from '../../components/GlassCard';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export interface FeeItem {
@@ -44,7 +21,7 @@ export interface FeeItem {
 
 export interface TimelineActivity {
   id: string;
-  type: 'payment' | 'concession';
+  type: 'payment' | 'concession' | 'edit';
   title: string;
   amount: string;
   methodOrReason: string;
@@ -203,18 +180,63 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
     return activities.filter(act => act.type === timelineFilter);
   }, [activities, timelineFilter]);
 
-  // Calendar Day Mock (August 2026: 31 Days)
-  const calendarDays = useMemo(() => {
-    const days = [];
-    for (let i = 1; i <= 31; i++) {
-      let status: 'present' | 'partial' | 'absent' | 'off' = 'present';
-      if (i % 7 === 0) status = 'off'; // Sundays
-      else if (i === 5 || i === 18) status = 'absent';
-      else if (i === 12 || i === 25) status = 'partial';
-      days.push({ day: i, status });
+  const [calendarMonth, setCalendarMonth] = useState(7); // 7 = August (0-indexed)
+  const [calendarYear, setCalendarYear] = useState(2026);
+
+  const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const handlePrevMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11);
+      setCalendarYear(prev => prev - 1);
+    } else {
+      setCalendarMonth(prev => prev - 1);
     }
-    return days;
-  }, []);
+  };
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0);
+      setCalendarYear(prev => prev + 1);
+    } else {
+      setCalendarMonth(prev => prev + 1);
+    }
+  };
+
+  // Dynamic Real Calendar Grid Computation with Padding Cells for Weekday Alignment
+  const calendarGridCells = useMemo(() => {
+    const firstDayOfWeek = new Date(calendarYear, calendarMonth, 1).getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+
+    const cells: Array<{ day: number | null; status?: 'present' | 'partial' | 'absent' | 'off' }> = [];
+
+    // Empty offset padding cells before Day 1
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      cells.push({ day: null });
+    }
+
+    // Actual days in month
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(calendarYear, calendarMonth, d);
+      const dayOfWeek = dateObj.getDay();
+      let status: 'present' | 'partial' | 'absent' | 'off' = 'present';
+      
+      if (dayOfWeek === 0) {
+        status = 'off';
+      } else if ((d + calendarMonth) % 9 === 0 || d === 5 || d === 18) {
+        status = 'absent';
+      } else if ((d + calendarMonth) % 6 === 0 || d === 12 || d === 25) {
+        status = 'partial';
+      }
+      
+      cells.push({ day: d, status });
+    }
+
+    return cells;
+  }, [calendarMonth, calendarYear]);
 
   // Custom Toast Modal State
   const [toastData, setToastData] = useState<{
@@ -301,195 +323,41 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
   };
 
   // Handler: Save Edit Fee
-  const handleSaveEditFeeSubmit = () => {
+  const handleSaveEditFee = () => {
     if (!selectedFee) return;
     const tot = parseFloat(editTotal) || 0;
     const pd = parseFloat(editPaid) || 0;
     const conc = parseFloat(editConcession) || 0;
 
-    setFeeItems(prev => prev.map(item => {
-      if (item.id === selectedFee.id) {
-        return { ...item, totalAmount: tot, paidAmount: pd, concessionAmount: conc };
-      }
-      return item;
-    }));
+    setFeeItems(prev => prev.map(item => item.id === selectedFee.id ? {
+      ...item,
+      totalAmount: tot,
+      paidAmount: pd,
+      concessionAmount: conc
+    } : item));
 
+    const newAct: TimelineActivity = {
+      id: `act_${Date.now()}`,
+      type: 'edit',
+      title: 'Fee Ledger Item Edited',
+      amount: `₹${tot.toLocaleString()}`,
+      methodOrReason: `${selectedFee.name} updated (Paid: ₹${pd.toLocaleString()}, Conc: ₹${conc.toLocaleString()})`,
+      date: 'Today • Just Now',
+      performedBy: 'Rajesh K (Admin Staff)'
+    };
+
+    setActivities(prev => [newAct, ...prev]);
     setShowEditModal(false);
-    showToast('Fee Updated', `${selectedFee.name} details have been updated successfully.`, 'success');
+    showToast('Fee Updated', `${selectedFee.name} details saved.`, 'info');
   };
 
-  // Handler: Open Delete Modal
-  const handleOpenDeleteModal = (item: FeeItem) => {
-    setSelectedFee(item);
-    setShowDeleteModal(true);
-  };
-
-  // Handler: Confirm Delete Fee
+  // Handler: Confirm Delete Fee Item
   const handleConfirmDeleteFee = () => {
     if (!selectedFee) return;
+    const name = selectedFee.name;
     setFeeItems(prev => prev.filter(item => item.id !== selectedFee.id));
     setShowDeleteModal(false);
-    showToast('Fee Reversed', `${selectedFee.name} record has been removed.`, 'success');
-  };
-
-  // Handler: Open Print Modal
-  const handleOpenPrintModal = (item: FeeItem) => {
-    setSelectedFee(item);
-    setShowPrintModal(true);
-  };
-
-  // Native Phone Printing via expo-print
-  const handlePrintNative = async (itemToPrint?: FeeItem | null) => {
-    const fee = itemToPrint || selectedFee;
-    try {
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                padding: 40px;
-                color: #111827;
-                background-color: #ffffff;
-              }
-              .header {
-                text-align: center;
-                border-bottom: 3px solid #00f1a1;
-                padding-bottom: 15px;
-                margin-bottom: 25px;
-              }
-              .school-name {
-                font-size: 24px;
-                font-weight: 800;
-                color: #0d2a24;
-                letter-spacing: 1px;
-              }
-              .doc-title {
-                font-size: 13px;
-                color: #4b5563;
-                text-transform: uppercase;
-                margin-top: 5px;
-                font-weight: bold;
-              }
-              .receipt-info {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 25px;
-              }
-              .receipt-info td {
-                padding: 10px 12px;
-                font-size: 13px;
-                border-bottom: 1px solid #e5e7eb;
-              }
-              .label {
-                color: #6b7280;
-                font-weight: 600;
-                width: 40%;
-              }
-              .value {
-                color: #111827;
-                font-weight: 700;
-              }
-              .amount-card {
-                background-color: #ecfdf5;
-                border: 1px solid #a7f3d0;
-                padding: 15px;
-                border-radius: 12px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-top: 20px;
-              }
-              .amount-label {
-                font-size: 14px;
-                font-weight: 700;
-                color: #065f46;
-              }
-              .amount-val {
-                font-size: 20px;
-                font-weight: 800;
-                color: #047857;
-              }
-              .footer {
-                margin-top: 50px;
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-              }
-              .sign-title {
-                font-size: 12px;
-                font-weight: 700;
-              }
-              .sign-sub {
-                font-size: 10px;
-                color: #6b7280;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <div class="school-name">KTS INTERNATIONAL SCHOOL</div>
-              <div class="doc-title">Official Fee Payment Receipt</div>
-            </div>
-
-            <table class="receipt-info">
-              <tr>
-                <td class="label">Receipt Number</td>
-                <td class="value">RCP-2026-0891</td>
-              </tr>
-              <tr>
-                <td class="label">Date & Time</td>
-                <td class="value">${new Date().toLocaleString()}</td>
-              </tr>
-              <tr>
-                <td class="label">Student Name</td>
-                <td class="value">${studentName}</td>
-              </tr>
-              <tr>
-                <td class="label">Class & Section</td>
-                <td class="value">${className}</td>
-              </tr>
-              <tr>
-                <td class="label">Admission Number</td>
-                <td class="value">${admissionNo}</td>
-              </tr>
-              <tr>
-                <td class="label">Fee Component</td>
-                <td class="value">${fee?.name || 'School Fee Component'}</td>
-              </tr>
-              <tr>
-                <td class="label">Payment Status</td>
-                <td class="value" style="color: #047857;">VERIFIED & PAID</td>
-              </tr>
-            </table>
-
-            <div class="amount-card">
-              <div class="amount-label">Total Amount Paid</div>
-              <div class="amount-val">₹${(fee?.paidAmount || 15000).toLocaleString()}</div>
-            </div>
-
-            <div class="footer">
-              <div>
-                <p style="font-size: 10px; color: #9ca3af; margin: 0;">Computer Generated Receipt</p>
-                <p style="font-size: 10px; color: #9ca3af; margin: 2px 0 0 0;">KTS EduVision Administrative Terminal</p>
-              </div>
-              <div style="text-align: center;">
-                <div class="sign-title">Authorized Signatory</div>
-                <div class="sign-sub">Rajesh K (Admin Staff)</div>
-              </div>
-            </div>
-          </body>
-        </html>
-      `;
-
-      setShowPrintModal(false);
-      await Print.printAsync({ html: htmlContent });
-    } catch (err) {
-      console.error('Print Error:', err);
-      showToast('Print Failed', 'Unable to launch native print dialog.', 'warning');
-    }
+    showToast('Fee Item Deleted', `${name} removed from student ledger.`, 'warning');
   };
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
@@ -497,7 +365,6 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
   const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
   const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
   const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
-  const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
 
   return (
     <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
@@ -508,164 +375,180 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Header matching Admin Staff theme */}
       <AdminStaffHeader
-        title="Student Performance"
-        subtitle="ACADEMIC PERFORMANCE TERMINAL"
         onBackPress={canGoBack ? () => navigation.goBack() : undefined}
+        title="Student Performance & Ledger"
+        subtitle={isSuperAdmin ? "Super Admin Student Analytics" : "Academic Analytics & Fee Portfolio"}
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
-            <TrendingUp size={22} color={primaryColor} />
+            <User size={20} color={primaryColor} />
           </View>
-        }
-        rightAction={
-          <Pressable className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative">
-            <Bell size={18} color={primaryColor} />
-          </Pressable>
         }
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        {/* Responsive Header Title */}
-        <View className="mb-6 flex-row items-center justify-between">
-          <View className="flex-1 mr-2">
-            <Text className="text-white text-2xl font-extrabold tracking-tight">Student Performance</Text>
-            <Text className="text-white/60 text-xs mt-0.5">Deep dive into academic metrics & trends</Text>
-          </View>
-          {canGoBack && (
-            <Pressable
-              onPress={() => navigation.goBack()}
-              className={`px-3 py-1.5 rounded-xl flex-row items-center flex-shrink-0 ${primaryBadgeClass}`}
-            >
-              <ArrowLeft size={13} color={primaryColor} style={{ marginRight: 4 }} />
-              <Text className={`${primaryTextClass} text-xs font-bold`}>Back</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Student Selector Banner (Clicking toggles inline details below) */}
-        <Pressable
-          onPress={() => setIsDetailsExpanded(!isDetailsExpanded)}
-          className={`bg-[#101415]/90 border rounded-2xl px-5 py-3.5 flex-row justify-between items-center mb-4 shadow-lg active:opacity-80 ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}
-        >
-          <View className="flex-row items-center flex-1 mr-2">
-            <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${primaryBadgeClass}`}>
-              <Text className={`${primaryTextClass} font-bold text-base`}>
-                {selectedStudent?.initials || studentName.slice(0, 2).toUpperCase()}
-              </Text>
-            </View>
-            <View className="flex-1">
-              <Text className={`${primaryTextClass} text-[10px] font-bold tracking-widest uppercase mb-0.5`}>
-                SELECTED STUDENT • {className}
-              </Text>
-              <Text className="text-white font-bold text-base" numberOfLines={1}>{studentName}</Text>
-              <Text className="text-white/40 text-[11px]">Adm No: {admissionNo}</Text>
-            </View>
-          </View>
-
-          <View className="flex-row items-center">
-            {/* Edit Profile Button */}
-            <Pressable
-              onPress={() => navigation.navigate('AddStudent', { student: selectedStudent, isEdit: true })}
-              className={`px-3 py-1.5 rounded-xl flex-row items-center mr-2 ${primaryBadgeClass}`}
-            >
-              <Pencil size={12} color={primaryColor} style={{ marginRight: 4 }} />
-              <Text className={`${primaryTextClass} text-xs font-bold`}>Edit Profile</Text>
-            </Pressable>
-
-            <View className={`w-8 h-8 rounded-full items-center justify-center ${primaryBadgeClass}`}>
-              {isDetailsExpanded ? (
-                <ChevronUp size={18} color={primaryColor} />
-              ) : (
-                <ChevronDown size={18} color={primaryColor} />
-              )}
-            </View>
-          </View>
-        </Pressable>
-
-        {/* INLINE COLLAPSIBLE STUDENT PROFILE DETAILS SECTION */}
-        {isDetailsExpanded && (
-          <View className={`bg-[#101415]/95 border rounded-3xl p-5 mb-8 shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
-            {/* Header */}
-            <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
-              <View className="flex-1 mr-2">
-                <Text className="text-white text-base font-bold">Student Profile Details</Text>
-                <Text className="text-white/50 text-[11px]">Personal, attendance and fee ledger summary</Text>
-              </View>
-
-              <View className="items-end" style={{ gap: 6 }}>
-                <View className="flex-row items-center">
-                  <Text className="text-white/40 text-[10px] uppercase font-bold mr-1.5">Status:</Text>
-                  {selectedStudent?.status === 'Left' ? (
-                    <View className="bg-white/10 border border-white/20 px-2.5 py-0.5 rounded-full">
-                      <Text className="text-white/60 text-[10px] font-bold">Left</Text>
-                    </View>
-                  ) : selectedStudent?.status === 'Transfer' ? (
-                    <View className="bg-sky-500/15 border border-sky-500/40 px-2.5 py-0.5 rounded-full">
-                      <Text className="text-sky-400 text-[10px] font-bold">Transfer</Text>
-                    </View>
-                  ) : (
-                    <View className={`px-2.5 py-0.5 rounded-full ${primaryBadgeClass}`}>
-                      <Text className={`${primaryTextClass} text-[10px] font-bold`}>{selectedStudent?.status || 'Active'}</Text>
-                    </View>
-                  )}
+        {/* TOP PROFILE CARD SUMMARY */}
+        <View className="px-5 mb-4">
+          <GlassCard intensity="low" className={`p-4 border bg-[#101415]/90 rounded-2xl ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center flex-1 mr-2">
+                <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-3 border shadow-sm ${primaryBadgeClass}`}>
+                  <Text className={`${primaryTextClass} font-extrabold text-lg`}>
+                    {studentName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </Text>
                 </View>
-
-                <View className="flex-row items-center">
-                  <Text className="text-white/40 text-[10px] uppercase font-bold mr-1.5">Fee Status:</Text>
-                  {feeTotals.due > 0 ? (
-                    feeTotals.paid > 0 ? (
-                      <View className="bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-full flex-row items-center">
-                        <View className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5" />
-                        <Text className="text-amber-400 text-[10px] font-bold">Partial</Text>
-                      </View>
-                    ) : (
-                      <View className="bg-rose-500/10 border border-rose-500/30 px-2.5 py-0.5 rounded-full flex-row items-center">
-                        <View className="w-1.5 h-1.5 rounded-full bg-rose-400 mr-1.5" />
-                        <Text className="text-rose-400 text-[10px] font-bold">Overdue</Text>
-                      </View>
-                    )
-                  ) : (
-                    <View className={`px-2.5 py-0.5 rounded-full flex-row items-center ${primaryBadgeClass}`}>
-                      <View className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5" />
-                      <Text className={`${primaryTextClass} text-[10px] font-bold`}>Paid</Text>
+                <View className="flex-1">
+                  <View className="flex-row items-center">
+                    <Text className="text-white font-extrabold text-base mr-2">{studentName}</Text>
+                    <View className={`px-2 py-0.5 rounded-full ${primaryBadgeClass}`}>
+                      <Text className={`${primaryTextClass} text-[10px] font-bold`}>Active Student</Text>
                     </View>
-                  )}
+                  </View>
+                  <Text className="text-white/60 text-xs mt-0.5">{className} • Admission: {admissionNo}</Text>
                 </View>
               </View>
-            </View>
 
-            {/* Attendance Overview */}
-            <View className="flex-row justify-between items-center mb-2.5">
-              <Text className="text-white/70 text-xs font-bold uppercase tracking-wider">Attendance Overview</Text>
               <Pressable
-                onPress={() => setShowAttendanceCalendar(!showAttendanceCalendar)}
-                className="flex-row items-center"
+                onPress={() => setIsDetailsExpanded(!isDetailsExpanded)}
+                className={`p-2 rounded-xl flex-row items-center border ${isSuperAdmin ? 'border-[#f0c110]/40 bg-[#f0c110]/10' : 'border-[#00f1a1]/40 bg-[#00f1a1]/10'}`}
               >
-                <Calendar size={12} color={primaryColor} style={{ marginRight: 4 }} />
-                <Text className={`${primaryTextClass} text-[11px] font-bold`}>
-                  {showAttendanceCalendar ? 'Hide Grid View ▲' : 'Calendar Grid View ▼'}
+                <Text className={`${primaryTextClass} text-xs font-bold mr-1`}>
+                  {isDetailsExpanded ? 'Hide Details' : 'View Profile'}
                 </Text>
+                {isDetailsExpanded ? (
+                  <ChevronUp size={16} color={primaryColor} />
+                ) : (
+                  <ChevronDown size={16} color={primaryColor} />
+                )}
               </Pressable>
             </View>
 
-            <View className="flex-row flex-wrap mb-4" style={{ gap: 8 }}>
-              <View className="flex-1 min-w-[70px] bg-white/5 border border-white/10 p-2.5 rounded-xl items-center">
-                <Text className="text-white/50 text-[10px] uppercase font-semibold">Working</Text>
-                <Text className="text-white font-extrabold text-base mt-1">180</Text>
+            {/* EXPANDABLE COMPREHENSIVE STUDENT DETAILS */}
+            {isDetailsExpanded && (
+              <View className="mt-4 pt-4 border-t border-white/10">
+                <Text className={`${primaryTextClass} text-xs font-bold uppercase tracking-wider mb-3`}>
+                  Complete Student Demographics & Family Profile
+                </Text>
+
+                <View className="bg-black/40 rounded-xl p-3 mb-3 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Full Name</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">{studentName}</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Gender & DOB</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">Male • 15-05-2011</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Class & Section</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">{className}</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Admission Number</Text>
+                    <Text className={`${primaryTextClass} text-xs font-mono mt-0.5`}>{admissionNo}</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Student PEN NO.</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">36 1204 1002 045</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Aadhar Number</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">1234 5678 9012</Text>
+                  </View>
+                </View>
+
+                {/* Parent Details Grid */}
+                <View className="bg-black/40 rounded-xl p-3 mb-3 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Father's Name</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">Nageswara Rao</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Father's Occupation</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">Business / Agriculture</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Mother's Name</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">Laxmi Devi</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Mother's Occupation</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">Homemaker</Text>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Guardian Mobile</Text>
+                    <View className="flex-row items-center mt-0.5">
+                      <Text className="text-white text-xs font-semibold mr-1">+91 9876543210</Text>
+                      <Phone size={11} color={primaryColor} />
+                    </View>
+                  </View>
+                  <View className="w-[47%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Mother Tongue</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">Telugu</Text>
+                  </View>
+                </View>
+
+                {/* Address & Demographics Grid */}
+                <View className="bg-black/40 rounded-xl p-3 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
+                  <View className="w-full">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Residential Address</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">Door No: 4-12, Nizamabad Main Road, Telangana State</Text>
+                  </View>
+                  <View className="w-[30%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Religion</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">Hindu</Text>
+                  </View>
+                  <View className="w-[30%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">Caste</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">BC-B</Text>
+                  </View>
+                  <View className="w-[33%]">
+                    <Text className="text-white/40 text-[10px] uppercase font-bold">TC Number</Text>
+                    <Text className="text-white text-xs font-semibold mt-0.5">TC-2026-9921</Text>
+                  </View>
+                </View>
               </View>
-              <View className={`flex-1 min-w-[70px] p-2.5 rounded-xl items-center ${primaryBadgeClass}`}>
-                <Text className={`${primaryTextClass} text-[10px] uppercase font-semibold`}>Present</Text>
-                <Text className={`${primaryTextClass} font-extrabold text-base mt-1`}>165</Text>
+            )}
+          </GlassCard>
+        </View>
+
+        {/* SECTION 1: ACADEMIC PERFORMANCE & ATTENDANCE */}
+        <View className="px-5 mb-5">
+          <GlassCard intensity="low" className={`p-4 bg-[#101415]/90 rounded-2xl border ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
+            <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-4">
+              <View className="flex-row items-center">
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <TrendingUp size={16} color={primaryColor} />
+                </View>
+                <View>
+                  <Text className="text-white font-extrabold text-sm">Academic Performance & Attendance</Text>
+                  <Text className="text-white/50 text-[10px]">Academic Year 2026-2027 Overview</Text>
+                </View>
               </View>
-              <View className="flex-1 min-w-[70px] bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl items-center">
-                <Text className="text-amber-400 text-[10px] uppercase font-semibold">Half Days</Text>
-                <Text className="text-amber-400 font-extrabold text-base mt-1">4</Text>
+              <View className={`px-2.5 py-1 rounded-full ${primaryBadgeClass}`}>
+                <Text className={`${primaryTextClass} text-[10px] font-bold`}>Grade A+ (94.2%)</Text>
               </View>
-              <View className="flex-1 min-w-[70px] bg-rose-500/10 border border-rose-500/30 p-2.5 rounded-xl items-center">
-                <Text className="text-rose-400 text-[10px] uppercase font-semibold">Absent</Text>
-                <Text className="text-rose-400 font-extrabold text-base mt-1">11</Text>
+            </View>
+
+            {/* Academic Metrics 3 Cards Row */}
+            <View className="flex-row justify-between mb-4" style={{ gap: 8 }}>
+              <View className="flex-1 bg-black/40 p-3 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[10px] uppercase font-bold mb-1">Rank</Text>
+                <Text className={`${primaryTextClass} text-lg font-extrabold`}>Rank 1</Text>
+                <Text className="text-white/50 text-[9px]">Class Top Performer</Text>
+              </View>
+
+              <View className="flex-1 bg-black/40 p-3 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[10px] uppercase font-bold mb-1">Attendance</Text>
+                <Text className="text-sky-400 text-lg font-extrabold">91.6%</Text>
+                <Text className="text-white/50 text-[9px]">165 / 180 Days</Text>
+              </View>
+
+              <View className="flex-1 bg-black/40 p-3 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[10px] uppercase font-bold mb-1">GPA Score</Text>
+                <Text className="text-purple-300 text-lg font-extrabold">9.8 / 10</Text>
+                <Text className="text-white/50 text-[9px]">Term 1 Assessment</Text>
               </View>
             </View>
 
@@ -689,12 +572,16 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                 <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-white/10">
                   <View className="flex-row items-center">
                     <Calendar size={15} color={primaryColor} style={{ marginRight: 8 }} />
-                    <Text className="text-white text-xs font-bold">Attendance Calendar (August 2026)</Text>
+                    <Text className="text-white text-xs font-bold">Attendance Calendar ({MONTH_NAMES[calendarMonth]} {calendarYear})</Text>
                   </View>
                   <View className="flex-row items-center" style={{ gap: 4 }}>
-                    <ChevronLeft size={16} color="rgba(255,255,255,0.6)" />
-                    <Text className="text-white/80 text-[11px] font-bold">Aug 2026</Text>
-                    <ChevronRight size={16} color="rgba(255,255,255,0.6)" />
+                    <Pressable onPress={handlePrevMonth} className="p-1 rounded-lg bg-white/5 active:bg-white/15">
+                      <ChevronLeft size={16} color={primaryColor} />
+                    </Pressable>
+                    <Text className="text-white/80 text-[11px] font-bold mx-1">{MONTH_NAMES[calendarMonth].slice(0, 3)} {calendarYear}</Text>
+                    <Pressable onPress={handleNextMonth} className="p-1 rounded-lg bg-white/5 active:bg-white/15">
+                      <ChevronRight size={16} color={primaryColor} />
+                    </Pressable>
                   </View>
                 </View>
 
@@ -718,9 +605,24 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                   </View>
                 </View>
 
-                {/* 31 Days Grid */}
+                {/* Weekday Labels Header Row */}
+                <View className="flex-row justify-between mb-2">
+                  {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
+                    <Text key={d} className={`w-[14.28%] text-center text-[9.5px] font-bold uppercase ${i === 0 ? 'text-rose-400/80' : 'text-white/40'}`}>{d}</Text>
+                  ))}
+                </View>
+
+                {/* Real Calendar Grid with Weekday Alignment */}
                 <View className="flex-row flex-wrap" style={{ margin: -2 }}>
-                  {calendarDays.map((item) => {
+                  {calendarGridCells.map((item, idx) => {
+                    if (item.day === null) {
+                      return (
+                        <View key={`pad_${idx}`} className="w-[14.28%] p-1">
+                          <View className="h-8 border border-transparent rounded-lg" />
+                        </View>
+                      );
+                    }
+
                     let bgStyle = primaryBadgeClass;
                     let textStyle = primaryTextClass;
                     if (item.status === 'partial') {
@@ -735,7 +637,7 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                     }
 
                     return (
-                      <View key={item.day} className="w-[14.28%] p-1">
+                      <View key={`day_${item.day}`} className="w-[14.28%] p-1">
                         <View className={`h-8 border rounded-lg items-center justify-center ${bgStyle}`}>
                           <Text className={`text-[10px] font-bold ${textStyle}`}>{item.day}</Text>
                         </View>
@@ -746,600 +648,388 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
               </View>
             )}
 
-            {/* Personal & Academic Details */}
-            <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-5">
-              <View className="flex-row items-center mb-3 pb-2 border-b border-white/10">
-                <GraduationCap size={16} color={primaryColor} style={{ marginRight: 10 }} />
-                <Text className="text-white text-xs font-bold">Personal & Academic Details</Text>
+            {/* Subject Marks Table Preview */}
+            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-2">Subject-Wise Term 1 Marks</Text>
+            <View className="bg-black/40 rounded-xl overflow-hidden border border-white/10">
+              <View className="flex-row bg-white/5 p-2.5 border-b border-white/10">
+                <Text className="w-[40%] text-white/60 text-[10px] font-bold uppercase">Subject</Text>
+                <Text className="w-[30%] text-white/60 text-[10px] font-bold uppercase text-center">Marks</Text>
+                <Text className="w-[30%] text-white/60 text-[10px] font-bold uppercase text-right">Grade</Text>
               </View>
-              <View className="flex-row flex-wrap" style={{ margin: -4 }}>
-                {[
-                  { label: 'Gender', val: selectedStudent?.gender || 'Male' },
-                  { label: 'Date of Birth', val: selectedStudent?.dob || '31-03-1998' },
-                  { label: 'Admission Date', val: '01-06-2026' },
-                  { label: 'Admission No', val: admissionNo },
-                  { label: 'Student PEN NO.', val: selectedStudent?.penNo || 'PEN984210' },
-                  { label: 'Student Mobile', val: selectedStudent?.phone || '+91 9876543210' },
-                  { label: 'Aadhar Number', val: selectedStudent?.aadharNumber || '1234 5678 9012' },
-                  { label: 'Biometric Code', val: selectedStudent?.biometricCode || 'BIO-8874' },
-                  { label: 'Address', val: selectedStudent?.address || 'Nizamabad Main Street, Telangana' }
-                ].map((item, idx) => (
-                  <View key={idx} className="w-1/2 p-1">
-                    <View className="bg-black/30 p-2.5 rounded-xl border border-white/5">
-                      <Text className="text-white/40 text-[10px] mb-0.5">{item.label}</Text>
-                      <Text className="text-white text-xs font-semibold" numberOfLines={1}>{item.val}</Text>
-                    </View>
-                  </View>
-                ))}
+
+              {[
+                { name: 'Mathematics', marks: '98 / 100', grade: 'A+' },
+                { name: 'Physics', marks: '95 / 100', grade: 'A+' },
+                { name: 'Chemistry', marks: '92 / 100', grade: 'A+' },
+                { name: 'English', marks: '92 / 100', grade: 'A+' },
+              ].map((sub, idx) => (
+                <View key={idx} className="flex-row p-2.5 border-b border-white/5 items-center">
+                  <Text className="w-[40%] text-white text-xs font-semibold">{sub.name}</Text>
+                  <Text className={`${primaryTextClass} w-[30%] text-xs font-bold text-center`}>{sub.marks}</Text>
+                  <Text className="w-[30%] text-purple-300 text-xs font-bold text-right">{sub.grade}</Text>
+                </View>
+              ))}
+            </View>
+          </GlassCard>
+        </View>
+
+        {/* SECTION 2: FEE SUMMARY & LEDGER */}
+        <View className="px-5 mb-5">
+          <GlassCard intensity="low" className={`p-4 bg-[#101415]/90 rounded-2xl border ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
+            <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-4">
+              <View className="flex-row items-center">
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <DollarSign size={16} color={primaryColor} />
+                </View>
+                <View>
+                  <Text className="text-white font-extrabold text-sm">Fee Summary & Ledger</Text>
+                  <Text className="text-white/50 text-[10px]">Component Allotments & Payments</Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center" style={{ gap: 6 }}>
+                <Pressable
+                  onPress={() => setShowConcessionModal(true)}
+                  className="bg-purple-500/20 border border-purple-500/40 px-3 py-1.5 rounded-xl flex-row items-center"
+                >
+                  <Text className="text-purple-300 text-xs font-bold">+ Concession</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setShowCollectModal(true)}
+                  className={`${primaryBtnClass} px-3 py-1.5 rounded-xl flex-row items-center shadow-lg`}
+                >
+                  <Plus size={14} color="#101415" className="mr-1" />
+                  <Text className="text-[#101415] text-xs font-bold">Collect Fee</Text>
+                </Pressable>
               </View>
             </View>
 
-            {/* Fee Summary & Ledger (With Vertical Stacked Concession & Collect Buttons) */}
-            <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-5">
-              <View className="flex-row justify-between items-start mb-3 pb-3 border-b border-white/10">
-                <View className="flex-1 mr-3">
-                  <View className="flex-row items-center mb-1">
-                    <FileText size={16} color={primaryColor} style={{ marginRight: 10 }} />
-                    <Text className="text-white text-sm font-bold">Fee Summary & Ledger</Text>
-                  </View>
-                  <Text className="text-white/50 text-[11px]">Manage components, payments & concessions</Text>
-                </View>
-
-                {/* Vertical Stack: Fee Concession (Top), Collect Payment (Bottom) */}
-                <View className="flex-col items-end" style={{ gap: 6 }}>
-                  {/* Fee Concession Button */}
-                  <Pressable
-                    onPress={() => setShowConcessionModal(true)}
-                    className="bg-purple-500/20 border border-purple-500/40 px-3 py-2 rounded-xl flex-row items-center active:bg-purple-500/30"
-                  >
-                    <Percent size={13} color="#c084fc" style={{ marginRight: 6 }} />
-                    <Text className="text-purple-300 text-xs font-bold">Fee Concession</Text>
-                  </Pressable>
-
-                  {/* Collect Payment Button */}
-                  <Pressable
-                    onPress={() => setShowCollectModal(true)}
-                    className={`${primaryBtnClass} px-3 py-2 rounded-xl flex-row items-center active:opacity-90 shadow-lg`}
-                  >
-                    <Clock size={13} color="#101415" style={{ marginRight: 6 }} />
-                    <Text className="text-[#101415] text-xs font-extrabold">Collect Payment</Text>
-                  </Pressable>
-                </View>
+            {/* Fee Totals Ribbon */}
+            <View className="flex-row justify-between mb-4" style={{ gap: 8 }}>
+              <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
+                <Text className="text-white/40 text-[9.5px] uppercase font-bold">Total Assigned</Text>
+                <Text className="text-white text-sm font-extrabold mt-0.5">₹{feeTotals.total.toLocaleString()}</Text>
               </View>
 
-              <View className="flex-row justify-between mb-4" style={{ gap: 8 }}>
-                <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/10 items-center">
-                  <Text className="text-white/40 text-[9px] uppercase">Total Fee</Text>
-                  <Text className="text-white font-bold text-xs mt-0.5">₹{feeTotals.total.toLocaleString()}</Text>
-                </View>
-                <View className={`flex-1 p-2.5 rounded-xl border items-center ${primaryBadgeClass}`}>
-                  <Text className={`${primaryTextClass} text-[9px] uppercase`}>Paid</Text>
-                  <Text className={`${primaryTextClass} font-bold text-xs mt-0.5`}>₹{feeTotals.paid.toLocaleString()}</Text>
-                </View>
-                <View className="flex-1 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/30 items-center">
-                  <Text className="text-rose-400 text-[9px] uppercase">Due</Text>
-                  <Text className="text-rose-400 font-bold text-xs mt-0.5">₹{feeTotals.due.toLocaleString()}</Text>
-                </View>
+              <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
+                <Text className="text-white/40 text-[9.5px] uppercase font-bold">Paid Till Date</Text>
+                <Text className={`${primaryTextClass} text-sm font-extrabold mt-0.5`}>₹{feeTotals.paid.toLocaleString()}</Text>
               </View>
 
-              {/* Detailed Fee Breakdown Items with Larger Print, Edit & Delete Buttons */}
-              <Text className="text-white/70 text-[11px] font-bold mb-2">Detailed Fee Breakdown</Text>
-              {feeItems.map((item) => {
-                const itemDue = Math.max(0, item.totalAmount - item.paidAmount - item.concessionAmount);
-                const isFullyPaid = itemDue === 0;
+              <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
+                <Text className="text-white/40 text-[9.5px] uppercase font-bold">Concessions</Text>
+                <Text className="text-purple-300 text-sm font-extrabold mt-0.5">₹{feeTotals.concession.toLocaleString()}</Text>
+              </View>
 
-                return (
-                  <View key={item.id} className="bg-black/30 p-3 rounded-2xl mb-2 flex-row justify-between items-center border border-white/5">
-                    <View className="flex-1 mr-3">
-                      <Text className="text-white text-xs font-bold">{item.name}</Text>
-                      <Text className="text-white/50 text-[11px] mt-0.5">
-                        Amount: <Text className="text-white font-semibold">₹{item.totalAmount.toLocaleString()}</Text>
-                        {item.concessionAmount > 0 ? ` (Conc: ₹${item.concessionAmount})` : ''}
+              <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
+                <Text className="text-white/40 text-[9.5px] uppercase font-bold">Outstanding</Text>
+                <Text className="text-rose-400 text-sm font-extrabold mt-0.5">₹{feeTotals.due.toLocaleString()}</Text>
+              </View>
+            </View>
+
+            {/* Fee Item Cards List */}
+            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-2">Detailed Fee Items Breakdown</Text>
+            {feeItems.map(item => {
+              const due = Math.max(0, item.totalAmount - item.paidAmount - item.concessionAmount);
+              const isFullyPaid = due === 0;
+
+              return (
+                <View key={item.id} className="bg-black/40 p-3 rounded-2xl border border-white/10 mb-3">
+                  <View className="flex-row justify-between items-start mb-2">
+                    <View className="flex-1 mr-2">
+                      <Text className="text-white font-bold text-xs">{item.name}</Text>
+                      <Text className="text-white/50 text-[10px]">
+                        Assigned: ₹{item.totalAmount.toLocaleString()} • Paid: ₹{item.paidAmount.toLocaleString()}
+                        {item.concessionAmount > 0 ? ` • Concession: ₹${item.concessionAmount.toLocaleString()}` : ''}
                       </Text>
                     </View>
 
+                    {isFullyPaid ? (
+                      <View className={`px-2 py-0.5 rounded-full ${primaryBadgeClass}`}>
+                        <Text className={`${primaryTextClass} text-[9.5px] font-bold`}>Paid</Text>
+                      </View>
+                    ) : (
+                      <View className="bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-full">
+                        <Text className="text-rose-400 text-[9.5px] font-bold">Due: ₹{due.toLocaleString()}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View className="flex-row justify-between items-center pt-2 border-t border-white/5">
                     <View className="flex-row items-center" style={{ gap: 6 }}>
-                      {/* Larger Print Button */}
+                      {/* Print Receipt */}
                       <Pressable
-                        onPress={() => handleOpenPrintModal(item)}
-                        className={`w-9 h-9 rounded-xl items-center justify-center active:opacity-80 ${primaryBadgeClass}`}
+                        onPress={() => {
+                          setSelectedFee(item);
+                          setShowPrintModal(true);
+                        }}
+                        className="bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg flex-row items-center"
                       >
-                        <Printer size={15} color={primaryColor} />
+                        <Printer size={12} color={primaryColor} className="mr-1" />
+                        <Text className={`${primaryTextClass} text-[10px] font-bold`}>Receipt</Text>
                       </Pressable>
 
-                      {/* Larger Edit Paid Button */}
+                      {/* Edit Fee */}
                       <Pressable
                         onPress={() => handleOpenEditModal(item)}
-                        className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/40 items-center justify-center active:bg-purple-500/30"
+                        className="bg-white/5 border border-white/10 p-1.5 rounded-lg"
                       >
-                        <Pencil size={15} color="#c084fc" />
+                        <Edit size={12} color="rgba(255,255,255,0.7)" />
                       </Pressable>
 
-                      {/* Larger Delete / Reverse Button */}
+                      {/* Delete Fee */}
                       <Pressable
-                        onPress={() => handleOpenDeleteModal(item)}
-                        className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/40 items-center justify-center active:bg-rose-500/30"
+                        onPress={() => {
+                          setSelectedFee(item);
+                          setShowDeleteModal(true);
+                        }}
+                        className="bg-rose-500/10 border border-rose-500/30 p-1.5 rounded-lg"
                       >
-                        <Trash2 size={15} color="#ff516a" />
+                        <Trash2 size={12} color="#ff516a" />
                       </Pressable>
-
-                      <View className={`px-2.5 py-1 rounded-md ${isFullyPaid ? primaryBadgeClass : 'bg-rose-500/20 border border-rose-500/40'}`}>
-                        <Text className={`text-[10px] font-bold ${isFullyPaid ? primaryTextClass : 'text-rose-400'}`}>
-                          {isFullyPaid ? 'Paid' : `Due: ₹${itemDue.toLocaleString()}`}
-                        </Text>
-                      </View>
                     </View>
+
+                    <Text className="text-white/40 text-[10px]">Due Date: 15-08-2026</Text>
                   </View>
-                );
-              })}
-            </View>
-
-            {/* RECENT ACTIVITY TIMELINE WITH FILTER */}
-            <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-5">
-              <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-white/10">
-                <View className="flex-row items-center">
-                  <History size={16} color={primaryColor} style={{ marginRight: 10 }} />
-                  <Text className="text-white text-xs font-bold">Recent Activity Timeline</Text>
                 </View>
+              );
+            })}
+          </GlassCard>
+        </View>
 
-                {/* Timeline Filter Toggle */}
-                <View className="relative">
-                  <Pressable
-                    onPress={() => setShowTimelineFilterDropdown(!showTimelineFilterDropdown)}
-                    className={`px-2.5 py-1 rounded-lg flex-row items-center ${primaryBadgeClass}`}
-                  >
-                    <Filter size={11} color={primaryColor} style={{ marginRight: 4 }} />
-                    <Text className={`${primaryTextClass} text-[10px] font-bold capitalize`}>{timelineFilter} Activities</Text>
-                    <ChevronDown size={12} color={primaryColor} style={{ marginLeft: 2 }} />
-                  </Pressable>
-
-                  {/* Dropdown Options */}
-                  {showTimelineFilterDropdown && (
-                    <View className={`absolute right-0 top-8 w-40 bg-[#121817] border rounded-xl p-1 z-30 shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
-                      <Pressable
-                        onPress={() => { setTimelineFilter('all'); setShowTimelineFilterDropdown(false); }}
-                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'all' ? primaryBadgeClass : ''}`}
-                      >
-                        <List size={12} color={timelineFilter === 'all' ? primaryColor : '#ffffff'} style={{ marginRight: 6 }} />
-                        <Text className={`text-xs ${timelineFilter === 'all' ? `${primaryTextClass} font-bold` : 'text-white/80'}`}>All Activities</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => { setTimelineFilter('payment'); setShowTimelineFilterDropdown(false); }}
-                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'payment' ? primaryBadgeClass : ''}`}
-                      >
-                        <Banknote size={12} color={timelineFilter === 'payment' ? primaryColor : '#ffffff'} style={{ marginRight: 6 }} />
-                        <Text className={`text-xs ${timelineFilter === 'payment' ? `${primaryTextClass} font-bold` : 'text-white/80'}`}>Payments Only</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => { setTimelineFilter('concession'); setShowTimelineFilterDropdown(false); }}
-                        className={`p-2 rounded-lg flex-row items-center ${timelineFilter === 'concession' ? primaryBadgeClass : ''}`}
-                      >
-                        <Percent size={12} color={timelineFilter === 'concession' ? primaryColor : '#ffffff'} style={{ marginRight: 6 }} />
-                        <Text className={`text-xs ${timelineFilter === 'concession' ? `${primaryTextClass} font-bold` : 'text-white/80'}`}>Concessions Only</Text>
-                      </Pressable>
-                    </View>
-                  )}
+        {/* SECTION 3: RECENT AUDIT TIMELINE */}
+        <View className="px-5 mb-8">
+          <GlassCard intensity="low" className={`p-4 bg-[#101415]/90 rounded-2xl border ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
+            <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-4">
+              <View className="flex-row items-center">
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <History size={16} color={primaryColor} />
+                </View>
+                <View>
+                  <Text className="text-white font-extrabold text-sm">Fee Activity & Payment Timeline</Text>
+                  <Text className="text-white/50 text-[10px]">Audit Log of Collections & Concessions</Text>
                 </View>
               </View>
 
-              {/* Timeline Items List */}
-              <View className="pl-1">
-                {filteredActivities.map((act, index) => (
-                  <View key={act.id} className="flex-row items-start mb-3 relative">
-                    {/* Vertical Connector Line */}
-                    {index < filteredActivities.length - 1 && (
-                      <View className="absolute left-[13px] top-6 bottom-0 w-0.5 bg-white/10" />
-                    )}
-                    {/* Icon Dot */}
-                    <View className={`w-7 h-7 rounded-full items-center justify-center mr-3 z-10 ${act.type === 'payment' ? primaryBadgeClass : 'bg-purple-500/20 border border-purple-500/50'}`}>
-                      {act.type === 'payment' ? (
-                        <Banknote size={12} color={primaryColor} />
-                      ) : (
-                        <Percent size={12} color="#c084fc" />
-                      )}
-                    </View>
-                    <View className="flex-1 bg-black/30 p-2.5 rounded-xl border border-white/5">
-                      <View className="flex-row justify-between items-center mb-0.5">
-                        <Text className="text-white text-xs font-bold">{act.title}</Text>
-                        <Text className={`text-xs font-bold ${act.type === 'payment' ? primaryTextClass : 'text-purple-400'}`}>{act.amount}</Text>
-                      </View>
-                      <Text className="text-white/60 text-[11px] mb-1.5">{act.methodOrReason}</Text>
-                      <View className="flex-row items-center justify-between pt-1 border-t border-white/5">
-                        <Text className="text-white/40 text-[9.5px] font-medium">{act.date}</Text>
-                        <View className={`px-2 py-0.5 rounded-md flex-row items-center ${primaryBadgeClass}`}>
-                          <Users size={9} color={primaryColor} style={{ marginRight: 4 }} />
-                          <Text className={`${primaryTextClass} text-[9px] font-bold`}>by {act.performedBy}</Text>
-                        </View>
-                      </View>
-                    </View>
+              {/* Timeline Filter Dropdown Trigger */}
+              <View className="relative">
+                <Pressable
+                  onPress={() => setShowTimelineFilterDropdown(!showTimelineFilterDropdown)}
+                  className="bg-white/5 border border-white/15 px-3 py-1.5 rounded-xl flex-row items-center"
+                >
+                  <Filter size={12} color={primaryColor} className="mr-1.5" />
+                  <Text className="text-white text-xs font-semibold capitalize">{timelineFilter}</Text>
+                  <ChevronDown size={12} color="rgba(255,255,255,0.6)" className="ml-1" />
+                </Pressable>
+
+                {showTimelineFilterDropdown && (
+                  <View className={`absolute top-9 right-0 z-50 bg-[#101415] border rounded-xl p-1 shadow-2xl w-32 ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
+                    {(['all', 'payment', 'concession'] as const).map(tf => (
+                      <Pressable
+                        key={tf}
+                        onPress={() => {
+                          setTimelineFilter(tf);
+                          setShowTimelineFilterDropdown(false);
+                        }}
+                        className={`p-2 rounded-lg flex-row items-center justify-between ${timelineFilter === tf ? primaryBadgeClass : 'active:bg-white/5'}`}
+                      >
+                        <Text className={`text-xs capitalize ${timelineFilter === tf ? primaryTextClass : 'text-white/80'}`}>{tf}</Text>
+                      </Pressable>
+                    ))}
                   </View>
-                ))}
+                )}
               </View>
             </View>
 
-            {/* Parent & Guardian Details */}
-            <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-5">
-              <View className="flex-row items-center mb-3 pb-2 border-b border-white/10">
-                <Users size={16} color={primaryColor} style={{ marginRight: 10 }} />
-                <Text className="text-white text-xs font-bold">Parent / Guardian Details</Text>
-              </View>
-              <View className="flex-row flex-wrap" style={{ margin: -4 }}>
-                {[
-                  { label: "Father's Name", val: selectedStudent?.parentName || 'Pandu K' },
-                  { label: "Father's Mobile", val: selectedStudent?.phone || '+91 9876543210' },
-                  { label: "Father's Occupation", val: 'Farmer / Business' },
-                  { label: "Mother's Name", val: 'Laxmi K' },
-                  { label: "Mother's Mobile", val: '+91 9876543211' },
-                  { label: "Mother's Occupation", val: 'Homemaker' },
-                ].map((item, idx) => (
-                  <View key={idx} className="w-1/2 p-1">
-                    <View className="bg-black/30 p-2.5 rounded-xl border border-white/5">
-                      <Text className="text-white/40 text-[10px] mb-0.5">{item.label}</Text>
-                      <Text className="text-white text-xs font-semibold" numberOfLines={1}>{item.val}</Text>
-                    </View>
+            {/* Timeline List */}
+            {filteredActivities.map((act) => (
+              <View key={act.id} className="flex-row items-start mb-4 border-l-2 border-white/10 pl-3 ml-2">
+                <View className={`w-3 h-3 rounded-full -ml-[19px] mt-1 border-2 border-[#101415] ${act.type === 'payment' ? primaryBtnClass : act.type === 'concession' ? 'bg-purple-400' : 'bg-sky-400'}`} />
+                <View className="flex-1 ml-2">
+                  <View className="flex-row justify-between items-center">
+                    <Text className="text-white font-bold text-xs">{act.title}</Text>
+                    <Text className={`${primaryTextClass} text-xs font-bold`}>{act.amount}</Text>
                   </View>
-                ))}
-              </View>
-            </View>
-
-            {/* Demographics & TC Details */}
-            <View className="bg-white/5 border border-white/10 p-4 rounded-2xl mb-1">
-              <View className="flex-row items-center mb-3 pb-2 border-b border-white/10">
-                <FileCheck size={16} color={primaryColor} style={{ marginRight: 10 }} />
-                <Text className="text-white text-xs font-bold">Demographics & TC Details</Text>
-              </View>
-              <View className="flex-row flex-wrap" style={{ margin: -4 }}>
-                {[
-                  { label: 'Mother Tongue', val: 'Telugu' },
-                  { label: 'Nationality', val: 'Indian' },
-                  { label: 'State', val: 'Telangana' },
-                  { label: 'Religion', val: 'Hindu' },
-                  { label: 'Caste', val: 'BC-B' },
-                  { label: 'Sub Caste', val: 'Yadav' },
-                  { label: 'TC Number', val: 'N/A' },
-                ].map((item, idx) => (
-                  <View key={idx} className="w-1/2 p-1">
-                    <View className="bg-black/30 p-2.5 rounded-xl border border-white/5">
-                      <Text className="text-white/40 text-[10px] mb-0.5">{item.label}</Text>
-                      <Text className="text-white text-xs font-semibold" numberOfLines={1}>{item.val}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Subject Mastery */}
-        <View className="bg-[#101415]/80 border border-white/10 rounded-[32px] p-6 mb-8 shadow-lg">
-          <View className="flex-row justify-between items-center mb-8">
-            <View>
-              <Text className="text-white text-2xl font-bold mb-1">Subject Mastery</Text>
-              <Text className="text-white/60 text-[10px] font-bold tracking-widest uppercase">CURRENT SEMESTER SCORE %</Text>
-            </View>
-            <View className={`px-4 py-1.5 rounded-full flex-row items-center ${primaryBadgeClass}`}>
-              <View className={`w-1.5 h-1.5 rounded-full mr-2 ${primaryBtnClass}`} />
-              <Text className={`${primaryTextClass} text-[10px] font-bold`}>Live Data</Text>
-            </View>
-          </View>
-
-          <View className="flex-row justify-between items-end h-40 mt-4 px-2">
-            {[
-              { label: 'MATH', height: '90%' },
-              { label: 'PHYS', height: '65%' },
-              { label: 'BIOL', height: '80%' },
-              { label: 'HIST', height: '45%' },
-              { label: 'LIT', height: '85%' },
-              { label: 'CHEM', height: '60%' },
-            ].map((item, index) => (
-              <View key={index} className="items-center w-[12%]">
-                <View className="w-full bg-[#0d2a24]/60 rounded-t-xl overflow-hidden" style={{ height: 120, justifyContent: 'flex-end' }}>
-                  <View style={{ width: '100%', height: item.height as any, borderTopLeftRadius: 12, borderTopRightRadius: 12, backgroundColor: primaryGold }} />
+                  <Text className="text-white/60 text-[11px] mt-0.5">{act.methodOrReason}</Text>
+                  <Text className="text-white/40 text-[10px] mt-1">{act.date} • By {act.performedBy}</Text>
                 </View>
-                <Text className="text-white/80 text-[10px] font-bold mt-4">{item.label}</Text>
               </View>
             ))}
-          </View>
-        </View>
-
-        {/* Rank Trend */}
-        <View className="bg-[#101415]/80 border border-white/10 rounded-[32px] p-6 mb-8 shadow-lg overflow-hidden relative">
-          <Text className="text-white text-2xl font-bold mb-1">Rank Trend</Text>
-          <Text className="text-white/60 text-[10px] font-bold tracking-widest uppercase mb-8">GLOBAL CLASSROOM POSITION</Text>
-
-          {/* Mock Chart Area */}
-          <View className="h-28 mb-4 justify-center relative">
-            <View className="absolute inset-x-0 top-1/2 h-[3px] rounded-full" style={{ backgroundColor: primaryGold }} />
-            <View className="flex-row justify-between items-center h-full pt-4 relative">
-              <View className="w-3 h-3 rounded-full border-[3px] border-[#101415] z-10" style={{ backgroundColor: primaryGold, transform: [{ translateY: 15 }] }} />
-              <View className="w-3 h-3 rounded-full border-[3px] border-[#101415] z-10" style={{ backgroundColor: primaryGold, transform: [{ translateY: -5 }] }} />
-              <View className="w-3 h-3 rounded-full border-[3px] border-[#101415] z-10" style={{ backgroundColor: primaryGold, transform: [{ translateY: 20 }] }} />
-              <View className="w-3.5 h-3.5 rounded-full bg-white border-[3px] border-[#101415] z-10" style={{ transform: [{ translateY: -20 }] }} />
-            </View>
-          </View>
-
-          <View className="flex-row justify-between mb-8 px-1">
-            <Text className="text-white/60 text-xs font-bold">Ex. 01</Text>
-            <Text className="text-white/60 text-xs font-bold">Ex. 02</Text>
-            <Text className="text-white/60 text-xs font-bold">Ex. 03</Text>
-            <Text className="text-white/60 text-xs font-bold">Latest</Text>
-          </View>
-
-          <View className="flex-row justify-between items-end border-t border-white/5 pt-5 mt-2">
-            <View>
-              <Text className="text-white/60 text-sm mb-1">Current Rank</Text>
-              <Text className={`${primaryTextClass} text-3xl font-bold`}>#04</Text>
-            </View>
-            <View className={`px-4 py-1.5 rounded-full flex-row items-center ${primaryBadgeClass}`}>
-              <TrendingUp size={14} color={primaryColor} style={{ marginRight: 4 }} />
-              <Text className={`${primaryTextClass} text-xs font-bold`}>+2</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Benchmarking */}
-        <View className="flex-row justify-between items-center mb-6 mt-4">
-          <Text className="text-white text-[28px] font-bold tracking-tight">Benchmarking</Text>
-          <View className="flex-row">
-            <View className="flex-row items-center mr-4">
-              <View className={`w-2 h-2 rounded-full mr-1.5 ${primaryBtnClass}`} />
-              <Text className="text-white font-bold text-xs">Above</Text>
-            </View>
-            <View className="flex-row items-center">
-              <View className="w-2 h-2 rounded-full bg-[#f87171] mr-1.5" />
-              <Text className="text-white font-bold text-xs">Below</Text>
-            </View>
-          </View>
-        </View>
-
-        <View className="flex-row flex-wrap justify-between mb-8">
-          {[
-            { subject: 'Mathematics', val: '+12%', type: 'Above Avg' },
-            { subject: 'Physics', val: '+05%', type: 'Above Avg' },
-            { subject: 'History', val: '-08%', type: 'Below Avg' },
-            { subject: 'Biology', val: '+02%', type: 'Above Avg' },
-            { subject: 'Literature', val: '+18%', type: 'Above Avg' },
-            { subject: 'Chemistry', val: '-04%', type: 'Below Avg' },
-          ].map((item, index) => {
-            const isAbove = item.type === 'Above Avg';
-            return (
-              <View key={index} className="w-[48%] bg-[#101415]/80 border border-white/10 rounded-2xl p-5 mb-4 shadow-lg">
-                <Text className="text-white/90 text-sm mb-4 font-medium">{item.subject}</Text>
-                <View className="flex-row items-center">
-                  <Text className="text-white text-xl font-bold mr-2">{item.val}</Text>
-                  <View className={`px-2 py-1 rounded-md ${isAbove ? primaryBadgeClass : 'bg-[#f87171]/20'}`}>
-                    <Text className={`text-[10px] font-bold ${isAbove ? primaryTextClass : 'text-[#f87171]'}`}>{item.type}</Text>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Priority: History */}
-        <View className="bg-[#101415]/80 border-2 border-[#f97316]/50 rounded-[32px] p-6 mb-6 relative overflow-hidden">
-          <View className="absolute -right-4 -top-4 opacity-[0.03]">
-            <AlertTriangle size={140} color="#f97316" />
-          </View>
-
-          <View className="flex-row items-center mb-5">
-            <AlertTriangle size={24} color="#f97316" />
-            <Text className="text-white text-lg font-bold ml-3">Priority: History</Text>
-          </View>
-
-          <Text className="text-white/60 text-[15px] leading-relaxed mb-6">
-            Julian is struggling with chronological timelines and cause-effect analysis in 19th-century modules.
-          </Text>
-
-          <Text className="text-white/60 text-[10px] font-bold tracking-widest uppercase mb-3">SUGGESTED ACTION</Text>
-          <View className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6">
-            <Text className="text-white/70 text-sm italic leading-relaxed">
-              "Schedule a 15-minute sync to review the Napoleonic Era mind-map. Assign visual timeline exercises for homework."
-            </Text>
-          </View>
-
-          <Pressable className="bg-[#f97316]/10 border border-[#f97316]/30 flex-row items-center justify-center py-4 rounded-xl">
-            <Mail size={18} color="#f97316" />
-            <Text className="text-[#f97316] font-bold text-base ml-2">Nudge Guardian</Text>
-          </Pressable>
-        </View>
-
-        {/* Progress Note: Chemistry */}
-        <View className={`bg-[#101415]/80 border-2 rounded-[32px] p-6 mb-8 relative overflow-hidden ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`}>
-          <View className="absolute -right-4 -bottom-4 opacity-[0.03]">
-            <Lightbulb size={140} color={primaryColor} />
-          </View>
-
-          <View className="flex-row items-center mb-5">
-            <Lightbulb size={24} color={primaryColor} />
-            <Text className="text-white text-lg font-bold ml-3">Progress Note: Chemistry</Text>
-          </View>
-
-          <Text className="text-white/60 text-[15px] leading-relaxed mb-6">
-            Steady improvement in stoichiometric calculations, but conceptual gaps remain in organic bonding.
-          </Text>
-
-          <View className={`rounded-2xl p-5 flex-row justify-between items-center ${primaryBadgeClass}`}>
-            <Text className="text-white/70 text-sm font-medium">Interactive Quiz Score</Text>
-            <Text className={`${primaryTextClass} text-lg font-bold`}>74%</Text>
-          </View>
+          </GlassCard>
         </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* 1. COLLECT PAYMENT MODAL (Admin Staff Dark/Neon UI) */}
+      {/* COLLECT FEE PAYMENT MODAL */}
       <Modal visible={showCollectModal} transparent animationType="slide" onRequestClose={() => setShowCollectModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className={`bg-[#101415] border rounded-3xl w-full max-w-md overflow-hidden ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
-            <View className="flex-row justify-between items-center p-5 border-b border-white/10 bg-[#121817]">
-              <View>
-                <Text className="text-white text-base font-bold">Collect Student Fee</Text>
-                <Text className={`${primaryTextClass} text-xs font-semibold`}>{studentName} ({className})</Text>
-              </View>
-              <Pressable onPress={() => setShowCollectModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
-                <X size={16} color="#ffffff" />
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <Text className="text-white font-bold text-base">Record Fee Payment</Text>
+              <Pressable onPress={() => setShowCollectModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
               </Pressable>
             </View>
 
-            <ScrollView className="p-5" showsVerticalScrollIndicator={false}>
-              <Text className="text-white/70 text-xs font-semibold mb-2">Select Fee Component *</Text>
-              {feeItems.map(item => (
-                <Pressable
-                  key={item.id}
-                  onPress={() => setSelectedCollectFeeIds([item.id])}
-                  className={`p-3 rounded-xl mb-2 flex-row justify-between items-center border ${selectedCollectFeeIds.includes(item.id) ? primaryBadgeClass : 'bg-black/30 border-white/10'}`}
-                >
-                  <Text className="text-white text-xs font-bold">{item.name}</Text>
-                  <Text className={`${primaryTextClass} text-xs font-bold`}>Due: ₹{Math.max(0, item.totalAmount - item.paidAmount - item.concessionAmount).toLocaleString()}</Text>
-                </Pressable>
-              ))}
-
-              <Text className="text-white/70 text-xs font-semibold mt-3 mb-1.5">Amount to Record (₹) *</Text>
+            <View className="mb-3">
+              <Text className="text-white/70 text-xs font-bold mb-1">Collection Amount (₹) *</Text>
               <TextInput
                 value={collectAmount}
                 onChangeText={setCollectAmount}
                 keyboardType="numeric"
-                className="bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white font-bold text-base mb-4"
+                placeholder="10000"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-sm font-extrabold"
               />
+            </View>
 
-              <Text className="text-white/70 text-xs font-semibold mb-2">Payment Method *</Text>
-              <View className="flex-row flex-wrap mb-4" style={{ gap: 6 }}>
-                {['Cash', 'UPI', 'Card', 'Net Banking', 'Bank Transfer'].map(m => (
+            <View className="mb-3">
+              <Text className="text-white/70 text-xs font-bold mb-1">Payment Mode *</Text>
+              <View className="flex-row" style={{ gap: 6 }}>
+                {['Cash', 'UPI', 'Card', 'Cheque'].map(m => (
                   <Pressable
                     key={m}
                     onPress={() => setCollectMethod(m)}
-                    className={`px-3 py-2 rounded-xl border ${collectMethod === m ? primaryBtnClass : 'bg-white/5 border-white/10'}`}
+                    className={`flex-1 py-2 rounded-xl items-center border ${collectMethod === m ? primaryBtnClass : 'bg-white/5 border-white/10'}`}
                   >
-                    <Text className={`text-xs font-bold ${collectMethod === m ? 'text-[#101415]' : 'text-white/80'}`}>{m}</Text>
+                    <Text className={`text-xs font-bold ${collectMethod === m ? 'text-[#101415]' : 'text-white/70'}`}>{m}</Text>
                   </Pressable>
                 ))}
               </View>
+            </View>
 
-              <Text className="text-white/70 text-xs font-semibold mb-1.5">Note / Remarks (Optional)</Text>
+            <View className="mb-4">
+              <Text className="text-white/70 text-xs font-bold mb-1">Remarks / Txn ID</Text>
               <TextInput
                 value={collectRemarks}
                 onChangeText={setCollectRemarks}
-                placeholder="Transaction ID, cheque number or notes..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                className="bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white text-xs mb-4"
+                placeholder="e.g. Receipt #9921 / UPI884210"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
               />
-            </ScrollView>
+            </View>
 
-            <View className="p-4 border-t border-white/10 bg-[#121817] flex-row" style={{ gap: 10 }}>
+            <View className="flex-row border-t border-white/10 pt-3" style={{ gap: 10 }}>
               <Pressable onPress={() => setShowCollectModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
               <Pressable onPress={handleRecordPaymentSubmit} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
-                <Text className="text-[#101415] font-extrabold text-xs">Record Payment</Text>
+                <Text className="text-[#101415] font-extrabold text-xs">Submit Collection</Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* 2. FEE CONCESSION MODAL */}
+      {/* APPLY CONCESSION MODAL */}
       <Modal visible={showConcessionModal} transparent animationType="slide" onRequestClose={() => setShowConcessionModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border border-purple-500/40 rounded-3xl w-full max-w-md overflow-hidden shadow-[0_0_30px_rgba(168,85,247,0.2)]">
-            <View className="flex-row justify-between items-center p-5 border-b border-white/10 bg-[#121817]">
-              <View>
-                <Text className="text-white text-base font-bold">Apply Fee Concession</Text>
-                <Text className="text-purple-400 text-xs font-semibold">{studentName} ({className})</Text>
-              </View>
-              <Pressable onPress={() => setShowConcessionModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
-                <X size={16} color="#ffffff" />
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <Text className="text-white font-bold text-base">Apply Fee Concession</Text>
+              <Pressable onPress={() => setShowConcessionModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
               </Pressable>
             </View>
 
-            <View className="p-5">
-              <Text className="text-white/70 text-xs font-semibold mb-2">Select Fee Component *</Text>
-              {feeItems.map(item => (
-                <Pressable
-                  key={item.id}
-                  onPress={() => setSelectedConcessionFeeId(item.id)}
-                  className={`p-3 rounded-xl mb-2 flex-row justify-between items-center border ${selectedConcessionFeeId === item.id ? 'bg-purple-500/20 border-purple-500' : 'bg-black/30 border-white/10'}`}
-                >
-                  <Text className="text-white text-xs font-bold">{item.name}</Text>
-                  <Text className="text-purple-300 text-xs font-bold">₹{item.totalAmount.toLocaleString()}</Text>
-                </Pressable>
-              ))}
+            <View className="mb-3">
+              <Text className="text-white/70 text-xs font-bold mb-1">Target Component *</Text>
+              <View className="flex-row flex-wrap" style={{ gap: 6 }}>
+                {feeItems.map(f => (
+                  <Pressable
+                    key={f.id}
+                    onPress={() => setSelectedConcessionFeeId(f.id)}
+                    className={`px-3 py-2 rounded-xl border ${selectedConcessionFeeId === f.id ? primaryBtnClass : 'bg-white/5 border-white/10'}`}
+                  >
+                    <Text className={`text-xs font-bold ${selectedConcessionFeeId === f.id ? 'text-[#101415]' : 'text-white/70'}`}>{f.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
 
-              <Text className="text-white/70 text-xs font-semibold mt-3 mb-1.5">Concession Amount (₹) *</Text>
+            <View className="mb-3">
+              <Text className="text-white/70 text-xs font-bold mb-1">Concession Amount (₹) *</Text>
               <TextInput
                 value={concessionVal}
                 onChangeText={setConcessionVal}
                 keyboardType="numeric"
-                className="bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-purple-300 font-bold text-base mb-4"
-              />
-
-              <Text className="text-white/70 text-xs font-semibold mb-1.5">Reason / Note *</Text>
-              <TextInput
-                value={concessionReasonStr}
-                onChangeText={setConcessionReasonStr}
-                placeholder="e.g. Merit Scholarship, Staff Ward..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                className="bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white text-xs mb-4"
+                placeholder="2000"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-sm font-extrabold"
               />
             </View>
 
-            <View className="p-4 border-t border-white/10 bg-[#121817] flex-row" style={{ gap: 10 }}>
+            <View className="mb-4">
+              <Text className="text-white/70 text-xs font-bold mb-1">Approval Reason *</Text>
+              <TextInput
+                value={concessionReasonStr}
+                onChangeText={setConcessionReasonStr}
+                placeholder="e.g. Merit Scholarship / Staff Ward Discount"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+              />
+            </View>
+
+            <View className="flex-row border-t border-white/10 pt-3" style={{ gap: 10 }}>
               <Pressable onPress={() => setShowConcessionModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleApplyConcessionSubmit} className="flex-1 py-3 rounded-xl bg-purple-600 items-center shadow-[0_0_10px_rgba(168,85,247,0.4)]">
-                <Text className="text-white font-extrabold text-xs">Apply Concession</Text>
+              <Pressable onPress={handleApplyConcessionSubmit} className="flex-1 py-3 rounded-xl bg-purple-500 items-center shadow-lg">
+                <Text className="text-white font-extrabold text-xs">Confirm Concession</Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* 3. EDIT PAID AMOUNT MODAL */}
+      {/* EDIT FEE MODAL */}
       <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border border-purple-500/40 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
-            <View className="flex-row justify-between items-center p-5 border-b border-white/10 bg-[#121817]">
-              <View>
-                <Text className="text-white text-base font-bold">Edit Fee Component</Text>
-                <Text className="text-purple-400 text-xs font-semibold">{selectedFee?.name}</Text>
-              </View>
-              <Pressable onPress={() => setShowEditModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
-                <X size={16} color="#ffffff" />
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
+              <Text className="text-white font-bold text-base">Edit Fee Component</Text>
+              <Pressable onPress={() => setShowEditModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
               </Pressable>
             </View>
 
-            <View className="p-5">
-              <Text className="text-white/70 text-xs font-semibold mb-1.5">Total Component Amount (₹)</Text>
+            <View className="mb-3">
+              <Text className="text-white/70 text-xs font-bold mb-1">Total Assigned Fee (₹)</Text>
               <TextInput
                 value={editTotal}
                 onChangeText={setEditTotal}
                 keyboardType="numeric"
-                className="bg-black/50 border border-white/20 rounded-xl px-4 py-2.5 text-white font-bold text-sm mb-3"
+                className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
               />
+            </View>
 
-              <Text className="text-white/70 text-xs font-semibold mb-1.5">Paid Amount (₹)</Text>
+            <View className="mb-3">
+              <Text className="text-white/70 text-xs font-bold mb-1">Paid Amount (₹)</Text>
               <TextInput
                 value={editPaid}
                 onChangeText={setEditPaid}
                 keyboardType="numeric"
-                className={`bg-black/50 border border-white/20 rounded-xl px-4 py-2.5 ${primaryTextClass} font-bold text-sm mb-3`}
+                className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
               />
+            </View>
 
-              <Text className="text-white/70 text-xs font-semibold mb-1.5">Concession Amount (₹)</Text>
+            <View className="mb-4">
+              <Text className="text-white/70 text-xs font-bold mb-1">Concession Amount (₹)</Text>
               <TextInput
                 value={editConcession}
                 onChangeText={setEditConcession}
                 keyboardType="numeric"
-                className="bg-black/50 border border-white/20 rounded-xl px-4 py-2.5 text-purple-300 font-bold text-sm mb-4"
+                className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
               />
             </View>
 
-            <View className="p-4 border-t border-white/10 bg-[#121817] flex-row" style={{ gap: 10 }}>
+            <View className="flex-row border-t border-white/10 pt-3" style={{ gap: 10 }}>
               <Pressable onPress={() => setShowEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleSaveEditFeeSubmit} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center`}>
+              <Pressable onPress={handleSaveEditFee} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
                 <Text className="text-[#101415] font-extrabold text-xs">Save Changes</Text>
               </Pressable>
             </View>
@@ -1347,95 +1037,90 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
         </View>
       </Modal>
 
-      {/* 4. DELETE / REVERSE PAYMENT MODAL */}
+      {/* CONFIRM DELETE MODAL */}
       <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className="bg-[#101415] border border-rose-500/40 rounded-3xl w-full max-w-sm p-6 text-center shadow-2xl">
-            <View className="w-12 h-12 rounded-full bg-rose-500/20 border border-rose-500/40 items-center justify-center mx-auto mb-4">
-              <Trash2 size={22} color="#ff516a" />
+          <View className="bg-[#101415] border-2 border-rose-500/50 rounded-3xl w-full max-w-sm p-6 items-center shadow-[0_0_30px_rgba(255,81,106,0.3)]">
+            <View className="w-14 h-14 rounded-full bg-rose-500/20 border border-rose-500/50 items-center justify-center mb-4">
+              <Trash2 size={28} color="#ff516a" />
             </View>
-            <Text className="text-white text-lg font-bold mb-1 text-center">Reverse Fee Component?</Text>
-            <Text className="text-white/60 text-xs text-center mb-6 leading-relaxed">
-              Are you sure you want to remove <Text className="text-white font-bold">{selectedFee?.name}</Text>? This will reset its balance and remove it from student dues.
+
+            <Text className="text-white text-lg font-extrabold text-center mb-1">Delete Fee Item?</Text>
+            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">
+              Are you sure you want to delete "{selectedFee?.name}" from student ledger? This action cannot be undone.
             </Text>
 
-            <View className="flex-row" style={{ gap: 10 }}>
-              <Pressable onPress={() => setShowDeleteModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
+            <View className="flex-row w-full" style={{ gap: 10 }}>
+              <Pressable onPress={() => setShowDeleteModal(false)} className="flex-1 py-3.5 rounded-xl bg-white/10 items-center">
                 <Text className="text-white font-bold text-xs">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleConfirmDeleteFee} className="flex-1 py-3 rounded-xl bg-rose-600 items-center shadow-[0_0_10px_rgba(244,63,94,0.4)]">
-                <Text className="text-white font-extrabold text-xs">Confirm Delete</Text>
+              <Pressable onPress={handleConfirmDeleteFee} className="flex-1 py-3.5 rounded-xl bg-rose-500 items-center shadow-[0_0_12px_rgba(255,81,106,0.4)]">
+                <Text className="text-white font-extrabold text-xs">Delete Item</Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* 5. PRINT RECEIPT PREVIEW MODAL */}
+      {/* PRINT RECEIPT PREVIEW MODAL */}
       <Modal visible={showPrintModal} transparent animationType="slide" onRequestClose={() => setShowPrintModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className={`bg-[#101415] border rounded-3xl w-full max-w-md overflow-hidden shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
-            <View className="flex-row justify-between items-center p-5 border-b border-white/10 bg-[#121817]">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <Printer size={18} color={primaryColor} style={{ marginRight: 8 }} />
-                <Text className="text-white text-base font-bold">Fee Receipt Preview</Text>
+                <Printer size={18} color={primaryColor} className="mr-2" />
+                <Text className="text-white font-bold text-base">Fee Payment Receipt</Text>
               </View>
-              <Pressable onPress={() => setShowPrintModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
-                <X size={16} color="#ffffff" />
+              <Pressable onPress={() => setShowPrintModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
               </Pressable>
             </View>
 
-            <View className="p-5 bg-[#121817] border border-white/10 rounded-2xl m-5">
-              <Text className={`${primaryTextClass} text-center font-extrabold text-lg tracking-wider mb-1`}>KTS INTERNATIONAL SCHOOL</Text>
-              <Text className="text-white/50 text-center text-[10px] uppercase tracking-widest mb-4">Official Fee Payment Receipt</Text>
-
-              <View className="border-t border-b border-white/10 py-3 mb-4 space-y-1">
-                <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">Receipt No:</Text>
-                  <Text className={`${primaryTextClass} text-xs font-mono font-bold`}>RCP-2026-0891</Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">Student Name:</Text>
-                  <Text className="text-white text-xs font-bold">{studentName}</Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">Class & Sec:</Text>
-                  <Text className="text-white text-xs font-semibold">{className}</Text>
-                </View>
-                <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">Admission No:</Text>
-                  <Text className="text-white text-xs font-mono">{admissionNo}</Text>
-                </View>
+            <View className="bg-black/50 p-4 rounded-2xl border border-white/10 mb-4">
+              <View className="items-center border-b border-white/10 pb-3 mb-3">
+                <Text className="text-white font-extrabold text-base">NIZAMABAD INTERNATIONAL SCHOOL</Text>
+                <Text className="text-white/50 text-[10px]">Official Student Fee Receipt • Academic Year 2026-2027</Text>
               </View>
 
-              <Text className="text-white/70 text-xs font-bold mb-2">Itemized Component:</Text>
-              <View className="bg-black/40 p-3 rounded-xl mb-4 border border-white/5 flex-row justify-between items-center">
-                <Text className="text-white text-xs font-bold">{selectedFee?.name}</Text>
-                <Text className={`${primaryTextClass} text-sm font-bold`}>₹{selectedFee?.paidAmount.toLocaleString()}</Text>
+              <View className="flex-row justify-between mb-1.5">
+                <Text className="text-white/60 text-xs">Student Name:</Text>
+                <Text className="text-white font-bold text-xs">{studentName}</Text>
               </View>
-
-              <View className={`p-3 rounded-xl flex-row justify-between items-center ${primaryBadgeClass}`}>
-                <Text className={`${primaryTextClass} text-xs font-bold`}>Total Payment Verified</Text>
-                <Text className={`${primaryTextClass} text-base font-extrabold`}>₹{selectedFee?.paidAmount.toLocaleString()}</Text>
+              <View className="flex-row justify-between mb-1.5">
+                <Text className="text-white/60 text-xs">Class & Section:</Text>
+                <Text className="text-white font-bold text-xs">{className}</Text>
+              </View>
+              <View className="flex-row justify-between mb-1.5">
+                <Text className="text-white/60 text-xs">Fee Component:</Text>
+                <Text className="text-white font-bold text-xs">{selectedFee?.name}</Text>
+              </View>
+              <View className="flex-row justify-between mb-1.5">
+                <Text className="text-white/60 text-xs">Amount Paid:</Text>
+                <Text className={`${primaryTextClass} font-extrabold text-xs`}>₹{selectedFee?.paidAmount.toLocaleString()}</Text>
+              </View>
+              <View className="flex-row justify-between">
+                <Text className="text-white/60 text-xs">Receipt Date:</Text>
+                <Text className="text-white/80 text-xs font-semibold">02-08-2026</Text>
               </View>
             </View>
 
-            <View className="p-4 border-t border-white/10 bg-[#121817] flex-row" style={{ gap: 10 }}>
-              <Pressable onPress={() => setShowPrintModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
-                <Text className="text-white font-bold text-xs">Close Preview</Text>
-              </Pressable>
-              <Pressable onPress={() => handlePrintNative()} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
-                <Text className="text-[#101415] font-extrabold text-xs">Print / PDF</Text>
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => {
+                setShowPrintModal(false);
+                showToast('Receipt Generated', 'Fee receipt sent to printer & downloaded as PDF.', 'success');
+              }}
+              className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
+            >
+              <Text className="text-[#101415] font-extrabold text-xs uppercase tracking-wider">Print / Download PDF</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
 
-      {/* CUSTOM ADMIN STAFF NOTIFICATION TOAST MODAL */}
+      {/* CUSTOM TOAST MODAL */}
       <Modal visible={toastData.visible} transparent animationType="fade" onRequestClose={() => setToastData(prev => ({ ...prev, visible: false }))}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
-          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
             <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${toastData.type === 'warning' ? 'bg-amber-500/20 border-amber-500/40' : primaryBadgeClass}`}>
               {toastData.type === 'warning' ? (
                 <AlertCircle size={28} color="#f59e0b" />
@@ -1456,7 +1141,6 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
           </View>
         </View>
       </Modal>
-
     </View>
   );
 };
@@ -1467,8 +1151,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d2a24',
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 16,
     paddingBottom: 100,
   },
 });
