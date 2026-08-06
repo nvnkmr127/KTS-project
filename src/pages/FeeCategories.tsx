@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, AlertCircle, Tags, ShieldAlert, MapPin, Search, CheckCircle, Bus } from 'lucide-react';
+import { Plus, Trash2, Loader2, AlertCircle, Tags, ShieldAlert, MapPin, Search, CheckCircle, Bus, Pencil, Check, X } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useAuth } from '../context/AuthContext';
@@ -80,6 +80,11 @@ export function FeeCategories() {
   const [newVillageAmount, setNewVillageAmount] = useState('');
   const [ratesSearch, setRatesSearch] = useState('');
   const [savingRates, setSavingRates] = useState(false);
+
+  // Inline edit rate state
+  const [editingRateId, setEditingRateId] = useState<string | null>(null);
+  const [editingVillageName, setEditingVillageName] = useState('');
+  const [editingVillageAmount, setEditingVillageAmount] = useState('');
 
   const loadCategories = async () => {
     setLoading(true);
@@ -221,6 +226,33 @@ export function FeeCategories() {
 
   const handleDeleteVillageRate = (id: string) => {
     setActiveCategoryRates(prev => prev.filter(r => r.id !== id));
+    if (editingRateId === id) setEditingRateId(null);
+  };
+
+  const handleStartEditRate = (rate: VillageRate) => {
+    setEditingRateId(rate.id);
+    setEditingVillageName(rate.village);
+    setEditingVillageAmount(String(rate.amount));
+  };
+
+  const handleCancelEditRate = () => {
+    setEditingRateId(null);
+    setEditingVillageName('');
+    setEditingVillageAmount('');
+  };
+
+  const handleSaveEditRate = (id: string) => {
+    if (!editingVillageName.trim() || !editingVillageAmount || Number(editingVillageAmount) <= 0) return;
+    setActiveCategoryRates(prev =>
+      prev.map(r =>
+        r.id === id
+          ? { ...r, village: editingVillageName.trim(), amount: Number(editingVillageAmount) }
+          : r
+      )
+    );
+    setEditingRateId(null);
+    setEditingVillageName('');
+    setEditingVillageAmount('');
   };
 
   const handleLoadDemoRates = () => {
@@ -308,20 +340,24 @@ export function FeeCategories() {
                     </td>
                     <td className="px-3.5 py-3 text-[var(--tx2)]">{c.description || 'N/A'}</td>
                     <td className="px-3.5 py-3">
-                      {rates.length > 0 ? (
-                        <button
-                          onClick={() => handleOpenRatesModal(c)}
-                          className="px-2.5 py-1 text-[11px] font-semibold bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/20 rounded-lg hover:bg-[var(--blue-bg)]/80 cursor-pointer flex items-center gap-1.5 transition-colors"
-                        >
-                          <MapPin size={11} /> {rates.length} Village Rates Configured
-                        </button>
+                      {isBusCategory ? (
+                        rates.length > 0 ? (
+                          <button
+                            onClick={() => handleOpenRatesModal(c)}
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/20 rounded-lg hover:bg-[var(--blue-bg)]/80 cursor-pointer flex items-center gap-1.5 transition-colors"
+                          >
+                            <MapPin size={11} /> {rates.length} Village Rates Configured
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenRatesModal(c)}
+                            className="px-2.5 py-1 text-[11px] font-medium border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg hover:bg-[var(--surf3)] hover:text-[var(--tx)] cursor-pointer flex items-center gap-1.5 transition-colors"
+                          >
+                            <Plus size={11} /> Configure Area Rates
+                          </button>
+                        )
                       ) : (
-                        <button
-                          onClick={() => handleOpenRatesModal(c)}
-                          className="px-2.5 py-1 text-[11px] font-medium border border-[var(--b)] bg-[var(--surf2)] text-[var(--tx2)] rounded-lg hover:bg-[var(--surf3)] hover:text-[var(--tx)] cursor-pointer flex items-center gap-1.5 transition-colors"
-                        >
-                          <Plus size={11} /> Configure Area Rates
-                        </button>
+                        <span className="text-[var(--tx3)] text-[11.5px] font-mono px-2">—</span>
                       )}
                     </td>
                     <td className="px-3.5 py-3">
@@ -331,13 +367,15 @@ export function FeeCategories() {
                     </td>
                     <td className="px-3.5 py-3">
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleOpenRatesModal(c)}
-                          className="p-1.5 rounded-lg text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer transition-colors"
-                          title="Configure Village Rates"
-                        >
-                          <MapPin size={14} />
-                        </button>
+                        {isBusCategory && (
+                          <button
+                            onClick={() => handleOpenRatesModal(c)}
+                            className="p-1.5 rounded-lg text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer transition-colors"
+                            title="Configure Village Rates"
+                          >
+                            <MapPin size={14} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteCategory(c.id)}
                           disabled={deletingId !== null}
@@ -499,7 +537,7 @@ export function FeeCategories() {
                         <th className="text-left px-3 py-1.5 w-10">#</th>
                         <th className="text-left px-3 py-1.5">Route / Village Name</th>
                         <th className="text-right px-3 py-1.5">Bus Fee (₹)</th>
-                        <th className="text-center px-3 py-1.5 w-12">Action</th>
+                        <th className="text-center px-3 py-1.5 w-20">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -512,23 +550,79 @@ export function FeeCategories() {
                           </td>
                         </tr>
                       ) : (
-                        filteredRates.map((r, index) => (
-                          <tr key={r.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)]/50 last:border-0">
-                            <td className="px-3 py-1.5 text-[var(--tx3)] font-mono text-[10.5px]">{index + 1}</td>
-                            <td className="px-3 py-1.5 font-semibold text-[var(--tx)]">{r.village}</td>
-                            <td className="px-3 py-1.5 text-right font-bold text-[var(--blue-tx)]">₹{r.amount.toLocaleString()}</td>
-                            <td className="px-3 py-1.5 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteVillageRate(r.id)}
-                                className="p-1 text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] rounded cursor-pointer"
-                                title="Remove Rate"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                        filteredRates.map((r, index) => {
+                          const isEditingThis = editingRateId === r.id;
+                          return (
+                            <tr key={r.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)]/50 last:border-0">
+                              <td className="px-3 py-1.5 text-[var(--tx3)] font-mono text-[10.5px]">{index + 1}</td>
+                              <td className="px-3 py-1.5 font-semibold text-[var(--tx)]">
+                                {isEditingThis ? (
+                                  <input
+                                    type="text"
+                                    value={editingVillageName}
+                                    onChange={(e) => setEditingVillageName(e.target.value)}
+                                    className="w-full bg-[var(--surf)] border border-[var(--blue)] rounded px-2 py-1 text-[11.5px] text-[var(--tx)] outline-none"
+                                  />
+                                ) : (
+                                  r.village
+                                )}
+                              </td>
+                              <td className="px-3 py-1.5 text-right font-bold text-[var(--blue-tx)]">
+                                {isEditingThis ? (
+                                  <input
+                                    type="number"
+                                    value={editingVillageAmount}
+                                    onChange={(e) => setEditingVillageAmount(e.target.value)}
+                                    className="w-full text-right bg-[var(--surf)] border border-[var(--blue)] rounded px-2 py-1 text-[11.5px] text-[var(--tx)] outline-none font-bold"
+                                  />
+                                ) : (
+                                  `₹${r.amount.toLocaleString()}`
+                                )}
+                              </td>
+                              <td className="px-3 py-1.5 text-center">
+                                {isEditingThis ? (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveEditRate(r.id)}
+                                      className="p-1 text-[var(--teal-tx)] hover:bg-[var(--teal-bg)] rounded cursor-pointer"
+                                      title="Save Changes"
+                                    >
+                                      <Check size={13} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEditRate}
+                                      className="p-1 text-[var(--red-tx)] hover:bg-[var(--red-bg)] rounded cursor-pointer"
+                                      title="Cancel"
+                                    >
+                                      <X size={13} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStartEditRate(r)}
+                                      className="p-1 text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] rounded cursor-pointer"
+                                      title="Edit Rate"
+                                    >
+                                      <Pencil size={12} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteVillageRate(r.id)}
+                                      className="p-1 text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] rounded cursor-pointer"
+                                      title="Remove Rate"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>

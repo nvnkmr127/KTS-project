@@ -43,6 +43,47 @@ const statusBadge = (s: 'Paid' | 'Partial' | 'Unpaid') => {
   return <Badge variant="red">Unpaid</Badge>;
 };
 
+const DEFAULT_VILLAGE_RATES = [
+  { id: '1', village: 'Chevella', amount: 7000 },
+  { id: '2', village: 'Urella', amount: 7500 },
+  { id: '3', village: 'DharmaSagar', amount: 8000 },
+  { id: '4', village: 'Devuni Yerravally', amount: 8000 },
+  { id: '5', village: 'Nyalata', amount: 9000 },
+  { id: '6', village: 'Mirzaguda', amount: 9000 },
+  { id: '7', village: 'Malkapur', amount: 7000 },
+  { id: '8', village: 'Kesaram', amount: 6500 },
+  { id: '9', village: 'Jajugutta', amount: 8500 },
+  { id: '10', village: 'Gollapally', amount: 8500 },
+  { id: '11', village: 'Damarigidda', amount: 9000 },
+  { id: '12', village: 'Dall Company', amount: 8500 },
+  { id: '13', village: 'Ramannaguda', amount: 9000 },
+  { id: '14', village: 'Pamena', amount: 9500 },
+  { id: '15', village: 'Allada', amount: 9500 },
+  { id: '16', village: 'Bastepur', amount: 10000 },
+  { id: '17', village: 'Chanvally', amount: 11500 },
+  { id: '18', village: 'Nancheri', amount: 11500 },
+  { id: '19', village: 'Kammeta', amount: 11500 },
+  { id: '20', village: 'Yenkapally Gate', amount: 11000 },
+  { id: '21', village: 'Khanapur Gate', amount: 11000 },
+  { id: '22', village: 'Gollaguda', amount: 12000 },
+  { id: '23', village: 'Khanapuram', amount: 11500 },
+  { id: '24', village: 'Ghanapur', amount: 12000 },
+  { id: '25', village: 'Devarampally', amount: 12000 },
+  { id: '26', village: 'Kothapally', amount: 12500 },
+  { id: '27', village: 'Koukuntla', amount: 12500 },
+  { id: '28', village: 'Antaram', amount: 12500 },
+  { id: '29', village: 'Aloor', amount: 12500 },
+  { id: '30', village: 'Hastepur', amount: 12500 },
+  { id: '31', village: 'Pragathi', amount: 13500 },
+  { id: '32', village: 'Singappaguda', amount: 9000 },
+  { id: '33', village: 'Ibramhimpally', amount: 9000 },
+  { id: '34', village: 'Tangedipally', amount: 12000 },
+  { id: '35', village: 'Yetla Erravelly', amount: 12500 },
+  { id: '36', village: 'Nagarguda', amount: 12500 },
+  { id: '37', village: 'Kandada', amount: 9000 },
+  { id: '38', village: 'Palgutta', amount: 9000 },
+];
+
 export function FeeManagement() {
   const { alert, confirm } = useDialog();
   const { selectedAcademicYearId } = useApp();
@@ -2083,7 +2124,12 @@ export function FeeManagement() {
 
               {/* Fee category details */}
               <div>
-                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Fee Category *</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11.5px] font-medium text-[var(--tx2)]">Fee Category *</label>
+                  <span className="text-[10px] text-[var(--purple-tx)] font-semibold">
+                    💡 Transport/Bus fees include village route selector
+                  </span>
+                </div>
                 {categories.length > 0 ? (
                   <select
                     value={currentCategory}
@@ -2091,7 +2137,7 @@ export function FeeManagement() {
                       setCurrentCategory(e.target.value);
                       setSelectedVillageArea('');
                     }}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)] font-medium"
                   >
                     {categories.map((cat) => (
                       <option key={cat.id} value={cat.name}>{cat.name}</option>
@@ -2104,7 +2150,7 @@ export function FeeManagement() {
                       setCurrentCategory(e.target.value);
                       setSelectedVillageArea('');
                     }}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)]"
+                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-medium"
                     placeholder="Tuition Fee"
                   />
                 )}
@@ -2112,15 +2158,33 @@ export function FeeManagement() {
                 {/* Dynamic Route / Village Area Selector for Bus / Transport Fee Categories */}
                 {(() => {
                   const catKey = (currentCategory || '').trim().toLowerCase();
-                  const catRates = villageRatesMap[catKey] || [];
-                  
-                  if (catRates.length === 0) return null;
+                  const selectedCatObj = categories.find(c => c.name.trim().toLowerCase() === catKey);
+                  const isTransportCat = catKey.includes('bus') || catKey.includes('transport') || catKey.includes('route') || catKey.includes('village') || catKey.includes('van');
+
+                  let catRates = villageRatesMap[catKey] || (selectedCatObj?.id ? villageRatesMap[selectedCatObj.id] : []);
+
+                  if ((!catRates || catRates.length === 0) && isTransportCat) {
+                    const anyRates = Object.values(villageRatesMap).find(v => Array.isArray(v) && v.length > 0);
+                    if (anyRates && anyRates.length > 0) {
+                      catRates = anyRates;
+                    } else {
+                      catRates = DEFAULT_VILLAGE_RATES;
+                    }
+                  }
+
+                  if (!isTransportCat && (!catRates || catRates.length === 0)) return null;
+                  if (!catRates || catRates.length === 0) return null;
 
                   // Active student address match check
                   const targetStudentObj = students.find(s => String(s.studentId) === String(modalStudentId));
-                  const studentAddr = (targetStudentObj?.address || '').trim().toLowerCase();
+                  const studentAddrStr = [
+                    targetStudentObj?.address,
+                    targetStudentObj?.parent,
+                    targetStudentObj?.name
+                  ].filter(Boolean).join(' ').toLowerCase();
+
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  const autoMatch = studentAddr ? catRates.find((r: any) => studentAddr.includes(r.village.toLowerCase()) || r.village.toLowerCase().includes(studentAddr)) : null;
+                  const autoMatch = studentAddrStr ? catRates.find((r: any) => r.village && r.village.trim() && studentAddrStr.includes(r.village.trim().toLowerCase())) : null;
 
                   return (
                     <div className="mt-2.5 p-2.5 bg-[var(--purple-bg)]/25 border border-[var(--purple-tx)]/20 rounded-xl space-y-1.5">
@@ -2129,7 +2193,7 @@ export function FeeManagement() {
                           <MapPin size={12} /> Select Route / Village Area
                         </label>
                         <span className="text-[10px] text-[var(--tx3)] font-medium">
-                          {catRates.length} Village Rates Configured
+                          {catRates.length} Village Rates Available
                         </span>
                       </div>
                       <select
@@ -2161,7 +2225,7 @@ export function FeeManagement() {
                             setSelectedVillageArea(autoMatch.village);
                             setCurrentAmount(String(autoMatch.amount));
                           }}
-                          className="w-full mt-1 p-1.5 bg-[var(--purple-bg)] text-[var(--purple-tx)] border border-[var(--purple-tx)]/30 rounded-lg text-[10.5px] font-bold flex items-center justify-between hover:bg-[var(--purple-bg)]/80 cursor-pointer transition-colors"
+                          className="w-full mt-1 p-1.5 bg-[var(--purple-bg)] text-[var(--purple-tx)] border border-[var(--purple-tx)]/30 rounded-lg text-[10.5px] font-bold flex items-center justify-between hover:bg-[var(--purple-bg)]/80 cursor-pointer transition-colors shadow-sm"
                         >
                           <span className="flex items-center gap-1">
                             📍 Matched Student Village: <strong>{autoMatch.village}</strong>
