@@ -35,6 +35,7 @@ const ADMIN_SECTIONS: NavSection[] = [
     items: [
       { icon: <Users size={14} />, label: 'Students', page: 'students', permission: 'view students' },
       { icon: <CalendarCheck size={14} />, label: 'Attendance', page: 'attendance', permission: 'view attendance' },
+      { icon: <CalendarCheck size={14} />, label: 'Allot Attendance', page: 'allot-attendance', permission: 'view attendance' },
       { icon: <BookOpen size={14} />, label: 'Daily Diary', page: 'diary', permission: 'view events' },
       { icon: <ClipboardList size={14} />, label: 'Examinations', page: 'exams', permission: 'view students' },
       { icon: <Grid3X3 size={14} />, label: 'Timetable', page: 'timetable', permission: 'view timetable' },

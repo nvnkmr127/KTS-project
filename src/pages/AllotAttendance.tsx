@@ -39,6 +39,7 @@ export interface StudentPeriodAttendance {
 
 
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function saveSettingToDb(key: string, value: any) {
   try {
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
@@ -88,10 +89,23 @@ export function AllotAttendance() {
   const [savedMsg, setSavedMsg] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Student selection state (studentId -> present/absent)
+  const u = user as any;
+  const isAdmin = Boolean(
+    u?.role === 'admin' ||
+    u?.role === 'superadmin' ||
+    u?.role === 'super_admin' ||
+    u?.role === 'Super Admin' ||
+    u?.role === 'Admin' ||
+    u?.permissionRole === 'Super Admin' ||
+    u?.permissionRole === 'Admin' ||
+    (Array.isArray(u?.roles) && (u.roles.includes('admin') || u.roles.includes('super-admin')))
+  );
+
   const [statusMap, setStatusMap] = useState<Record<string, 'present' | 'absent'>>({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [isFacultySubmitted, setIsFacultySubmitted] = useState(false);
+  const [facultyWhoSubmitted, setFacultyWhoSubmitted] = useState('');
 
   // Day of week from selected date
   const getDayName = (dateStr: string) => {
@@ -232,7 +246,9 @@ export function AllotAttendance() {
           (s.name && user.name && s.name.trim().toLowerCase() === user.name.trim().toLowerCase())
         );
         if (record) setMyStaffRecord(record);
-      } catch (e) {}
+      } catch {
+        /* ignore parse errors */
+      }
     }
   }, [user]);
 
@@ -286,49 +302,51 @@ export function AllotAttendance() {
     return false;
   };
 
-  // Determine teacher access: which classes can they take attendance for today?
-  const allowedClasses = batches.filter(batch => {
-    // 1. Is class teacher? (First period access)
-    const isClassTeacher = String(batch.class_teacher_id) === String(user?.id) ||
-      (batch.class_teacher_name && isTeacherMatch({ teacher: batch.class_teacher_name }, user, myStaffRecord));
+  // Determine teacher/admin access: which classes can they take attendance for?
+  const allowedClasses = isAdmin
+    ? batches.map(b => b.name)
+    : batches.filter(batch => {
+      // 1. Is class teacher? (First period access)
+      const isClassTeacher = String(batch.class_teacher_id) === String(user?.id) ||
+        (batch.class_teacher_name && isTeacherMatch({ teacher: batch.class_teacher_name }, user, myStaffRecord));
 
-    // 2. Teaches ANY period after lunch? (Afternoon session access)
-    const classTimetable = getClassTimetable(batch.name);
-    const todaySlots = classTimetable[dayOfWeek] || classTimetable[dayOfWeek.toLowerCase()] || {};
+      // 2. Teaches ANY period after lunch? (Afternoon session access)
+      const classTimetable = getClassTimetable(batch.name);
+      const todaySlots = classTimetable[dayOfWeek] || classTimetable[dayOfWeek.toLowerCase()] || {};
 
-    const teachesAfterLunchToday = Object.keys(todaySlots).some(pStr => {
-      const p = Number(pStr);
-      if (p >= lunchPeriodIndex || p >= 5) {
-        return isTeacherMatch(todaySlots[p], user, myStaffRecord);
-      }
-      return false;
-    });
-
-    const teachesAfterLunchAnyDay = Object.values(classTimetable).some((daySlots: any) => {
-      if (!daySlots || typeof daySlots !== 'object') return false;
-      return Object.keys(daySlots).some(pStr => {
+      const teachesAfterLunchToday = Object.keys(todaySlots).some(pStr => {
         const p = Number(pStr);
         if (p >= lunchPeriodIndex || p >= 5) {
-          return isTeacherMatch(daySlots[p], user, myStaffRecord);
+          return isTeacherMatch(todaySlots[p], user, myStaffRecord);
         }
         return false;
       });
-    });
 
-    // 3. Substitute teacher for first period
-    const isSubstituteFirstPeriod = substituteAssignments.some(sa =>
-      sa.timetable?.batch?.name === batch.name &&
-      (sa.timetable?.time_slot_id - 1) === 0
-    );
+      const teachesAfterLunchAnyDay = Object.values(classTimetable).some((daySlots: any) => {
+        if (!daySlots || typeof daySlots !== 'object') return false;
+        return Object.keys(daySlots).some(pStr => {
+          const p = Number(pStr);
+          if (p >= lunchPeriodIndex || p >= 5) {
+            return isTeacherMatch(daySlots[p], user, myStaffRecord);
+          }
+          return false;
+        });
+      });
 
-    // 4. Substitute teacher for afternoon period
-    const isSubstituteAfterLunch = substituteAssignments.some(sa =>
-      sa.timetable?.batch?.name === batch.name &&
-      (sa.timetable?.time_slot_id - 1) >= (lunchPeriodIndex || 5)
-    );
+      // 3. Substitute teacher for first period
+      const isSubstituteFirstPeriod = substituteAssignments.some(sa =>
+        sa.timetable?.batch?.name === batch.name &&
+        (sa.timetable?.time_slot_id - 1) === 0
+      );
 
-    return isClassTeacher || teachesAfterLunchToday || teachesAfterLunchAnyDay || isSubstituteFirstPeriod || isSubstituteAfterLunch;
-  }).map(b => b.name);
+      // 4. Substitute teacher for afternoon period
+      const isSubstituteAfterLunch = substituteAssignments.some(sa =>
+        sa.timetable?.batch?.name === batch.name &&
+        (sa.timetable?.time_slot_id - 1) >= (lunchPeriodIndex || 5)
+      );
+
+      return isClassTeacher || teachesAfterLunchToday || teachesAfterLunchAnyDay || isSubstituteFirstPeriod || isSubstituteAfterLunch;
+    }).map(b => b.name);
 
   // Set default class if not set or not in allowed classes
   useEffect(() => {
@@ -417,7 +435,21 @@ export function AllotAttendance() {
       });
 
       setStatusMap(initialMap);
-      setIsLocked(records.length > 0);
+
+      // Check if attendance was submitted by a faculty member
+      const facultyRecord = records.find(
+        r => r.markedBy && !r.markedBy.toLowerCase().includes('(admin)') && !r.markedBy.toLowerCase().includes('admin')
+      );
+
+      if (facultyRecord) {
+        setIsFacultySubmitted(true);
+        setFacultyWhoSubmitted(facultyRecord.markedBy || 'Faculty');
+        setIsLocked(true);
+      } else {
+        setIsFacultySubmitted(false);
+        setFacultyWhoSubmitted('');
+        setIsLocked(records.length > 0);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClass, session, date, attendanceRecords, students]);
@@ -431,6 +463,7 @@ export function AllotAttendance() {
     setSaving(true);
     try {
       const timestamp = new Date().toISOString();
+      const markerName = isAdmin ? `${user?.name || 'Admin'} (Admin)` : (user?.name || 'Teacher');
       const newEntries: StudentPeriodAttendance[] = classStudents.map(s => ({
         studentId: s.id,
         studentName: s.name,
@@ -439,7 +472,7 @@ export function AllotAttendance() {
         date: date,
         session: session,
         status: statusMap[s.id] || 'present',
-        markedBy: user?.name || 'Teacher',
+        markedBy: markerName,
         markedById: user?.id || '1',
         markedAt: timestamp
       }));
@@ -479,7 +512,7 @@ export function AllotAttendance() {
   };
 
   const toggleStudent = (studentId: string) => {
-    if (isLocked) return;
+    if (isLocked || isFacultySubmitted) return;
     setStatusMap(prev => ({
       ...prev,
       [studentId]: prev[studentId] === 'present' ? 'absent' : 'present'
@@ -487,7 +520,7 @@ export function AllotAttendance() {
   };
 
   const markAll = (status: 'present' | 'absent') => {
-    if (isLocked) return;
+    if (isLocked || isFacultySubmitted) return;
     const updated = { ...statusMap };
     classStudents.forEach(s => {
       updated[s.id] = status;
@@ -506,9 +539,15 @@ export function AllotAttendance() {
           <Users size={64} />
         </div>
         <div className="relative z-10">
-          <div className="text-[11px] font-medium opacity-70 uppercase tracking-wider mb-1">Teacher Portal</div>
+          <div className="text-[11px] font-medium opacity-70 uppercase tracking-wider mb-1">
+            {isAdmin ? 'Admin Portal' : 'Teacher Portal'}
+          </div>
           <div className="text-[18px] font-bold mb-1">Student Attendance Allotment</div>
-          <div className="text-[12px] opacity-80">Mark daily attendance for your class-teacher sections and lunch break periods.</div>
+          <div className="text-[12px] opacity-80">
+            {isAdmin
+              ? 'Mark class attendance for any class on past or current working days (available if faculty has not submitted).'
+              : 'Mark daily attendance for your class-teacher sections and lunch break periods.'}
+          </div>
         </div>
       </div>
 
@@ -529,6 +568,7 @@ export function AllotAttendance() {
                 <input
                   type="date"
                   value={date}
+                  max={getLocalDateString()}
                   onChange={(e) => setDate(e.target.value)}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] cursor-pointer"
                 />
@@ -541,7 +581,7 @@ export function AllotAttendance() {
                 </label>
                 {allowedClasses.length === 0 ? (
                   <div className="text-[11.5px] text-[var(--red-tx)] bg-[var(--red-bg)] px-3 py-2 rounded-lg border border-[var(--red-tx)]/10 font-medium">
-                    No classes assigned today
+                    No classes available
                   </div>
                 ) : (
                   <select
@@ -563,19 +603,28 @@ export function AllotAttendance() {
                 </label>
                 <select
                   value={session}
-                  onChange={(e) => setSession(e.target.value as any)}
+                  onChange={(e) => setSession(e.target.value as 'first_period' | 'lunch_period')}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >
-                  {(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) && (
-                    <option value="first_period">Morning (1st Period - Class Teacher/Substitute)</option>
+                  {isAdmin ? (
+                    <>
+                      <option value="first_period">Morning (1st Period - Admin Allotment)</option>
+                      <option value="lunch_period">Afternoon (1st Period After Lunch - Admin Allotment)</option>
+                    </>
+                  ) : (
+                    <>
+                      {(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) && (
+                        <option value="first_period">Morning (1st Period - Class Teacher/Substitute)</option>
+                      )}
+                      {(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
+                        <option value="lunch_period">Afternoon (1st Period After Lunch - Teacher/Substitute)</option>
+                      )}
+                      {!(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) &&
+                        !(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
+                          <option value="">No access for selected class today</option>
+                        )}
+                    </>
                   )}
-                  {(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
-                    <option value="lunch_period">Afternoon (1st Period After Lunch - Teacher/Substitute)</option>
-                  )}
-                  {!(isClassTeacherForSelected || isSubstituteFirstPeriodForSelected) &&
-                    !(teachesAfterLunchForSelected || isSubstituteAfterLunchForSelected) && (
-                      <option value="">No access for selected class today</option>
-                    )}
                 </select>
               </div>
 
@@ -605,9 +654,16 @@ export function AllotAttendance() {
           </Card>
 
           {allowedClasses.length > 0 &&
-            (isClassTeacherForSelected || teachesAfterLunchForSelected || isSubstituteFirstPeriodForSelected || isSubstituteAfterLunchForSelected) && (
+            (isAdmin || isClassTeacherForSelected || teachesAfterLunchForSelected || isSubstituteFirstPeriodForSelected || isSubstituteAfterLunchForSelected) && (
               <Card>
-                {isLocked && (
+                {isFacultySubmitted ? (
+                  <div className="mb-4 p-3.5 bg-[var(--amber-bg)]/30 border border-[var(--amber-tx)]/30 rounded-xl flex items-center gap-3 text-[12px] text-[var(--amber-tx)]">
+                    <AlertCircle size={18} className="flex-shrink-0 text-[var(--amber-tx)]" />
+                    <span>
+                      Attendance for Class {selectedClass} ({session === 'first_period' ? 'Morning' : 'Afternoon'}) on {date} has already been allotted by faculty (<strong>{facultyWhoSubmitted}</strong>). Admin cannot override attendance that has already been submitted by faculty.
+                    </span>
+                  </div>
+                ) : isLocked ? (
                   <div className="mb-4 p-3 bg-[var(--teal-bg)]/25 border border-[var(--teal-tx)]/15 rounded-xl flex items-center justify-between gap-3 text-[11.5px] text-[var(--tx)]">
                     <div className="flex items-center gap-2">
                       <CheckCircle size={15} className="text-[var(--teal-tx)]" />
@@ -621,7 +677,12 @@ export function AllotAttendance() {
                       Edit / Re-open
                     </button>
                   </div>
-                )}
+                ) : isAdmin ? (
+                  <div className="mb-4 p-3 bg-[var(--blue-bg)]/30 border border-[var(--blue-tx)]/20 rounded-xl flex items-center gap-2 text-[11.5px] text-[var(--blue-tx)] font-semibold">
+                    <AlertCircle size={15} />
+                    <span>Faculty has NOT allotted attendance for Class {selectedClass} on {date}. As Admin, you can allot the attendance below.</span>
+                  </div>
+                ) : null}
                 {/* Stats & Bulk Operations */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 border-b border-[var(--b)] pb-3.5">
                   <div className="flex items-center gap-3.5 flex-wrap">
@@ -685,8 +746,8 @@ export function AllotAttendance() {
                                 <button
                                   onClick={() => toggleStudent(s.id)}
                                   className={`w-24 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-all flex items-center justify-center gap-1 mx-auto ${isPresent
-                                      ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/20 hover:opacity-85'
-                                      : 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/20 hover:opacity-85'
+                                    ? 'bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/20 hover:opacity-85'
+                                    : 'bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/20 hover:opacity-85'
                                     }`}
                                 >
                                   {isPresent ? <Check size={11} /> : <XCircle size={11} />}
