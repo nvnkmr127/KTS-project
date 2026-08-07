@@ -109,7 +109,6 @@ interface AppContextValue {
 // Server notifications use generic types (info/success/warning); the bell UI
 // filters on leave_* types, so classify by the notification text. Read state
 // lives in the per-user read_by array on the server.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapServerNotification(n: any, userId: string): Notification {
   const text = `${n.title || ''} ${n.message || ''}`;
   const type: Notification['type'] = /rejected/i.test(text)
@@ -128,7 +127,6 @@ function mapServerNotification(n: any, userId: string): Notification {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const TIMETABLE_DAYS = DAYS;
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -167,183 +165,176 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     async function loadInitialData() {
       try {
-       
-      // Load Academic Years
-      try {
-        const ays = await api.getResources('academic-years');
-        if (ays && ays.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mapped = ays.map((ay: any) => ({
-            id: String(ay.id),
-            name: ay.name,
-            is_current: !!ay.is_current,
-           
-          }));
-          setAcademicYears(mapped);
-          
-          const savedId = localStorage.getItem('selected_academic_year_id');
-          if (!savedId) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const current = mapped.find((ay: any) => ay.is_current) || mapped[0];
-            setSelectedAcademicYearId(current.id);
+
+        // Load Academic Years
+        try {
+          const ays = await api.getResources('academic-years');
+          if (ays && ays.length > 0) {
+            const mapped = ays.map((ay: any) => ({
+              id: String(ay.id),
+              name: ay.name,
+              is_current: !!ay.is_current,
+
+            }));
+            setAcademicYears(mapped);
+
+            const savedId = localStorage.getItem('selected_academic_year_id');
+            if (!savedId) {
+              const current = mapped.find((ay: any) => ay.is_current) || mapped[0];
+              setSelectedAcademicYearId(current.id);
+            }
           }
+        } catch (err) {
+          console.error('Error loading academic years in AppContext:', err);
+
         }
-      } catch (err) {
-        console.error('Error loading academic years in AppContext:', err);
-       
-      }
 
-      // Load leaves
-      try {
-         
-        const leavesData = await api.getResources('leaves');
-        if (leavesData) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mappedLeaves = leavesData.map((d: any) => ({
-            id: String(d.id),
-            staffId: String(d.user_id),
-            staffName: d.staff_name || 'Staff Member',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            init: d.init || (d.staff_name ? d.staff_name.split(' ').map((n: any) => n[0] ?? '').join('') : 'SM'),
-            type: (typeof d.leave_type === 'object' && d.leave_type ? d.leave_type.name : d.leave_type) || 'Sick Leave',
-            from: d.start_date || d.from,
-            to: d.end_date || d.to,
-            days: d.days || 1,
-            reason: d.reason || '',
-            status: d.status || 'Pending',
-            appliedOn: d.created_at ? d.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-            adminNotes: d.admin_notes || '',
-          }));
-          setLeaveRequests(mappedLeaves);
-         
+        // Load leaves
+        try {
+
+          const leavesData = await api.getResources('leaves');
+          if (leavesData) {
+            const mappedLeaves = leavesData.map((d: any) => ({
+              id: String(d.id),
+              staffId: String(d.user_id),
+              staffName: d.staff_name || 'Staff Member',
+              init: d.init || (d.staff_name ? d.staff_name.split(' ').map((n: any) => n[0] ?? '').join('') : 'SM'),
+              type: (typeof d.leave_type === 'object' && d.leave_type ? d.leave_type.name : d.leave_type) || 'Sick Leave',
+              from: d.start_date || d.from,
+              to: d.end_date || d.to,
+              days: d.days || 1,
+              reason: d.reason || '',
+              status: d.status || 'Pending',
+              appliedOn: d.created_at ? d.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+              adminNotes: d.admin_notes || '',
+            }));
+            setLeaveRequests(mappedLeaves);
+
+          }
+        } catch (err) {
+          console.error('Error loading leaves in AppContext:', err);
         }
-      } catch (err) {
-        console.error('Error loading leaves in AppContext:', err);
-      }
 
-      // Load notifications
-      try {
-        const notifData = await api.getResources('notifications').catch(() => []);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setNotifications((notifData || []).map((n: any) => mapServerNotification(n, uid)));
-      } catch (err) {
-        console.error('Error loading notifications in AppContext:', err);
-      }
+        // Load notifications
+        try {
+          const notifData = await api.getResources('notifications').catch(() => []);
+          setNotifications((notifData || []).map((n: any) => mapServerNotification(n, uid)));
+        } catch (err) {
+          console.error('Error loading notifications in AppContext:', err);
+        }
 
-      // Fetch all database settings to restore to localStorage on app boot
-      try {
-        const allSettings = await api.getResources('settings');
-        if (Array.isArray(allSettings)) {
-          updateSettingsCache(allSettings);
-          const keysToExclude = ['token', 'user'];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          allSettings.forEach((setting: any) => {
-            if (setting.key && !keysToExclude.includes(setting.key) && setting.value !== undefined) {
-              // Write directly using localStorage.originalSetItem to bypass monkey-patch background writes
-              (localStorage as any).originalSetItem(setting.key, setting.value);
-              
-              // Explicitly load period timings state if present
-              if (setting.key === 'timetable_period_timings') {
-                try {
-                  const parsed = JSON.parse(setting.value);
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                    setPeriodTimings(parsed);
+        // Fetch all database settings to restore to localStorage on app boot
+        try {
+          const allSettings = await api.getResources('settings');
+          if (Array.isArray(allSettings)) {
+            updateSettingsCache(allSettings);
+            const keysToExclude = ['token', 'user'];
+            allSettings.forEach((setting: any) => {
+              if (setting.key && !keysToExclude.includes(setting.key) && setting.value !== undefined) {
+                // Write directly using localStorage.originalSetItem to bypass monkey-patch background writes
+                (localStorage as any).originalSetItem(setting.key, setting.value);
+
+                // Explicitly load period timings state if present
+                if (setting.key === 'timetable_period_timings') {
+                  try {
+                    const parsed = JSON.parse(setting.value);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      setPeriodTimings(parsed);
+                    }
+                  } catch (e) {
+                    console.error('Failed to parse timetable_period_timings:', e);
                   }
-                } catch (e) {
-                  console.error('Failed to parse timetable_period_timings:', e);
                 }
-              }
-              if (setting.key === 'kts_school_timetable') {
-                try {
-                  const parsed = JSON.parse(setting.value);
-                  if (parsed && typeof parsed === 'object') {
-                    setTimetable(prev => ({ ...prev, ...parsed }));
+                if (setting.key === 'kts_school_timetable') {
+                  try {
+                    const parsed = JSON.parse(setting.value);
+                    if (parsed && typeof parsed === 'object') {
+                      setTimetable(prev => ({ ...prev, ...parsed }));
+                    }
+                  } catch (e) {
+                    console.error('Failed to parse kts_school_timetable:', e);
                   }
-                } catch (e) {
-                  console.error('Failed to parse kts_school_timetable:', e);
                 }
               }
-            }
-          });
+            });
+          }
+        } catch (err) {
+          console.error('Error loading DB settings to localStorage in AppContext:', err);
         }
-      } catch (err) {
-        console.error('Error loading DB settings to localStorage in AppContext:', err);
-      }
 
-      // Fetch timetable from database
-      try {
-        const timetableData = await api.getResources('timetable', { limit: '1000' }).catch(() => []);
-        const savedJson = localStorage.getItem('kts_school_timetable');
-        const localTimetable: SchoolTimetable = savedJson ? JSON.parse(savedJson) : {};
-        const loadedTimetable: SchoolTimetable = { ...buildDefaultTimetable(), ...localTimetable };
+        // Fetch timetable from database
+        try {
+          const timetableData = await api.getResources('timetable', { limit: '1000' }).catch(() => []);
+          const savedJson = localStorage.getItem('kts_school_timetable');
+          const localTimetable: SchoolTimetable = savedJson ? JSON.parse(savedJson) : {};
+          const loadedTimetable: SchoolTimetable = { ...buildDefaultTimetable(), ...localTimetable };
 
-        if (Array.isArray(timetableData) && timetableData.length > 0) {
-          const dayMap: Record<string, string> = {
-            '2026-06-01': 'Monday',
-            '2026-06-02': 'Tuesday',
-            '2026-06-03': 'Wednesday',
-            '2026-06-04': 'Thursday',
-            '2026-06-05': 'Friday',
-            '2026-06-06': 'Saturday',
-          };
+          if (Array.isArray(timetableData) && timetableData.length > 0) {
+            const dayMap: Record<string, string> = {
+              '2026-06-01': 'Monday',
+              '2026-06-02': 'Tuesday',
+              '2026-06-03': 'Wednesday',
+              '2026-06-04': 'Thursday',
+              '2026-06-05': 'Friday',
+              '2026-06-06': 'Saturday',
+            };
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          timetableData.forEach((slot: any) => {
-            const rawCls = slot.batch_name || slot.class_name;
-            if (!rawCls) return;
-            
-            const cls = rawCls.trim();
-            const day = slot.day || dayMap[slot.date];
-            const p = Number(slot.period);
-            if (day && !isNaN(p) && p >= 0 && p < 12) {
-              if (!loadedTimetable[cls]) {
-                loadedTimetable[cls] = {};
-              }
-              if (!loadedTimetable[cls][day]) {
-                loadedTimetable[cls][day] = {};
-                for (let i = 0; i < 12; i++) {
-                  loadedTimetable[cls][day][i] = null;
+            timetableData.forEach((slot: any) => {
+              const rawCls = slot.batch_name || slot.class_name;
+              if (!rawCls) return;
+
+              const cls = rawCls.trim();
+              const day = slot.day || dayMap[slot.date];
+              const p = Number(slot.period);
+              if (day && !isNaN(p) && p >= 0 && p < 12) {
+                if (!loadedTimetable[cls]) {
+                  loadedTimetable[cls] = {};
                 }
+                if (!loadedTimetable[cls][day]) {
+                  loadedTimetable[cls][day] = {};
+                  for (let i = 0; i < 12; i++) {
+                    loadedTimetable[cls][day][i] = null;
+                  }
+                }
+
+                const teacherName = slot.teacher || slot.teacher_name || slot.faculty_name || slot.staff_name || '';
+                const teacherId = String(slot.teacherId ?? slot.teacher_id ?? slot.user_id ?? '');
+
+                loadedTimetable[cls][day][p] = {
+                  subject: slot.subject || '',
+                  teacher: teacherName,
+                  teacherId: teacherId,
+                  room: slot.room || 'Room 12',
+                };
               }
-
-              const teacherName = slot.teacher || slot.teacher_name || slot.faculty_name || slot.staff_name || '';
-              const teacherId = String(slot.teacherId ?? slot.teacher_id ?? slot.user_id ?? '');
-
-              loadedTimetable[cls][day][p] = {
-                subject: slot.subject || '',
-                teacher: teacherName,
-                teacherId: teacherId,
-                room: slot.room || 'Room 12',
-              };
-            }
-          });
+            });
+          }
+          setTimetable(loadedTimetable);
+        } catch (tErr) {
+          console.error('Error loading timetable in AppContext:', tErr);
         }
-        setTimetable(loadedTimetable);
-      } catch (tErr) {
-        console.error('Error loading timetable in AppContext:', tErr);
-      }
 
         // Delay pre-fetching of non-critical tab resources by 1.5 seconds
         setTimeout(() => {
-          api.getResources('students', { with: 'batch.academicYear', limit: '1000' }).catch(() => {});
-          api.getResources('batches').catch(() => {});
-          api.getResources('holidays').catch(() => {});
-          api.getSubstituteStaff().catch(() => {});
-          api.getResources('daily-diaries').catch(() => {});
-          api.getResources('fee-categories').catch(() => {});
-          api.getResources('student-fees', { limit: '10000' }).catch(() => {});
-          api.getResources('faculty').catch(() => {});
-          api.getResources('expenses').catch(() => {});
-          api.getResources('settings').catch(() => {});
-          api.getResources('settings', { key: 'kts_student_attendance_records' }).catch(() => {});
-          api.getResources('settings', { key: 'kts_holidays' }).catch(() => {});
-          api.getResources('settings', { key: 'examinations_exams' }).catch(() => {});
-          api.getResources('settings', { key: 'kts_student_marks' }).catch(() => {});
-          api.getResources('settings', { key: 'examinations_schedules' }).catch(() => {});
-          api.getResources('payslips').catch(() => {});
-          api.getResources('biometric-logs').catch(() => {});
-          api.getResources('homework').catch(() => {});
-          api.getResources('alumni').catch(() => {});
+          api.getResources('students', { with: 'batch.academicYear', limit: '1000' }).catch(() => { });
+          api.getResources('batches').catch(() => { });
+          api.getResources('holidays').catch(() => { });
+          api.getSubstituteStaff().catch(() => { });
+          api.getResources('daily-diaries').catch(() => { });
+          api.getResources('fee-categories').catch(() => { });
+          api.getResources('student-fees', { limit: '10000' }).catch(() => { });
+          api.getResources('faculty').catch(() => { });
+          api.getResources('expenses').catch(() => { });
+          api.getResources('settings').catch(() => { });
+          api.getResources('settings', { key: 'kts_student_attendance_records' }).catch(() => { });
+          api.getResources('settings', { key: 'kts_holidays' }).catch(() => { });
+          api.getResources('settings', { key: 'examinations_exams' }).catch(() => { });
+          api.getResources('settings', { key: 'kts_student_marks' }).catch(() => { });
+          api.getResources('settings', { key: 'examinations_schedules' }).catch(() => { });
+          api.getResources('payslips').catch(() => { });
+          api.getResources('biometric-logs').catch(() => { });
+          api.getResources('homework').catch(() => { });
+          api.getResources('alumni').catch(() => { });
         }, 1500);
       } catch (err) {
         console.error('Failed to load initial settings in AppContext:', err);
@@ -383,7 +374,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               if (localVal !== setting.value) {
                 // Write directly to local storage to bypass the monkey-patch save call
                 (localStorage as any).originalSetItem(setting.key, setting.value);
-                
                 // Dispatch a StorageEvent in the current window so local page listeners update state immediately
                 const event = new StorageEvent('storage', {
                   key: setting.key,
@@ -435,7 +425,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const localTimetable: SchoolTimetable = savedJson ? JSON.parse(savedJson) : {};
           const loadedTimetable: SchoolTimetable = { ...buildDefaultTimetable(), ...localTimetable };
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           timetableRes.forEach((slot: any) => {
             const rawCls = slot.batch_name || slot.class_name;
             if (!rawCls) return;
@@ -592,7 +581,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const markNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     // Persist server-side so the background poll doesn't flip them back to unread
-    api.markAllNotificationsRead().catch(() => {});
+    api.markAllNotificationsRead().catch(() => { });
   };
 
   const setTimetablePeriod = (
@@ -642,7 +631,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
       const savedTimings = localStorage.getItem('timetable_period_timings');
       if (savedTimings) {
-        try { setPeriodTimings(JSON.parse(savedTimings)); } catch (e) {}
+        try { setPeriodTimings(JSON.parse(savedTimings)); } catch (e) { }
       }
 
       const timetableData = await api.getResources('timetable', { limit: '1000' }).catch(() => []);
@@ -660,11 +649,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           '2026-06-06': 'Saturday',
         };
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         timetableData.forEach((slot: any) => {
           const rawCls = slot.batch_name || slot.class_name;
           if (!rawCls) return;
-          
+
           const cls = rawCls.trim();
           const day = slot.day || dayMap[slot.date];
           const p = Number(slot.period);

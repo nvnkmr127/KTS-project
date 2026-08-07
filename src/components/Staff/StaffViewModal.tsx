@@ -6,38 +6,30 @@ import { Badge } from '../Badge';
 
 interface StaffViewModalProps {
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   modal: any;
   onClose: () => void;
   activeTab: string;
    
   setActiveTab: (tab: 'info' | 'leaves' | 'attendance' | 'salary' | 'slips') => void;
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   leaveRequests: any[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   uploadedDocs: Record<string, any>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSelectedSlip: (slip: any) => void;
     attStartDate: string;
   attEndDate: string;
   manualAttendance: Record<string, Record<string, string>>;
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   biometricPunches: any[];
   setAttStartDate: (val: string) => void;
   setAttEndDate: (val: string) => void;
    
   setAttPage: (val: number) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setSelectedDocPreview: (doc: any) => void;
   attPage: number;
   staffSalaries: Record<string, Record<string, number>>;
   setNewDocName: (val: string) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setNewDocFile: (val: any) => void;
   setAddDocModalOpen: (val: boolean) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payslips: any[];
 }
 
@@ -119,7 +111,6 @@ export function StaffViewModal({
                   <button
                     key={tab.id}
                     type="button"
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`flex items-center gap-1.5 py-2.5 px-4 text-[12px] font-semibold border-b-2 whitespace-nowrap transition-all cursor-pointer ${
                       activeTab === tab.id

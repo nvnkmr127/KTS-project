@@ -65,13 +65,11 @@ export function Promotion() {
         ]);
         
          
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sortedAys = (ayData || []).map((ay: any) => ({ id: String(ay.id), name: ay.name }));
         setAcademicYears(sortedAys);
         
          
         // Find current academic year to set as default source
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const currentAy = ayData?.find((ay: any) => ay.is_current);
         if (currentAy) {
           setSourceAy(String(currentAy.id));
@@ -93,7 +91,6 @@ export function Promotion() {
          
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mappedBatches = (batchesData || []).map((b: any) => ({
           id: String(b.id),
           name: b.name,
@@ -199,10 +196,8 @@ export function Promotion() {
         // then filter client-side by batch_id — this is instant when cached.
         const allStudents = await api.getResources('students');
         const batchStudents = (allStudents || []).filter(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (s: any) => String(s.batch_id) === String(sourceBatch)
         );
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapped = batchStudents.map((s: any) => ({
           id: String(s.id),
           name: s.name,
@@ -306,7 +301,6 @@ export function Promotion() {
     
     try {
       const updates = Object.values(promotionStates).map(async (state) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const payload: Record<string, any> = {};
         
         if (state.action === 'promote') {
@@ -378,7 +372,6 @@ export function Promotion() {
       
       // Reload
       const data = await api.getResources('students', { batch_id: sourceBatch, limit: '1000' });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped = data.map((s: any) => ({
         id: String(s.id),
         name: s.name,

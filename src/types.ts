@@ -50,7 +50,6 @@ export interface Student {
   sub_caste?: string;
   tc_no?: string;
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
@@ -62,6 +61,5 @@ export interface Staff {
   email?: string;
    
   phone?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }

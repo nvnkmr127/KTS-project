@@ -18,7 +18,6 @@ const DEPT_COLORS: Record<string, { bg: string, color: string }> = {
 interface StaffTableProps {
   loading: boolean;
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   sortedFiltered: any[];
   selectedIds: string[];
   setSelectedIds: (val: string[]) => void;
@@ -26,9 +25,7 @@ interface StaffTableProps {
    
   sortOrder: 'asc' | 'desc';
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleSort: (field: any) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setModal: (val: any) => void;
   handleDelete: (id: string) => void;
   search: string;

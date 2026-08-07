@@ -206,9 +206,7 @@ export function StaffManagement() {
 
   // States for detailed view tabs and payslips
   const [activeTab, setActiveTab] = useState<'info' | 'leaves' | 'attendance' | 'salary' | 'slips'>('info');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedSlip, setSelectedSlip] = useState<any | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [payslips, setPayslips] = useState<any[]>([]);
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
   const [manualAttendance, setManualAttendance] = useState<Record<string, Record<string, string>>>(() => {
@@ -217,7 +215,6 @@ export function StaffManagement() {
      
     return (saved && JSON.parse(saved)) || {};
   });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [biometricPunches, setBiometricPunches] = useState<any[]>(() => {
     const saved = localStorage.getItem('kts_biometric_punches');
     return (saved && JSON.parse(saved)) || [];
@@ -624,10 +621,8 @@ export function StaffManagement() {
 
   const sortedFiltered = [...filtered].sort((a, b) => {
     if (!sortField) return 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let valA: any = a[sortField];
      
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let valB: any = b[sortField];
 
     if (sortField === 'name') {

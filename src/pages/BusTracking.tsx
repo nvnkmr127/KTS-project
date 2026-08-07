@@ -788,9 +788,7 @@ export function BusTracking() {
                   icon={{
                     url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(getSchoolSvgString())}`,
                      
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     scaledSize: new (window as any).google.maps.Size(46, 54),
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     anchor: new (window as any).google.maps.Point(23, 49)
                   }}
                   title="KTS School"
@@ -833,9 +831,7 @@ export function BusTracking() {
                           `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="4" fill="${cfg.color}" stroke="white" stroke-width="1.5"/></svg>`
                          
                         )}`,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         scaledSize: new (window as any).google.maps.Size(10, 10),
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         anchor: new (window as any).google.maps.Point(5, 5)
                       }}
                       title={`${stop.name} (Route ${cfg.id} Stop)`}
@@ -862,9 +858,7 @@ export function BusTracking() {
                       position={pos}
                       icon={{
                         url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(getBusSvgString(cfg.color, String(cfg.id), heading))}`,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         scaledSize: new (window as any).google.maps.Size(64, 64),
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         anchor: new (window as any).google.maps.Point(32, 32)
                       }}
                       opacity={opacity}

@@ -3,7 +3,6 @@ import { X, Printer } from 'lucide-react';
 
 interface StaffPayslipModalProps {
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   selectedSlip: any;
   onClose: () => void;
 }

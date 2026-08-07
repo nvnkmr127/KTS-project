@@ -35,7 +35,6 @@ const salaryData = [
 const barColors = ['var(--purple)', 'var(--blue)', 'var(--teal)', 'var(--amber)', 'var(--coral)'];
 
  
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomBar = (props: any) => {
   const { x, y, width, height, index } = props;
   return <rect x={x} y={y} width={width} height={height} fill={barColors[index] || 'var(--blue)'} rx={4} />;
@@ -64,7 +63,6 @@ export function Faculty() {
     try {
        
       const settings = await api.getResources('settings');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existing = settings.find((s: any) => s.key === key);
       if (existing) {
         await api.updateResource('settings', existing.id, { key, value });
@@ -110,7 +108,6 @@ export function Faculty() {
      
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let currentStaffList: any[] = [];
       try {
         const savedStaffStr = localStorage.getItem('kts_staff_members');
@@ -130,13 +127,11 @@ export function Faculty() {
         currentStaffList = STAFF;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const teachingStaff = currentStaffList.filter((s: any) => {
         const cat = (s.category || 'Teaching').toString().trim().toLowerCase();
         return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedLocal: FacultyMember[] = teachingStaff.map((s: any) => {
         return {
           id: String(s.id),
@@ -163,7 +158,6 @@ export function Faculty() {
           return cat === 'teaching' || cat === 'non-teaching' || cat.includes('teach');
         });
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         mappedApi = teachingUsers.map((u: any) => {
           const initials = collectInitials(u.name);
           return {
@@ -283,7 +277,6 @@ export function Faculty() {
       ...customDocs
     ];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: any = {
       name: fullName,
       email: email,
@@ -471,7 +464,6 @@ export function Faculty() {
           value={`₹${((faculty.reduce((sum, f) => {
             const savedStaffStr = localStorage.getItem('kts_staff_members');
             const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const staff = currentStaffList.find((s: any) => s.name.toLowerCase() === f.name.toLowerCase());
             return sum + (staff?.salary || 0);
           }, 0)) / 100000).toFixed(1)}L`}
@@ -608,7 +600,6 @@ export function Faculty() {
       {/* Add / Edit Faculty Modal */}
       {(modal === 'add' || modal === 'edit') && (() => {
         // Load details from kts_staff_members for prepopulating
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let selectedStaff: any = null;
         if (selected) {
           try {

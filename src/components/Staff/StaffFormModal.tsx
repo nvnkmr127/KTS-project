@@ -4,7 +4,6 @@ import { X, CheckCircle2, Plus, FileText } from 'lucide-react';
 
 interface StaffFormModalProps {
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   modal: any;
 
   onClose: () => void;
@@ -17,7 +16,6 @@ interface StaffFormModalProps {
   getDocsForCategory: (c: string) => string[];
    
   customDocs?: string[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setCustomDocs: (docs: any) => void;
   uploadedFiles: Record<string, File>;
   setUploadedFiles: React.Dispatch<React.SetStateAction<Record<string, File>>>;
@@ -331,7 +329,6 @@ export function StaffFormModal({
                            
                           onClick={(e) => {
                             e.stopPropagation();
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             setCustomDocs((prev: string[]) => prev.filter((_: any, idx: number) => idx !== index));
                             setUploadedFiles(prev => {
                               const next = { ...prev };

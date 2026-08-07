@@ -96,7 +96,6 @@ export function StaffAccess() {
             const updated = { ...prev };
             loadedStaff.forEach((s) => {
               const matched = dbUsers.find(
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (u: any) =>
                   (s.email && u.email?.toLowerCase() === s.email.toLowerCase()) ||
                   (s.name && u.name?.toLowerCase() === s.name.toLowerCase()) ||
@@ -153,7 +152,6 @@ export function StaffAccess() {
     try {
       const existingUsers = await api.getResources('users');
       const matchedUser = Array.isArray(existingUsers) ? existingUsers.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) =>
           (targetEmail && u.email?.toLowerCase() === targetEmail.toLowerCase()) ||
           (staff?.name && u.name?.toLowerCase() === staff.name.toLowerCase()) ||
@@ -205,7 +203,6 @@ export function StaffAccess() {
     try {
       const existingUsers = await api.getResources('users');
       const matchedUser = Array.isArray(existingUsers) ? existingUsers.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) =>
           (targetEmail && u.email?.toLowerCase() === targetEmail.toLowerCase()) ||
           (staff?.name && u.name?.toLowerCase() === staff.name.toLowerCase()) ||
@@ -248,7 +245,6 @@ export function StaffAccess() {
       // Check if user already exists in DB
       const existingUsers = await api.getResources('users');
       const matchedUser = Array.isArray(existingUsers) ? existingUsers.find(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (u: any) => u.email.toLowerCase() === inputEmail.toLowerCase()
       ) : null;
 
@@ -297,7 +293,6 @@ export function StaffAccess() {
       try {
         const existingUsers = await api.getResources('users');
         const matchedUser = Array.isArray(existingUsers) ? existingUsers.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (u: any) =>
             (targetEmail && u.email?.toLowerCase() === targetEmail.toLowerCase()) ||
             (staff?.name && u.name?.toLowerCase() === staff.name.toLowerCase()) ||
@@ -337,7 +332,6 @@ export function StaffAccess() {
       if (emailToUse) {
         const existingUsers = await api.getResources('users');
         const matchedUser = existingUsers.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (u: any) => u.email.toLowerCase() === emailToUse.toLowerCase()
         );
         if (matchedUser && matchedUser.role) {

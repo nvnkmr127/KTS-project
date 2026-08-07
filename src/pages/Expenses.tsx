@@ -58,7 +58,6 @@ export function Expenses() {
     setLoading(true);
     try {
       const data = await api.getResources('expenses');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped = data.map((e: any) => {
         const catName = typeof e.category === 'object' && e.category !== null 
           ? e.category.name 

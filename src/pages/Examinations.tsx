@@ -467,7 +467,6 @@ function ExamScheduleDesigner({
 }
 
  
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function saveSettingToDb(key: string, value: any) {
   try {
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
@@ -549,7 +548,6 @@ export function Examinations() {
            
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const data = XLSX.utils.sheet_to_json(ws) as any[];
 
           const parsedExams: Exam[] = data.map((row, idx) => ({
@@ -560,7 +558,6 @@ export function Examinations() {
             subject: String(row['Subject'] || 'All Subjects').trim(),
             date: String(row['Date'] || new Date().toISOString().slice(0, 10)).trim(),
             maxMarks: parseInt(row['Max Marks'] || row['Marks']) || 100,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             status: (row['Status'] || 'Upcoming') as any
           }));
 
@@ -633,7 +630,6 @@ export function Examinations() {
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [selectedMarksClass, setSelectedMarksClass] = useState('8A');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [students, setStudents] = useState<any[]>([]);
   const [selectedMarksExamId, setSelectedMarksExamId] = useState<string>('');
   const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>('Mathematics');
@@ -825,7 +821,6 @@ export function Examinations() {
         const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
         const foundClasses = new Set<string>();
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         batchesData.forEach((b: any) => {
           const batchName = b.name;
           const match = batchName.match(/^(.+?)([A-Z])$/);
@@ -977,7 +972,6 @@ export function Examinations() {
     : exams.filter((e) => e.status === 'Completed');
 
   const getFilteredStudentsForMarks = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dbFiltered = students.filter((s: any) => {
       const studentClass = s.batch?.name || (s.class && s.section ? `${s.class}${s.section}` : s.class || '');
       return studentClass.toUpperCase() === selectedMarksClass.toUpperCase();
@@ -998,7 +992,6 @@ export function Examinations() {
     };
 
     if (dbFiltered.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return dbFiltered.map((s: any, idx: number) => {
         const initials = s.name.trim().split(/\s+/).map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
         const roll = s.enrollment_number || `${selectedMarksClass}-${String(idx + 1).padStart(3, '0')}`;
@@ -1068,7 +1061,6 @@ export function Examinations() {
               <select
                 value={examSortField}
                 onChange={(e) => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const val = e.target.value as any;
                   setExamSortField(val);
                   setExamSortOrder('asc');

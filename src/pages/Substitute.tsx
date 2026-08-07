@@ -235,16 +235,12 @@ const Substitute = () => {
 
   const [selectedDate, setSelectedDate] = useState<string>(getLocalDateString());
   const [selectedStaff, setSelectedStaff] = useState<string>('');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [staffList, setStaffList] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [schedule, setSchedule] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [availableSubstitutes, setAvailableSubstitutes] = useState<any[]>([]);
   const [holidaysMap, setHolidaysMap] = useState<Record<string, string>>({});
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedPeriod, setSelectedPeriod] = useState<any>(null);
   const [selectedSubstitute, setSelectedSubstitute] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
@@ -281,7 +277,6 @@ const Substitute = () => {
         const data = await api.getResources('holidays');
         if (Array.isArray(data)) {
           const map: Record<string, string> = {};
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data.forEach((h: any) => {
             if (h.date) {
               const ymd = h.date.slice(0, 10);
@@ -361,7 +356,6 @@ const Substitute = () => {
     fetchAvailable();
   }, [selectedPeriod, isModalOpen, selectedDate, selectedStaff]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handlePeriodClick = (period: any) => {
     setSelectedPeriod(period);
     setSelectedSubstitute(period.substitute ? String(period.substitute.id) : '');

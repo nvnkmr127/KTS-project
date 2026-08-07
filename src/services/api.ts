@@ -5,7 +5,6 @@ const BASE_URL = config.apiUrl;
 
 // ponytail: plain Map with insertion-order eviction, not true LRU — entries
 // expire on TTL anyway; bring back recency tracking if the 100-entry cap thrashes.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_CAPACITY = 100;
 const CACHE_TTL = 300000; // 5 minutes cache TTL, allowing data to update without browser refresh
@@ -184,7 +183,6 @@ async function syncLocalAttendanceRecords() {
   try {
     const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
     if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (localStorage as any).originalSetItem('kts_student_attendance_records', settingsRes[0].value);
     }
   } catch (err) {
@@ -216,7 +214,6 @@ export const api = {
 
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async login(credentials: any) {
     const res = await request('/login', {
       method: 'POST',
@@ -224,7 +221,6 @@ export const api = {
       body: JSON.stringify(credentials),
     });
     if (res.token) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       storage.setItem('token', res.token as any as any);
       clearApiCache(); // Clear any stale cached data on fresh login
     }
@@ -256,7 +252,6 @@ export const api = {
     return request(`/resources/${resource}/${id}`);
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createResource(resource: string, data: any) {
     clearApiCache(resource);
     return request(`/resources/${resource}`, {
@@ -266,7 +261,6 @@ export const api = {
     });
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async bulkCreateResource(resource: string, records: any[]) {
     clearApiCache(resource);
 
@@ -276,7 +270,6 @@ export const api = {
     });
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async updateResource(resource: string, id: string, data: any) {
     clearApiCache(resource);
     return request(`/resources/${resource}/${id}`, {
@@ -296,7 +289,6 @@ export const api = {
   async getBatchName(batchId: string): Promise<string> {
     try {
       const batches = await this.getResources('batches');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const batch = batches.find((b: any) => String(b.id) === String(batchId));
       return batch ? batch.name : batchId;
     } catch {
@@ -313,13 +305,11 @@ export const api = {
       const batchName = await this.getBatchName(batchId);
       const localRecords = storage.getItem('kts_student_attendance_records');
       if (localRecords) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const records = localRecords as any[];
         // Filter records for this class
         const classRecords = records.filter(r => r.className.toLowerCase() === batchName.toLowerCase());
 
         if (original && original.success && original.data && Array.isArray(original.data.students)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           original.data.students = original.data.students.map((student: any) => {
             const studentRecords = classRecords.filter(r => String(r.studentId) === String(student.id));
 
@@ -365,7 +355,6 @@ export const api = {
     try {
       const localRecords = storage.getItem('kts_student_attendance_records');
       if (localRecords) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const records = localRecords as any[];
 
         const studentRecords = records.filter(
@@ -375,13 +364,11 @@ export const api = {
         if (studentRecords.length > 0 && original && original.success && original.data) {
           const list = original.data.attendances || [];
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           studentRecords.forEach((record: any) => {
             const isFirst = record.session === 'first_period';
             const idKey = `custom-${record.session}-${date}`;
 
             // Check if already in the list to avoid duplicate rendering
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!list.some((a: any) => String(a.id) === idKey)) {
               list.push({
                 id: idKey,
@@ -407,12 +394,10 @@ export const api = {
 
 
           // Sort by check-in time
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           list.sort((a: any, b: any) => (a.check_in_time || '').localeCompare(b.check_in_time || ''));
 
           // Recalculate statistics for this date
           const total = list.length;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const present = list.filter((a: any) => ['present', 'late'].includes(a.status)).length;
           const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
 
@@ -422,7 +407,6 @@ export const api = {
             total,
             present,
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             absent: list.filter((a: any) => a.status === 'absent').length,
             percentage,
           };
@@ -450,7 +434,6 @@ export const api = {
 
       const localRecords = storage.getItem('kts_student_attendance_records');
       if (localRecords && original && original.success && original.data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const records = localRecords as any[];
         const todayRecords = records.filter(r => r.date === today);
 
@@ -462,21 +445,18 @@ export const api = {
           const batches = await request('/resources/batches?limit=1000').catch(() => []);
           const batchMap: Record<string, number> = {};
           if (Array.isArray(batches)) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             batches.forEach((b: any) => {
               batchMap[String(b.name).toLowerCase()] = Number(b.id);
             });
           }
 
           // Map each local record to the today list format
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           todayRecords.forEach((record: any) => {
             const isFirst = record.session === 'first_period';
             const idKey = `today-custom-${record.studentId}-${record.session}`;
             const resolvedBatchId = batchMap[String(record.className).toLowerCase()] || 1;
 
             // Check if already in today list
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             if (!list.some((a: any) => String(a.id) === idKey || (String(a.student_id) === String(record.studentId) && String(a.time_slot_id) === (isFirst ? '1' : '6')))) {
               // Find student details from record to populate batch_id
               list.push({
@@ -509,7 +489,6 @@ export const api = {
   async saveSetting(key: string, value: string) {
     try {
       const settings = await request('/resources/settings');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existing = Array.isArray(settings) ? settings.find((s: any) => s.key === key) : null;
       if (existing) {
         return await request(`/resources/settings/${existing.id}`, {
@@ -538,7 +517,6 @@ export const api = {
   async deleteSetting(key: string) {
     try {
       const settings = await request('/resources/settings');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existing = Array.isArray(settings) ? settings.find((s: any) => s.key === key) : null;
       if (existing) {
         return await request(`/resources/settings/${existing.id}`, {
@@ -670,12 +648,10 @@ export const api = {
   },
 
   async biometricTestConnection(credentials?: { corporate_id?: string; username?: string; password?: string }) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const params = credentials ? new URLSearchParams(credentials as any).toString() : '';
     return request(params ? `/biometric/test-connection?${params}` : '/biometric/test-connection', { timeoutMs: 35000 });
   },
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async biometricSaveCredentials(credentials: any) {
     return request('/biometric/credentials', {
       method: 'POST',

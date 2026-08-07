@@ -39,7 +39,6 @@ export interface StudentPeriodAttendance {
 
 
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function saveSettingToDb(key: string, value: any) {
   try {
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
@@ -81,7 +80,6 @@ export function AllotAttendance() {
   const [selectedClass, setSelectedClass] = useState<string>('');
 
   const [session, setSession] = useState<'first_period' | 'lunch_period'>('first_period');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [substituteAssignments, setSubstituteAssignments] = useState<any[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -157,7 +155,6 @@ export function AllotAttendance() {
         });
         setBatches(mappedBatches);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setStudents(studentsData.map((s: any) => ({
           id: String(s.id),
           name: s.name,

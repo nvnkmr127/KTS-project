@@ -35,7 +35,6 @@ export function SalaryCategories() {
 
 
   // Assign Salary Modal
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [editingStaff, setEditingStaff] = useState<any | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
@@ -61,7 +60,6 @@ export function SalaryCategories() {
 
     try {
       const settings = await api.getResources('settings');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const existing = settings.find((s: any) => s.key === key);
       if (existing) {
         await api.updateResource('settings', existing.id, { key, value });
@@ -80,7 +78,6 @@ export function SalaryCategories() {
       try {
         const settings = await api.getResources('settings');
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const compSetting = settings.find((s: any) => s.key === 'salary_components');
         if (compSetting && compSetting.value) {
           (localStorage as any).originalSetItem('salary_components', compSetting.value);
@@ -104,7 +101,6 @@ export function SalaryCategories() {
           }
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const salariesSetting = settings.find((s: any) => s.key === 'staff_salaries');
         if (salariesSetting && salariesSetting.value) {
           (localStorage as any).originalSetItem('staff_salaries', salariesSetting.value);
@@ -118,7 +114,6 @@ export function SalaryCategories() {
           }
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const staffSetting = settings.find((s: any) => s.key === 'kts_staff_members');
         const savedStaff = localStorage.getItem('kts_staff_members');
         if ((!savedStaff || savedStaff === '[]') && staffSetting && staffSetting.value) {
@@ -152,7 +147,6 @@ export function SalaryCategories() {
       const savedStaffStr = localStorage.getItem('kts_staff_members');
       const currentStaffList = savedStaffStr ? JSON.parse(savedStaffStr) : STAFF;
       // Map staff directory members to matching structure
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedStaff = currentStaffList.map((s: any) => ({
         id: s.id,
         name: s.name,
@@ -242,7 +236,6 @@ export function SalaryCategories() {
   );
 
   // Open Edit Salary Modal
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const openEditSalary = (staff: any) => {
     setEditingStaff(staff);
     const salaries = staffSalaries[staff.id] || staffSalaries[staff.name] || {};
@@ -413,7 +406,6 @@ export function SalaryCategories() {
                   });
                   const netSalary = Math.max(0, earningsSum - deductionsSum);
 
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   const init = staff.name.split(' ').map((n: any) => n[0] ?? '').join('').toUpperCase().slice(0, 2);
 
                   return (

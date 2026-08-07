@@ -32,7 +32,6 @@ interface WebhookCall {
   success: boolean;
   status_code: number;
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: any;
   response_body: string;
   execution_time_ms: number;
@@ -72,9 +71,7 @@ export function WebhookManagement() {
    
   // Events/Categories metadata
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [eventTypes, setEventTypes] = useState<Record<string, any>>({});
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [categories, setCategories] = useState<Record<string, any>>({});
 
   // Active webhook selection (for Configure view)
@@ -125,7 +122,6 @@ export function WebhookManagement() {
     try {
       const data = await api.getResources('webhooks');
       if (Array.isArray(data)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setWebhooks(data.map((w: any) => ({
           id: String(w.id),
           event_name: w.event_name,
@@ -487,7 +483,6 @@ export function WebhookManagement() {
       'Automation': { name: 'Automation', events: {} }
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Object.entries(availableCategories).forEach(([catKey, catVal]: [string, any]) => {
       const catName = catVal.name || catKey;
        
@@ -499,13 +494,11 @@ export function WebhookManagement() {
        
       const catEvents = catVal.events || {};
       if (Object.keys(catEvents).length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Object.entries(catEvents).forEach(([eKey, eVal]: [string, any]) => {
           grouped[catName].events.push({ key: eKey, label: eVal.name || eKey });
         });
       } else {
         // Fallback matching if categories don't list events directly
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Object.entries(eventTypes).forEach(([eKey, eVal]: [string, any]) => {
           if (eVal.category === catName || eVal.category === catKey) {
             grouped[catName].events.push({ key: eKey, label: eVal.name || eKey });

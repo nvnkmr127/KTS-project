@@ -91,7 +91,6 @@ export function MySalary() {
   const [components, setComponents] = useState<any[]>([]);
    
   const [staffSalaries, setStaffSalaries] = useState<Record<string, Record<string, number>>>({});
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [leavesList, setLeavesList] = useState<any[]>([]);
   const [myStaffRecord, setMyStaffRecord] = useState<any>(null);
  
@@ -217,7 +216,6 @@ export function MySalary() {
       const data = await api.getResources('payslips').catch(() => []);
        
       const apiSlips: PayslipRecord[] = (Array.isArray(data) ? data : [])
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .filter((p: any) => String(p.user_id) === String(user.id))
         .map((p: any): PayslipRecord => {
           const gross = Number(p.gross_salary) || 0;

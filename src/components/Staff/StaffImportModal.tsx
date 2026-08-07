@@ -24,7 +24,6 @@ const STAFF_SYNONYMS: Record<string, string[]> = {
 };
 
  
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cleanDate = (val: any): string => {
   if (!val) return '';
   if (typeof val === 'number') {
@@ -59,7 +58,6 @@ const cleanDate = (val: any): string => {
 };
  
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cleanDepartment = (val: any): string => {
   if (!val) return 'Mathematics';
   const str = String(val).trim().toLowerCase();
@@ -93,7 +91,6 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
    
   const [successCount, setSuccessCount] = useState<number | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parseExcel = async (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -115,7 +112,6 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parseWord = async (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -130,7 +126,6 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
           const doc = parser.parseFromString(html, 'text/html');
           const tables = doc.querySelectorAll('table');
           
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const rowsData: any[][] = [];
           if (tables.length > 0) {
             tables.forEach((table) => {
@@ -164,7 +159,6 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
     });
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsePDF = async (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -178,15 +172,12 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
            
           
            
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const rowsData: any[][] = [];
           for (let i = 1; i <= pdf.numPages; i++) {
             const page = await pdf.getPage(i);
             const textContent = await page.getTextContent();
             
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const items = textContent.items as any[];
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const lineGroups: Record<number, any[]> = {};
             
             items.forEach((item) => {
@@ -224,7 +215,6 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
     setLoading(true);
     setError('');
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let rawRows: any[][] = [];
       const ext = selectedFile.name.split('.').pop()?.toLowerCase();
       if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
@@ -331,7 +321,6 @@ export function StaffImportModal({ onClose, onImportSuccess }: StaffImportModalP
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateStaffField = (id: string, field: keyof StaffMember, value: any) => {
     setMappedStaff(prev =>
       prev.map(s => (s.id === id ? { ...s, [field]: value } : s))

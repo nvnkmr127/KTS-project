@@ -289,15 +289,10 @@ export function StaffAttendance() {
     api.getResources('settings')
       .then(async (settings) => {
         const settingsArray = Array.isArray(settings) ? settings : (settings && settings.data && Array.isArray(settings.data) ? settings.data : []);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const startSetting = settingsArray.find((s: any) => s.key === 'school_start_time');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const endSetting = settingsArray.find((s: any) => s.key === 'school_end_time');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const presMSetting = settingsArray.find((s: any) => s.key === 'present_cutoff_morning');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const presESetting = settingsArray.find((s: any) => s.key === 'present_cutoff_evening');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const lateSetting = settingsArray.find((s: any) => s.key === 'late_entry_cutoff');
         const earlySetting = settingsArray.find((s: any) => s.key === 'early_entry_cutoff');
 

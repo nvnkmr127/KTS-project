@@ -38,7 +38,6 @@ const getDaysDiff = (startStr: string, endStr: string) => {
   return isNaN(diffDays) ? 1 : diffDays;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomBar = (props: any) => {
   const { x, y, width, height, index } = props;
   const color = index === 3 ? 'var(--blue)' : 'var(--teal)';

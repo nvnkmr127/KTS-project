@@ -20,9 +20,7 @@ export function Login() {
       .then((res) => (res.ok ? res.json() : []))
       .then((data) => {
       if (Array.isArray(data)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const nameSet = data.find((s: any) => s.key === 'school_name');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const logoSet = data.find((s: any) => s.key === 'school_logo');
         if (nameSet?.value) {
           setSchoolName(nameSet.value);

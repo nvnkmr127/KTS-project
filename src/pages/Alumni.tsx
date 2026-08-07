@@ -124,7 +124,6 @@ export function Alumni() {
       try {
         const data = await api.getResources('alumni');
         if (Array.isArray(data) && data.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           backendAlumni = data.map((a: any) => ({
             id: String(a.id),
             name: a.name,
@@ -132,7 +131,6 @@ export function Alumni() {
             passOutYear: String(a.pass_out_year || a.passOutYear || ''),
             class: String(a.class || '10'),
             section: a.section || 'A',
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             gender: (a.gender as any) || 'Male',
             dob: a.dob ? a.dob.slice(0, 10) : '',
             phone: a.phone || a.student_mobile || '',
@@ -238,7 +236,6 @@ export function Alumni() {
           // fallback to local
         }
         const localRecord = { ...payload, passOutYear: fYear, currentOccupation: fOccupation, status: fStatus, source: 'manual' as const };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const added = addLocalAlumni(localRecord as any);
         showToast('Alumni record added!', true);
       } else if (modal === 'edit' && selected) {
@@ -250,7 +247,6 @@ export function Alumni() {
           // ignore backend failure
         }
         const localRecord = { ...payload, passOutYear: fYear, currentOccupation: fOccupation, status: fStatus, source: selected.source || 'manual' };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         updateLocalAlumni(selected.id, localRecord as any);
         showToast('Alumni record updated!', true);
       }
@@ -270,13 +266,11 @@ export function Alumni() {
       if (!deleteId.toString().startsWith('local-')) {
         await api.updateResource('alumni', deleteId, { status: 'Deleted' });
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       updateLocalAlumni(deleteId, { status: 'Deleted' as any });
       await load();
       showToast('Alumni record moved to recycle bin.', true);
     } catch {
       // local fallback
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       updateLocalAlumni(deleteId, { status: 'Deleted' as any });
       await load();
       showToast('Alumni record moved to recycle bin.', true);

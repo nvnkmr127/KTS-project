@@ -19,19 +19,12 @@ import { StaffAttendanceAnalytics } from './StaffAttendanceAnalytics';
 import { StudentDataReport } from './StudentDataReport';
 
 // --- FALLBACK MOCK DATA (used if database is empty) ---
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const defaultTermData: any[] = [];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const defaultAttPieData: any[] = [];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const defaultYoyData: any[] = [];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const defaultFunnelData: any[] = [];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const defaultCohortData: any[] = [];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const defaultStaffAbsenceData: any[] = [];
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const defaultForecastData: any[] = [];
 
 const exportsList = [
@@ -68,17 +61,11 @@ export function Reports() {
   const [loading, setLoading] = useState(true);
 
   // Raw data lists for export
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [studentsList, setStudentsList] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [studentFeesList, setStudentFeesList] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [facultyList, setFacultyList] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [studentAttendanceList, setStudentAttendanceList] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [allStudentsList, setAllStudentsList] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [allStudentFeesList, setAllStudentFeesList] = useState<any[]>([]);
 
   // Dynamic calculated states
@@ -92,7 +79,6 @@ export function Reports() {
   const [staffKPIs, setStaffKPIs] = useState({ rate: '0%', worstName: 'N/A', worstVal: '0 days', perfectCount: '0 Staff' });
   const [financialKPIs, setFinancialKPIs] = useState({ outstanding: '₹0', projected: '₹0', accuracy: '0%' });
   const [forecast, setForecast] = useState(defaultForecastData);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [staffAttTrend, setStaffAttTrend] = useState<any[]>([]);
 
   useEffect(() => {
@@ -111,21 +97,16 @@ export function Reports() {
         const studentFeesArr = extractArray(rawStudentFees);
 
         // Filter students & fees based on active status and selected Academic Year to match FeeManagement page
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const students = studentsArr.filter((s: any) => {
           const isActive = s.status === 'active' || s.status === 'Active';
           const matchAy = !s.batch || String(s.batch.academic_year_id) === String(selectedAcademicYearId);
           return isActive && matchAy;
         });
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const activeStudentIds = new Set(students.map((s: any) => String(s.id)));
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const studentFees = studentFeesArr.filter((f: any) => activeStudentIds.has(String(f.student_id)));
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let staffList: any[] = [];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const staffSetting = Array.isArray(settingsRes) ? settingsRes.find((s: any) => s.key === 'kts_staff_members') : null;
         if (staffSetting && staffSetting.value) {
           try {
@@ -159,7 +140,6 @@ export function Reports() {
         setAllStudentFeesList(studentFeesArr);
 
         // Load student attendance
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let attendanceRecords: any[] = [];
         try {
           const attendanceRes = await api.getResources('settings', { key: 'kts_student_attendance_records' }).catch(() => []);
@@ -331,9 +311,7 @@ export function Reports() {
             let paidSum = 0;
             let totalSum = 0;
             cohortStudents.forEach((s: { id: any; }) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const fees = studentFees.filter((f: { student_id: any; }) => String(f.student_id) === String(s.id));
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               fees.forEach((f: { paid_amount: any; amount: any; }) => {
                 paidSum += Number(f.paid_amount) || 0;
                 totalSum += Number(f.amount) || 0;
@@ -573,7 +551,6 @@ export function Reports() {
 
   const handleExport = (id: string, label: string) => {
     let headers: string[] = [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let rows: any[][] = [];
     const filename = `${id}_report_${new Date().toISOString().slice(0, 10)}.csv`;
 
@@ -666,7 +643,6 @@ export function Reports() {
       }
     } else if (id === 'diary') {
       headers = ['Date', 'Class/Batch', 'Subject', 'Homework/Diary Entry', 'Recipients Count', 'Status'];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let diaryEntries: any[] = [];
       const local = localStorage.getItem('kts_daily_diaries');
       if (local) {
@@ -837,7 +813,6 @@ export function Reports() {
                           <Cell key={i} fill={entry.color} />
                         ))}
                       </Pie>
-                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                       <Tooltip contentStyle={tooltipStyle} formatter={(v: any, name: any) => [`${v}%`, name]} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -905,7 +880,6 @@ export function Reports() {
                         <CartesianGrid vertical={false} stroke="var(--b)" />
                         <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
                         <YAxis tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
-                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`₹${v.toLocaleString()}`, '']} />
                         <Legend verticalAlign="top" height={36} iconSize={10} wrapperStyle={{ fontSize: 11 }} />
                         <Line type="monotone" dataKey="Last Year (2025)" stroke="var(--tx3)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
@@ -1079,7 +1053,6 @@ export function Reports() {
                     <CartesianGrid vertical={false} stroke="var(--b)" />
                     <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${v / 1000}k`} />
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`₹${v.toLocaleString()}`, '']} />
                     <Legend verticalAlign="top" height={36} iconSize={8} wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="outstanding" name="Outstanding Balance (Goal)" fill="var(--purple)" opacity={0.25} barSize={20} radius={[3, 3, 0, 0]} />

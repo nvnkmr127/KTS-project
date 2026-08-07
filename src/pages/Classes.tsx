@@ -31,7 +31,6 @@ export function Classes() {
   const [classes, setClasses] = useState<ClassData[]>([]);
   // Pre-populate teachers from local storage / STAFF constant so dropdown always works
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [teachers, setTeachers] = useState<any[]>(() => {
     try {
       const savedStaffStr = localStorage.getItem('kts_staff_members');
@@ -87,10 +86,8 @@ export function Classes() {
     try {
        
       const s = localStorage.getItem('kts_staff_members');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if (s) JSON.parse(s).filter((x: any) => x?.status === 'Resigned' && x.name)
                 
-               // eslint-disable-next-line @typescript-eslint/no-explicit-any
                .forEach((x: any) => resignedNames.add(x.name.toLowerCase().trim()));
     } catch { /* empty */ }
 
@@ -182,13 +179,11 @@ export function Classes() {
       const allBatches = Array.isArray(batchesRes) ? batchesRes : (batchesRes?.data || []);
       const studentsData = Array.isArray(studentsRes) ? studentsRes : (studentsRes?.data || []);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const batchesData = allBatches.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
 
       const classGroups: Record<string, SectionData[]> = {};
       const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       batchesData.forEach((b: any) => {
         const batchName = b.name;
         let classId = '8';
@@ -203,7 +198,6 @@ export function Classes() {
           if (batchName === 'Default Batch') { classId = '8'; sectionLetter = 'A'; }
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const studentsInBatch = studentsData.filter((s: any) => String(s.batch_id) === String(b.id)).length;
         if (!classGroups[classId]) classGroups[classId] = [];
 
@@ -322,7 +316,6 @@ export function Classes() {
       try {
         const years = await api.getResources('academic-years');
         if (Array.isArray(years) && years.length > 0) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const current = years.find((y: any) => y.is_current) || years[0];
           resolvedAcademicYearId = Number(current.id);
         }

@@ -85,9 +85,7 @@ export function Timetable() {
         try {
           const s = localStorage.getItem('kts_staff_members');
            
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           if (s) JSON.parse(s).filter((x: any) => x?.status === 'Resigned' && x.name)
-                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                    .forEach((x: any) => resignedNames.add(x.name.toLowerCase().trim()));
          
         } catch { /* empty */ }
@@ -122,7 +120,6 @@ export function Timetable() {
             .map(s => ({ id: String(s.id), name: s.name }));
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const list = activeTeachers.map((t: any) => ({
           id: String(t.id),
           name: t.name,
@@ -143,7 +140,6 @@ export function Timetable() {
         const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
         const teachersMap: Record<string, string> = {};
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         allBatches.forEach((b: any) => {
           const batchName = b.name;
           let classId = '8';
@@ -271,7 +267,6 @@ export function Timetable() {
   const handleSaveAll = async () => {
     setLoading(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const slots: any[] = [];
       for (const day of TIMETABLE_DAYS) {
         for (let p = 0; p < periodTimings.length; p++) {
