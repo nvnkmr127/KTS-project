@@ -283,6 +283,23 @@ export function FeeManagement() {
     }
   }, [showAssignModal]);
 
+  const getAvailableVillageRates = () => {
+    if (villageRatesMap['_global'] && Array.isArray(villageRatesMap['_global']) && villageRatesMap['_global'].length > 0) {
+      return villageRatesMap['_global'];
+    }
+    const rawList = Object.values(villageRatesMap).flat();
+    if (Array.isArray(rawList) && rawList.length > 0) {
+      const uniqueMap = new Map();
+      rawList.forEach((r: any) => {
+        if (r && r.village) {
+          uniqueMap.set(r.village.trim().toLowerCase(), r);
+        }
+      });
+      return Array.from(uniqueMap.values());
+    }
+    return DEFAULT_VILLAGE_RATES;
+  };
+
   const handleEditPaidSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedEditFee || editFeeTotalAmount === '') return;
@@ -2214,15 +2231,7 @@ export function FeeManagement() {
                         <MapPin size={13} /> Select Route / Village Area *
                       </label>
                       <span className="text-[10px] text-[var(--tx3)] font-medium">
-                        {(() => {
-                          const rawList = Object.values(villageRatesMap).flat();
-                          const uniqueMap = new Map();
-                          rawList.forEach((r: any) => {
-                            if (r && r.village && !uniqueMap.has(r.village)) uniqueMap.set(r.village, r);
-                          });
-                          const list = uniqueMap.size > 0 ? Array.from(uniqueMap.values()) : DEFAULT_VILLAGE_RATES;
-                          return list.length;
-                        })()} Village Rates Available
+                        {getAvailableVillageRates().length} Village Rates Available
                       </span>
                     </div>
                     <select
@@ -2230,12 +2239,7 @@ export function FeeManagement() {
                       onChange={(e) => {
                         const vName = e.target.value;
                         setSelectedVillageArea(vName);
-                        const rawList = Object.values(villageRatesMap).flat();
-                        const uniqueMap = new Map();
-                        rawList.forEach((r: any) => {
-                          if (r && r.village && !uniqueMap.has(r.village)) uniqueMap.set(r.village, r);
-                        });
-                        const ratesList = uniqueMap.size > 0 ? Array.from(uniqueMap.values()) : DEFAULT_VILLAGE_RATES;
+                        const ratesList = getAvailableVillageRates();
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const match = ratesList.find((r: any) => r.village === vName);
                         if (match) {
@@ -2256,20 +2260,11 @@ export function FeeManagement() {
                       className="w-full bg-[var(--surf)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--purple)] font-semibold"
                     >
                       <option value="">-- Select Village Route --</option>
-                      {(() => {
-                        const rawList = Object.values(villageRatesMap).flat();
-                        const uniqueMap = new Map();
-                        rawList.forEach((r: any) => {
-                          if (r && r.village && !uniqueMap.has(r.village)) uniqueMap.set(r.village, r);
-                        });
-                        const ratesList = uniqueMap.size > 0 ? Array.from(uniqueMap.values()) : DEFAULT_VILLAGE_RATES;
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        return ratesList.map((r: any) => (
-                          <option key={r.village} value={r.village}>
-                            {r.village} — ₹{r.amount.toLocaleString()}
-                          </option>
-                        ));
-                      })()}
+                      {getAvailableVillageRates().map((r: any) => (
+                        <option key={r.village} value={r.village}>
+                          {r.village} — ₹{r.amount.toLocaleString()}
+                        </option>
+                      ))}
                     </select>
                   </div>
 

@@ -269,8 +269,17 @@ export function FeeCategories() {
   const handleOpenRatesModal = (category: FeeCategory) => {
     setSelectedCategoryForRates(category);
     const key = category.name.trim().toLowerCase();
-    const existing = villageRatesMap[key] || villageRatesMap[category.id] || [];
-    setActiveCategoryRates(existing);
+    const existing = villageRatesMap['_global'] || villageRatesMap[key] || villageRatesMap[category.id] || [];
+    if (existing.length > 0) {
+      setActiveCategoryRates(existing);
+    } else {
+      const all = Object.values(villageRatesMap).flat();
+      const uniqueMap = new Map();
+      all.forEach((r: VillageRate) => {
+        if (r && r.village) uniqueMap.set(r.village.trim().toLowerCase(), r);
+      });
+      setActiveCategoryRates(Array.from(uniqueMap.values()));
+    }
     setNewVillageName('');
     setNewVillageAmount('');
     setRatesSearch('');
@@ -329,8 +338,11 @@ export function FeeCategories() {
     const key = selectedCategoryForRates.name.trim().toLowerCase();
     const updatedMap = {
       ...villageRatesMap,
+      '_global': activeCategoryRates,
       [key]: activeCategoryRates,
       [selectedCategoryForRates.id]: activeCategoryRates,
+      'bus fee': activeCategoryRates,
+      'transport fee': activeCategoryRates,
     };
     await saveVillageRatesMap(updatedMap);
     setShowRatesModal(false);
