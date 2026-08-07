@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Loader2, AlertCircle, Tags, ShieldAlert, MapPin, Search, CheckCircle, Bus, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, Loader2, AlertCircle, Tags, ShieldAlert, MapPin, Search, CheckCircle, Bus, Pencil, Check, X, AlertTriangle } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useAuth } from '../context/AuthContext';
@@ -85,6 +85,19 @@ export function FeeCategories() {
   const [editingRateId, setEditingRateId] = useState<string | null>(null);
   const [editingVillageName, setEditingVillageName] = useState('');
   const [editingVillageAmount, setEditingVillageAmount] = useState('');
+
+  // Edit Category state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<FeeCategory | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editStatus, setEditStatus] = useState<'active' | 'inactive'>('active');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editErrorMsg, setEditErrorMsg] = useState<string | null>(null);
+
+  // Delete Warning state
+  const [showDeleteWarning, setShowDeleteWarning] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<FeeCategory | null>(null);
 
   const loadCategories = async () => {
     setLoading(true);
@@ -188,16 +201,58 @@ export function FeeCategories() {
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
+  const handlePromptDeleteCategory = (category: FeeCategory) => {
     if (!isAdmin) return;
-    setDeletingId(id);
+    setCategoryToDelete(category);
+    setShowDeleteWarning(true);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete || !isAdmin) return;
+    setDeletingId(categoryToDelete.id);
     try {
-      await api.deleteResource('fee-categories', id);
+      await api.deleteResource('fee-categories', categoryToDelete.id);
+      setShowDeleteWarning(false);
+      setCategoryToDelete(null);
       loadCategories();
     } catch (err) {
       console.error('Error deleting fee category:', err);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleOpenEditModal = (category: FeeCategory) => {
+    setEditingCategory(category);
+    setEditName(category.name);
+    setEditDescription(category.description || '');
+    setEditStatus(category.status === 'inactive' || category.status === 'Inactive' ? 'inactive' : 'active');
+    setEditErrorMsg(null);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateCategory = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    if (!editName.trim()) {
+      setEditErrorMsg('Category name is required.');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await api.updateResource('fee-categories', editingCategory.id, {
+        name: editName.trim(),
+        description: editDescription ? editDescription.trim() : null,
+        status: editStatus,
+      });
+      setShowEditModal(false);
+      setEditingCategory(null);
+      loadCategories();
+    } catch (err) {
+      console.error('Error updating fee category:', err);
+      setEditErrorMsg((err as Error).message || 'Failed to update fee category.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -367,6 +422,13 @@ export function FeeCategories() {
                     </td>
                     <td className="px-3.5 py-3">
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleOpenEditModal(c)}
+                          className="p-1.5 rounded-lg text-[var(--tx2)] hover:text-[var(--blue-tx)] hover:bg-[var(--blue-bg)] cursor-pointer transition-colors"
+                          title="Edit Category"
+                        >
+                          <Pencil size={14} />
+                        </button>
                         {isBusCategory && (
                           <button
                             onClick={() => handleOpenRatesModal(c)}
@@ -377,7 +439,7 @@ export function FeeCategories() {
                           </button>
                         )}
                         <button
-                          onClick={() => handleDeleteCategory(c.id)}
+                          onClick={() => handlePromptDeleteCategory(c)}
                           disabled={deletingId !== null}
                           className="p-1.5 rounded-lg text-[var(--tx3)] hover:text-[var(--red-tx)] hover:bg-[var(--red-bg)] cursor-pointer disabled:opacity-50 transition-colors"
                           title="Delete Category"
@@ -440,6 +502,134 @@ export function FeeCategories() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {showEditModal && editingCategory && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <form onSubmit={handleUpdateCategory} className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[400px] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-[var(--b)] bg-[var(--surf2)]">
+              <div>
+                <div className="text-[14px] font-bold text-[var(--tx)] flex items-center gap-2">
+                  <Pencil size={15} className="text-[var(--blue-tx)]" /> Edit Fee Category
+                </div>
+                <div className="text-[11px] text-[var(--tx3)]">Update category details and status</div>
+              </div>
+              <button type="button" onClick={() => setShowEditModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf3)] cursor-pointer text-[var(--tx2)]">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-5 space-y-3.5">
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Category Name *</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-medium"
+                  placeholder="e.g. Bus Fee, Tuition Fee, Exam Fee"
+                />
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Description</label>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] resize-none"
+                  rows={3}
+                  placeholder="Brief description of the fee category"
+                />
+              </div>
+              <div>
+                <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Status *</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as 'active' | 'inactive')}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)] font-semibold"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              {editErrorMsg && (
+                <div className="flex items-center gap-2 p-3 bg-[var(--red-bg)] rounded-xl border border-[var(--red-tx)]/10">
+                  <AlertCircle size={13} className="text-[var(--red-tx)] flex-shrink-0" />
+                  <span className="text-[11.5px] text-[var(--red-tx)]">{editErrorMsg}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 p-4 border-t border-[var(--b)] bg-[var(--surf2)]">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={savingEdit}
+                className="flex-1 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold hover:opacity-90 cursor-pointer disabled:opacity-75 flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                {savingEdit ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle size={13} />}
+                {savingEdit ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Delete Warning Confirmation Modal */}
+      {showDeleteWarning && categoryToDelete && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 space-y-4">
+              <div className="flex items-start gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-[var(--red-bg)] text-[var(--red-tx)] flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-bold text-[var(--tx)]">Delete Fee Category?</h3>
+                  <p className="text-[12px] text-[var(--tx2)] mt-1 leading-relaxed">
+                    Are you sure you want to delete <strong className="text-[var(--tx)]">"{categoryToDelete.name}"</strong>?
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-[var(--amber-bg)]/25 border border-[var(--amber-tx)]/20 rounded-xl text-[11px] text-[var(--amber-tx)] space-y-1">
+                <div className="font-bold flex items-center gap-1">
+                  ⚠️ Warning: Action Cannot Be Undone
+                </div>
+                <p className="opacity-90 leading-tight">
+                  If students currently have fee dues or records under this category, deleting it may impact their fee ledgers and reports.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 p-4 border-t border-[var(--b)] bg-[var(--surf2)]">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteWarning(false);
+                  setCategoryToDelete(null);
+                }}
+                className="flex-1 py-2 border border-[var(--b)] bg-[var(--surf)] rounded-xl text-[12.5px] font-medium text-[var(--tx)] hover:bg-[var(--surf3)] cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteCategory}
+                disabled={deletingId !== null}
+                className="flex-1 py-2 bg-[var(--red-tx)] text-white rounded-xl text-[12.5px] font-semibold hover:opacity-90 cursor-pointer disabled:opacity-75 flex items-center justify-center gap-1.5 shadow-sm transition-opacity"
+              >
+                {deletingId !== null ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                {deletingId !== null ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
