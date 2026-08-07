@@ -152,8 +152,18 @@ export function FeeCategories() {
         newValue: valueStr
       }));
 
-      if (settingId) {
-        await api.updateResource('settings', settingId, { value: valueStr });
+      let activeSettingId = settingId;
+
+      if (!activeSettingId) {
+        const existing = await api.getResources('settings', { key: 'kts_fee_category_village_rates' }).catch(() => []);
+        if (Array.isArray(existing) && existing.length > 0 && existing[0].id) {
+          activeSettingId = String(existing[0].id);
+          setSettingId(activeSettingId);
+        }
+      }
+
+      if (activeSettingId) {
+        await api.updateResource('settings', activeSettingId, { value: valueStr });
       } else {
         const created = await api.createResource('settings', {
           key: 'kts_fee_category_village_rates',
@@ -165,7 +175,7 @@ export function FeeCategories() {
         if (created && created.id) setSettingId(String(created.id));
       }
     } catch (err) {
-      console.error('Error saving village rates:', err);
+      console.error('Error saving village rates to DB:', err);
     } finally {
       setSavingRates(false);
     }

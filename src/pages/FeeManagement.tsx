@@ -248,21 +248,24 @@ export function FeeManagement() {
   const [selectedVillageArea, setSelectedVillageArea] = useState<string>('');
   const [selectedTransportStudentIds, setSelectedTransportStudentIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    const loadRates = async () => {
-      try {
-        const res = await api.getResources('settings', { key: 'kts_fee_category_village_rates' });
-        if (Array.isArray(res) && res.length > 0 && res[0].value) {
-          setVillageRatesMap(JSON.parse(res[0].value));
-        } else {
-          const local = localStorage.getItem('kts_fee_category_village_rates');
-          if (local) setVillageRatesMap(JSON.parse(local));
-        }
-      } catch {
+  const loadRates = async () => {
+    try {
+      const res = await api.getResources('settings', { key: 'kts_fee_category_village_rates' });
+      if (Array.isArray(res) && res.length > 0 && res[0].value) {
+        const parsed = JSON.parse(res[0].value);
+        setVillageRatesMap(parsed);
+        localStorage.setItem('kts_fee_category_village_rates', JSON.stringify(parsed));
+      } else {
         const local = localStorage.getItem('kts_fee_category_village_rates');
         if (local) setVillageRatesMap(JSON.parse(local));
       }
-    };
+    } catch {
+      const local = localStorage.getItem('kts_fee_category_village_rates');
+      if (local) setVillageRatesMap(JSON.parse(local));
+    }
+  };
+
+  useEffect(() => {
     loadRates();
 
     const handleStorage = (e: StorageEvent) => {
@@ -273,6 +276,12 @@ export function FeeManagement() {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
+
+  useEffect(() => {
+    if (showAssignModal) {
+      loadRates();
+    }
+  }, [showAssignModal]);
 
   const handleEditPaidSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -2206,8 +2215,13 @@ export function FeeManagement() {
                       </label>
                       <span className="text-[10px] text-[var(--tx3)] font-medium">
                         {(() => {
-                          const allRates = Object.values(villageRatesMap).flat();
-                          return (allRates.length > 0 ? allRates : DEFAULT_VILLAGE_RATES).length;
+                          const rawList = Object.values(villageRatesMap).flat();
+                          const uniqueMap = new Map();
+                          rawList.forEach((r: any) => {
+                            if (r && r.village && !uniqueMap.has(r.village)) uniqueMap.set(r.village, r);
+                          });
+                          const list = uniqueMap.size > 0 ? Array.from(uniqueMap.values()) : DEFAULT_VILLAGE_RATES;
+                          return list.length;
                         })()} Village Rates Available
                       </span>
                     </div>
@@ -2216,8 +2230,12 @@ export function FeeManagement() {
                       onChange={(e) => {
                         const vName = e.target.value;
                         setSelectedVillageArea(vName);
-                        const allRates = Object.values(villageRatesMap).flat();
-                        const ratesList = allRates.length > 0 ? allRates : DEFAULT_VILLAGE_RATES;
+                        const rawList = Object.values(villageRatesMap).flat();
+                        const uniqueMap = new Map();
+                        rawList.forEach((r: any) => {
+                          if (r && r.village && !uniqueMap.has(r.village)) uniqueMap.set(r.village, r);
+                        });
+                        const ratesList = uniqueMap.size > 0 ? Array.from(uniqueMap.values()) : DEFAULT_VILLAGE_RATES;
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const match = ratesList.find((r: any) => r.village === vName);
                         if (match) {
@@ -2239,8 +2257,12 @@ export function FeeManagement() {
                     >
                       <option value="">-- Select Village Route --</option>
                       {(() => {
-                        const allRates = Object.values(villageRatesMap).flat();
-                        const ratesList = allRates.length > 0 ? allRates : DEFAULT_VILLAGE_RATES;
+                        const rawList = Object.values(villageRatesMap).flat();
+                        const uniqueMap = new Map();
+                        rawList.forEach((r: any) => {
+                          if (r && r.village && !uniqueMap.has(r.village)) uniqueMap.set(r.village, r);
+                        });
+                        const ratesList = uniqueMap.size > 0 ? Array.from(uniqueMap.values()) : DEFAULT_VILLAGE_RATES;
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         return ratesList.map((r: any) => (
                           <option key={r.village} value={r.village}>
