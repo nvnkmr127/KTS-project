@@ -406,13 +406,13 @@ export function FeeManagement() {
 
   const handleAddFeeItem = () => {
     if (!currentCategory.trim() || !currentAmount || Number(currentAmount) <= 0) return;
-    const categoryLabel = selectedVillageArea
-      ? `${currentCategory.trim()} (${selectedVillageArea})`
-      : currentCategory.trim();
-
     setAssignedItems((prev) => [
       ...prev,
-      { category: categoryLabel, amount: Number(currentAmount) }
+      {
+        category: currentCategory.trim(),
+        amount: Number(currentAmount),
+        remarks: selectedVillageArea || undefined
+      }
     ]);
     setCurrentAmount('');
     setSelectedVillageArea('');
@@ -849,7 +849,13 @@ export function FeeManagement() {
         alert('Please select at least one student to assign the transport fee.');
         return;
       }
-      const transportCategoryLabel = `Transport Fee (${selectedVillageArea})`;
+      const existingBusCat = categories.find(c => {
+        const k = c.name.trim().toLowerCase();
+        return k.includes('bus') || k.includes('transport') || k.includes('route') || k.includes('village') || k.includes('van');
+      });
+
+      const baseCategoryName = existingBusCat ? existingBusCat.name : 'Transport Fee';
+      const categoryId = existingBusCat ? existingBusCat.id : undefined;
       const transportAmount = Number(currentAmount || 0);
 
       if (transportAmount <= 0) {
@@ -862,10 +868,12 @@ export function FeeManagement() {
         await Promise.all(
           selectedTransportStudentIds.map(stdId =>
             api.createResource('student-fees', {
-              category: transportCategoryLabel,
+              category: baseCategoryName,
+              ...(categoryId ? { fee_category_id: Number(categoryId) } : {}),
               amount: transportAmount,
               due_date: dueDateVal || new Date().toISOString().slice(0, 10),
-              student_id: Number(stdId)
+              student_id: Number(stdId),
+              remarks: selectedVillageArea
             })
           )
         );
@@ -1444,7 +1452,19 @@ export function FeeManagement() {
                   ) : (
                     <div className="space-y-2 overflow-y-auto pr-1 max-h-[220px] lg:max-h-none lg:flex-1">
                       {studentFeesList.map((fee) => {
-                        const feeName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
+                        const baseFeeName = fee.fee_category?.name || fee.feeCategory?.name || fee.category || 'School Fee';
+                        let villageRemark = '';
+                        if (fee.remarks) {
+                          try {
+                            const parsed = JSON.parse(fee.remarks);
+                            villageRemark = parsed.village || parsed.villageArea || parsed.text || parsed.remarks || '';
+                          } catch {
+                            villageRemark = typeof fee.remarks === 'string' ? fee.remarks : '';
+                          }
+                        }
+                        const feeName = (villageRemark && !baseFeeName.includes(villageRemark))
+                          ? `${baseFeeName} (${villageRemark})`
+                          : baseFeeName;
                         const bal = Number(fee.amount) - Number(fee.paid_amount) - Number(fee.concession_amount);
                         return (
                           <div key={fee.id} className="p-3 bg-[var(--surf2)] border border-[var(--b)] rounded-xl flex items-center justify-between gap-3">
