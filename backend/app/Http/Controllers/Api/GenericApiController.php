@@ -1165,10 +1165,21 @@ class GenericApiController extends Controller
 
         // Assign role if provided, otherwise default to faculty if created via faculty endpoint
         if ($resource === 'faculty' || $resource === 'users') {
-            if ($request->has('role') && !empty($request->input('role'))) {
-                $item->syncRoles([$request->input('role')]);
-            } else if ($resource === 'faculty') {
-                $item->assignRole('faculty');
+            $roleName = ($request->has('role') && !empty($request->input('role'))) 
+                ? $request->input('role') 
+                : ($resource === 'faculty' ? 'faculty' : null);
+
+            if ($roleName) {
+                try {
+                    $guard = config('auth.defaults.guard', 'web');
+                    \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard]);
+                    if ($guard !== 'web') {
+                        \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+                    }
+                    $item->syncRoles([$roleName]);
+                } catch (\Throwable $e) {
+                    \Log::warning("Failed to assign role '{$roleName}' to user {$item->id}: " . $e->getMessage());
+                }
             }
             
             // Automatically generate unique 4-digit biometric code if empty
@@ -1336,7 +1347,16 @@ class GenericApiController extends Controller
 
                 // Assign 'faculty' role if created via faculty endpoint
                 if ($resource === 'faculty') {
-                    $item->assignRole('faculty');
+                    try {
+                        $guard = config('auth.defaults.guard', 'web');
+                        \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'faculty', 'guard_name' => $guard]);
+                        if ($guard !== 'web') {
+                            \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'faculty', 'guard_name' => 'web']);
+                        }
+                        $item->assignRole('faculty');
+                    } catch (\Throwable $e) {
+                        \Log::warning("Failed to assign faculty role to user {$item->id} in bulkStore: " . $e->getMessage());
+                    }
                 }
 
                 // Attach subject pivot
@@ -1525,7 +1545,17 @@ class GenericApiController extends Controller
 
         // Update role if provided
         if (($resource === 'faculty' || $resource === 'users') && $request->has('role') && !empty($request->input('role'))) {
-            $item->syncRoles([$request->input('role')]);
+            $roleName = $request->input('role');
+            try {
+                $guard = config('auth.defaults.guard', 'web');
+                \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard]);
+                if ($guard !== 'web') {
+                    \Spatie\Permission\Models\Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
+                }
+                $item->syncRoles([$roleName]);
+            } catch (\Throwable $e) {
+                \Log::warning("Failed to update role '{$roleName}' for user {$item->id}: " . $e->getMessage());
+            }
         }
 
         return response()->json($item);

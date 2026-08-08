@@ -308,6 +308,13 @@ Route::get('/ping', function () {
                 \App\Models\AcademicYear::updateOrCreate(['name' => $yr['name']], $yr);
             }
         }
+        if (\Schema::hasTable('roles')) {
+            $defaultRoles = ['super-admin', 'admin', 'college-admin', 'faculty', 'staff', 'teacher', 'student', 'accountant'];
+            foreach ($defaultRoles as $r) {
+                \Spatie\Permission\Models\Role::firstOrCreate(['name' => $r, 'guard_name' => 'web']);
+                \Spatie\Permission\Models\Role::firstOrCreate(['name' => $r, 'guard_name' => 'sanctum']);
+            }
+        }
     } catch (\Exception $e) {
         // Silently catch database or missing model exceptions
     }

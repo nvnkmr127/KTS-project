@@ -96,8 +96,17 @@ class FacultyController extends Controller
 
             $user = User::create($userData);
 
-            // Assign the staff role
-            $user->assignRole('staff');
+            // Assign the staff role safely
+            try {
+                $guard = config('auth.defaults.guard', 'web');
+                \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'staff', 'guard_name' => $guard]);
+                if ($guard !== 'web') {
+                    \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'staff', 'guard_name' => 'web']);
+                }
+                $user->assignRole('staff');
+            } catch (\Throwable $e) {
+                Log::warning("Failed to assign staff role to user {$user->id}: " . $e->getMessage());
+            }
 
             // Automatically generate and assign biometric code if not provided
             if (empty($user->biometric_employee_code)) {
