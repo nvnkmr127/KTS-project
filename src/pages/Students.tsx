@@ -3070,35 +3070,68 @@ const formatToYYYYMMDD = (dateStr: string): string => {
 
 const cleanDate = (val: any): string => {
   if (!val) return '';
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return '';
+    const d = String(val.getDate()).padStart(2, '0');
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const y = val.getFullYear();
+    return `${d}-${m}-${y}`;
+  }
   if (typeof val === 'number') {
     const date = new Date((val - 25569) * 86400 * 1000);
+    if (isNaN(date.getTime())) return '';
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
     return `${d}-${m}-${y}`;
   }
-  const str = String(val).trim();
+  let str = String(val).trim();
+  if (!str) return '';
+
+  if (str.includes('T')) {
+    str = str.split('T')[0].trim();
+  } else if (str.includes(' ')) {
+    str = str.split(' ')[0].trim();
+  }
+
   if (/^\d{8}$/.test(str)) {
+    if (/^(19|20)/.test(str)) {
+      const year = str.slice(0, 4);
+      const month = str.slice(4, 6);
+      const day = str.slice(6, 8);
+      return `${day}-${month}-${year}`;
+    }
     const day = str.slice(0, 2);
     const month = str.slice(2, 4);
     const year = str.slice(4, 8);
     return `${day}-${month}-${year}`;
   }
-  const parts = str.split(/[-/.]/);
-  if (parts.length === 3) {
-    if (parts[2].length === 4 && parts[0].length <= 2 && parts[1].length <= 2) {
-      const day = parts[0].padStart(2, '0');
-      const month = parts[1].padStart(2, '0');
-      const year = parts[2];
-      return `${day}-${month}-${year}`;
-    }
-    if (parts[0].length === 4 && parts[1].length <= 2 && parts[2].length <= 2) {
-      const year = parts[0];
-      const month = parts[1].padStart(2, '0');
-      const day = parts[2].padStart(2, '0');
-      return `${day}-${month}-${year}`;
-    }
+
+  const matchYYYY = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (matchYYYY) {
+    const year = matchYYYY[1];
+    const month = matchYYYY[2].padStart(2, '0');
+    const day = matchYYYY[3].padStart(2, '0');
+    return `${day}-${month}-${year}`;
   }
+
+  const matchDD = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (matchDD) {
+    const day = matchDD[1].padStart(2, '0');
+    const month = matchDD[2].padStart(2, '0');
+    const year = matchDD[3];
+    return `${day}-${month}-${year}`;
+  }
+
+  const parsed = Date.parse(str);
+  if (!isNaN(parsed)) {
+    const date = new Date(parsed);
+    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
+  }
+
   return str;
 };
 
