@@ -3011,6 +3011,63 @@ const SYNONYMS: Record<string, string[]> = {
   tc_no: ['tc number', 'tc_number', 'tc no', 'tc_no', 'transfer certificate number', 'transfer certificate no', 'tc']
 };
 
+const getTodayDDMMYYYY = (): string => {
+  const d = new Date();
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+const isValidDateDDMMYYYY = (dateStr: any): boolean => {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  const str = dateStr.trim();
+
+  // Match DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY
+  const matchDDMM = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (matchDDMM) {
+    const day = parseInt(matchDDMM[1], 10);
+    const month = parseInt(matchDDMM[2], 10);
+    const year = parseInt(matchDDMM[3], 10);
+    if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return false;
+    const d = new Date(year, month - 1, day);
+    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+  }
+
+  // Match YYYY-MM-DD or YYYY/MM/DD
+  const matchYYYYMM = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (matchYYYYMM) {
+    const year = parseInt(matchYYYYMM[1], 10);
+    const month = parseInt(matchYYYYMM[2], 10);
+    const day = parseInt(matchYYYYMM[3], 10);
+    if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1900 || year > 2100) return false;
+    const d = new Date(year, month - 1, day);
+    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+  }
+
+  return false;
+};
+
+const formatToYYYYMMDD = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const str = dateStr.trim();
+  const matchDDMM = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (matchDDMM) {
+    const day = matchDDMM[1].padStart(2, '0');
+    const month = matchDDMM[2].padStart(2, '0');
+    const year = matchDDMM[3];
+    return `${year}-${month}-${day}`;
+  }
+  const matchYYYYMM = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (matchYYYYMM) {
+    const year = matchYYYYMM[1];
+    const month = matchYYYYMM[2].padStart(2, '0');
+    const day = matchYYYYMM[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  return str;
+};
+
 const cleanDate = (val: any): string => {
   if (!val) return '';
   if (typeof val === 'number') {
@@ -3018,35 +3075,28 @@ const cleanDate = (val: any): string => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    return `${d}-${m}-${y}`;
   }
   const str = String(val).trim();
   if (/^\d{8}$/.test(str)) {
     const day = str.slice(0, 2);
     const month = str.slice(2, 4);
     const year = str.slice(4, 8);
-    return `${year}-${month}-${day}`;
-  }
-  const parsed = Date.parse(str);
-  if (!isNaN(parsed)) {
-    const d = new Date(parsed);
-    return d.toISOString().slice(0, 10);
+    return `${day}-${month}-${year}`;
   }
   const parts = str.split(/[-/.]/);
   if (parts.length === 3) {
     if (parts[2].length === 4 && parts[0].length <= 2 && parts[1].length <= 2) {
       const day = parts[0].padStart(2, '0');
       const month = parts[1].padStart(2, '0');
-
       const year = parts[2];
-      return `${year}-${month}-${day}`;
+      return `${day}-${month}-${year}`;
     }
     if (parts[0].length === 4 && parts[1].length <= 2 && parts[2].length <= 2) {
       const year = parts[0];
       const month = parts[1].padStart(2, '0');
-
       const day = parts[2].padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      return `${day}-${month}-${year}`;
     }
   }
   return str;
@@ -3113,9 +3163,9 @@ const validateStudent = (s: MappedStudent) => {
   if (!s.class) errors.push('Class is required');
   if (!s.section) errors.push('Section is required');
   if (s.gender !== 'Male' && s.gender !== 'Female') errors.push('Gender must be Male or Female');
-  if (!s.dob || !/^\d{4}-\d{2}-\d{2}$/.test(s.dob)) errors.push('Valid DOB required');
+  if (!s.dob || !isValidDateDDMMYYYY(s.dob)) errors.push('Valid DOB in DD-MM-YYYY format required');
   if (!s.enrollment_number?.trim()) errors.push('Admission Number is required');
-  if (!s.admissionDate || !/^\d{4}-\d{2}-\d{2}$/.test(s.admissionDate)) errors.push('Valid Admission Date required');
+  if (!s.admissionDate || !isValidDateDDMMYYYY(s.admissionDate)) errors.push('Valid Admission Date in DD-MM-YYYY format required');
   if (!s.student_pen_no?.trim()) {
     errors.push('Student PEN NO. is required');
   } else {
@@ -3380,7 +3430,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             section: cleanSection(rawSection),
             gender: cleanGender(rawGender),
             dob: cleanDate(rawDob),
-            admissionDate: cleanDate(rawAdmission) || new Date().toISOString().slice(0, 10),
+            admissionDate: cleanDate(rawAdmission) || getTodayDDMMYYYY(),
             parent: rawParent ? String(rawParent).trim() : 'N/A',
             phone: rawPhone ? String(rawPhone).trim() : 'N/A',
             address: rawAddress ? String(rawAddress).trim() : '',
@@ -3452,7 +3502,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
       section: 'A',
       gender: 'Male',
       dob: '',
-      admissionDate: new Date().toISOString().slice(0, 10),
+      admissionDate: getTodayDDMMYYYY(),
       parent: '',
       phone: '',
       address: '',
@@ -3475,8 +3525,8 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
     const backendRecords = mappedStudents.map(s => ({
       name: `${s.firstName} ${s.lastName}`,
       gender: s.gender,
-      dob: s.dob,
-      admission_date: s.admissionDate,
+      dob: formatToYYYYMMDD(s.dob),
+      admission_date: formatToYYYYMMDD(s.admissionDate),
       father_name: s.parent,
       student_mobile: s.phone,
       village: s.address,
@@ -3771,6 +3821,44 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                     {mappedStudents.map((s) => {
                       const rowErrors = validateStudent(s);
                       const isValid = rowErrors.length === 0;
+
+                      const isFieldInvalid = (field: string): boolean => {
+                        switch (field) {
+                          case 'firstName': return !s.firstName?.trim() || s.firstName === 'N/A';
+                          case 'lastName': return !s.lastName?.trim() || s.lastName === 'N/A';
+                          case 'class': return !s.class;
+                          case 'section': return !s.section;
+                          case 'gender': return !s.gender || (s.gender !== 'Male' && s.gender !== 'Female');
+                          case 'dob': return !s.dob || !/^\d{4}-\d{2}-\d{2}$/.test(s.dob);
+                          case 'enrollment_number': return !s.enrollment_number?.trim();
+                          case 'admissionDate': return !s.admissionDate || !/^\d{4}-\d{2}-\d{2}$/.test(s.admissionDate);
+                          case 'student_pen_no': return !s.student_pen_no?.trim() || !/^\d{11,14}$/.test(s.student_pen_no.replace(/\s+/g, ''));
+                          case 'aadhar_number': return !s.aadhar_number?.trim() || s.aadhar_number.replace(/\D/g, '').length !== 12;
+                          case 'parent': return !s.parent?.trim() || s.parent === 'N/A';
+                          case 'father_mobile': return !s.father_mobile?.trim();
+                          case 'father_occupation': return !s.father_occupation?.trim();
+                          case 'mother_name': return !s.mother_name?.trim();
+                          case 'mother_mobile': return !s.mother_mobile?.trim();
+                          case 'mother_occupation': return !s.mother_occupation?.trim();
+                          case 'address': return !s.address?.trim();
+                          case 'mother_tongue': return !s.mother_tongue?.trim();
+                          case 'nationality': return !s.nationality?.trim();
+                          case 'state': return !s.state?.trim();
+                          case 'religion': return !s.religion?.trim();
+                          case 'caste': return !s.caste?.trim();
+                          case 'sub_caste': return !s.sub_caste?.trim();
+                          default: return false;
+                        }
+                      };
+
+                      const getCellClassName = (field: string, isSelect: boolean = false) => {
+                        const invalid = isFieldInvalid(field);
+                        if (invalid) {
+                          return `${isSelect ? 'px-1.5 py-1' : 'px-2 py-1'} w-full bg-[var(--red-bg)] border-2 border-[var(--red)] text-[var(--red-tx)] focus:border-[var(--red)] rounded text-[11.5px] outline-none font-medium shadow-[0_0_0_1px_rgba(239,68,68,0.25)] ${isSelect ? 'cursor-pointer' : ''}`;
+                        }
+                        return `${isSelect ? 'px-1.5 py-1' : 'px-2 py-1'} w-full bg-[var(--surf2)] border border-[var(--b)] focus:border-[var(--blue)] rounded text-[11.5px] outline-none ${isSelect ? 'cursor-pointer' : ''}`;
+                      };
+
                       return (
                         <tr key={s.id} className="hover:bg-[var(--surf2)]/40 transition-colors">
                           <td className="px-3 py-2 text-center">
@@ -3788,21 +3876,21 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                             <input
                               value={s.firstName}
                               onChange={(e) => updateStudentField(s.id, 'firstName', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${s.firstName === 'N/A' || !s.firstName ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('firstName')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.lastName}
                               onChange={(e) => updateStudentField(s.id, 'lastName', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${s.lastName === 'N/A' || !s.lastName ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('lastName')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <select
                               value={s.class}
                               onChange={(e) => updateStudentField(s.id, 'class', e.target.value)}
-                              className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded px-1.5 py-1 text-[11.5px] outline-none cursor-pointer"
+                              className={getCellClassName('class', true)}
                             >
                               {['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(c => (
                                 <option key={c} value={c}>Class {c}</option>
@@ -3813,7 +3901,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                             <select
                               value={s.section}
                               onChange={(e) => updateStudentField(s.id, 'section', e.target.value)}
-                              className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded px-1.5 py-1 text-[11.5px] outline-none cursor-pointer"
+                              className={getCellClassName('section', true)}
                             >
                               {['A', 'B', 'C'].map(sec => (
                                 <option key={sec} value={sec}>Sec {sec}</option>
@@ -3824,7 +3912,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                             <select
                               value={s.gender}
                               onChange={(e) => updateStudentField(s.id, 'gender', e.target.value)}
-                              className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded px-1.5 py-1 text-[11.5px] outline-none cursor-pointer"
+                              className={getCellClassName('gender', true)}
                             >
                               <option value="Male">Male</option>
                               <option value="Female">Female</option>
@@ -3832,32 +3920,34 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                           </td>
                           <td className="px-1 py-1.5">
                             <input
-                              type="date"
+                              type="text"
+                              placeholder="DD-MM-YYYY"
                               value={s.dob}
                               onChange={(e) => updateStudentField(s.id, 'dob', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.dob ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-1 py-1 text-[11px] outline-none`}
+                              className={getCellClassName('dob')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.enrollment_number || ''}
                               onChange={(e) => updateStudentField(s.id, 'enrollment_number', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.enrollment_number ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('enrollment_number')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
-                              type="date"
+                              type="text"
+                              placeholder="DD-MM-YYYY"
                               value={s.admissionDate}
                               onChange={(e) => updateStudentField(s.id, 'admissionDate', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.admissionDate ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-1 py-1 text-[11px] outline-none`}
+                              className={getCellClassName('admissionDate')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.student_pen_no || ''}
                               onChange={(e) => updateStudentField(s.id, 'student_pen_no', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.student_pen_no || !/^\d{11,14}$/.test(s.student_pen_no.replace(/\s+/g, '')) ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('student_pen_no')}
                               placeholder="11-14 digits"
                             />
                           </td>
@@ -3865,7 +3955,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                             <input
                               value={s.aadhar_number || ''}
                               onChange={(e) => updateStudentField(s.id, 'aadhar_number', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.aadhar_number || s.aadhar_number.replace(/\D/g, '').length !== 12 ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('aadhar_number')}
                               placeholder="12-digit"
                             />
                           </td>
@@ -3873,98 +3963,98 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                             <input
                               value={s.parent || ''}
                               onChange={(e) => updateStudentField(s.id, 'parent', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.parent || s.parent === 'N/A' ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('parent')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.father_mobile || ''}
                               onChange={(e) => updateStudentField(s.id, 'father_mobile', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.father_mobile ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('father_mobile')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.father_occupation || ''}
                               onChange={(e) => updateStudentField(s.id, 'father_occupation', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.father_occupation ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('father_occupation')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.mother_name || ''}
                               onChange={(e) => updateStudentField(s.id, 'mother_name', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.mother_name ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('mother_name')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.mother_mobile || ''}
                               onChange={(e) => updateStudentField(s.id, 'mother_mobile', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.mother_mobile ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('mother_mobile')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.mother_occupation || ''}
                               onChange={(e) => updateStudentField(s.id, 'mother_occupation', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.mother_occupation ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('mother_occupation')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.address || ''}
                               onChange={(e) => updateStudentField(s.id, 'address', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.address ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('address')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.mother_tongue || ''}
                               onChange={(e) => updateStudentField(s.id, 'mother_tongue', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.mother_tongue ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('mother_tongue')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.nationality || ''}
                               onChange={(e) => updateStudentField(s.id, 'nationality', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.nationality ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('nationality')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.state || ''}
                               onChange={(e) => updateStudentField(s.id, 'state', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.state ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('state')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.religion || ''}
                               onChange={(e) => updateStudentField(s.id, 'religion', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.religion ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('religion')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.caste || ''}
                               onChange={(e) => updateStudentField(s.id, 'caste', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.caste ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('caste')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.sub_caste || ''}
                               onChange={(e) => updateStudentField(s.id, 'sub_caste', e.target.value)}
-                              className={`w-full bg-[var(--surf2)] border ${!s.sub_caste ? 'border-[var(--red)]/40 focus:border-[var(--red)]' : 'border-[var(--b)] focus:border-[var(--blue)]'} rounded px-2 py-1 text-[11.5px] outline-none`}
+                              className={getCellClassName('sub_caste')}
                             />
                           </td>
                           <td className="px-1 py-1.5">
                             <input
                               value={s.tc_no || ''}
                               onChange={(e) => updateStudentField(s.id, 'tc_no', e.target.value)}
-                              className="w-full bg-[var(--surf2)] border border-[var(--b)] focus:border-[var(--blue)] rounded px-2 py-1 text-[11.5px] outline-none"
+                              className={getCellClassName('tc_no')}
                             />
                           </td>
                           <td className="px-1 py-1.5 text-center">
