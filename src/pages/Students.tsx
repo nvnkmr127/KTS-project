@@ -3191,43 +3191,28 @@ interface MappedStudent {
 
 const validateStudent = (s: MappedStudent) => {
   const errors: string[] = [];
-  if (!s.firstName.trim() || s.firstName === 'N/A') errors.push('First name is required');
-  if (!s.lastName.trim() || s.lastName === 'N/A') errors.push('Last name is required');
+  if (!s.firstName?.trim() || s.firstName === 'N/A') errors.push('First name is required');
+  if (!s.lastName?.trim() || s.lastName === 'N/A') errors.push('Last name is required');
   if (!s.class) errors.push('Class is required');
   if (!s.section) errors.push('Section is required');
   if (s.gender !== 'Male' && s.gender !== 'Female') errors.push('Gender must be Male or Female');
-  if (!s.dob || !isValidDateDDMMYYYY(s.dob)) errors.push('Valid DOB in DD-MM-YYYY format required');
-  if (!s.enrollment_number?.trim()) errors.push('Admission Number is required');
-  if (!s.admissionDate || !isValidDateDDMMYYYY(s.admissionDate)) errors.push('Valid Admission Date in DD-MM-YYYY format required');
-  if (!s.student_pen_no?.trim()) {
-    errors.push('Student PEN NO. is required');
-  } else {
+
+  // Optional format validations (only checked if a value is provided)
+  if (s.dob?.trim() && !isValidDateDDMMYYYY(s.dob)) {
+    errors.push('DOB must be in DD-MM-YYYY format');
+  }
+  if (s.admissionDate?.trim() && !isValidDateDDMMYYYY(s.admissionDate)) {
+    errors.push('Admission Date must be in DD-MM-YYYY format');
+  }
+  if (s.student_pen_no?.trim()) {
     const cleanedPen = s.student_pen_no.replace(/\s+/g, '');
     if (!/^\d{11,14}$/.test(cleanedPen)) {
       errors.push('PEN must be 11 to 14 digits');
     }
   }
-  if (!s.aadhar_number?.trim()) {
-    errors.push('Aadhar Number is required');
-  } else if (s.aadhar_number.replace(/\D/g, '').length !== 12) {
+  if (s.aadhar_number?.trim() && s.aadhar_number.replace(/\D/g, '').length !== 12) {
     errors.push('Aadhar must be exactly 12 digits');
   }
-
-  if (!s.parent.trim() || s.parent === 'N/A') errors.push('Father Name is required');
-  if (!s.father_mobile?.trim()) errors.push('Father Mobile Number is required');
-  if (!s.father_occupation?.trim()) errors.push('Father Occupation is required');
-
-  if (!s.mother_name?.trim()) errors.push('Mother Name is required');
-  if (!s.mother_mobile?.trim()) errors.push('Mother Mobile Number is required');
-  if (!s.mother_occupation?.trim()) errors.push('Mother Occupation is required');
-
-  if (!s.address.trim()) errors.push('Address is required');
-  if (!s.mother_tongue?.trim()) errors.push('Mother Tongue is required');
-  if (!s.nationality?.trim()) errors.push('Nationality is required');
-  if (!s.state?.trim()) errors.push('State is required');
-  if (!s.religion?.trim()) errors.push('Religion is required');
-  if (!s.caste?.trim()) errors.push('Caste is required');
-  if (!s.sub_caste?.trim()) errors.push('Sub Caste is required');
 
   return errors;
 };
@@ -3463,9 +3448,9 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             section: cleanSection(rawSection),
             gender: cleanGender(rawGender),
             dob: cleanDate(rawDob),
-            admissionDate: cleanDate(rawAdmission) || getTodayDDMMYYYY(),
-            parent: rawParent ? String(rawParent).trim() : 'N/A',
-            phone: rawPhone ? String(rawPhone).trim() : 'N/A',
+            admissionDate: cleanDate(rawAdmission),
+            parent: rawParent ? String(rawParent).trim() : '',
+            phone: rawPhone ? String(rawPhone).trim() : '',
             address: rawAddress ? String(rawAddress).trim() : '',
             aadhar_number: rawAadhar ? String(rawAadhar).trim() : '',
             enrollment_number: rawEnrollment ? String(rawEnrollment).trim() : '',
@@ -3828,24 +3813,24 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                       <th className="px-2 py-2 text-left font-medium w-[90px]">Class *</th>
                       <th className="px-2 py-2 text-left font-medium w-[90px]">Section *</th>
                       <th className="px-2 py-2 text-left font-medium w-[100px]">Gender *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">DOB *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Number *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Date *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Student PEN *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Aadhar *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Father Name *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Father Mobile *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Father Occ *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Mother Name *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Mobile *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Mother Occ *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[180px]">Address *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Tongue *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Nationality *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">State *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Religion *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[100px]">Caste *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[100px]">Sub Caste *</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">DOB</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Number</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Date</th>
+                      <th className="px-2 py-2 text-left font-medium w-[140px]">Student PEN</th>
+                      <th className="px-2 py-2 text-left font-medium w-[140px]">Aadhar</th>
+                      <th className="px-2 py-2 text-left font-medium w-[140px]">Father Name</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Father Mobile</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">Father Occ</th>
+                      <th className="px-2 py-2 text-left font-medium w-[140px]">Mother Name</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Mobile</th>
+                      <th className="px-2 py-2 text-left font-medium w-[130px]">Mother Occ</th>
+                      <th className="px-2 py-2 text-left font-medium w-[180px]">Address</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Tongue</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Nationality</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">State</th>
+                      <th className="px-2 py-2 text-left font-medium w-[120px]">Religion</th>
+                      <th className="px-2 py-2 text-left font-medium w-[100px]">Caste</th>
+                      <th className="px-2 py-2 text-left font-medium w-[100px]">Sub Caste</th>
                       <th className="px-2 py-2 text-left font-medium w-[100px]">TC Number</th>
                       <th className="px-2 py-2 text-center font-medium w-[50px]">Action</th>
                     </tr>
@@ -3862,24 +3847,44 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                           case 'class': return !s.class;
                           case 'section': return !s.section;
                           case 'gender': return !s.gender || (s.gender !== 'Male' && s.gender !== 'Female');
-                          case 'dob': return !s.dob || !isValidDateDDMMYYYY(s.dob);
-                          case 'enrollment_number': return !s.enrollment_number?.trim();
-                          case 'admissionDate': return !s.admissionDate || !isValidDateDDMMYYYY(s.admissionDate);
-                          case 'student_pen_no': return !s.student_pen_no?.trim() || !/^\d{11,14}$/.test(s.student_pen_no.replace(/\s+/g, ''));
-                          case 'aadhar_number': return !s.aadhar_number?.trim() || s.aadhar_number.replace(/\D/g, '').length !== 12;
-                          case 'parent': return !s.parent?.trim() || s.parent === 'N/A';
-                          case 'father_mobile': return !s.father_mobile?.trim();
-                          case 'father_occupation': return !s.father_occupation?.trim();
-                          case 'mother_name': return !s.mother_name?.trim();
-                          case 'mother_mobile': return !s.mother_mobile?.trim();
-                          case 'mother_occupation': return !s.mother_occupation?.trim();
-                          case 'address': return !s.address?.trim();
-                          case 'mother_tongue': return !s.mother_tongue?.trim();
-                          case 'nationality': return !s.nationality?.trim();
-                          case 'state': return !s.state?.trim();
-                          case 'religion': return !s.religion?.trim();
-                          case 'caste': return !s.caste?.trim();
-                          case 'sub_caste': return !s.sub_caste?.trim();
+
+                          case 'dob':
+                            return !s.dob?.trim() || !isValidDateDDMMYYYY(s.dob);
+                          case 'admissionDate':
+                            return !s.admissionDate?.trim() || !isValidDateDDMMYYYY(s.admissionDate);
+                          case 'student_pen_no':
+                            return !s.student_pen_no?.trim() || !/^\d{11,14}$/.test(s.student_pen_no.replace(/\s+/g, ''));
+                          case 'aadhar_number':
+                            return !s.aadhar_number?.trim() || s.aadhar_number.replace(/\D/g, '').length !== 12;
+                          case 'enrollment_number':
+                            return !s.enrollment_number?.trim();
+                          case 'parent':
+                            return !s.parent?.trim() || s.parent === 'N/A';
+                          case 'father_mobile':
+                            return !s.father_mobile?.trim();
+                          case 'father_occupation':
+                            return !s.father_occupation?.trim();
+                          case 'mother_name':
+                            return !s.mother_name?.trim();
+                          case 'mother_mobile':
+                            return !s.mother_mobile?.trim();
+                          case 'mother_occupation':
+                            return !s.mother_occupation?.trim();
+                          case 'address':
+                            return !s.address?.trim();
+                          case 'mother_tongue':
+                            return !s.mother_tongue?.trim();
+                          case 'nationality':
+                            return !s.nationality?.trim();
+                          case 'state':
+                            return !s.state?.trim();
+                          case 'religion':
+                            return !s.religion?.trim();
+                          case 'caste':
+                            return !s.caste?.trim();
+                          case 'sub_caste':
+                            return !s.sub_caste?.trim();
+
                           default: return false;
                         }
                       };
