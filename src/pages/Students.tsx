@@ -3862,9 +3862,9 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
                           case 'class': return !s.class;
                           case 'section': return !s.section;
                           case 'gender': return !s.gender || (s.gender !== 'Male' && s.gender !== 'Female');
-                          case 'dob': return !s.dob || !/^\d{4}-\d{2}-\d{2}$/.test(s.dob);
+                          case 'dob': return !s.dob || !isValidDateDDMMYYYY(s.dob);
                           case 'enrollment_number': return !s.enrollment_number?.trim();
-                          case 'admissionDate': return !s.admissionDate || !/^\d{4}-\d{2}-\d{2}$/.test(s.admissionDate);
+                          case 'admissionDate': return !s.admissionDate || !isValidDateDDMMYYYY(s.admissionDate);
                           case 'student_pen_no': return !s.student_pen_no?.trim() || !/^\d{11,14}$/.test(s.student_pen_no.replace(/\s+/g, ''));
                           case 'aadhar_number': return !s.aadhar_number?.trim() || s.aadhar_number.replace(/\D/g, '').length !== 12;
                           case 'parent': return !s.parent?.trim() || s.parent === 'N/A';
