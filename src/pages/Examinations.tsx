@@ -728,7 +728,7 @@ export function Examinations() {
     }));
   };
 
-  const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number | null, studentId?: string) => {
+  const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number | string | null, studentId?: string) => {
     const effectiveId = examId || selectedMarksExamId || (marksExams[0]?.id ?? 'default_exam');
     const cleanRoll = roll.replace(/^[0-9]+[A-Z]+-?/i, '');
 
@@ -741,9 +741,15 @@ export function Examinations() {
       const newSub = { ...subBase, ...subDraft };
 
       if (mark === null) {
-        delete newSub[roll];
-        delete newSub[cleanRoll];
-        if (studentId) delete newSub[studentId];
+        if (subBase[roll] !== undefined || (studentId && subBase[studentId] !== undefined) || subBase[cleanRoll] !== undefined) {
+          newSub[roll] = "";
+          newSub[cleanRoll] = "";
+          if (studentId) newSub[studentId] = "";
+        } else {
+          delete newSub[roll];
+          delete newSub[cleanRoll];
+          if (studentId) delete newSub[studentId];
+        }
       } else {
         newSub[roll] = mark;
         newSub[cleanRoll] = mark;
@@ -1231,6 +1237,16 @@ export function Examinations() {
 
   const classSubjectsForMarks = getSubjectsForClass(selectedMarksClass);
 
+  const handleClearStudentMarks = async (student: any) => {
+    if (await confirm(`Are you sure you want to clear all subject marks for ${student.name}? This will put them in a cleared state, which you can save.`, 'Clear Marks')) {
+      const effectiveExamId = selectedMarksExamId || (marksExams[0]?.id ?? 'default_exam');
+      classSubjectsForMarks.forEach((sub) => {
+        handleUpdateStudentMark(effectiveExamId, sub, student.roll, "", student.id);
+      });
+    }
+  };
+
+
   const getDynamicAvatarColor = (init: string) => {
     const palette = [
       { bg: 'var(--teal-bg)', color: 'var(--teal-tx)' },
@@ -1559,7 +1575,7 @@ export function Examinations() {
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5">
           <Card>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-[13px] font-semibold text-[var(--tx)]">Results — {EXAMS[2].name}</div>
+              <div className="text-[13px] font-semibold text-[var(--tx)]">Results — {exams[2]?.name || 'Exam Results'}</div>
               <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
                 {activeClassList.map((c) => (
                   <option key={c} value={c}>Class {c}</option>
@@ -1696,6 +1712,7 @@ export function Examinations() {
                     const detail = computeStudentMarksDetail(student.roll, student.idx, student.id);
                     const isExpanded = !!expandedStudentRolls[student.roll];
                     const avatarColor = getDynamicAvatarColor(student.init);
+                    const canEdit = isAdmin || isTeacherAssignedToClass(selectedMarksClass);
 
                     return (
                       <Fragment key={student.roll}>
@@ -1710,7 +1727,24 @@ export function Examinations() {
                               <span className="font-bold text-[13px] text-[var(--tx)]">{student.name}</span>
                             </div>
                           </td>
-                          <td className="px-3 py-3 font-mono text-[11.5px] text-[var(--tx3)]">{student.roll}</td>
+                          <td className="px-3 py-3 font-mono text-[11.5px] text-[var(--tx3)]">
+                            <div className="flex items-center gap-2">
+                              <span>{student.roll}</span>
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleClearStudentMarks(student);
+                                  }}
+                                  className="px-2 py-1 rounded text-[10px] font-semibold bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 hover:opacity-90 active:scale-95 transition-all cursor-pointer flex-shrink-0"
+                                  title="Clear all subject marks"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-3 py-3 text-[12px] text-[var(--tx3)]">{detail.totalMaxMarks}</td>
                           <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.totalMarksObtainedDisplay}</td>
                           <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.overallPctDisplay}</td>
