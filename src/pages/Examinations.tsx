@@ -937,9 +937,7 @@ export function Examinations() {
 
   // Initialize and validate filter selections
   useEffect(() => {
-    const availableExams = isAdmin
-      ? exams.filter((e) => e.status !== 'Results Published')
-      : exams.filter((e) => isExamCompleted(e));
+    const availableExams = exams;
     if (availableExams.length > 0) {
       if (!selectedMarksExamId || !availableExams.some(e => e.id === selectedMarksExamId)) {
         setSelectedMarksExamId(availableExams[0].id);
@@ -947,7 +945,7 @@ export function Examinations() {
     } else {
       setSelectedMarksExamId('');
     }
-  }, [exams, selectedMarksExamId, isAdmin]);
+  }, [exams, selectedMarksExamId]);
 
   useEffect(() => {
     if (!isAdmin && user) {
@@ -1217,9 +1215,7 @@ export function Examinations() {
   const activeClassList = classList.length > 0 ? classList : CLASSES;
   const filteredClassList = activeClassList;
 
-  const marksExams = isAdmin
-    ? exams.filter((e) => e.status !== 'Results Published')
-    : exams.filter((e) => isExamCompleted(e));
+  const marksExams = exams;
 
   const getMaxMarksForSubject = (examId: string, className: string, subjectName: string, fallbackMax: number = 100): number => {
     if (!examId || !className || !subjectName) return fallbackMax;
@@ -1761,8 +1757,7 @@ export function Examinations() {
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                   {detail.subjectBreakdown.map((subItem) => {
-                                    const currentExamObj = exams.find((e) => e.id === selectedMarksExamId);
-                                    const canEditMarks = isAdmin || (isTeacherAssignedToClass(selectedMarksClass) && (currentExamObj ? isExamCompleted(currentExamObj) : false));
+                                    const canEditMarks = isAdmin || isTeacherAssignedToClass(selectedMarksClass);
 
                                     return (
                                       <div key={subItem.subject} className="p-3 bg-[var(--surf2)]/70 border border-[var(--b)] rounded-xl flex items-center justify-between gap-2">
