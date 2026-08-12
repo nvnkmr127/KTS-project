@@ -54,6 +54,8 @@ const getSubjectText = (subject: string): string | undefined => {
   return key ? SUBJECT_TEXT[key] : undefined;
 };
 
+
+
 interface EditCell {
   day: string;
   period: number;
@@ -77,6 +79,42 @@ export function Timetable() {
   const [showEditTimings, setShowEditTimings] = useState(false);
   const [tempTimings, setTempTimings] = useState<PeriodTiming[]>([]);
   const [classTeachers, setClassTeachers] = useState<Record<string, string>>({});
+  const [dbSubjects, setDbSubjects] = useState<Record<string, string[]>>({});
+
+  const getSubjectsForClass = (clsName: string): string[] => {
+    if (!clsName) return ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'];
+    const cleanClass = clsName.replace(/^Class\s*/i, '').trim();
+
+    if (dbSubjects[cleanClass] && dbSubjects[cleanClass].length > 0) {
+      return dbSubjects[cleanClass];
+    }
+
+    const savedExact = localStorage.getItem(`batch_subjects_${cleanClass}`);
+    if (savedExact) {
+      try {
+        const parsed = JSON.parse(savedExact);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch { /* empty */ }
+    }
+
+    const match = cleanClass.match(/^(\d+)/);
+    const classId = match ? match[1] : cleanClass;
+
+    if (match && cleanClass === classId) {
+      const savedSecA = localStorage.getItem(`batch_subjects_${classId}A`);
+      if (savedSecA) {
+        try {
+          const parsed = JSON.parse(savedSecA);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        } catch { /* empty */ }
+      }
+    }
+
+    if (classId === '8') {
+      return ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social'];
+    }
+    return ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS'];
+  };
 
   useEffect(() => {
     async function loadInitialData() {
@@ -199,6 +237,24 @@ export function Timetable() {
         if (names.length > 0 && !names.includes(selectedClass)) {
           setSelectedClass(names[0]);
         }
+
+        // Load subjects settings from database
+        const settingsRes = await api.getResources('settings').catch(() => []);
+        const subjectsMap: Record<string, string[]> = {};
+        if (Array.isArray(settingsRes)) {
+          settingsRes.forEach((s: any) => {
+            if (s.key && s.key.startsWith('batch_subjects_') && s.value) {
+              try {
+                const parsed = typeof s.value === 'string' ? JSON.parse(s.value) : s.value;
+                if (Array.isArray(parsed)) {
+                  const classKey = s.key.replace('batch_subjects_', '');
+                  subjectsMap[classKey] = parsed;
+                }
+              } catch { /* empty */ }
+            }
+          });
+        }
+        setDbSubjects(subjectsMap);
       } catch (err) {
         console.error('Error loading timetable initial data:', err);
       }
@@ -225,7 +281,10 @@ export function Timetable() {
     if (!isAdmin) return;
     const cell = classTimetable[day]?.[period] ?? null;
     setEditCell({ day, period, current: cell });
-    setEditSubject(cell?.subject ?? 'Mathematics');
+    
+    const subjectsList = getSubjectsForClass(selectedClass);
+    const defaultSubject = subjectsList[0] || 'Break';
+    setEditSubject(cell?.subject ?? defaultSubject);
     
     // Get list of available teachers for this cell (not busy in other classes)
     const available = teachers.filter(t => {
@@ -382,6 +441,14 @@ export function Timetable() {
     window.print();
     document.head.removeChild(style);
   };
+
+  const classSubjects = [...getSubjectsForClass(selectedClass)];
+  if (!classSubjects.includes('Break')) {
+    classSubjects.push('Break');
+  }
+  if (editSubject && !classSubjects.includes(editSubject)) {
+    classSubjects.unshift(editSubject);
+  }
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
@@ -573,7 +640,7 @@ export function Timetable() {
                   onChange={(e) => setEditSubject(e.target.value)}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >
-                  {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
+                  {classSubjects.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div>
