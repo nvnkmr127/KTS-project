@@ -22,6 +22,8 @@ export interface User {
   designation?: string;
   subject?: string;
   classes?: string[];
+  class?: string;
+  assignedClass?: string;
   roles?: string[];
   permissions?: string[];
   status?: string;

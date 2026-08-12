@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -709,6 +709,7 @@ export function Examinations() {
   });
 
   const [classList, setClassList] = useState<string[]>([]);
+  const [rawBatches, setRawBatches] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [selectedMarksClass, setSelectedMarksClass] = useState('8A');
   const [students, setStudents] = useState<any[]>([]);
@@ -881,6 +882,7 @@ export function Examinations() {
       try {
         const batchesData = await api.getResources('batches').catch(() => []);
         if (Array.isArray(batchesData) && batchesData.length > 0) {
+          setRawBatches(batchesData);
           const names = batchesData.map((b: any) => b.name).filter(Boolean).sort((a: string, b: string) => {
             const numA = parseInt(a);
             const numB = parseInt(b);
@@ -1148,8 +1150,49 @@ export function Examinations() {
     return false;
   };
 
+  const isTeacherAssignedToClass = (className: string): boolean => {
+    if (isAdmin) return true;
+    if (!className) return false;
+
+    const targetClean = className.replace(/^Class\s*/i, '').trim().toUpperCase();
+
+    if (Array.isArray(user?.classes) && user.classes.length > 0) {
+      const match = user.classes.some((c: string) =>
+        String(c).replace(/^Class\s*/i, '').trim().toUpperCase() === targetClean
+      );
+      if (match) return true;
+    }
+
+    const userClassSingle = user?.class || user?.assignedClass;
+    if (userClassSingle) {
+      const cleanUserSingle = String(userClassSingle).replace(/^Class\s*/i, '').trim().toUpperCase();
+      if (cleanUserSingle === targetClean) return true;
+    }
+
+    if (rawBatches.length > 0) {
+      const matchedBatch = rawBatches.find((b: any) =>
+        String(b.name || '').replace(/^Class\s*/i, '').trim().toUpperCase() === targetClean
+      );
+      if (matchedBatch) {
+        if (matchedBatch.class_teacher_id && String(matchedBatch.class_teacher_id) === String(user?.id)) {
+          return true;
+        }
+        if (matchedBatch.class_teacher_name && user?.name &&
+            String(matchedBatch.class_teacher_name).toLowerCase().trim() === String(user.name).toLowerCase().trim()) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
   const activeClassList = classList.length > 0 ? classList : CLASSES;
-  const filteredClassList = isAdmin ? activeClassList : (user?.classes && user.classes.length > 0 ? user.classes : activeClassList);
+  const teacherAssignedClasses = activeClassList.filter((c) => isTeacherAssignedToClass(c));
+
+  const filteredClassList = isAdmin
+    ? activeClassList
+    : (teacherAssignedClasses.length > 0 ? teacherAssignedClasses : (user?.classes && user.classes.length > 0 ? user.classes : activeClassList));
 
   const marksExams = isAdmin
     ? exams.filter((e) => e.status !== 'Results Published')
@@ -1561,7 +1604,7 @@ export function Examinations() {
                 {isAdmin ? 'Marks Preview' : 'Marks Entry'}
               </div>
               <div className="text-[11px] text-[var(--tx3)] mt-0.5">
-                {isAdmin ? 'Overall student results. Click any student row to view/edit subject-wise marks breakdown.' : 'View overall and subject-wise student marks.'}
+                {isAdmin ? 'Overall student results across all classes. Click any student row to view/edit subject-wise marks breakdown.' : 'View overall and subject-wise student marks.'}
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -1585,6 +1628,14 @@ export function Examinations() {
               </select>
             </div>
           </div>
+
+          {!isAdmin && !isTeacherAssignedToClass(selectedMarksClass) && (
+            <div className="mb-4 p-3 bg-[var(--amber-bg)] border border-[var(--amber)]/30 rounded-xl text-[12px] text-[var(--amber-tx)] font-medium flex items-center gap-2">
+              <AlertCircle size={15} />
+              <span>Only the assigned class teacher for Class {selectedMarksClass} can enter or modify student marks. You are viewing in Read-Only mode.</span>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             {marksExams.length === 0 ? (
               <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
@@ -1661,14 +1712,14 @@ export function Examinations() {
                                     Subject-wise Marks for Class {selectedMarksClass} — <span className="text-[var(--blue-tx)]">{student.name}</span> (Roll: {student.roll})
                                   </div>
                                   <span className="text-[11px] text-[var(--tx3)] font-medium">
-                                    {isAdmin ? 'Admin Edit Mode: Adjust subject marks below' : 'Faculty Marks Entry Mode: Adjust subject marks below'}
+                                    {isAdmin ? 'Admin Edit Mode: Adjust subject marks below' : isTeacherAssignedToClass(selectedMarksClass) ? 'Faculty Marks Entry Mode: Adjust subject marks below' : 'Read-Only Mode: Unassigned Class Teacher'}
                                   </span>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                   {detail.subjectBreakdown.map((subItem) => {
                                     const currentExamObj = exams.find((e) => e.id === selectedMarksExamId);
-                                    const canEditMarks = isAdmin || (currentExamObj ? isExamCompleted(currentExamObj) : false);
+                                    const canEditMarks = isAdmin || (isTeacherAssignedToClass(selectedMarksClass) && (currentExamObj ? isExamCompleted(currentExamObj) : false));
 
                                     return (
                                       <div key={subItem.subject} className="p-3 bg-[var(--surf2)]/70 border border-[var(--b)] rounded-xl flex items-center justify-between gap-2">
@@ -1718,14 +1769,16 @@ export function Examinations() {
             <div className="mt-4 pt-3 border-t border-[var(--b)] flex flex-wrap items-center justify-between gap-3">
               <div className="text-[11.5px] text-[var(--tx3)] font-medium">
                 {!isAdmin
-                  ? 'Faculty Mode: Entered numbers remain in Draft Mode. Click "Save Marks" below to commit changes to the database and update Admin Preview.'
-                  : 'Admin Preview Mode: Displays saved student marks from the database.'}
+                  ? isTeacherAssignedToClass(selectedMarksClass)
+                    ? 'Faculty Mode: Entered numbers remain in Draft Mode. Click "Save Marks" below to commit changes to the database and update Admin Preview.'
+                    : 'Read-Only Mode: Only the assigned class teacher can enter or save marks for this class.'
+                  : 'Admin Mode: You can view and edit marks for any class.'}
               </div>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={handleSaveMarksToDb}
-                  disabled={savingMarks}
+                  disabled={savingMarks || (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass))}
                   className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                 >
                   {savingMarks ? (
