@@ -760,6 +760,7 @@ export function Examinations() {
       };
       localStorage.setItem('kts_student_marks_draft', JSON.stringify(updated));
       localStorage.setItem('kts_student_marks', JSON.stringify(updated));
+      saveSettingToDb('kts_student_marks', updated);
       return updated;
     });
   };
