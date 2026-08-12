@@ -1727,24 +1727,7 @@ export function Examinations() {
                               <span className="font-bold text-[13px] text-[var(--tx)]">{student.name}</span>
                             </div>
                           </td>
-                          <td className="px-3 py-3 font-mono text-[11.5px] text-[var(--tx3)]">
-                            <div className="flex items-center gap-2">
-                              <span>{student.roll}</span>
-                              {canEdit && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleClearStudentMarks(student);
-                                  }}
-                                  className="px-2 py-1 rounded text-[10px] font-semibold bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 hover:opacity-90 active:scale-95 transition-all cursor-pointer flex-shrink-0"
-                                  title="Clear all subject marks"
-                                >
-                                  Clear
-                                </button>
-                              )}
-                            </div>
-                          </td>
+                          <td className="px-3 py-3 font-mono text-[11.5px] text-[var(--tx3)]">{student.roll}</td>
                           <td className="px-3 py-3 text-[12px] text-[var(--tx3)]">{detail.totalMaxMarks}</td>
                           <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.totalMarksObtainedDisplay}</td>
                           <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.overallPctDisplay}</td>
@@ -1781,6 +1764,19 @@ export function Examinations() {
                                   <div className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-2">
                                     <BookOpen size={14} className="text-[var(--blue-tx)]" />
                                     Subject-wise Marks for Class {selectedMarksClass} — <span className="text-[var(--blue-tx)]">{student.name}</span> (Roll: {student.roll})
+                                    {canEdit && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleClearStudentMarks(student);
+                                        }}
+                                        className="ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 hover:opacity-90 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1"
+                                        title="Clear all subject marks"
+                                      >
+                                        Clear Marks
+                                      </button>
+                                    )}
                                   </div>
                                   <span className="text-[11px] text-[var(--tx3)] font-medium">
                                     {isAdmin ? 'Admin Edit Mode: Adjust subject marks below' : isTeacherAssignedToClass(selectedMarksClass) ? 'Faculty Marks Entry Mode: Adjust subject marks below' : 'Read-Only Mode: Unassigned Class Teacher'}
