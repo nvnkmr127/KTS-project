@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -354,8 +354,8 @@ function ExamScheduleDesigner({
                 key={cls}
                 onClick={() => setSelectedClass(cls)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${selectedClass === cls
-                    ? 'bg-[var(--blue)] text-white'
-                    : 'bg-[var(--surf2)] border border-[var(--b)] text-[var(--tx2)] hover:border-[var(--blue)]'
+                  ? 'bg-[var(--blue)] text-white'
+                  : 'bg-[var(--surf2)] border border-[var(--b)] text-[var(--tx2)] hover:border-[var(--blue)]'
                   }`}
               >
                 {cls}
@@ -429,8 +429,8 @@ function ExamScheduleDesigner({
                     setNewMarks(50);
                   }}
                   className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10.5px] transition-all relative ${hasExams
-                      ? 'bg-[var(--blue)] text-white font-bold'
-                      : 'text-[var(--tx)]'
+                    ? 'bg-[var(--blue)] text-white font-bold'
+                    : 'text-[var(--tx)]'
                     } ${isWritable ? 'cursor-pointer hover:bg-[var(--surf2)]' : 'cursor-default'}`}
                 >
                   {day}
@@ -546,7 +546,7 @@ function ExamScheduleDesigner({
   );
 }
 
- 
+
 async function saveSettingToDb(key: string, value: any) {
   try {
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
@@ -625,7 +625,7 @@ export function Examinations() {
         try {
           const bstr = e.target?.result;
           const wb = XLSX.read(bstr, { type: 'binary' });
-           
+
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws) as any[];
@@ -634,7 +634,7 @@ export function Examinations() {
             id: 'exam-' + (Date.now() + idx),
             name: String(row['Exam Name'] || row['Name'] || 'Unit Test').trim(),
             class: String(row['Class'] || '8A').trim(),
-             
+
             subject: String(row['Subject'] || 'All Subjects').trim(),
             date: String(row['Date'] || new Date().toISOString().slice(0, 10)).trim(),
             maxMarks: parseInt(row['Max Marks'] || row['Marks']) || 100,
@@ -649,13 +649,13 @@ export function Examinations() {
           });
 
           await alert(`Successfully imported ${parsedExams.length} exams!`, "Import Success");
-  // eslint-disable-next-line unused-imports/no-unused-vars
+          // eslint-disable-next-line unused-imports/no-unused-vars
         } catch (err) {
           await alert('Failed to parse Excel rows', "Import Error");
         }
       };
       reader.readAsBinaryString(file);
-  // eslint-disable-next-line unused-imports/no-unused-vars
+      // eslint-disable-next-line unused-imports/no-unused-vars
     } catch (err) {
       await alert('Error reading Excel file', "Read Error");
     }
@@ -703,7 +703,7 @@ export function Examinations() {
   });
 
   const [invigilations, setInvigilations] = useState<Invigilation[]>(() => {
-     
+
     const saved = localStorage.getItem('kts_exam_invigilations');
     return (saved && JSON.parse(saved)) || [];
   });
@@ -740,9 +740,22 @@ export function Examinations() {
         },
       };
       localStorage.setItem('kts_student_marks', JSON.stringify(updated));
-      saveSettingToDb('kts_student_marks', updated);
       return updated;
     });
+  };
+
+  const handleSaveMarksToDb = async () => {
+    setSavingMarks(true);
+    try {
+      localStorage.setItem('kts_student_marks', JSON.stringify(studentMarks));
+      await saveSettingToDb('kts_student_marks', studentMarks);
+      await alert('Marks Saved Successfully', `Student marks for Class ${selectedMarksClass} have been saved to the database. They are now updated and live in Admin login as well.`);
+    } catch (err) {
+      console.error('Error saving marks to DB:', err);
+      await alert('Error', 'Failed to save student marks to database. Please try again.');
+    } finally {
+      setSavingMarks(false);
+    }
   };
 
   useEffect(() => {
@@ -865,7 +878,7 @@ export function Examinations() {
       }
     };
     loadBatchesAndStudents();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Listen to cross-tab updates to examinations, schedules, marks, and invigilations
@@ -948,7 +961,7 @@ export function Examinations() {
   const [allotTimeSlot, setAllotTimeSlot] = useState('10:00 AM');
   const [allotRoom, setAllotRoom] = useState('Room 101');
   const [allotStaffId, setAllotStaffId] = useState('');
- 
+
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -1098,7 +1111,7 @@ export function Examinations() {
     setSelectedClass(targetClass);
     setSelectedExamId(exam.id);
     setActiveTab('designer');
-   
+
   };
 
   const isExamCompleted = (e: Exam): boolean => {
@@ -1314,7 +1327,7 @@ export function Examinations() {
               />
               <select
                 value={examStatusFilter}
-                 
+
                 onChange={(e) => setExamStatusFilter(e.target.value)}
                 className="bg-[var(--surf)] border border-[var(--b2)] rounded-lg px-3 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none"
               >
@@ -1580,9 +1593,8 @@ export function Examinations() {
                       <Fragment key={student.roll}>
                         <tr
                           onClick={() => toggleStudentExpand(student.roll)}
-                          className={`border-b border-[var(--b)] transition-colors cursor-pointer ${
-                            isExpanded ? 'bg-[var(--surf2)] font-semibold' : 'hover:bg-[var(--surf2)]'
-                          }`}
+                          className={`border-b border-[var(--b)] transition-colors cursor-pointer ${isExpanded ? 'bg-[var(--surf2)] font-semibold' : 'hover:bg-[var(--surf2)]'
+                            }`}
                         >
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2.5">
@@ -1677,6 +1689,32 @@ export function Examinations() {
               </table>
             )}
           </div>
+          {studentsToShow.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-[var(--b)] flex flex-wrap items-center justify-between gap-3">
+              <div className="text-[11.5px] text-[var(--tx3)] font-medium">
+                {!isAdmin
+                  ? 'Faculty Mode: Entered numbers remain in Draft Mode. Click "Save Marks" below to commit changes to the database and update Admin Preview.'
+                  : 'Admin Preview Mode: Displays saved student marks from the database.'}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveMarksToDb}
+                  disabled={savingMarks}
+                  className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                >
+                  {savingMarks ? (
+                    <span>Saving to DB...</span>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={15} />
+                      <span>Save Marks</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
       )}
 
@@ -2034,8 +2072,8 @@ export function Examinations() {
                           setShowClassDropdown(false);
                         }}
                         className={`w-full text-left px-2.5 py-1.5 rounded-md text-[12px] cursor-pointer transition-colors ${selectedCreateClasses.includes('All Classes')
-                            ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] font-semibold'
-                            : 'text-[var(--tx)] hover:bg-[var(--surf2)]'
+                          ? 'bg-[var(--blue-bg)] text-[var(--blue-tx)] font-semibold'
+                          : 'text-[var(--tx)] hover:bg-[var(--surf2)]'
                           }`}
                       >
                         All Classes
