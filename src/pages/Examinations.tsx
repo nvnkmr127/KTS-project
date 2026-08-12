@@ -550,10 +550,10 @@ function ExamScheduleDesigner({
 async function saveSettingToDb(key: string, value: any) {
   try {
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
-    const existing = await api.getResources('settings', { key });
+    const existing = await api.getResources('settings', { key }).catch(() => []);
     if (Array.isArray(existing) && existing.length > 0) {
       const settingId = existing[0].id;
-      await api.updateResource('settings', String(settingId), { value: valueStr });
+      await api.updateResource('settings', String(settingId), { value: valueStr }).catch(() => {});
     } else {
       await api.createResource('settings', {
         key,
@@ -561,10 +561,10 @@ async function saveSettingToDb(key: string, value: any) {
         group: 'exam',
         type: 'json',
         is_public: true,
-      });
+      }).catch(() => {});
     }
   } catch (err) {
-    console.error(`Error saving setting ${key} to DB:`, err);
+    console.warn(`Could not sync setting ${key} to backend DB (using local storage fallback):`, err);
   }
 }
 
@@ -792,7 +792,7 @@ export function Examinations() {
         let currentInvigilations = invigilations;
 
         // Sync exams
-        const examsRes = await api.getResources('settings', { key: 'examinations_exams' });
+        const examsRes = await api.getResources('settings', { key: 'examinations_exams' }).catch(() => []);
         if (Array.isArray(examsRes) && examsRes.length > 0 && examsRes[0].value) {
           try {
             currentExams = JSON.parse(examsRes[0].value);
@@ -801,13 +801,12 @@ export function Examinations() {
           } catch (e) {
             console.error('Error parsing examinations_exams setting:', e);
           }
-        } else {
-          // Seed DB
+        } else if (isAdmin) {
           await saveSettingToDb('examinations_exams', currentExams);
         }
 
         // Sync schedules
-        const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' });
+        const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' }).catch(() => []);
         if (Array.isArray(schedulesRes) && schedulesRes.length > 0 && schedulesRes[0].value) {
           try {
             currentSchedules = JSON.parse(schedulesRes[0].value);
@@ -816,13 +815,12 @@ export function Examinations() {
           } catch (e) {
             console.error('Error parsing examinations_schedules setting:', e);
           }
-        } else {
-          // Seed DB
+        } else if (isAdmin) {
           await saveSettingToDb('examinations_schedules', currentSchedules);
         }
 
         // Sync invigilations
-        const invigilationsRes = await api.getResources('settings', { key: 'kts_exam_invigilations' });
+        const invigilationsRes = await api.getResources('settings', { key: 'kts_exam_invigilations' }).catch(() => []);
         if (Array.isArray(invigilationsRes) && invigilationsRes.length > 0 && invigilationsRes[0].value) {
           try {
             currentInvigilations = JSON.parse(invigilationsRes[0].value);
@@ -831,13 +829,12 @@ export function Examinations() {
           } catch (e) {
             console.error('Error parsing kts_exam_invigilations setting:', e);
           }
-        } else {
-          // Seed DB
+        } else if (isAdmin) {
           await saveSettingToDb('kts_exam_invigilations', currentInvigilations);
         }
 
         // Sync student marks
-        const marksRes = await api.getResources('settings', { key: 'kts_student_marks' });
+        const marksRes = await api.getResources('settings', { key: 'kts_student_marks' }).catch(() => []);
         if (Array.isArray(marksRes) && marksRes.length > 0 && marksRes[0].value) {
           try {
             const parsed = JSON.parse(marksRes[0].value);
