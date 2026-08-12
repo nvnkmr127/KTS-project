@@ -1222,11 +1222,7 @@ export function Examinations() {
   };
 
   const activeClassList = classList.length > 0 ? classList : CLASSES;
-  const teacherAssignedClasses = activeClassList.filter((c) => isTeacherAssignedToClass(c));
-
-  const filteredClassList = isAdmin
-    ? activeClassList
-    : (teacherAssignedClasses.length > 0 ? teacherAssignedClasses : (user?.classes && user.classes.length > 0 ? user.classes : activeClassList));
+  const filteredClassList = activeClassList;
 
   const marksExams = isAdmin
     ? exams.filter((e) => e.status !== 'Results Published')
