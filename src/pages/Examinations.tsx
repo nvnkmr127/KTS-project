@@ -714,7 +714,17 @@ export function Examinations() {
   const [students, setStudents] = useState<any[]>([]);
   const [selectedMarksExamId, setSelectedMarksExamId] = useState<string>('');
   const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>('Mathematics');
-  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number>>>>({});
+  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number>>>>(() => {
+    const draft = localStorage.getItem('kts_student_marks_draft');
+    if (draft) {
+      try { return JSON.parse(draft); } catch { /* empty */ }
+    }
+    const saved = localStorage.getItem('kts_student_marks');
+    if (saved) {
+      try { return JSON.parse(saved); } catch { /* empty */ }
+    }
+    return {};
+  });
   const [savingMarks, setSavingMarks] = useState(false);
   const [expandedStudentRolls, setExpandedStudentRolls] = useState<Record<string, boolean>>({});
 
@@ -739,6 +749,7 @@ export function Examinations() {
           },
         },
       };
+      localStorage.setItem('kts_student_marks_draft', JSON.stringify(updated));
       localStorage.setItem('kts_student_marks', JSON.stringify(updated));
       return updated;
     });
@@ -748,6 +759,7 @@ export function Examinations() {
     setSavingMarks(true);
     try {
       localStorage.setItem('kts_student_marks', JSON.stringify(studentMarks));
+      localStorage.removeItem('kts_student_marks_draft');
       await saveSettingToDb('kts_student_marks', studentMarks);
       await alert('Marks Saved Successfully', `Student marks for Class ${selectedMarksClass} have been saved to the database. They are now updated and live in Admin login as well.`);
     } catch (err) {
@@ -815,7 +827,19 @@ export function Examinations() {
         if (Array.isArray(marksRes) && marksRes.length > 0 && marksRes[0].value) {
           try {
             const parsed = JSON.parse(marksRes[0].value);
-            setStudentMarks(parsed);
+            setStudentMarks((prev) => {
+              if (!prev || Object.keys(prev).length === 0) {
+                return parsed;
+              }
+              const merged = { ...parsed };
+              for (const exId in prev) {
+                merged[exId] = { ...(merged[exId] || {}), ...prev[exId] };
+                for (const sub in prev[exId]) {
+                  merged[exId][sub] = { ...(merged[exId][sub] || {}), ...prev[exId][sub] };
+                }
+              }
+              return merged;
+            });
             (localStorage as any).originalSetItem('kts_student_marks', JSON.stringify(parsed));
           } catch (e) {
             console.error('Error parsing kts_student_marks setting:', e);
@@ -1661,7 +1685,8 @@ export function Examinations() {
                                               max={subItem.maxMarks}
                                               onClick={(e) => e.stopPropagation()}
                                               onChange={(e) => {
-                                                const val = Math.min(subItem.maxMarks, Math.max(0, Number(e.target.value) || 0));
+                                                const raw = e.target.value;
+                                                const val = raw === '' ? 0 : Math.min(subItem.maxMarks, Math.max(0, Number(raw) || 0));
                                                 handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val);
                                               }}
                                               className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner"
