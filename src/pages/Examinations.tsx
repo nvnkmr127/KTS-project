@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -715,6 +715,34 @@ export function Examinations() {
   const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>('Mathematics');
   const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number>>>>({});
   const [savingMarks, setSavingMarks] = useState(false);
+  const [expandedStudentRolls, setExpandedStudentRolls] = useState<Record<string, boolean>>({});
+
+  const toggleStudentExpand = (roll: string) => {
+    setExpandedStudentRolls((prev) => ({
+      ...prev,
+      [roll]: !prev[roll],
+    }));
+  };
+
+  const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number) => {
+    setStudentMarks((prev) => {
+      const examPrev = prev[examId] ?? {};
+      const subPrev = examPrev[subject] ?? {};
+      const updated = {
+        ...prev,
+        [examId]: {
+          ...examPrev,
+          [subject]: {
+            ...subPrev,
+            [roll]: mark,
+          },
+        },
+      };
+      localStorage.setItem('kts_student_marks', JSON.stringify(updated));
+      saveSettingToDb('kts_student_marks', updated);
+      return updated;
+    });
+  };
 
   useEffect(() => {
     const syncDb = async () => {
@@ -1063,42 +1091,112 @@ export function Examinations() {
     ? exams.filter((e) => e.status !== 'Results Published')
     : exams.filter((e) => e.status === 'Completed');
 
+  const classSubjectsForMarks = getSubjectsForClass(selectedMarksClass);
+
+  const getDynamicAvatarColor = (init: string) => {
+    const palette = [
+      { bg: 'var(--teal-bg)', color: 'var(--teal-tx)' },
+      { bg: 'var(--blue-bg)', color: 'var(--blue-tx)' },
+      { bg: 'var(--purple-bg)', color: 'var(--purple-tx)' },
+      { bg: 'var(--amber-bg)', color: 'var(--amber-tx)' },
+      { bg: 'var(--coral-bg)', color: 'var(--coral-tx)' },
+    ];
+    let sum = 0;
+    for (let i = 0; i < init.length; i++) {
+      sum += init.charCodeAt(i);
+    }
+    return palette[sum % palette.length];
+  };
+
   const getFilteredStudentsForMarks = () => {
     const dbFiltered = students.filter((s: any) => {
       const studentClass = s.batch?.name || (s.class && s.section ? `${s.class}${s.section}` : s.class || '');
       return studentClass.toUpperCase() === selectedMarksClass.toUpperCase();
     });
 
-    const mapStudent = (name: string, roll: string, init: string, defaultMark: number, id?: string) => {
-      const savedMark = studentMarks[selectedMarksExamId]?.[selectedMarksSubject]?.[roll];
-      const maths = savedMark !== undefined ? savedMark : defaultMark;
-      return {
-         
-        name,
-        init,
-        roll,
-        maths,
-        maxMarks: 100,
-        id
-      };
-    };
-
     if (dbFiltered.length > 0) {
       return dbFiltered.map((s: any, idx: number) => {
-        const initials = s.name.trim().split(/\s+/).map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-        const roll = s.enrollment_number || `${selectedMarksClass}-${String(idx + 1).padStart(3, '0')}`;
-        const defaultMark = 70 + (parseInt(s.id) || idx) % 26;
-        return mapStudent(s.name, roll, initials || 'ST', defaultMark, s.id);
+        const fullName = s.name || (s.first_name ? `${s.first_name} ${s.last_name || ''}`.trim() : `Student ${idx + 1}`);
+        const nameParts = fullName.trim().split(/\s+/);
+        const initials = nameParts.length > 1
+          ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+          : fullName.slice(0, 2).toUpperCase();
+        const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${selectedMarksClass}-${String(idx + 1).padStart(3, '0')}`;
+        return {
+          id: String(s.id || idx),
+          name: fullName,
+          roll: String(roll),
+          init: initials || 'ST',
+          idx,
+        };
       });
     }
-    return RESULTS.filter((r) => {
+
+    const resultsFiltered = RESULTS.filter((r) => {
       const rollClass = r.roll.split('-')[0];
       return rollClass.toUpperCase() === selectedMarksClass.toUpperCase();
-    }).map((r) => {
-      return mapStudent(r.name, r.roll, r.init, r.maths);
+    });
+
+    if (resultsFiltered.length > 0) {
+      return resultsFiltered.map((r, idx) => ({
+        id: `res-${idx}`,
+        name: r.name,
+        roll: r.roll,
+        init: r.init,
+        idx,
+      }));
+    }
+
+    return Array.from({ length: 6 }).map((_, idx) => {
+      const roll = `${selectedMarksClass}-${String(idx + 1).padStart(3, '0')}`;
+      const name = `Student ${roll}`;
+      return {
+        id: `gen-${selectedMarksClass}-${idx}`,
+        name,
+        roll,
+        init: `S${idx + 1}`,
+        idx,
+      };
     });
   };
+
   const studentsToShow = getFilteredStudentsForMarks();
+
+  const computeStudentMarksDetail = (studentRoll: string, studentIdx: number) => {
+    const subjectBreakdown = classSubjectsForMarks.map((sub, sIdx) => {
+      const saved = studentMarks[selectedMarksExamId]?.[sub]?.[studentRoll];
+      let mark: number;
+      if (saved !== undefined) {
+        mark = saved;
+      } else {
+        const base = 70 + ((studentIdx * 5 + sIdx * 3) % 26);
+        mark = Math.min(100, Math.max(35, base));
+      }
+      const maxMarks = 100;
+      const pct = Math.round((mark / maxMarks) * 100);
+      const grade = pct >= 90 ? 'A+' : pct >= 75 ? 'A' : pct >= 65 ? 'B+' : pct >= 50 ? 'B' : 'C';
+      return {
+        subject: sub,
+        mark,
+        maxMarks,
+        pct,
+        grade,
+      };
+    });
+
+    const totalMaxMarks = subjectBreakdown.reduce((sum, item) => sum + item.maxMarks, 0);
+    const totalMarksObtained = subjectBreakdown.reduce((sum, item) => sum + item.mark, 0);
+    const overallPct = totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : 0;
+    const overallGrade = overallPct >= 90 ? 'A+' : overallPct >= 75 ? 'A' : overallPct >= 65 ? 'B+' : overallPct >= 50 ? 'B' : 'C';
+
+    return {
+      subjectBreakdown,
+      totalMaxMarks,
+      totalMarksObtained,
+      overallPct,
+      overallGrade,
+    };
+  };
 
   const classAvg = RESULTS.reduce((s, r) => s + r.percentage, 0) / RESULTS.length;
 
@@ -1345,15 +1443,20 @@ export function Examinations() {
 
       {activeTab === 'marks' && (
         <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-[13px] font-semibold text-[var(--tx)]">
-              {isAdmin ? 'Marks Preview' : 'Marks Entry'}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 border-b border-[var(--b)] pb-3">
+            <div>
+              <div className="text-[13.5px] font-bold text-[var(--tx)]">
+                {isAdmin ? 'Marks Preview' : 'Marks Entry'}
+              </div>
+              <div className="text-[11px] text-[var(--tx3)] mt-0.5">
+                {isAdmin ? 'Overall student results. Click any student row to view/edit subject-wise marks breakdown.' : 'View overall and subject-wise student marks.'}
+              </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <select
                 value={selectedMarksClass}
                 onChange={(e) => setSelectedMarksClass(e.target.value)}
-                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium"
               >
                 {filteredClassList.map((c) => (
                   <option key={c} value={c}>Class {c}</option>
@@ -1362,25 +1465,11 @@ export function Examinations() {
               <select
                 value={selectedMarksExamId}
                 onChange={(e) => setSelectedMarksExamId(e.target.value)}
-                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium"
               >
                 {marksExams.map((e) => (
                   <option key={e.id} value={e.id}>{e.name}</option>
                 ))}
-              </select>
-              <select
-                value={selectedMarksSubject}
-                onChange={(e) => setSelectedMarksSubject(e.target.value)}
-                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]"
-                disabled={!isAdmin}
-              >
-                {isAdmin ? (
-                  SUBJECTS.filter((s) => s !== 'All Subjects').map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))
-                ) : (
-                  <option value={user?.subject || 'Mathematics'}>{user?.subject || 'Mathematics'}</option>
-                )}
               </select>
             </div>
           </div>
@@ -1394,87 +1483,120 @@ export function Examinations() {
                 No students found in Class {selectedMarksClass}.
               </div>
             ) : (
-              <table className="w-full border-collapse text-[12px] min-w-[600px]">
+              <table className="w-full border-collapse text-[12px] min-w-[680px]">
                 <thead>
                   <tr className="border-b border-[var(--b)]">
-                    {['Student', 'Roll No', 'Max Marks', 'Marks Obtained', 'Percentage', ''].map((h) => (
-                      <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2">{h}</th>
-                    ))}
+                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Student Name</th>
+                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Roll No</th>
+                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Max Marks</th>
+                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Marks Obtained</th>
+                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Percentage</th>
+                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Grade</th>
+                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-right px-3 py-2.5">Subject Breakdown</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {studentsToShow.map((r) => (
-                    <tr key={r.roll} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] last:border-0">
-                      <td className="px-2 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <Avatar initials={r.init} bg={AVATAR_COLORS[r.init]?.bg ?? 'var(--surf3)'} color={AVATAR_COLORS[r.init]?.color ?? 'var(--tx2)'} />
-                          <span className="font-semibold text-[var(--tx)]">{r.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2.5 font-mono text-[11px] text-[var(--tx3)]">{r.roll}</td>
-                      <td className="px-2 py-2.5 text-[var(--tx3)]">{r.maxMarks}</td>
-                      <td className="px-2 py-2.5">
-                        {isAdmin ? (
-                          <span className="font-semibold text-[13px] text-[var(--tx)]">{r.maths}</span>
-                        ) : (
-                          <input
-                            type="number"
-                            value={r.maths}
-                            min={0}
-                            max={r.maxMarks}
-                            onChange={(e) => {
-                              const val = Math.min(r.maxMarks, Math.max(0, Number(e.target.value) || 0));
-                              setStudentMarks((prev) => {
-                                const examPrev = prev[selectedMarksExamId] ?? {};
-                                const subPrev = examPrev[selectedMarksSubject] ?? {};
-                                return {
-                                  ...prev,
-                                  [selectedMarksExamId]: {
-                                    ...examPrev,
-                                    [selectedMarksSubject]: {
-                                      ...subPrev,
-                                      [r.roll]: val,
-                                    },
-                                  },
-                                };
-                              });
-                            }}
-                            className="w-16 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] text-center"
-                          />
+                  {studentsToShow.map((student) => {
+                    const detail = computeStudentMarksDetail(student.roll, student.idx);
+                    const isExpanded = !!expandedStudentRolls[student.roll];
+                    const avatarColor = getDynamicAvatarColor(student.init);
+
+                    return (
+                      <Fragment key={student.roll}>
+                        <tr
+                          onClick={() => toggleStudentExpand(student.roll)}
+                          className={`border-b border-[var(--b)] transition-colors cursor-pointer ${
+                            isExpanded ? 'bg-[var(--surf2)] font-semibold' : 'hover:bg-[var(--surf2)]'
+                          }`}
+                        >
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar initials={student.init} bg={avatarColor.bg} color={avatarColor.color} />
+                              <span className="font-bold text-[13px] text-[var(--tx)]">{student.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 font-mono text-[11.5px] text-[var(--tx3)]">{student.roll}</td>
+                          <td className="px-3 py-3 text-[12px] text-[var(--tx3)]">{detail.totalMaxMarks}</td>
+                          <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.totalMarksObtained}</td>
+                          <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.overallPct}%</td>
+                          <td className="px-3 py-3">
+                            <Badge variant={detail.overallGrade === 'A+' ? 'purple' : detail.overallGrade === 'A' ? 'teal' : detail.overallGrade === 'B+' ? 'blue' : 'amber'}>
+                              {detail.overallGrade}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleStudentExpand(student.roll);
+                              }}
+                              className="p-1.5 rounded-lg text-[var(--tx3)] hover:bg-[var(--surf3)] transition-colors cursor-pointer inline-flex items-center gap-1 text-[11px]"
+                              title="Toggle Subject Marks"
+                            >
+                              <span>{isExpanded ? 'Hide Subjects' : 'View Subjects'}</span>
+                              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </button>
+                          </td>
+                        </tr>
+
+                        {isExpanded && (
+                          <tr className="bg-[var(--surf2)] border-b border-[var(--b)]">
+                            <td colSpan={7} className="p-3.5">
+                              <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 shadow-sm space-y-3">
+                                <div className="flex items-center justify-between border-b border-[var(--b)] pb-2.5">
+                                  <div className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-2">
+                                    <BookOpen size={14} className="text-[var(--blue-tx)]" />
+                                    Subject-wise Marks for Class {selectedMarksClass} — <span className="text-[var(--blue-tx)]">{student.name}</span> (Roll: {student.roll})
+                                  </div>
+                                  <span className="text-[11px] text-[var(--tx3)] font-medium">
+                                    {isAdmin ? 'Admin Edit Mode: Adjust subject marks below' : 'Subject Breakdown'}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                  {detail.subjectBreakdown.map((subItem) => (
+                                    <div key={subItem.subject} className="p-3 bg-[var(--surf2)]/70 border border-[var(--b)] rounded-xl flex items-center justify-between gap-2">
+                                      <div>
+                                        <div className="text-[12px] font-bold text-[var(--tx)]">{subItem.subject}</div>
+                                        <div className="text-[10px] text-[var(--tx3)] mt-0.5">Max Marks: {subItem.maxMarks}</div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        {isAdmin ? (
+                                          <input
+                                            type="number"
+                                            value={subItem.mark}
+                                            min={0}
+                                            max={subItem.maxMarks}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onChange={(e) => {
+                                              const val = Math.min(subItem.maxMarks, Math.max(0, Number(e.target.value) || 0));
+                                              handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val);
+                                            }}
+                                            className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner"
+                                          />
+                                        ) : (
+                                          <span className="font-bold text-[12.5px] text-[var(--tx)]">{subItem.mark}</span>
+                                        )}
+                                        <span className="text-[11px] font-semibold text-[var(--tx2)]">({subItem.pct}%)</span>
+                                        <Badge variant={subItem.grade === 'A+' ? 'purple' : subItem.grade === 'A' ? 'teal' : subItem.grade === 'B+' ? 'blue' : 'amber'}>
+                                          {subItem.grade}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
                         )}
-                      </td>
-                      <td className="px-2 py-2.5 font-semibold text-[var(--tx)]">
-                        {Math.round((r.maths / r.maxMarks) * 100)}%
-                      </td>
-                      <td className="px-2 py-2.5">
-                        <Badge variant={r.maths >= 90 ? 'teal' : r.maths >= 75 ? 'blue' : 'amber'}>
-                          {r.maths >= 90 ? 'A+' : r.maths >= 75 ? 'A' : 'B'}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
           </div>
-          {!isAdmin && (
-            <div className="mt-3 flex justify-end gap-2">
-              <button
-                onClick={handleSaveMarks}
-                disabled={savingMarks}
-                className="px-4 py-2 border border-[var(--b)] bg-[var(--surf2)] rounded-xl text-[12px] text-[var(--tx)] cursor-pointer disabled:opacity-50"
-              >
-                {savingMarks ? 'Saving...' : 'Save Draft'}
-              </button>
-              <button
-                onClick={handleSaveMarks}
-                disabled={savingMarks}
-                className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12px] font-semibold cursor-pointer hover:opacity-90 disabled:opacity-50"
-              >
-                {savingMarks ? 'Saving...' : 'Submit & Publish'}
-              </button>
-            </div>
-          )}
         </Card>
       )}
 
