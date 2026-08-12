@@ -569,9 +569,10 @@ async function saveSettingToDb(key: string, value: any) {
 }
 
 export function Examinations() {
-  const { alert, confirm } = useDialog();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const { alert, confirm } = useDialog();
+  const roleStr = String(user?.role || '').toLowerCase();
+  const isAdmin = roleStr === 'admin' || roleStr.includes('admin') || roleStr === 'principal' || roleStr === 'superadmin' || roleStr === 'super_admin';
 
   type Tab = 'exams' | 'results' | 'marks' | 'designer' | 'invisilation';
   const [activeTab, setActiveTab] = useState<Tab>('exams');
@@ -736,18 +737,30 @@ export function Examinations() {
     }));
   };
 
-  const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number | null) => {
+  const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number | null, studentId?: string) => {
+    const effectiveId = examId || selectedMarksExamId || (marksExams[0]?.id ?? 'default_exam');
+    const cleanRoll = roll.replace(/^[0-9]+[A-Z]+-?/i, '');
+
     setStudentMarks((prev) => {
-      const examPrev = prev[examId] ?? {};
+      const examPrev = prev[effectiveId] ?? {};
       const subPrev = examPrev[subject] ?? {};
+      const newSub = { ...subPrev };
+
+      if (mark === null) {
+        delete newSub[roll];
+        delete newSub[cleanRoll];
+        if (studentId) delete newSub[studentId];
+      } else {
+        newSub[roll] = mark;
+        newSub[cleanRoll] = mark;
+        if (studentId) newSub[studentId] = mark;
+      }
+
       const updated = {
         ...prev,
-        [examId]: {
+        [effectiveId]: {
           ...examPrev,
-          [subject]: {
-            ...subPrev,
-            [roll]: mark as any,
-          },
+          [subject]: newSub,
         },
       };
       localStorage.setItem('kts_student_marks_draft', JSON.stringify(updated));
@@ -1319,16 +1332,22 @@ export function Examinations() {
 
   const studentsToShow = getFilteredStudentsForMarks();
 
-  const computeStudentMarksDetail = (studentRoll: string, _studentIdx: number) => {
-    const selectedExamObj = exams.find((e) => e.id === selectedMarksExamId);
+  const computeStudentMarksDetail = (studentRoll: string, _studentIdx: number, studentId?: string) => {
+    const effectiveExamId = selectedMarksExamId || (marksExams[0]?.id ?? 'default_exam');
+    const selectedExamObj = exams.find((e) => e.id === effectiveExamId);
     const fallbackMax = selectedExamObj?.maxMarks || 100;
+    const cleanRoll = studentRoll.replace(/^[0-9]+[A-Z]+-?/i, '');
 
     let hasAnyMark = false;
     let totalMarksObtained = 0;
 
     const subjectBreakdown = classSubjectsForMarks.map((sub) => {
-      const maxMarks = getMaxMarksForSubject(selectedMarksExamId, selectedMarksClass, sub, fallbackMax);
-      const saved = studentMarks[selectedMarksExamId]?.[sub]?.[studentRoll];
+      const maxMarks = getMaxMarksForSubject(effectiveExamId, selectedMarksClass, sub, fallbackMax);
+
+      const saved = studentMarks[effectiveExamId]?.[sub]?.[studentRoll]
+                 ?? (studentId ? studentMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
+                 ?? studentMarks[effectiveExamId]?.[sub]?.[cleanRoll];
+
       let mark: number | null = null;
 
       if (saved !== undefined && saved !== null && saved !== '') {
@@ -1676,7 +1695,7 @@ export function Examinations() {
                 </thead>
                 <tbody>
                   {studentsToShow.map((student) => {
-                    const detail = computeStudentMarksDetail(student.roll, student.idx);
+                    const detail = computeStudentMarksDetail(student.roll, student.idx, student.id);
                     const isExpanded = !!expandedStudentRolls[student.roll];
                     const avatarColor = getDynamicAvatarColor(student.init);
 
@@ -1759,7 +1778,7 @@ export function Examinations() {
                                               onChange={(e) => {
                                                 const raw = e.target.value;
                                                 if (raw === '') {
-                                                  handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, null);
+                                                  handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, null, student.id);
                                                 } else {
                                                   let val = Number(raw);
                                                   if (isNaN(val)) return;
@@ -1769,7 +1788,7 @@ export function Examinations() {
                                                   if (val < 0) {
                                                     val = 0;
                                                   }
-                                                  handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val);
+                                                  handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val, student.id);
                                                 }
                                               }}
                                               className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner placeholder:text-[var(--tx3)] placeholder:font-bold"
@@ -2225,10 +2244,9 @@ export function Examinations() {
                 </div>
                 <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject *</label>
                   <select value={createSubject} onChange={(e) => setCreateSubject(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-                    <option value="All Subjects">All Subjects</option>
-                    <option value="Mathematics">Mathematics</option>
-                    <option value="Science">Science</option>
-                    <option value="English">English</option>
+                    {['All Subjects', 'Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physics', 'Chemistry', 'Biology', 'EVS'].map((sub) => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
                   </select>
                 </div>
               </div>
