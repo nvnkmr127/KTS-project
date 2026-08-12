@@ -553,7 +553,7 @@ async function saveSettingToDb(key: string, value: any) {
     const existing = await api.getResources('settings', { key }).catch(() => []);
     if (Array.isArray(existing) && existing.length > 0) {
       const settingId = existing[0].id;
-      await api.updateResource('settings', String(settingId), { value: valueStr }).catch(() => {});
+      await api.updateResource('settings', String(settingId), { value: valueStr }).catch(() => { });
     } else {
       await api.createResource('settings', {
         key,
@@ -561,7 +561,7 @@ async function saveSettingToDb(key: string, value: any) {
         group: 'exam',
         type: 'json',
         is_public: true,
-      }).catch(() => {});
+      }).catch(() => { });
     }
   } catch (err) {
     console.warn(`Could not sync setting ${key} to backend DB (using local storage fallback):`, err);
@@ -1357,8 +1357,8 @@ export function Examinations() {
       const maxMarks = getMaxMarksForSubject(effectiveExamId, selectedMarksClass, sub, fallbackMax);
 
       const saved = studentMarks[effectiveExamId]?.[sub]?.[studentRoll]
-                 ?? (studentId ? studentMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
-                 ?? studentMarks[effectiveExamId]?.[sub]?.[cleanRoll];
+        ?? (studentId ? studentMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
+        ?? studentMarks[effectiveExamId]?.[sub]?.[cleanRoll];
 
       let mark: number | null = null;
 
@@ -1850,7 +1850,7 @@ export function Examinations() {
                   className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                 >
                   {savingMarks ? (
-                    <span>Saving to DB...</span>
+                    <span>Saving...</span>
                   ) : (
                     <>
                       <CheckCircle2 size={15} />
