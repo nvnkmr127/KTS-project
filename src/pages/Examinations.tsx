@@ -67,12 +67,7 @@ type ClassExamSchedule = {
   [dateStr: string]: ExamScheduleEntry[];
 };
 
-const EXAMS: Exam[] = [
-  { id: '1', name: 'Unit Test 1', subject: 'All Subjects', class: '8A', date: '2026-06-10', maxMarks: 25, status: 'Upcoming' },
-  { id: '2', name: 'Half Yearly Exam', subject: 'All Subjects', class: '8A', date: '2026-06-25', maxMarks: 100, status: 'Upcoming' },
-  { id: '3', name: 'Quarterly Test', subject: 'Mathematics', class: '8A', date: '2026-05-20', maxMarks: 50, status: 'Results Published' },
-  { id: '4', name: 'Unit Test 3', subject: 'All Subjects', class: '9A', date: '2026-05-15', maxMarks: 25, status: 'Completed' },
-];
+const EXAMS: Exam[] = [];
 
 const RESULTS: StudentResult[] = [
   { name: 'Priya Sharma', init: 'PS', roll: '8A-002', maths: 92, science: 88, english: 85, telugu: 90, social: 78, total: 433, percentage: 86.6, grade: 'A+', rank: 1 },
@@ -917,7 +912,7 @@ export function Examinations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listen to cross-tab updates to examinations, schedules, and invigilations
+  // Listen to cross-tab updates to examinations, schedules, invigilations, and student marks
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.newValue) return;
@@ -928,6 +923,8 @@ export function Examinations() {
           setSchedules(JSON.parse(e.newValue));
         } else if (e.key === 'kts_exam_invigilations') {
           setInvigilations(JSON.parse(e.newValue));
+        } else if (e.key === 'kts_student_marks') {
+          setStudentMarks(JSON.parse(e.newValue));
         }
       } catch (err) {
         console.error('Error parsing storage change in Examinations:', err);
@@ -954,15 +951,11 @@ export function Examinations() {
 
   useEffect(() => {
     if (!isAdmin && user) {
-      const teacherClasses = user.classes || [];
-      if (teacherClasses.length > 0 && !teacherClasses.includes(selectedMarksClass)) {
-        setSelectedMarksClass(teacherClasses[0]);
-      }
       if (user.subject && selectedMarksSubject !== user.subject) {
         setSelectedMarksSubject(user.subject);
       }
     }
-  }, [user, isAdmin, selectedMarksClass, selectedMarksSubject]);
+  }, [user, isAdmin, selectedMarksSubject]);
 
   const handleSaveMarks = async () => {
     setSavingMarks(true);
