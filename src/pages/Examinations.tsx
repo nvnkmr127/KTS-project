@@ -759,8 +759,6 @@ export function Examinations() {
         },
       };
       localStorage.setItem('kts_student_marks_draft', JSON.stringify(updated));
-      localStorage.setItem('kts_student_marks', JSON.stringify(updated));
-      saveSettingToDb('kts_student_marks', updated);
       return updated;
     });
   };
@@ -960,8 +958,9 @@ export function Examinations() {
     setSavingMarks(true);
     try {
       localStorage.setItem('kts_student_marks', JSON.stringify(studentMarks));
+      localStorage.removeItem('kts_student_marks_draft');
       await saveSettingToDb('kts_student_marks', studentMarks);
-      await alert('Marks saved successfully!', 'Saved');
+      await alert('Marks Saved Successfully', `Student marks for Class ${selectedMarksClass} have been saved to the database. They are now updated and live in Admin login as well.`);
     } catch (err) {
       console.error('Error saving marks:', err);
       await alert('Failed to save marks.', 'Error');
