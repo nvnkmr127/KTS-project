@@ -708,6 +708,7 @@ export function Examinations() {
     return (saved && JSON.parse(saved)) || [];
   });
 
+  const [classList, setClassList] = useState<string[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [selectedMarksClass, setSelectedMarksClass] = useState('8A');
   const [students, setStudents] = useState<any[]>([]);
@@ -838,16 +839,32 @@ export function Examinations() {
       setStaffList(STAFF);
     }
 
-    // Load students
-    const loadStudents = async () => {
+    // Load real batches & students with batch relationship
+    const loadBatchesAndStudents = async () => {
       try {
-        const data = await api.getResources('students', { limit: '1000' });
+        const batchesData = await api.getResources('batches').catch(() => []);
+        if (Array.isArray(batchesData) && batchesData.length > 0) {
+          const names = batchesData.map((b: any) => b.name).filter(Boolean).sort((a: string, b: string) => {
+            const numA = parseInt(a);
+            const numB = parseInt(b);
+            if (!isNaN(numA) && !isNaN(numB)) {
+              if (numA !== numB) return numA - numB;
+              return a.localeCompare(b);
+            }
+            return a.localeCompare(b);
+          });
+          if (names.length > 0) {
+            setClassList(names);
+          }
+        }
+
+        const data = await api.getResources('students', { with: 'batch.academicYear', limit: '1000' }).catch(() => []);
         setStudents(data || []);
       } catch (err) {
-        console.error('Error loading students:', err);
+        console.error('Error loading batches or students:', err);
       }
     };
-    loadStudents();
+    loadBatchesAndStudents();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -921,7 +938,6 @@ export function Examinations() {
   const [createSubject, setCreateSubject] = useState('All Subjects');
   const [createDate, setCreateDate] = useState('');
   const [createMaxMarks, setCreateMaxMarks] = useState(100);
-  const [classList, setClassList] = useState<string[]>([]);
 
   // Invigilation allotment form states
   const [showAllotModal, setShowAllotModal] = useState(false);
@@ -1138,10 +1154,46 @@ export function Examinations() {
     return palette[sum % palette.length];
   };
 
+  const getStudentClass = (s: any): string => {
+    if (s.batch && s.batch.name) return String(s.batch.name).trim();
+    if (s.batch_name) return String(s.batch_name).trim();
+    if (s.className) return String(s.className).trim();
+    if (s.class) {
+      const clsStr = String(s.class).trim();
+      if (s.section) {
+        const secStr = String(s.section).trim();
+        if (!clsStr.toUpperCase().endsWith(secStr.toUpperCase())) {
+          return `${clsStr}${secStr}`;
+        }
+      }
+      return clsStr;
+    }
+    return '';
+  };
+
   const getFilteredStudentsForMarks = () => {
+    const targetClassClean = selectedMarksClass.replace(/^Class\s*/i, '').trim().toUpperCase();
+
     const dbFiltered = students.filter((s: any) => {
-      const studentClass = s.batch?.name || (s.class && s.section ? `${s.class}${s.section}` : s.class || '');
-      return studentClass.toUpperCase() === selectedMarksClass.toUpperCase();
+      const stClass = getStudentClass(s).toUpperCase();
+      if (!stClass) return false;
+      const stClassClean = stClass.replace(/^Class\s*/i, '').trim();
+
+      if (stClassClean === targetClassClean) return true;
+
+      const targetMatch = targetClassClean.match(/^(\d+)([A-Z]*)$/);
+      const stMatch = stClassClean.match(/^(\d+)([A-Z]*)$/);
+
+      if (targetMatch && stMatch) {
+        const [, targetNum, targetSec] = targetMatch;
+        const [, stNum, stSec] = stMatch;
+        if (targetNum === stNum) {
+          if (!targetSec || !stSec || targetSec === stSec) {
+            return true;
+          }
+        }
+      }
+      return false;
     });
 
     if (dbFiltered.length > 0) {
@@ -1151,7 +1203,7 @@ export function Examinations() {
         const initials = nameParts.length > 1
           ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
           : fullName.slice(0, 2).toUpperCase();
-        const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${selectedMarksClass}-${String(idx + 1).padStart(3, '0')}`;
+        const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${targetClassClean}-${String(idx + 1).padStart(3, '0')}`;
         return {
           id: String(s.id || idx),
           name: fullName,
@@ -1164,7 +1216,7 @@ export function Examinations() {
 
     const resultsFiltered = RESULTS.filter((r) => {
       const rollClass = r.roll.split('-')[0];
-      return rollClass.toUpperCase() === selectedMarksClass.toUpperCase();
+      return rollClass.toUpperCase() === targetClassClean;
     });
 
     if (resultsFiltered.length > 0) {
@@ -1177,17 +1229,7 @@ export function Examinations() {
       }));
     }
 
-    return Array.from({ length: 6 }).map((_, idx) => {
-      const roll = `${selectedMarksClass}-${String(idx + 1).padStart(3, '0')}`;
-      const name = `Student ${roll}`;
-      return {
-        id: `gen-${selectedMarksClass}-${idx}`,
-        name,
-        roll,
-        init: `S${idx + 1}`,
-        idx,
-      };
-    });
+    return [];
   };
 
   const studentsToShow = getFilteredStudentsForMarks();
