@@ -1719,26 +1719,94 @@ class GenericApiController extends Controller
             // Upsert per (exam, student) so two teachers entering marks for
             // different exams concurrently cannot erase each other's rows.
             if ($key === 'kts_student_marks') {
-                foreach ($data as $examId => $results) {
-                    if (!is_array($results)) continue;
-                    foreach ($results as $item) {
-                        if (isset($item['name'])) {
-                            \App\Models\Mark::updateOrCreate([
-                                'exam_id' => intval($examId),
-                                'student_name' => $item['name'],
-                            ], [
-                                'roll' => $item['roll'] ?? null,
-                                'maths' => intval($item['maths'] ?? 0),
-                                'science' => intval($item['science'] ?? 0),
-                                'english' => intval($item['english'] ?? 0),
-                                'telugu' => intval($item['telugu'] ?? 0),
-                                'social' => intval($item['social'] ?? 0),
-                                'total' => intval($item['total'] ?? 0),
-                                'percentage' => doubleval($item['percentage'] ?? 0),
-                                'grade' => $item['grade'] ?? null,
-                                'rank' => intval($item['rank'] ?? 0),
-                            ]);
+                foreach ($data as $examId => $subjects) {
+                    if (!is_array($subjects)) continue;
+                    
+                    $studentMarks = []; // roll => [subject => mark]
+                    
+                    foreach ($subjects as $subject => $rolls) {
+                        if (!is_array($rolls)) continue;
+                        foreach ($rolls as $roll => $mark) {
+                            $student = null;
+                            if (is_numeric($roll)) {
+                                $student = \App\Models\Student::find(intval($roll));
+                            }
+                            if (!$student) {
+                                $student = \App\Models\Student::where('enrollment_number', $roll)->first();
+                            }
+                            if (!$student) {
+                                // Match cleanRoll suffix, e.g. "001" matches "8A-001"
+                                $student = \App\Models\Student::where('enrollment_number', 'like', "%{$roll}")->first();
+                            }
+                            
+                            $resolvedRoll = $student ? $student->enrollment_number : $roll;
+                            $studentMarks[$resolvedRoll][$subject] = $mark;
                         }
+                    }
+                    
+                    foreach ($studentMarks as $roll => $subMarks) {
+                        $student = \App\Models\Student::where('enrollment_number', $roll)->first();
+                        $studentName = $student ? $student->name : "Student {$roll}";
+                        $studentId = $student ? $student->id : null;
+                        
+                        $maths = 0;
+                        $science = 0;
+                        $english = 0;
+                        $telugu = 0;
+                        $social = 0;
+                        
+                        foreach ($subMarks as $sub => $val) {
+                            $valInt = intval($val);
+                            $subLower = strtolower(trim($sub));
+                            if ($subLower === 'mathematics' || $subLower === 'maths' || $subLower === 'math') {
+                                $maths = $valInt;
+                            } elseif ($subLower === 'science' || $subLower === 'physics' || $subLower === 'chemistry' || $subLower === 'biology') {
+                                $science = $valInt;
+                            } elseif ($subLower === 'english') {
+                                $english = $valInt;
+                            } elseif ($subLower === 'telugu') {
+                                $telugu = $valInt;
+                            } elseif ($subLower === 'social studies' || $subLower === 'social') {
+                                $social = $valInt;
+                            }
+                        }
+                        
+                        $total = $maths + $science + $english + $telugu + $social;
+                        
+                        $subjectsCount = 0;
+                        if ($maths > 0) $subjectsCount++;
+                        if ($science > 0) $subjectsCount++;
+                        if ($english > 0) $subjectsCount++;
+                        if ($telugu > 0) $subjectsCount++;
+                        if ($social > 0) $subjectsCount++;
+                        
+                        $percentage = 0;
+                        if ($subjectsCount > 0) {
+                            $percentage = ($total / ($subjectsCount * 100)) * 100;
+                        }
+                        
+                        $grade = 'C';
+                        if ($percentage >= 90) $grade = 'A+';
+                        elseif ($percentage >= 75) $grade = 'A';
+                        elseif ($percentage >= 65) $grade = 'B+';
+                        elseif ($percentage >= 50) $grade = 'B';
+                        
+                        \App\Models\Mark::updateOrCreate([
+                            'exam_id' => intval($examId),
+                            'roll' => $roll,
+                        ], [
+                            'student_id' => $studentId,
+                            'student_name' => $studentName,
+                            'maths' => $maths,
+                            'science' => $science,
+                            'english' => $english,
+                            'telugu' => $telugu,
+                            'social' => $social,
+                            'total' => $total,
+                            'percentage' => $percentage,
+                            'grade' => $grade,
+                            'rank' => 0,
+                        ]);
                     }
                 }
             }
@@ -1841,6 +1909,10 @@ class GenericApiController extends Controller
 
         // ── 4. MARKS ─────────────────────────────────────────────────────
         if ($key === 'kts_student_marks') {
+            $existing = \App\Models\Setting::where('key', 'kts_student_marks')->first();
+            if ($existing && !empty($existing->value) && $existing->value !== '[]') {
+                return $existing->value;
+            }
             $marks = \App\Models\Mark::all();
             $mapped = [];
             foreach ($marks as $m) {
@@ -1848,19 +1920,11 @@ class GenericApiController extends Controller
                 if (!isset($mapped[$examId])) {
                     $mapped[$examId] = [];
                 }
-                $mapped[$examId][] = [
-                    'name' => $m->student_name,
-                    'roll' => $m->roll,
-                    'maths' => $m->maths,
-                    'science' => $m->science,
-                    'english' => $m->english,
-                    'telugu' => $m->telugu,
-                    'social' => $m->social,
-                    'total' => $m->total,
-                    'percentage' => doubleval($m->percentage),
-                    'grade' => $m->grade,
-                    'rank' => $m->rank,
-                ];
+                $mapped[$examId]['Mathematics'][$m->roll] = $m->maths;
+                $mapped[$examId]['Science'][$m->roll] = $m->science;
+                $mapped[$examId]['English'][$m->roll] = $m->english;
+                $mapped[$examId]['Telugu'][$m->roll] = $m->telugu;
+                $mapped[$examId]['Social Studies'][$m->roll] = $m->social;
             }
             return json_encode($mapped);
         }
