@@ -1164,29 +1164,38 @@ export function Examinations() {
 
     const targetClean = className.replace(/^Class\s*/i, '').trim().toUpperCase();
 
+    // 1. Check user.classes array (e.g. ['8A', '9B'])
     if (Array.isArray(user?.classes) && user.classes.length > 0) {
-      const match = user.classes.some((c: string) =>
-        String(c).replace(/^Class\s*/i, '').trim().toUpperCase() === targetClean
-      );
+      const match = user.classes.some((c: string) => {
+        const cClean = String(c).replace(/^Class\s*/i, '').trim().toUpperCase();
+        return cClean === targetClean || targetClean.startsWith(cClean) || cClean.startsWith(targetClean);
+      });
       if (match) return true;
     }
 
+    // 2. Check user.class or user.assignedClass
     const userClassSingle = user?.class || user?.assignedClass;
     if (userClassSingle) {
       const cleanUserSingle = String(userClassSingle).replace(/^Class\s*/i, '').trim().toUpperCase();
-      if (cleanUserSingle === targetClean) return true;
+      if (cleanUserSingle === targetClean || targetClean.startsWith(cleanUserSingle) || cleanUserSingle.startsWith(targetClean)) return true;
     }
 
+    // 3. Check rawBatches database records for class_teacher_id, class_teacher_name, or email
     if (rawBatches.length > 0) {
       const matchedBatch = rawBatches.find((b: any) =>
         String(b.name || '').replace(/^Class\s*/i, '').trim().toUpperCase() === targetClean
       );
       if (matchedBatch) {
-        if (matchedBatch.class_teacher_id && String(matchedBatch.class_teacher_id) === String(user?.id)) {
+        const teacherId = String(matchedBatch.class_teacher_id || '').trim();
+        const teacherName = String(matchedBatch.class_teacher_name || '').toLowerCase().trim();
+        const userId = String(user?.id || '').trim();
+        const userEmail = String(user?.email || '').trim();
+        const userName = String(user?.name || '').toLowerCase().trim();
+
+        if (teacherId && (teacherId === userId || teacherId === userEmail)) {
           return true;
         }
-        if (matchedBatch.class_teacher_name && user?.name &&
-            String(matchedBatch.class_teacher_name).toLowerCase().trim() === String(user.name).toLowerCase().trim()) {
+        if (teacherName && userName && (teacherName === userName || userName.includes(teacherName) || teacherName.includes(userName))) {
           return true;
         }
       }
