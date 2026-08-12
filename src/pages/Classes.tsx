@@ -26,6 +26,27 @@ interface SectionData {
 
 const ALL_SUBJECTS = ['Maths', 'Physics', 'Chemistry', 'Biology', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS', 'Computer Science', 'Physical Education'];
 
+async function saveSettingToDb(key: string, value: any) {
+  try {
+    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+    const existing = await api.getResources('settings', { key });
+    if (Array.isArray(existing) && existing.length > 0) {
+      const settingId = existing[0].id;
+      await api.updateResource('settings', String(settingId), { value: valueStr });
+    } else {
+      await api.createResource('settings', {
+        key,
+        value: valueStr,
+        group: 'class',
+        type: 'json',
+        is_public: true,
+      });
+    }
+  } catch (err) {
+    console.error(`Error saving setting ${key} to DB:`, err);
+  }
+}
+
 export function Classes() {
   const { selectedAcademicYearId } = useApp();
   const [classes, setClasses] = useState<ClassData[]>([]);
@@ -170,11 +191,20 @@ export function Classes() {
 
     // ── Batches + Students (backend-dependent) ─────────────────────────────
     try {
-      const [batchesRes, studentsRes] = await Promise.all([
-         
+      const [batchesRes, studentsRes, settingsRes] = await Promise.all([
         api.getResources('batches').catch(() => []),
         api.getResources('students').catch(() => []),
+        api.getResources('settings').catch(() => []),
       ]);
+
+      const allSettings = Array.isArray(settingsRes) ? settingsRes : (settingsRes?.data || []);
+      allSettings.forEach((s: any) => {
+        if (s.key && s.key.startsWith('batch_subjects_') && s.value) {
+          try {
+            localStorage.setItem(s.key, typeof s.value === 'string' ? s.value : JSON.stringify(s.value));
+          } catch { /* empty */ }
+        }
+      });
 
       const allBatches = Array.isArray(batchesRes) ? batchesRes : (batchesRes?.data || []);
       const studentsData = Array.isArray(studentsRes) ? studentsRes : (studentsRes?.data || []);
@@ -338,6 +368,7 @@ export function Classes() {
       });
       localStorage.setItem(`batch_subjects_${classNum}${sectionLetter}`, JSON.stringify(selectedSubjects));
       localStorage.setItem(`batch_capacity_${classNum}${sectionLetter}`, capacityVal || '40');
+      saveSettingToDb(`batch_subjects_${classNum}${sectionLetter}`, selectedSubjects);
       setShowAddSection(false);
       loadClasses();
     } catch (err) {
@@ -403,6 +434,7 @@ export function Classes() {
       });
       localStorage.setItem(`batch_subjects_${classNum}${sectionLetter}`, JSON.stringify(selectedSubjects));
       localStorage.setItem(`batch_capacity_${classNum}${sectionLetter}`, capacityVal || '40');
+      saveSettingToDb(`batch_subjects_${classNum}${sectionLetter}`, selectedSubjects);
       const oldBatchName = `${originalClassNum}${originalSectionLetter}`;
       if (oldBatchName !== `${classNum}${sectionLetter}`) {
         localStorage.removeItem(`batch_subjects_${oldBatchName}`);

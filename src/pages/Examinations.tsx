@@ -107,6 +107,36 @@ const GRADE_BADGE: Record<string, 'teal' | 'blue' | 'amber' | 'red' | 'purple'> 
 const CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'All Subjects'];
 
+function getSubjectsForClass(clsName: string): string[] {
+  if (!clsName) return ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'];
+  const cleanClass = clsName.replace(/^Class\s*/i, '').trim();
+  const match = cleanClass.match(/^(\d+)/);
+  const classId = match ? match[1] : cleanClass;
+
+  const savedExact = localStorage.getItem(`batch_subjects_${cleanClass}`);
+  if (savedExact) {
+    try {
+      const parsed = JSON.parse(savedExact);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch { /* empty */ }
+  }
+
+  if (match && cleanClass === classId) {
+    const savedSecA = localStorage.getItem(`batch_subjects_${classId}A`);
+    if (savedSecA) {
+      try {
+        const parsed = JSON.parse(savedSecA);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch { /* empty */ }
+    }
+  }
+
+  if (classId === '8') {
+    return ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social'];
+  }
+  return ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS'];
+}
+
 const INITIAL_SCHEDULES_BY_EXAM: Record<string, Record<string, ClassExamSchedule>> = {
   '1': {
     '8A': {
@@ -199,12 +229,52 @@ function ExamScheduleDesigner({
   const activeClassList = classList.length > 0 ? classList : CLASSES;
   const examClasses = exam.class === 'All Classes' ? activeClassList : exam.class.split(',').map((c) => c.trim());
 
+  const [dbSubjects, setDbSubjects] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    setDbSubjects(null);
+    const fetchClassSubjects = async () => {
+      const cleanClass = selectedClass.replace(/^Class\s*/i, '').trim();
+      const match = cleanClass.match(/^(\d+)/);
+      const classId = match ? match[1] : cleanClass;
+
+      try {
+        const res = await api.getResources('settings', { key: `batch_subjects_${cleanClass}` });
+        if (Array.isArray(res) && res.length > 0 && res[0].value) {
+          const parsed = JSON.parse(res[0].value);
+          if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
+            localStorage.setItem(`batch_subjects_${cleanClass}`, res[0].value);
+            setDbSubjects(parsed);
+            return;
+          }
+        }
+        if (match && cleanClass === classId) {
+          const resSecA = await api.getResources('settings', { key: `batch_subjects_${classId}A` });
+          if (Array.isArray(resSecA) && resSecA.length > 0 && resSecA[0].value) {
+            const parsed = JSON.parse(resSecA[0].value);
+            if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
+              localStorage.setItem(`batch_subjects_${classId}A`, resSecA[0].value);
+              setDbSubjects(parsed);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching subjects from DB:', err);
+      }
+    };
+    fetchClassSubjects();
+    return () => { isMounted = false; };
+  }, [selectedClass]);
+
   useEffect(() => {
     if (examClasses.length > 0 && !examClasses.includes(selectedClass)) {
       setSelectedClass(examClasses[0]);
     }
   }, [exam.id, selectedClass, examClasses, setSelectedClass]);
 
+  const classSubjects = dbSubjects || getSubjectsForClass(selectedClass);
   const examSchedules = schedules[exam.id] ?? {};
   const classSchedule = examSchedules[selectedClass] ?? {};
 
@@ -219,7 +289,8 @@ function ExamScheduleDesigner({
 
   const addExamEntry = () => {
     if (!addModal) return;
-    const entry: ExamScheduleEntry = { subject: newSubject, time: newTime, duration: newDuration, maxMarks: newMarks };
+    const selectedSub = classSubjects.includes(newSubject) ? newSubject : (classSubjects[0] || newSubject);
+    const entry: ExamScheduleEntry = { subject: selectedSub, time: newTime, duration: newDuration, maxMarks: newMarks };
     setSchedules((prev) => {
       const examPrev = prev[exam.id] ?? {};
       const classPrev = examPrev[selectedClass] ?? {};
@@ -235,6 +306,7 @@ function ExamScheduleDesigner({
         },
       };
       localStorage.setItem('examinations_schedules', JSON.stringify(updatedSchedules));
+      saveSettingToDb('examinations_schedules', updatedSchedules);
       return updatedSchedules;
     });
     setAddModal(null);
@@ -258,6 +330,7 @@ function ExamScheduleDesigner({
         },
       };
       localStorage.setItem('examinations_schedules', JSON.stringify(updatedSchedules));
+      saveSettingToDb('examinations_schedules', updatedSchedules);
       return updatedSchedules;
     });
   };
@@ -348,8 +421,9 @@ function ExamScheduleDesigner({
                   disabled={!isWritable}
                   onClick={() => {
                     if (!isWritable) return;
+                    const subs = getSubjectsForClass(selectedClass);
                     setAddModal({ dateStr });
-                    setNewSubject('Mathematics');
+                    setNewSubject(subs[0] || 'Maths');
                     setNewTime('10:00 AM');
                     setNewDuration('2 hrs');
                     setNewMarks(50);
@@ -432,8 +506,14 @@ function ExamScheduleDesigner({
             <div className="p-5 space-y-3">
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject *</label>
-                <select value={newSubject} onChange={(e) => setNewSubject(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]">
-                  {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
+                <select
+                  value={classSubjects.includes(newSubject) ? newSubject : (classSubjects[0] || '')}
+                  onChange={(e) => setNewSubject(e.target.value)}
+                  className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
+                >
+                  {classSubjects.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -698,6 +778,18 @@ export function Examinations() {
           } catch (e) {
             console.error('Error parsing kts_student_marks setting:', e);
           }
+        }
+
+        // Sync batch subjects settings
+        const allSettingsRes = await api.getResources('settings').catch(() => []);
+        if (Array.isArray(allSettingsRes)) {
+          allSettingsRes.forEach((s: any) => {
+            if (s.key && s.key.startsWith('batch_subjects_') && s.value) {
+              try {
+                localStorage.setItem(s.key, typeof s.value === 'string' ? s.value : JSON.stringify(s.value));
+              } catch { /* empty */ }
+            }
+          });
         }
       } catch (err) {
         console.error('Failed to sync settings from DB:', err);
