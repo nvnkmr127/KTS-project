@@ -69,29 +69,7 @@ type ClassExamSchedule = {
 
 const EXAMS: Exam[] = [];
 
-const RESULTS: StudentResult[] = [
-  { name: 'Priya Sharma', init: 'PS', roll: '8A-002', maths: 92, science: 88, english: 85, telugu: 90, social: 78, total: 433, percentage: 86.6, grade: 'A+', rank: 1 },
-  { name: 'Arjun Reddy', init: 'AR', roll: '8B-001', maths: 88, science: 82, english: 79, telugu: 85, social: 84, total: 418, percentage: 83.6, grade: 'A', rank: 2 },
-  { name: 'Ananya Singh', init: 'AS', roll: '8A-008', maths: 85, science: 90, english: 82, telugu: 76, social: 82, total: 415, percentage: 83, grade: 'A', rank: 3 },
-  { name: 'Vikram K', init: 'VK', roll: '8A-010', maths: 78, science: 75, english: 88, telugu: 82, social: 80, total: 403, percentage: 80.6, grade: 'A', rank: 4 },
-  { name: 'Meena Nair', init: 'MN', roll: '7B-004', maths: 65, science: 70, english: 74, telugu: 79, social: 68, total: 356, percentage: 71.2, grade: 'B+', rank: 5 },
-];
 
-const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
-  PS: { bg: 'var(--teal-bg)', color: 'var(--teal-tx)' },
-  AR: { bg: 'var(--blue-bg)', color: 'var(--blue-tx)' },
-  AS: { bg: 'var(--purple-bg)', color: 'var(--purple-tx)' },
-  VK: { bg: 'var(--amber-bg)', color: 'var(--amber-tx)' },
-  MN: { bg: 'var(--coral-bg)', color: 'var(--coral-tx)' },
-};
-
-const subjectAvgData = [
-  { subject: 'Maths', avg: 81.6 },
-  { subject: 'Science', avg: 81 },
-  { subject: 'English', avg: 81.6 },
-  { subject: 'Telugu', avg: 82.4 },
-  { subject: 'Social', avg: 78.4 },
-];
 
 const tooltipStyle = { backgroundColor: 'var(--surf)', border: '0.5px solid var(--b2)', borderRadius: 8, fontSize: 11, color: 'var(--tx)' };
 
@@ -714,6 +692,7 @@ export function Examinations() {
   const [selectedMarksClass, setSelectedMarksClass] = useState('8A');
   const [students, setStudents] = useState<any[]>([]);
   const [selectedMarksExamId, setSelectedMarksExamId] = useState<string>('');
+  const [selectedResultsExamId, setSelectedResultsExamId] = useState<string>('');
   const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>('Mathematics');
   const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number | string>>>>({});
   // draftMarks holds unsaved edits only in React state — never written to DB until Save is clicked
@@ -956,6 +935,17 @@ export function Examinations() {
       setSelectedMarksExamId('');
     }
   }, [exams, selectedMarksExamId]);
+
+  useEffect(() => {
+    const availableExams = exams;
+    if (availableExams.length > 0) {
+      if (!selectedResultsExamId || !availableExams.some(e => e.id === selectedResultsExamId)) {
+        setSelectedResultsExamId(availableExams[0].id);
+      }
+    } else {
+      setSelectedResultsExamId('');
+    }
+  }, [exams, selectedResultsExamId]);
 
   useEffect(() => {
     if (!isAdmin && user) {
@@ -1279,8 +1269,8 @@ export function Examinations() {
     return '';
   };
 
-  const getFilteredStudentsForMarks = () => {
-    const targetClassClean = selectedMarksClass.replace(/^Class\s*/i, '').trim().toUpperCase();
+  const getFilteredStudentsForClass = (className: string) => {
+    const targetClassClean = className.replace(/^Class\s*/i, '').trim().toUpperCase();
 
     const dbFiltered = students.filter((s: any) => {
       const stClass = getStudentClass(s).toUpperCase();
@@ -1322,22 +1312,11 @@ export function Examinations() {
       });
     }
 
-    const resultsFiltered = RESULTS.filter((r) => {
-      const rollClass = r.roll.split('-')[0];
-      return rollClass.toUpperCase() === targetClassClean;
-    });
-
-    if (resultsFiltered.length > 0) {
-      return resultsFiltered.map((r, idx) => ({
-        id: `res-${idx}`,
-        name: r.name,
-        roll: r.roll,
-        init: r.init,
-        idx,
-      }));
-    }
-
     return [];
+  };
+
+  const getFilteredStudentsForMarks = () => {
+    return getFilteredStudentsForClass(selectedMarksClass);
   };
 
   const studentsToShow = getFilteredStudentsForMarks();
@@ -1402,7 +1381,165 @@ export function Examinations() {
     };
   };
 
-  const classAvg = RESULTS.reduce((s, r) => s + r.percentage, 0) / RESULTS.length;
+  const computeStudentMarksDetailForResults = (studentRoll: string, studentId: string, className: string, examId: string) => {
+    const effectiveExamId = examId || (exams[0]?.id ?? 'default_exam');
+    const selectedExamObj = exams.find((e) => e.id === effectiveExamId);
+    const fallbackMax = selectedExamObj?.maxMarks || 100;
+    const cleanRoll = studentRoll.replace(/^[0-9]+[A-Z]+-?/i, '');
+    const classSubjects = getSubjectsForClass(className);
+
+    let hasAnyMark = false;
+    let totalMarksObtained = 0;
+
+    const subjectBreakdown = classSubjects.map((sub) => {
+      const maxMarks = getMaxMarksForSubject(effectiveExamId, className, sub, fallbackMax);
+
+      const saved = draftMarks[effectiveExamId]?.[sub]?.[studentRoll]
+        ?? (studentId ? draftMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
+        ?? draftMarks[effectiveExamId]?.[sub]?.[cleanRoll]
+        ?? studentMarks[effectiveExamId]?.[sub]?.[studentRoll]
+        ?? (studentId ? studentMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
+        ?? studentMarks[effectiveExamId]?.[sub]?.[cleanRoll];
+
+      let mark: number | null = null;
+
+      if (saved !== undefined && saved !== null && saved !== '') {
+        const num = Number(saved);
+        if (!isNaN(num)) {
+          mark = Math.min(maxMarks, Math.max(0, num));
+          hasAnyMark = true;
+          totalMarksObtained += mark;
+        }
+      }
+
+      return {
+        subject: sub,
+        mark,
+        maxMarks,
+      };
+    });
+
+    const totalMaxMarks = subjectBreakdown.reduce((sum, item) => sum + item.maxMarks, 0);
+    const overallPct = hasAnyMark && totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : null;
+    const overallGrade = overallPct !== null ? (overallPct >= 90 ? 'A+' : overallPct >= 75 ? 'A' : overallPct >= 65 ? 'B+' : overallPct >= 50 ? 'B' : 'C') : '--';
+
+    return {
+      subjectBreakdown,
+      totalMaxMarks,
+      totalMarksObtained,
+      overallPct,
+      overallGrade,
+      hasAnyMark,
+    };
+  };
+
+  const getRealResultsForTab = () => {
+    const list = getFilteredStudentsForClass(selectedClass);
+    const effectiveExamId = selectedResultsExamId || (exams[0]?.id ?? 'default_exam');
+    
+    const resultsWithScores = list.map((st) => {
+      const detail = computeStudentMarksDetailForResults(st.roll, st.id, selectedClass, effectiveExamId);
+      return {
+        ...st,
+        detail,
+        total: detail.totalMarksObtained,
+        maxTotal: detail.totalMaxMarks,
+        percentage: detail.overallPct ?? 0,
+        grade: detail.overallGrade,
+        hasAnyMark: detail.hasAnyMark,
+      };
+    });
+
+    const sorted = [...resultsWithScores].sort((a, b) => {
+      if (a.hasAnyMark && !b.hasAnyMark) return -1;
+      if (!a.hasAnyMark && b.hasAnyMark) return 1;
+      if (a.hasAnyMark && b.hasAnyMark) {
+        return b.percentage - a.percentage;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    
+    let currentRank = 1;
+    return sorted.map((item) => {
+      if (item.hasAnyMark) {
+        return {
+          ...item,
+          rank: currentRank++,
+        };
+      } else {
+        return {
+          ...item,
+          rank: null,
+        };
+      }
+    });
+  };
+
+  const getDynamicMetrics = () => {
+    const list = getRealResultsForTab().filter((r) => r.hasAnyMark);
+    if (list.length === 0) {
+      return {
+        classAvg: 0,
+        topScore: 0,
+        topStudent: 'N/A',
+      };
+    }
+    const classAvg = list.reduce((sum, r) => sum + r.percentage, 0) / list.length;
+    const topStudentObj = list.reduce((top, r) => (r.percentage > top.percentage ? r : top), list[0]);
+    return {
+      classAvg,
+      topScore: topStudentObj.percentage,
+      topStudent: topStudentObj.name,
+    };
+  };
+
+  const getSubjectAverages = () => {
+    const list = getRealResultsForTab().filter((r) => r.hasAnyMark);
+    const subjects = getSubjectsForClass(selectedClass);
+    if (list.length === 0) {
+      return subjects.map((sub) => ({ subject: sub, avg: 0 }));
+    }
+    return subjects.map((sub) => {
+      let sum = 0;
+      let count = 0;
+      list.forEach((r) => {
+        const found = r.detail.subjectBreakdown.find((item) => item.subject === sub);
+        if (found && found.mark !== null) {
+          const pct = found.maxMarks > 0 ? (found.mark / found.maxMarks) * 100 : 0;
+          sum += pct;
+          count++;
+        }
+      });
+      return {
+        subject: sub,
+        avg: count > 0 ? parseFloat((sum / count).toFixed(1)) : 0,
+      };
+    });
+  };
+
+  const getGradeDistribution = () => {
+    const list = getRealResultsForTab().filter((r) => r.hasAnyMark);
+    const counts: Record<string, number> = { 'A+': 0, 'A': 0, 'B+': 0, 'B': 0, 'C': 0 };
+    list.forEach((r) => {
+      if (counts[r.grade] !== undefined) {
+        counts[r.grade]++;
+      }
+    });
+    return [
+      { grade: 'A+', count: counts['A+'], color: 'var(--purple)' },
+      { grade: 'A', count: counts['A'], color: 'var(--teal)' },
+      { grade: 'B+', count: counts['B+'], color: 'var(--blue)' },
+      { grade: 'B', count: counts['B'], color: 'var(--amber)' },
+      { grade: 'C', count: counts['C'], color: 'var(--red)' },
+    ];
+  };
+
+  const realResultsList = getRealResultsForTab();
+  const metrics = getDynamicMetrics();
+  const subjectAverages = getSubjectAverages();
+  const gradeDistribution = getGradeDistribution();
+
+  const classAvg = metrics.classAvg;
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'exams', label: 'Exam Schedule' },
@@ -1417,8 +1554,8 @@ export function Examinations() {
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)]">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
         <KPICard label="Upcoming Exams" value={exams.filter((e) => e.status === 'Upcoming').length} sub="This month" icon={<BookOpen size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
-        <KPICard label="Class Average" value={`${classAvg.toFixed(1)}%`} sub="Class 8A · Last exam" icon={<BarChart2 size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
-        <KPICard label="Top Score" value={`${Math.max(...RESULTS.map((r) => r.percentage))}%`} sub={RESULTS[0].name} icon={<Award size={15} />} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
+        <KPICard label="Class Average" value={`${classAvg.toFixed(1)}%`} sub={`Class ${selectedClass} · Selected Exam`} icon={<BarChart2 size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
+        <KPICard label="Top Score" value={`${metrics.topScore.toFixed(1)}%`} sub={metrics.topStudent !== 'N/A' ? metrics.topStudent : 'No score yet'} icon={<Award size={15} />} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
         <KPICard label="Results Published" value={exams.filter((e) => e.status === 'Results Published').length} sub="Exams" icon={<TrendingUp size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
       </div>
 
@@ -1574,54 +1711,91 @@ export function Examinations() {
       {activeTab === 'results' && (
         <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5">
           <Card>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-[13px] font-semibold text-[var(--tx)]">Results — {exams[2]?.name || 'Exam Results'}</div>
-              <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)]">
-                {activeClassList.map((c) => (
-                  <option key={c} value={c}>Class {c}</option>
-                ))}
-              </select>
+            <div className="flex items-center justify-between mb-3 border-b border-[var(--b)] pb-3">
+              <div>
+                <div className="text-[13px] font-bold text-[var(--tx)]">Results — {exams.find(e => e.id === selectedResultsExamId)?.name || 'Exam Results'}</div>
+                <div className="text-[10.5px] text-[var(--tx3)] mt-0.5">Rankings based on overall percentage obtained</div>
+              </div>
+              <div className="flex gap-2">
+                <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)] font-semibold">
+                  {activeClassList.map((c) => (
+                    <option key={c} value={c}>Class {c}</option>
+                  ))}
+                </select>
+                <select value={selectedResultsExamId} onChange={(e) => setSelectedResultsExamId(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)] font-semibold">
+                  {exams.map((e) => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[12px] min-w-[600px]">
-                <thead>
-                  <tr className="border-b border-[var(--b)]">
-                    {['Rank', 'Student', 'Math', 'Sci', 'Eng', 'Tel', 'Social', 'Total', 'Grade'].map((h) => (
-                      <th key={h} className="text-[10.5px] font-medium text-[var(--tx3)] text-left px-2 py-2">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {RESULTS.map((r) => (
-                    <tr key={r.roll} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] last:border-0">
-                      <td className="px-2 py-2.5 font-bold text-[var(--tx3)]">#{r.rank}</td>
-                      <td className="px-2 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <Avatar initials={r.init} bg={AVATAR_COLORS[r.init]?.bg ?? 'var(--surf3)'} color={AVATAR_COLORS[r.init]?.color ?? 'var(--tx2)'} />
-                          <span className="font-semibold text-[var(--tx)]">{r.name}</span>
-                        </div>
-                      </td>
-                      {[r.maths, r.science, r.english, r.telugu, r.social].map((mark, i) => (
-                        <td key={i} className={`px-2 py-2.5 font-medium ${mark >= 85 ? 'text-[var(--teal-tx)]' : mark >= 70 ? 'text-[var(--tx)]' : 'text-[var(--red-tx)]'}`}>{mark}</td>
+              {realResultsList.length === 0 ? (
+                <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
+                  No marks have been recorded yet for Class {selectedClass} in this exam.
+                </div>
+              ) : (
+                <table className="w-full border-collapse text-[12px] min-w-[600px]">
+                  <thead>
+                    <tr className="border-b border-[var(--b)]">
+                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-2 py-2">Rank</th>
+                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-2 py-2">Student</th>
+                      {getSubjectsForClass(selectedClass).map((sub) => (
+                        <th key={sub} className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-2 py-2">{sub}</th>
                       ))}
-                      <td className="px-2 py-2.5 font-bold text-[var(--tx)]">{r.total}/500 <span className="font-normal text-[var(--tx3)] text-[10.5px]">({r.percentage}%)</span></td>
-                      <td className="px-2 py-2.5"><Badge variant={GRADE_BADGE[r.grade] ?? 'gray'}>{r.grade}</Badge></td>
+                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-2 py-2">Total</th>
+                      <th className="text-[10.5px] font-semibold text-[var(--tx3)] text-left px-2 py-2">Grade</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {realResultsList.map((r) => (
+                      <tr key={r.roll} className="border-b border-[var(--b)] hover:bg-[var(--surf2)] last:border-0">
+                        <td className="px-2 py-2.5 font-bold text-[var(--tx3)]">
+                          {r.rank !== null ? `#${r.rank}` : '--'}
+                        </td>
+                        <td className="px-2 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <Avatar initials={r.init} bg={getDynamicAvatarColor(r.init).bg} color={getDynamicAvatarColor(r.init).color} />
+                            <span className="font-semibold text-[var(--tx)]">{r.name}</span>
+                          </div>
+                        </td>
+                        {r.detail.subjectBreakdown.map((subItem, i) => (
+                          <td key={i} className={`px-2 py-2.5 font-semibold ${subItem.mark !== null && subItem.mark >= (subItem.maxMarks * 0.85) ? 'text-[var(--teal-tx)]' : subItem.mark !== null && subItem.mark >= (subItem.maxMarks * 0.35) ? 'text-[var(--tx)]' : 'text-[var(--red-tx)]'}`}>
+                            {subItem.mark !== null ? subItem.mark : '--'}
+                          </td>
+                        ))}
+                        <td className="px-2 py-2.5 font-bold text-[var(--tx)]">
+                          {r.hasAnyMark ? `${r.total}/${r.maxTotal}` : '--'}
+                          {r.hasAnyMark && (
+                            <span className="font-normal text-[var(--tx3)] text-[10.5px]"> ({r.percentage}%)</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2.5">
+                          {r.hasAnyMark ? (
+                            <Badge variant={r.grade === 'A+' ? 'purple' : r.grade === 'A' ? 'teal' : r.grade === 'B+' ? 'blue' : 'amber'}>
+                              {r.grade}
+                            </Badge>
+                          ) : (
+                            <span className="text-[12px] text-[var(--tx3)] font-medium">--</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </Card>
 
           <div className="space-y-2.5">
             <Card>
-              <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Subject Averages</div>
+              <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Subject Averages (%)</div>
               <div className="h-[140px]">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                  <BarChart data={subjectAvgData} barSize={20} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <BarChart data={subjectAverages} barSize={20} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="var(--b)" />
                     <XAxis dataKey="subject" tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[60, 100]} tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: 'var(--tx3)' }} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={tooltipStyle} formatter={(v: any) => [`${v}%`, 'Average']} cursor={{ fill: 'var(--surf2)' }} />
                     <Bar dataKey="avg" fill="var(--purple)" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -1631,11 +1805,11 @@ export function Examinations() {
             <Card>
               <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Grade Distribution</div>
               <div className="space-y-2">
-                {[['A+', 1, 'var(--purple)'], ['A', 3, 'var(--teal)'], ['B+', 1, 'var(--blue)']].map(([grade, count, color]) => (
-                  <div key={String(grade)} className="flex items-center gap-3">
+                {gradeDistribution.map(({ grade, count, color }) => (
+                  <div key={grade} className="flex items-center gap-3">
                     <span className="w-8 text-[12px] font-bold text-[var(--tx)]">{grade}</span>
                     <div className="flex-1 h-2 bg-[var(--surf2)] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${(Number(count) / RESULTS.length) * 100}%`, background: String(color) }} />
+                      <div className="h-full rounded-full" style={{ width: `${realResultsList.filter(r => r.hasAnyMark).length > 0 ? (count / realResultsList.filter(r => r.hasAnyMark).length) * 100 : 0}%`, background: color }} />
                     </div>
                     <span className="text-[11px] text-[var(--tx3)] w-6">{count}</span>
                   </div>
