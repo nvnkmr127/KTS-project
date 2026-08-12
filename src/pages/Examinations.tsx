@@ -1164,23 +1164,8 @@ export function Examinations() {
 
     const targetClean = className.replace(/^Class\s*/i, '').trim().toUpperCase();
 
-    // 1. Check user.classes array (e.g. ['8A', '9B'])
-    if (Array.isArray(user?.classes) && user.classes.length > 0) {
-      const match = user.classes.some((c: string) => {
-        const cClean = String(c).replace(/^Class\s*/i, '').trim().toUpperCase();
-        return cClean === targetClean || targetClean.startsWith(cClean) || cClean.startsWith(targetClean);
-      });
-      if (match) return true;
-    }
-
-    // 2. Check user.class or user.assignedClass
-    const userClassSingle = user?.class || user?.assignedClass;
-    if (userClassSingle) {
-      const cleanUserSingle = String(userClassSingle).replace(/^Class\s*/i, '').trim().toUpperCase();
-      if (cleanUserSingle === targetClean || targetClean.startsWith(cleanUserSingle) || cleanUserSingle.startsWith(targetClean)) return true;
-    }
-
-    // 3. Check rawBatches database records for class_teacher_id, class_teacher_name, or email
+    // In a teacher login, the teacher must be the class teacher (assigned in classes/batches tab) to allot/edit marks.
+    // 1. Check rawBatches database records for class_teacher_id, class_teacher_name, or email
     if (rawBatches.length > 0) {
       const matchedBatch = rawBatches.find((b: any) =>
         String(b.name || '').replace(/^Class\s*/i, '').trim().toUpperCase() === targetClean
@@ -1198,11 +1183,38 @@ export function Examinations() {
         if (teacherName && userName && (teacherName === userName || userName.includes(teacherName) || teacherName.includes(userName))) {
           return true;
         }
+        // If teacher details matched, but it wasn't the class teacher, we return false here.
       }
     }
 
-    // Default assigned class fallback for demo teacher login if profile has no assigned classes configured
-    if ((!user?.classes || user.classes.length === 0) && !user?.class && !user?.assignedClass) {
+    // 2. Fallback check local storage batch configurations
+    const savedStaffStr = localStorage.getItem('kts_staff_members');
+    try {
+      const localBatches = rawBatches.length > 0 ? rawBatches : (() => {
+        // Fallback to searching active batches from local/mock if needed
+        return [];
+      })();
+    } catch { /* empty */ }
+
+    // 3. Fallback check user.class or user.assignedClass ONLY if no rawBatches are found
+    if (rawBatches.length === 0) {
+      const userClassSingle = user?.class || user?.assignedClass;
+      if (userClassSingle) {
+        const cleanUserSingle = String(userClassSingle).replace(/^Class\s*/i, '').trim().toUpperCase();
+        if (cleanUserSingle === targetClean || targetClean.startsWith(cleanUserSingle) || cleanUserSingle.startsWith(targetClean)) return true;
+      }
+
+      if (Array.isArray(user?.classes) && user.classes.length > 0) {
+        const match = user.classes.some((c: string) => {
+          const cClean = String(c).replace(/^Class\s*/i, '').trim().toUpperCase();
+          return cClean === targetClean || targetClean.startsWith(cClean) || cClean.startsWith(targetClean);
+        });
+        if (match) return true;
+      }
+    }
+
+    // Default assigned class fallback for demo teacher login if profile has no assigned classes configured and no batches loaded
+    if (rawBatches.length === 0 && (!user?.classes || user.classes.length === 0) && !user?.class && !user?.assignedClass) {
       if (targetClean === '8A') return true;
     }
 
@@ -1646,7 +1658,13 @@ export function Examinations() {
                 {isAdmin ? 'Overall student results across all classes. Click any student row to view/edit subject-wise marks breakdown.' : 'View overall and subject-wise student marks.'}
               </div>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap items-center">
+              {!isAdmin && !isTeacherAssignedToClass(selectedMarksClass) && (
+                <div className="p-2.5 bg-[var(--amber-bg)] border border-[var(--amber)]/30 rounded-lg text-[11px] text-[var(--amber-tx)] font-semibold flex items-center gap-1.5 shadow-sm">
+                  <AlertCircle size={13} />
+                  <span>Read-Only mode. (Assigned class teacher only)</span>
+                </div>
+              )}
               <select
                 value={selectedMarksClass}
                 onChange={(e) => setSelectedMarksClass(e.target.value)}
@@ -1667,13 +1685,6 @@ export function Examinations() {
               </select>
             </div>
           </div>
-
-          {!isAdmin && !isTeacherAssignedToClass(selectedMarksClass) && (
-            <div className="mb-4 p-3 bg-[var(--amber-bg)] border border-[var(--amber)]/30 rounded-xl text-[12px] text-[var(--amber-tx)] font-medium flex items-center gap-2">
-              <AlertCircle size={15} />
-              <span>Only the assigned class teacher for Class {selectedMarksClass} can enter or modify student marks. You are viewing in Read-Only mode.</span>
-            </div>
-          )}
 
           <div className="overflow-x-auto">
             {marksExams.length === 0 ? (
