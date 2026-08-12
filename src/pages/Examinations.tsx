@@ -1845,7 +1845,7 @@ export function Examinations() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={handleSaveMarksToDb}
+                  onClick={handleSaveMarks}
                   disabled={savingMarks || (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass))}
                   className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                 >
