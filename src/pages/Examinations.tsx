@@ -1085,11 +1085,41 @@ export function Examinations() {
    
   };
 
+  const isExamCompleted = (e: Exam): boolean => {
+    if (e.status === 'Completed' || e.status === 'Results Published') return true;
+    if (e.date) {
+      const examDate = new Date(e.date + 'T23:59:59');
+      const today = new Date();
+      return examDate <= today;
+    }
+    return false;
+  };
+
   const activeClassList = classList.length > 0 ? classList : CLASSES;
   const filteredClassList = isAdmin ? activeClassList : (user?.classes && user.classes.length > 0 ? user.classes : activeClassList);
+
   const marksExams = isAdmin
     ? exams.filter((e) => e.status !== 'Results Published')
-    : exams.filter((e) => e.status === 'Completed');
+    : exams.filter((e) => isExamCompleted(e));
+
+  const getMaxMarksForSubject = (examId: string, className: string, subjectName: string, fallbackMax: number = 100): number => {
+    if (!examId || !className || !subjectName) return fallbackMax;
+    const examSched = schedules[examId];
+    if (!examSched) return fallbackMax;
+    const classSched = examSched[className];
+    if (!classSched) return fallbackMax;
+
+    for (const dateStr in classSched) {
+      const entries = classSched[dateStr];
+      if (Array.isArray(entries)) {
+        const found = entries.find((e) => e.subject.toLowerCase().trim() === subjectName.toLowerCase().trim());
+        if (found && found.maxMarks && Number(found.maxMarks) > 0) {
+          return Number(found.maxMarks);
+        }
+      }
+    }
+    return fallbackMax;
+  };
 
   const classSubjectsForMarks = getSubjectsForClass(selectedMarksClass);
 
@@ -1163,17 +1193,20 @@ export function Examinations() {
   const studentsToShow = getFilteredStudentsForMarks();
 
   const computeStudentMarksDetail = (studentRoll: string, studentIdx: number) => {
+    const selectedExamObj = exams.find((e) => e.id === selectedMarksExamId);
+    const fallbackMax = selectedExamObj?.maxMarks || 100;
+
     const subjectBreakdown = classSubjectsForMarks.map((sub, sIdx) => {
+      const maxMarks = getMaxMarksForSubject(selectedMarksExamId, selectedMarksClass, sub, fallbackMax);
       const saved = studentMarks[selectedMarksExamId]?.[sub]?.[studentRoll];
       let mark: number;
       if (saved !== undefined) {
-        mark = saved;
+        mark = Math.min(maxMarks, Math.max(0, saved));
       } else {
-        const base = 70 + ((studentIdx * 5 + sIdx * 3) % 26);
-        mark = Math.min(100, Math.max(35, base));
+        const base = Math.round(maxMarks * 0.7) + ((studentIdx * 5 + sIdx * 3) % Math.round(maxMarks * 0.2 || 5));
+        mark = Math.min(maxMarks, Math.max(0, base));
       }
-      const maxMarks = 100;
-      const pct = Math.round((mark / maxMarks) * 100);
+      const pct = maxMarks > 0 ? Math.round((mark / maxMarks) * 100) : 0;
       const grade = pct >= 90 ? 'A+' : pct >= 75 ? 'A' : pct >= 65 ? 'B+' : pct >= 50 ? 'B' : 'C';
       return {
         subject: sub,
@@ -1550,41 +1583,46 @@ export function Examinations() {
                                     Subject-wise Marks for Class {selectedMarksClass} — <span className="text-[var(--blue-tx)]">{student.name}</span> (Roll: {student.roll})
                                   </div>
                                   <span className="text-[11px] text-[var(--tx3)] font-medium">
-                                    {isAdmin ? 'Admin Edit Mode: Adjust subject marks below' : 'Subject Breakdown'}
+                                    {isAdmin ? 'Admin Edit Mode: Adjust subject marks below' : 'Faculty Marks Entry Mode: Adjust subject marks below'}
                                   </span>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                                  {detail.subjectBreakdown.map((subItem) => (
-                                    <div key={subItem.subject} className="p-3 bg-[var(--surf2)]/70 border border-[var(--b)] rounded-xl flex items-center justify-between gap-2">
-                                      <div>
-                                        <div className="text-[12px] font-bold text-[var(--tx)]">{subItem.subject}</div>
-                                        <div className="text-[10px] text-[var(--tx3)] mt-0.5">Max Marks: {subItem.maxMarks}</div>
+                                  {detail.subjectBreakdown.map((subItem) => {
+                                    const currentExamObj = exams.find((e) => e.id === selectedMarksExamId);
+                                    const canEditMarks = isAdmin || (currentExamObj ? isExamCompleted(currentExamObj) : false);
+
+                                    return (
+                                      <div key={subItem.subject} className="p-3 bg-[var(--surf2)]/70 border border-[var(--b)] rounded-xl flex items-center justify-between gap-2">
+                                        <div>
+                                          <div className="text-[12px] font-bold text-[var(--tx)]">{subItem.subject}</div>
+                                          <div className="text-[10px] text-[var(--tx3)] mt-0.5">Max Marks: {subItem.maxMarks}</div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          {canEditMarks ? (
+                                            <input
+                                              type="number"
+                                              value={subItem.mark}
+                                              min={0}
+                                              max={subItem.maxMarks}
+                                              onClick={(e) => e.stopPropagation()}
+                                              onChange={(e) => {
+                                                const val = Math.min(subItem.maxMarks, Math.max(0, Number(e.target.value) || 0));
+                                                handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val);
+                                              }}
+                                              className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner"
+                                            />
+                                          ) : (
+                                            <span className="font-bold text-[12.5px] text-[var(--tx)]">{subItem.mark}</span>
+                                          )}
+                                          <span className="text-[11px] font-semibold text-[var(--tx2)]">({subItem.pct}%)</span>
+                                          <Badge variant={subItem.grade === 'A+' ? 'purple' : subItem.grade === 'A' ? 'teal' : subItem.grade === 'B+' ? 'blue' : 'amber'}>
+                                            {subItem.grade}
+                                          </Badge>
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        {isAdmin ? (
-                                          <input
-                                            type="number"
-                                            value={subItem.mark}
-                                            min={0}
-                                            max={subItem.maxMarks}
-                                            onClick={(e) => e.stopPropagation()}
-                                            onChange={(e) => {
-                                              const val = Math.min(subItem.maxMarks, Math.max(0, Number(e.target.value) || 0));
-                                              handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val);
-                                            }}
-                                            className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner"
-                                          />
-                                        ) : (
-                                          <span className="font-bold text-[12.5px] text-[var(--tx)]">{subItem.mark}</span>
-                                        )}
-                                        <span className="text-[11px] font-semibold text-[var(--tx2)]">({subItem.pct}%)</span>
-                                        <Badge variant={subItem.grade === 'A+' ? 'purple' : subItem.grade === 'A' ? 'teal' : subItem.grade === 'B+' ? 'blue' : 'amber'}>
-                                          {subItem.grade}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             </td>
