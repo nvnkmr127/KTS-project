@@ -193,6 +193,20 @@ Storage.prototype.setItem = function (key: string, value: string): void {
     return;
   }
 
+  const userStr = localStorage.getItem('user');
+  let isAdmin = false;
+  if (userStr) {
+    try {
+      const userObj = JSON.parse(userStr);
+      const roleStr = String(userObj?.role || '').toLowerCase();
+      isAdmin = roleStr === 'admin' || roleStr.includes('admin') || roleStr === 'principal' || roleStr === 'superadmin' || roleStr === 'super_admin';
+    } catch { /* empty */ }
+  }
+
+  if (!isAdmin) {
+    return;
+  }
+
   syncSettingToDb(key, value);
 };
 
@@ -206,6 +220,20 @@ Storage.prototype.removeItem = function (key: string): void {
 
   const token = localStorage.getItem('token');
   if (!token || token === 'demo-token') {
+    return;
+  }
+
+  const userStr = localStorage.getItem('user');
+  let isAdmin = false;
+  if (userStr) {
+    try {
+      const userObj = JSON.parse(userStr);
+      const roleStr = String(userObj?.role || '').toLowerCase();
+      isAdmin = roleStr === 'admin' || roleStr.includes('admin') || roleStr === 'principal' || roleStr === 'superadmin' || roleStr === 'super_admin';
+    } catch { /* empty */ }
+  }
+
+  if (!isAdmin) {
     return;
   }
 

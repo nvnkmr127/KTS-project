@@ -917,7 +917,7 @@ export function Examinations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listen to cross-tab updates to examinations, schedules, marks, and invigilations
+  // Listen to cross-tab updates to examinations, schedules, and invigilations
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.newValue) return;
@@ -928,8 +928,6 @@ export function Examinations() {
           setSchedules(JSON.parse(e.newValue));
         } else if (e.key === 'kts_exam_invigilations') {
           setInvigilations(JSON.parse(e.newValue));
-        } else if (e.key === 'kts_student_marks') {
-          setStudentMarks(JSON.parse(e.newValue));
         }
       } catch (err) {
         console.error('Error parsing storage change in Examinations:', err);
@@ -944,7 +942,7 @@ export function Examinations() {
   useEffect(() => {
     const availableExams = isAdmin
       ? exams.filter((e) => e.status !== 'Results Published')
-      : exams.filter((e) => e.status === 'Completed');
+      : exams.filter((e) => isExamCompleted(e));
     if (availableExams.length > 0) {
       if (!selectedMarksExamId || !availableExams.some(e => e.id === selectedMarksExamId)) {
         setSelectedMarksExamId(availableExams[0].id);
