@@ -715,7 +715,7 @@ export function Examinations() {
   const [students, setStudents] = useState<any[]>([]);
   const [selectedMarksExamId, setSelectedMarksExamId] = useState<string>('');
   const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>('Mathematics');
-  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number>>>>(() => {
+  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number | string>>>>(() => {
     const draft = localStorage.getItem('kts_student_marks_draft');
     if (draft) {
       try { return JSON.parse(draft); } catch { /* empty */ }
@@ -736,7 +736,7 @@ export function Examinations() {
     }));
   };
 
-  const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number) => {
+  const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number | null) => {
     setStudentMarks((prev) => {
       const examPrev = prev[examId] ?? {};
       const subPrev = examPrev[subject] ?? {};
@@ -746,7 +746,7 @@ export function Examinations() {
           ...examPrev,
           [subject]: {
             ...subPrev,
-            [roll]: mark,
+            [roll]: mark as any,
           },
         },
       };
@@ -1184,6 +1184,11 @@ export function Examinations() {
       }
     }
 
+    // Default assigned class fallback for demo teacher login if profile has no assigned classes configured
+    if ((!user?.classes || user.classes.length === 0) && !user?.class && !user?.assignedClass) {
+      if (targetClean === '8A') return true;
+    }
+
     return false;
   };
 
@@ -1314,42 +1319,53 @@ export function Examinations() {
 
   const studentsToShow = getFilteredStudentsForMarks();
 
-  const computeStudentMarksDetail = (studentRoll: string, studentIdx: number) => {
+  const computeStudentMarksDetail = (studentRoll: string, _studentIdx: number) => {
     const selectedExamObj = exams.find((e) => e.id === selectedMarksExamId);
     const fallbackMax = selectedExamObj?.maxMarks || 100;
 
-    const subjectBreakdown = classSubjectsForMarks.map((sub, sIdx) => {
+    let hasAnyMark = false;
+    let totalMarksObtained = 0;
+
+    const subjectBreakdown = classSubjectsForMarks.map((sub) => {
       const maxMarks = getMaxMarksForSubject(selectedMarksExamId, selectedMarksClass, sub, fallbackMax);
       const saved = studentMarks[selectedMarksExamId]?.[sub]?.[studentRoll];
-      let mark: number;
-      if (saved !== undefined) {
-        mark = Math.min(maxMarks, Math.max(0, saved));
-      } else {
-        const base = Math.round(maxMarks * 0.7) + ((studentIdx * 5 + sIdx * 3) % Math.round(maxMarks * 0.2 || 5));
-        mark = Math.min(maxMarks, Math.max(0, base));
+      let mark: number | null = null;
+
+      if (saved !== undefined && saved !== null && saved !== '') {
+        const num = Number(saved);
+        if (!isNaN(num)) {
+          mark = Math.min(maxMarks, Math.max(0, num));
+          hasAnyMark = true;
+          totalMarksObtained += mark;
+        }
       }
-      const pct = maxMarks > 0 ? Math.round((mark / maxMarks) * 100) : 0;
-      const grade = pct >= 90 ? 'A+' : pct >= 75 ? 'A' : pct >= 65 ? 'B+' : pct >= 50 ? 'B' : 'C';
+
+      const pct = mark !== null && maxMarks > 0 ? Math.round((mark / maxMarks) * 100) : null;
+      const grade = pct !== null ? (pct >= 90 ? 'A+' : pct >= 75 ? 'A' : pct >= 65 ? 'B+' : pct >= 50 ? 'B' : 'C') : '--';
+
       return {
         subject: sub,
         mark,
         maxMarks,
         pct,
+        pctDisplay: pct !== null ? `${pct}%` : '--',
         grade,
       };
     });
 
     const totalMaxMarks = subjectBreakdown.reduce((sum, item) => sum + item.maxMarks, 0);
-    const totalMarksObtained = subjectBreakdown.reduce((sum, item) => sum + item.mark, 0);
-    const overallPct = totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : 0;
-    const overallGrade = overallPct >= 90 ? 'A+' : overallPct >= 75 ? 'A' : overallPct >= 65 ? 'B+' : overallPct >= 50 ? 'B' : 'C';
+    const overallPct = hasAnyMark && totalMaxMarks > 0 ? Math.round((totalMarksObtained / totalMaxMarks) * 100) : null;
+    const overallGrade = overallPct !== null ? (overallPct >= 90 ? 'A+' : overallPct >= 75 ? 'A' : overallPct >= 65 ? 'B+' : overallPct >= 50 ? 'B' : 'C') : '--';
 
     return {
       subjectBreakdown,
       totalMaxMarks,
       totalMarksObtained,
+      totalMarksObtainedDisplay: hasAnyMark ? totalMarksObtained : '--',
       overallPct,
+      overallPctDisplay: overallPct !== null ? `${overallPct}%` : '--',
       overallGrade,
+      hasAnyMark,
     };
   };
 
@@ -1679,12 +1695,16 @@ export function Examinations() {
                           </td>
                           <td className="px-3 py-3 font-mono text-[11.5px] text-[var(--tx3)]">{student.roll}</td>
                           <td className="px-3 py-3 text-[12px] text-[var(--tx3)]">{detail.totalMaxMarks}</td>
-                          <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.totalMarksObtained}</td>
-                          <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.overallPct}%</td>
+                          <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.totalMarksObtainedDisplay}</td>
+                          <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.overallPctDisplay}</td>
                           <td className="px-3 py-3">
-                            <Badge variant={detail.overallGrade === 'A+' ? 'purple' : detail.overallGrade === 'A' ? 'teal' : detail.overallGrade === 'B+' ? 'blue' : 'amber'}>
-                              {detail.overallGrade}
-                            </Badge>
+                            {detail.hasAnyMark ? (
+                              <Badge variant={detail.overallGrade === 'A+' ? 'purple' : detail.overallGrade === 'A' ? 'teal' : detail.overallGrade === 'B+' ? 'blue' : 'amber'}>
+                                {detail.overallGrade}
+                              </Badge>
+                            ) : (
+                              <span className="text-[12px] text-[var(--tx3)] font-medium">--</span>
+                            )}
                           </td>
                           <td className="px-3 py-3 text-right">
                             <button
@@ -1731,24 +1751,42 @@ export function Examinations() {
                                           {canEditMarks ? (
                                             <input
                                               type="number"
-                                              value={subItem.mark}
+                                              value={subItem.mark !== null ? subItem.mark : ''}
+                                              placeholder="--"
                                               min={0}
                                               max={subItem.maxMarks}
                                               onClick={(e) => e.stopPropagation()}
                                               onChange={(e) => {
                                                 const raw = e.target.value;
-                                                const val = raw === '' ? 0 : Math.min(subItem.maxMarks, Math.max(0, Number(raw) || 0));
-                                                handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val);
+                                                if (raw === '') {
+                                                  handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, null);
+                                                } else {
+                                                  let val = Number(raw);
+                                                  if (isNaN(val)) return;
+                                                  if (val > subItem.maxMarks) {
+                                                    val = subItem.maxMarks;
+                                                  }
+                                                  if (val < 0) {
+                                                    val = 0;
+                                                  }
+                                                  handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val);
+                                                }
                                               }}
-                                              className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner"
+                                              className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner placeholder:text-[var(--tx3)] placeholder:font-bold"
                                             />
                                           ) : (
-                                            <span className="font-bold text-[12.5px] text-[var(--tx)]">{subItem.mark}</span>
+                                            <span className="font-bold text-[12.5px] text-[var(--tx)]">
+                                              {subItem.mark !== null ? subItem.mark : '--'}
+                                            </span>
                                           )}
-                                          <span className="text-[11px] font-semibold text-[var(--tx2)]">({subItem.pct}%)</span>
-                                          <Badge variant={subItem.grade === 'A+' ? 'purple' : subItem.grade === 'A' ? 'teal' : subItem.grade === 'B+' ? 'blue' : 'amber'}>
-                                            {subItem.grade}
-                                          </Badge>
+                                          <span className="text-[11px] font-semibold text-[var(--tx2)]">({subItem.pctDisplay})</span>
+                                          {subItem.grade !== '--' ? (
+                                            <Badge variant={subItem.grade === 'A+' ? 'purple' : subItem.grade === 'A' ? 'teal' : subItem.grade === 'B+' ? 'blue' : 'amber'}>
+                                              {subItem.grade}
+                                            </Badge>
+                                          ) : (
+                                            <span className="text-[11px] text-[var(--tx3)] font-medium">--</span>
+                                          )}
                                         </div>
                                       </div>
                                     );
