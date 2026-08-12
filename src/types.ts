@@ -29,6 +29,8 @@ export interface User {
   status?: string;
   join_date?: string;
   joinDate?: string;
+  staffId?: string;
+  user_id?: string;
 }
 
 export interface Student {

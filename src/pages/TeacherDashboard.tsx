@@ -41,6 +41,8 @@ export function TeacherDashboard() {
   const [homeworkList, setHomeworkList] = useState<any[]>([]);
   const [diariesList, setDiariesList] = useState<any[]>([]);
 
+  const [classTeacherOf, setClassTeacherOf] = useState<string | null>(null);
+
   const getLocalDateString = () => {
     const d = new Date();
     const year = d.getFullYear();
@@ -56,10 +58,11 @@ export function TeacherDashboard() {
   useEffect(() => {
     async function fetchLiveData() {
       try {
-        const [settingsRes, hwRes, diaryRes] = await Promise.all([
+        const [settingsRes, hwRes, diaryRes, batchesRes] = await Promise.all([
           api.getResources('settings', { key: 'kts_student_attendance_records' }).catch(() => []),
           api.getResources('homework').catch(() => []),
-          api.getResources('daily-diaries').catch(() => [])
+          api.getResources('daily-diaries').catch(() => []),
+          api.getResources('batches').catch(() => [])
         ]);
 
         if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
@@ -77,6 +80,19 @@ export function TeacherDashboard() {
 
         if (Array.isArray(hwRes)) setHomeworkList(hwRes);
         if (Array.isArray(diaryRes)) setDiariesList(diaryRes);
+
+        if (Array.isArray(batchesRes) && user) {
+          // Find if there is a batch where the current teacher is the class teacher
+          const teacherBatch = batchesRes.find((b: any) => 
+            String(b.class_teacher_id) === String(user.id) ||
+            String(b.class_teacher_id) === String(user.staffId) ||
+            String(b.class_teacher_id) === String(user.user_id) ||
+            (b.class_teacher_name && user.name && b.class_teacher_name.toLowerCase().trim() === user.name.toLowerCase().trim())
+          );
+          if (teacherBatch) {
+            setClassTeacherOf(teacherBatch.name);
+          }
+        }
       } catch (e) {
         console.error('Failed to load live data in Teacher Dashboard', e);
       }
@@ -95,7 +111,7 @@ export function TeacherDashboard() {
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [user]);
 
   const isTeacherMatch = (slot: any, u: any) => {
     if (!slot || !u) return false;
@@ -273,6 +289,14 @@ export function TeacherDashboard() {
           <div className="text-[11px] font-medium opacity-80 uppercase tracking-wider mb-1">Faculty Dashboard</div>
           <div className="text-[20px] font-bold mb-1">Welcome back, {user?.name || 'Faculty Member'}</div>
           <div className="text-[12px] opacity-90">{user?.designation || 'Teacher'} · {user?.subject || 'Academics'} · Assigned Classes: {teacherClasses.length > 0 ? teacherClasses.join(', ') : 'None'}</div>
+
+          {classTeacherOf && (
+            <div className="mb-2.5">
+              <span className="bg-white/30 text-white px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide">
+                Class Teacher for: {classTeacherOf} Class
+              </span>
+            </div>
+          )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2.5 text-[12px]">
             <span className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full font-medium">
