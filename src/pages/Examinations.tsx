@@ -568,6 +568,10 @@ export function Examinations() {
   const { alert, confirm } = useDialog();
   const roleStr = String(user?.role || '').toLowerCase();
   const isAdmin = roleStr === 'admin' || roleStr.includes('admin') || roleStr === 'principal' || roleStr === 'superadmin' || roleStr === 'super_admin';
+  // Faculty/Teacher role — can enter marks for their assigned class
+  const isFaculty = roleStr === 'faculty' || roleStr === 'teacher' || roleStr.includes('teacher') || roleStr.includes('faculty') || roleStr === 'staff';
+  // Only admin and faculty/teacher may access marks entry/preview
+  const canAccessMarks = isAdmin || isFaculty;
 
   type Tab = 'exams' | 'results' | 'marks' | 'designer' | 'invisilation';
   const [activeTab, setActiveTab] = useState<Tab>('exams');
@@ -711,17 +715,9 @@ export function Examinations() {
   const [students, setStudents] = useState<any[]>([]);
   const [selectedMarksExamId, setSelectedMarksExamId] = useState<string>('');
   const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>('Mathematics');
-  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number | string>>>>(() => {
-    const draft = localStorage.getItem('kts_student_marks_draft');
-    if (draft) {
-      try { return JSON.parse(draft); } catch { /* empty */ }
-    }
-    const saved = localStorage.getItem('kts_student_marks');
-    if (saved) {
-      try { return JSON.parse(saved); } catch { /* empty */ }
-    }
-    return {};
-  });
+  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number | string>>>>({});
+  // draftMarks holds unsaved edits only in React state — never written to DB until Save is clicked
+  const [draftMarks, setDraftMarks] = useState<Record<string, Record<string, Record<string, number | string>>>>({});
   const [savingMarks, setSavingMarks] = useState(false);
   const [expandedStudentRolls, setExpandedStudentRolls] = useState<Record<string, boolean>>({});
 
@@ -736,10 +732,13 @@ export function Examinations() {
     const effectiveId = examId || selectedMarksExamId || (marksExams[0]?.id ?? 'default_exam');
     const cleanRoll = roll.replace(/^[0-9]+[A-Z]+-?/i, '');
 
-    setStudentMarks((prev) => {
-      const examPrev = prev[effectiveId] ?? {};
-      const subPrev = examPrev[subject] ?? {};
-      const newSub = { ...subPrev };
+    // Update draftMarks (pure React state — NOT saved to DB or localStorage)
+    setDraftMarks((prev) => {
+      const base = studentMarks[effectiveId] ?? {};
+      const prevDraft = prev[effectiveId] ?? {};
+      const subBase = base[subject] ?? {};
+      const subDraft = prevDraft[subject] ?? {};
+      const newSub = { ...subBase, ...subDraft };
 
       if (mark === null) {
         delete newSub[roll];
@@ -751,25 +750,40 @@ export function Examinations() {
         if (studentId) newSub[studentId] = mark;
       }
 
-      const updated = {
+      return {
         ...prev,
         [effectiveId]: {
-          ...examPrev,
+          ...prevDraft,
           [subject]: newSub,
         },
       };
-      localStorage.setItem('kts_student_marks_draft', JSON.stringify(updated));
-      return updated;
     });
   };
 
   const handleSaveMarksToDb = async () => {
     setSavingMarks(true);
     try {
-      localStorage.setItem('kts_student_marks', JSON.stringify(studentMarks));
-      localStorage.removeItem('kts_student_marks_draft');
-      await saveSettingToDb('kts_student_marks', studentMarks);
-      await alert('Marks Saved Successfully', `Student marks for Class ${selectedMarksClass} have been saved to the database. They are now updated and live in Admin login as well.`);
+      // Merge draft on top of saved marks to produce final committed marks
+      const committed: Record<string, Record<string, Record<string, number | string>>> = {};
+      const allExamIds = new Set([...Object.keys(studentMarks), ...Object.keys(draftMarks)]);
+      allExamIds.forEach((exId) => {
+        committed[exId] = {};
+        const allSubs = new Set([...Object.keys(studentMarks[exId] ?? {}), ...Object.keys(draftMarks[exId] ?? {})]);
+        allSubs.forEach((sub) => {
+          committed[exId][sub] = {
+            ...(studentMarks[exId]?.[sub] ?? {}),
+            ...(draftMarks[exId]?.[sub] ?? {}),
+          };
+        });
+      });
+      // localStorage.setItem now syncs to DB for both Admin and Teacher (fixed in storage.ts)
+      // Also call saveSettingToDb directly as a backup for reliability
+      localStorage.setItem('kts_student_marks', JSON.stringify(committed));
+      await saveSettingToDb('kts_student_marks', committed);
+      // Update local state to reflect committed data and clear draft
+      setStudentMarks(committed);
+      setDraftMarks({});
+      await alert('Marks Saved Successfully', `Student marks for Class ${selectedMarksClass} have been saved to the database. They are now visible in both Admin and Faculty logins.`);
     } catch (err) {
       console.error('Error saving marks to DB:', err);
       await alert('Error', 'Failed to save student marks to database. Please try again.');
@@ -827,24 +841,13 @@ export function Examinations() {
           await saveSettingToDb('kts_exam_invigilations', currentInvigilations);
         }
 
-        // Sync student marks
+        // Sync student marks - DB is always the source of truth
         const marksRes = await api.getResources('settings', { key: 'kts_student_marks' }).catch(() => []);
         if (Array.isArray(marksRes) && marksRes.length > 0 && marksRes[0].value) {
           try {
             const parsed = JSON.parse(marksRes[0].value);
-            setStudentMarks((prev) => {
-              if (!prev || Object.keys(prev).length === 0) {
-                return parsed;
-              }
-              const merged = { ...parsed };
-              for (const exId in prev) {
-                merged[exId] = { ...(merged[exId] || {}), ...prev[exId] };
-                for (const sub in prev[exId]) {
-                  merged[exId][sub] = { ...(merged[exId][sub] || {}), ...prev[exId][sub] };
-                }
-              }
-              return merged;
-            });
+            setStudentMarks(parsed);
+            setDraftMarks({});
             (localStorage as any).originalSetItem('kts_student_marks', JSON.stringify(parsed));
           } catch (e) {
             console.error('Error parsing kts_student_marks setting:', e);
@@ -923,7 +926,9 @@ export function Examinations() {
         } else if (e.key === 'kts_exam_invigilations') {
           setInvigilations(JSON.parse(e.newValue));
         } else if (e.key === 'kts_student_marks') {
+          // Another tab saved marks — update committed state and clear our draft
           setStudentMarks(JSON.parse(e.newValue));
+          setDraftMarks({});
         }
       } catch (err) {
         console.error('Error parsing storage change in Examinations:', err);
@@ -954,20 +959,8 @@ export function Examinations() {
     }
   }, [user, isAdmin, selectedMarksSubject]);
 
-  const handleSaveMarks = async () => {
-    setSavingMarks(true);
-    try {
-      localStorage.setItem('kts_student_marks', JSON.stringify(studentMarks));
-      localStorage.removeItem('kts_student_marks_draft');
-      await saveSettingToDb('kts_student_marks', studentMarks);
-      await alert('Marks Saved Successfully', `Student marks for Class ${selectedMarksClass} have been saved to the database. They are now updated and live in Admin login as well.`);
-    } catch (err) {
-      console.error('Error saving marks:', err);
-      await alert('Failed to save marks.', 'Error');
-    } finally {
-      setSavingMarks(false);
-    }
-  };
+  // handleSaveMarks is an alias for handleSaveMarksToDb
+  const handleSaveMarks = handleSaveMarksToDb;
 
   // Removed automatic sync effects to prevent redundant DB writes on mount
   const [createName, setCreateName] = useState('');
@@ -1345,7 +1338,11 @@ export function Examinations() {
     const subjectBreakdown = classSubjectsForMarks.map((sub) => {
       const maxMarks = getMaxMarksForSubject(effectiveExamId, selectedMarksClass, sub, fallbackMax);
 
-      const saved = studentMarks[effectiveExamId]?.[sub]?.[studentRoll]
+      // Draft takes priority over committed DB value
+      const saved = draftMarks[effectiveExamId]?.[sub]?.[studentRoll]
+        ?? (studentId ? draftMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
+        ?? draftMarks[effectiveExamId]?.[sub]?.[cleanRoll]
+        ?? studentMarks[effectiveExamId]?.[sub]?.[studentRoll]
         ?? (studentId ? studentMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
         ?? studentMarks[effectiveExamId]?.[sub]?.[cleanRoll];
 
@@ -1394,7 +1391,8 @@ export function Examinations() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'exams', label: 'Exam Schedule' },
     { id: 'results', label: 'Results & Rankings' },
-    { id: 'marks', label: isAdmin ? 'Marks Preview' : 'Marks Entry' },
+    // Marks tab is only visible to Admin and Faculty/Teacher
+    ...(canAccessMarks ? [{ id: 'marks' as Tab, label: isAdmin ? 'Marks Preview' : 'Marks Entry' }] : []),
     { id: 'designer', label: isAdmin ? 'Schedule Designer' : 'Schedule Preview' },
     { id: 'invisilation', label: isAdmin ? 'Allot Invisilation' : 'Exam Invisilation' },
   ];
@@ -1632,7 +1630,7 @@ export function Examinations() {
         </div>
       )}
 
-      {activeTab === 'marks' && (
+      {activeTab === 'marks' && canAccessMarks && (
         <Card>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 border-b border-[var(--b)] pb-3">
             <div>

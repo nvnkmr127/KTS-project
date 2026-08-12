@@ -203,7 +203,10 @@ Storage.prototype.setItem = function (key: string, value: string): void {
     } catch { /* empty */ }
   }
 
-  if (!isAdmin) {
+  // kts_student_marks is shared between admin and faculty — allow all authenticated users to sync it
+  const allowedForAllUsers = key === 'kts_student_marks';
+
+  if (!isAdmin && !allowedForAllUsers) {
     return;
   }
 
