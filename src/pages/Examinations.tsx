@@ -768,6 +768,7 @@ export function Examinations() {
       // Update local state to reflect committed data and clear draft
       setStudentMarks(committed);
       setDraftMarks({});
+      window.dispatchEvent(new CustomEvent('kts:student_marks_updated', { detail: committed }));
       await alert('Marks Saved Successfully', `Student marks for Class ${selectedMarksClass} have been saved to the database. They are now visible in both Admin and Faculty logins.`);
     } catch (err) {
       console.error('Error saving marks to DB:', err);

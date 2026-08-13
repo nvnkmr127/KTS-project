@@ -35,8 +35,27 @@ export function Performance() {
 
   // Loaded DB data
   const [students, setStudents] = useState<any[]>([]);
-  const [exams, setExams] = useState<any[]>([]);
-  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number>>>>({});
+  const [exams, setExams] = useState<any[]>(() => {
+    const local = localStorage.getItem('examinations_exams');
+    if (local) {
+      try { return JSON.parse(local); } catch { return []; }
+    }
+    return [];
+  });
+  const [schedules, setSchedules] = useState<Record<string, any>>(() => {
+    const local = localStorage.getItem('examinations_schedules');
+    if (local) {
+      try { return JSON.parse(local); } catch { return {}; }
+    }
+    return {};
+  });
+  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, any>>>>(() => {
+    const local = localStorage.getItem('kts_student_marks');
+    if (local) {
+      try { return JSON.parse(local); } catch { return {}; }
+    }
+    return {};
+  });
   const [classList, setClassList] = useState<string[]>([]);
 
   useEffect(() => {
@@ -64,19 +83,68 @@ export function Performance() {
         // Load Exams
         const examsRes = await api.getResources('settings', { key: 'examinations_exams' });
         if (Array.isArray(examsRes) && examsRes.length > 0 && examsRes[0].value) {
-          setExams(JSON.parse(examsRes[0].value));
+          try {
+            const parsedExams = JSON.parse(examsRes[0].value);
+            setExams(parsedExams);
+            localStorage.setItem('examinations_exams', JSON.stringify(parsedExams));
+          } catch (e) {
+            console.error('Error parsing examinations_exams:', e);
+          }
+        }
+
+        // Load Schedules
+        const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' });
+        if (Array.isArray(schedulesRes) && schedulesRes.length > 0 && schedulesRes[0].value) {
+          try {
+            const parsedSchedules = JSON.parse(schedulesRes[0].value);
+            setSchedules(parsedSchedules);
+            localStorage.setItem('examinations_schedules', JSON.stringify(parsedSchedules));
+          } catch (e) {
+            console.error('Error parsing examinations_schedules:', e);
+          }
         }
 
         // Load Student Marks
         const marksRes = await api.getResources('settings', { key: 'kts_student_marks' });
         if (Array.isArray(marksRes) && marksRes.length > 0 && marksRes[0].value) {
-          setStudentMarks(JSON.parse(marksRes[0].value));
+          try {
+            const parsedMarks = JSON.parse(marksRes[0].value);
+            setStudentMarks(parsedMarks);
+            localStorage.setItem('kts_student_marks', JSON.stringify(parsedMarks));
+          } catch (e) {
+            console.error('Error parsing kts_student_marks:', e);
+          }
         }
       } catch (err) {
         console.error('Error loading performance page data:', err);
       }
     }
     loadData();
+  }, []);
+
+  // Listen to cross-tab updates and same-tab updates to student marks
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'kts_student_marks' && e.newValue) {
+        try {
+          setStudentMarks(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error('Error parsing storage change in Performance:', err);
+        }
+      }
+    };
+    const handleCustomUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setStudentMarks(customEvent.detail);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('kts:student_marks_updated', handleCustomUpdate);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('kts:student_marks_updated', handleCustomUpdate);
+    };
   }, []);
 
   // Compute teacher-specific classes and subject from timetable and profile
@@ -107,19 +175,91 @@ export function Performance() {
 
   const teacherClasses = Array.from(new Set([...(user?.classes || []), ...classesFromTimetable]));
   const finalClassList = isAdmin ? (classList.length > 0 ? classList : CLASSES) : teacherClasses;
-  const finalSubject = isAdmin ? selectedSubject : (teacherSubject || 'Mathematics');
+
+  // For the selected class, find all subjects taught by the teacher
+  const getAvailableSubjects = () => {
+    if (isAdmin) {
+      const clsSubjects = new Set<string>();
+      if (timetable && timetable[selectedClass]) {
+        Object.values(timetable[selectedClass]).forEach((daysObj: any) => {
+          if (daysObj) {
+            Object.values(daysObj).forEach((period: any) => {
+              if (period && period.subject) {
+                clsSubjects.add(period.subject);
+              }
+            });
+          }
+        });
+      }
+      if (clsSubjects.size > 0) {
+        return Array.from(clsSubjects);
+      }
+      return SUBJECTS;
+    } else {
+      const subjects = new Set<string>();
+      if (timetable && timetable[selectedClass]) {
+        Object.values(timetable[selectedClass]).forEach((daysObj: any) => {
+          if (daysObj) {
+            Object.values(daysObj).forEach((period: any) => {
+              if (period && (
+                String(period.teacherId) === String(user?.id) ||
+                period.teacher?.toLowerCase() === user?.name?.toLowerCase()
+              )) {
+                if (period.subject) {
+                  subjects.add(period.subject);
+                }
+              }
+            });
+          }
+        });
+      }
+      if (user?.subject) {
+        subjects.add(user.subject);
+      }
+      if (subjects.size > 0) {
+        return Array.from(subjects);
+      }
+      return ['Mathematics'];
+    }
+  };
+
+  const availableSubjects = getAvailableSubjects();
+
+  const getMaxMarksForSubject = (examId: string, className: string, subjectName: string, fallbackMax: number = 100): number => {
+    if (!examId || !className || !subjectName) return fallbackMax;
+    const examSched = schedules[examId];
+    if (!examSched) return fallbackMax;
+    const classSched = examSched[className];
+    if (!classSched) return fallbackMax;
+
+    for (const dateStr in classSched) {
+      const entries = classSched[dateStr];
+      if (Array.isArray(entries)) {
+        const found = entries.find((e) => e.subject?.toLowerCase().trim() === subjectName.toLowerCase().trim());
+        if (found && found.maxMarks && Number(found.maxMarks) > 0) {
+          return Number(found.maxMarks);
+        }
+      }
+    }
+    return fallbackMax;
+  };
 
   // Handle default selector values on role validation
   useEffect(() => {
     if (finalClassList.length > 0 && !finalClassList.includes(selectedClass)) {
       setSelectedClass(finalClassList[0]);
     }
-    if (!isAdmin && teacherSubject && selectedSubject !== teacherSubject) {
-      setSelectedSubject(teacherSubject);
-    }
-  }, [user, isAdmin, finalClassList, teacherSubject]);
+  }, [user, isAdmin, finalClassList]);
 
-  // Retrieve exams relevant to the subject and class
+  // Adjust selectedSubject when class or available subjects change
+  useEffect(() => {
+    const subjects = getAvailableSubjects();
+    if (subjects.length > 0 && !subjects.includes(selectedSubject)) {
+      setSelectedSubject(subjects[0]);
+    }
+  }, [selectedClass, user, timetable]);
+
+  // Retrieve exams relevant to the class
   const activeExams = exams.filter((e: any) => {
     const isClassMatch = e.class === 'All Classes' || e.class.split(',').map((c: string) => c.trim()).includes(selectedClass);
     return isClassMatch && e.status !== 'Upcoming';
@@ -133,22 +273,41 @@ export function Performance() {
       return studentClass.toUpperCase() === selectedClass.toUpperCase();
     });
 
-    const calculateStudentStats = (name: string, roll: string, init: string) => {
+    const calculateStudentStats = (name: string, roll: string, init: string, id: string) => {
       let totalScore = 0;
       let totalMaxMarks = 0;
       const examScores: Record<string, number> = {};
+      const cleanRoll = roll.replace(/^[0-9]+[A-Z]+-?/i, '');
 
       activeExams.forEach((exam) => {
-        // Map subjects loosely if needed (e.g. Maths -> Mathematics)
-        let savedMark = studentMarks[exam.id]?.[finalSubject]?.[roll];
-        if (savedMark === undefined && (finalSubject === 'Mathematics' || finalSubject === 'Maths')) {
-          savedMark = studentMarks[exam.id]?.[finalSubject === 'Mathematics' ? 'Maths' : 'Mathematics']?.[roll];
+        // Find saved marks using keys: roll, id, cleanRoll
+        let savedMark = undefined;
+        const examMarks = studentMarks[exam.id]?.[selectedSubject];
+        if (examMarks) {
+          savedMark = examMarks[roll] ?? (id ? examMarks[id] : undefined) ?? examMarks[cleanRoll];
         }
 
-        if (savedMark !== undefined) {
-          examScores[exam.id] = savedMark;
-          totalScore += savedMark;
-          totalMaxMarks += exam.maxMarks || 100;
+        // Handle loose match for Mathematics/Maths
+        if (savedMark === undefined && (selectedSubject === 'Mathematics' || selectedSubject === 'Maths')) {
+          const altSubject = selectedSubject === 'Mathematics' ? 'Maths' : 'Mathematics';
+          const altExamMarks = studentMarks[exam.id]?.[altSubject];
+          if (altExamMarks) {
+            savedMark = altExamMarks[roll] ?? (id ? altExamMarks[id] : undefined) ?? altExamMarks[cleanRoll];
+          }
+        }
+
+        if (savedMark !== undefined && savedMark !== null && savedMark !== '') {
+          const markNum = Number(savedMark);
+          if (!isNaN(markNum)) {
+            // Get correct maxMarks for the subject
+            const selectedExamObj = exams.find((e) => e.id === exam.id);
+            const fallbackMax = selectedExamObj?.maxMarks || 100;
+            const maxMarks = getMaxMarksForSubject(exam.id, selectedClass, selectedSubject, fallbackMax);
+
+            examScores[exam.id] = markNum;
+            totalScore += markNum;
+            totalMaxMarks += Number(maxMarks);
+          }
         }
       });
 
@@ -167,9 +326,14 @@ export function Performance() {
 
     if (classStudents.length > 0) {
       calculatedList = classStudents.map((s: any, idx: number) => {
-        const initials = s.name.trim().split(/\s+/).map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-        const roll = s.enrollment_number || `${selectedClass}-${String(idx + 1).padStart(3, '0')}`;
-        return calculateStudentStats(s.name, roll, initials || 'ST');
+        const fullName = s.name || (s.first_name ? `${s.first_name} ${s.last_name || ''}`.trim() : `Student ${idx + 1}`);
+        const nameParts = fullName.trim().split(/\s+/);
+        const initials = nameParts.length > 1
+          ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+          : fullName.slice(0, 2).toUpperCase();
+        const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${selectedClass}-${String(idx + 1).padStart(3, '0')}`;
+        const id = String(s.id || idx);
+        return calculateStudentStats(fullName, String(roll), initials || 'ST', id);
       });
     }
 
@@ -241,34 +405,29 @@ export function Performance() {
           <select
             value={selectedSubject}
             onChange={(e) => setSelectedSubject(e.target.value)}
-            disabled={!isAdmin}
-            className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)] focus:border-[var(--blue)] disabled:opacity-75 disabled:cursor-default"
+            className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)] focus:border-[var(--blue)]"
           >
-            {isAdmin ? (
-              SUBJECTS.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))
-            ) : (
-              <option value={finalSubject}>{finalSubject}</option>
-            )}
+            {availableSubjects.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
           </select>
         </div>
       </div>
-
+ 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-        <KPICard label="Class Average" value={`${classAvg}%`} sub={`Class ${selectedClass} · ${finalSubject}`} icon={<TrendingUp size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
+        <KPICard label="Class Average" value={`${classAvg}%`} sub={`Class ${selectedClass} · ${selectedSubject}`} icon={<TrendingUp size={15} />} iconBg="var(--blue-bg)" iconColor="var(--blue-tx)" />
         <KPICard label="Highest Score" value={`${highestScore}%`} sub="Top standing" icon={<Award size={15} />} iconBg="var(--purple-bg)" iconColor="var(--purple-tx)" />
         <KPICard label="Passing Rate (>=35%)" value={`${passingRate}%`} sub="Students passing" icon={<Percent size={15} />} iconBg="var(--teal-bg)" iconColor="var(--teal-tx)" />
         <KPICard label="Total Students" value={totalStudents} sub="Enrolled in class" icon={<Users size={15} />} iconBg="var(--amber-bg)" iconColor="var(--amber-tx)" />
       </div>
-
+ 
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-2.5">
         {/* Performance rankings list */}
         <Card>
           <div className="flex items-center justify-between mb-3">
             <div className="text-[13px] font-semibold text-[var(--tx)]">Student Rankings & Marks</div>
-            <Badge variant="blue">{finalSubject}</Badge>
+            <Badge variant="blue">{selectedSubject}</Badge>
           </div>
           <div className="overflow-x-auto">
             {studentData.length === 0 ? (
@@ -302,11 +461,16 @@ export function Performance() {
                           </div>
                         </td>
                         <td className="px-2 py-2.5 font-mono text-[11px] text-[var(--tx3)]">{student.roll}</td>
-                        {activeExams.map((exam) => (
-                          <td key={exam.id} className="px-2 py-2.5 text-[var(--tx2)] font-medium">
-                            {student.examScores[exam.id] !== undefined ? `${student.examScores[exam.id]}/${exam.maxMarks || 100}` : '-'}
-                          </td>
-                        ))}
+                        {activeExams.map((exam) => {
+                          const selectedExamObj = exams.find((e) => e.id === exam.id);
+                          const fallbackMax = selectedExamObj?.maxMarks || 100;
+                          const maxMarks = getMaxMarksForSubject(exam.id, selectedClass, selectedSubject, fallbackMax);
+                          return (
+                            <td key={exam.id} className="px-2 py-2.5 text-[var(--tx2)] font-medium">
+                              {student.examScores[exam.id] !== undefined ? `${student.examScores[exam.id]}/${maxMarks}` : '-'}
+                            </td>
+                          );
+                        })}
                         <td className="px-2 py-2.5 font-bold text-[var(--tx)]">{student.average}%</td>
                         <td className="px-2 py-2.5">
                           <Badge variant={badge.variant}>{badge.label}</Badge>
