@@ -24,6 +24,21 @@ const AVATAR_COLORS: Record<string, { bg: string; color: string }> = {
 
 const tooltipStyle = { backgroundColor: 'var(--surf)', border: '0.5px solid var(--b2)', borderRadius: 8, fontSize: 11, color: 'var(--tx)' };
 
+const normalizeSubjectName = (subject: string): string => {
+  if (!subject) return '';
+  const clean = subject.toLowerCase().trim();
+  if (clean === 'mathematics' || clean === 'maths' || clean === 'math') {
+    return 'maths';
+  }
+  if (clean === 'social studies' || clean === 'social' || clean === 'social science') {
+    return 'social';
+  }
+  if (clean === 'general science' || clean === 'science') {
+    return 'science';
+  }
+  return clean;
+};
+
 export function Performance() {
   const { user } = useAuth();
   const { timetable } = useApp();
@@ -35,31 +50,15 @@ export function Performance() {
 
   // Loaded DB data
   const [students, setStudents] = useState<any[]>([]);
-  const [exams, setExams] = useState<any[]>(() => {
-    const local = localStorage.getItem('examinations_exams');
-    if (local) {
-      try { return JSON.parse(local); } catch { return []; }
-    }
-    return [];
-  });
-  const [schedules, setSchedules] = useState<Record<string, any>>(() => {
-    const local = localStorage.getItem('examinations_schedules');
-    if (local) {
-      try { return JSON.parse(local); } catch { return {}; }
-    }
-    return {};
-  });
-  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, any>>>>(() => {
-    const local = localStorage.getItem('kts_student_marks');
-    if (local) {
-      try { return JSON.parse(local); } catch { return {}; }
-    }
-    return {};
-  });
+  const [exams, setExams] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<Record<string, any>>({});
+  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, any>>>>({});
   const [classList, setClassList] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
+      setLoading(true);
       try {
         // Load Students
         const studentsData = await api.getResources('students', { limit: '1000' });
@@ -84,9 +83,7 @@ export function Performance() {
         const examsRes = await api.getResources('settings', { key: 'examinations_exams' });
         if (Array.isArray(examsRes) && examsRes.length > 0 && examsRes[0].value) {
           try {
-            const parsedExams = JSON.parse(examsRes[0].value);
-            setExams(parsedExams);
-            localStorage.setItem('examinations_exams', JSON.stringify(parsedExams));
+            setExams(JSON.parse(examsRes[0].value));
           } catch (e) {
             console.error('Error parsing examinations_exams:', e);
           }
@@ -96,9 +93,7 @@ export function Performance() {
         const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' });
         if (Array.isArray(schedulesRes) && schedulesRes.length > 0 && schedulesRes[0].value) {
           try {
-            const parsedSchedules = JSON.parse(schedulesRes[0].value);
-            setSchedules(parsedSchedules);
-            localStorage.setItem('examinations_schedules', JSON.stringify(parsedSchedules));
+            setSchedules(JSON.parse(schedulesRes[0].value));
           } catch (e) {
             console.error('Error parsing examinations_schedules:', e);
           }
@@ -108,15 +103,15 @@ export function Performance() {
         const marksRes = await api.getResources('settings', { key: 'kts_student_marks' });
         if (Array.isArray(marksRes) && marksRes.length > 0 && marksRes[0].value) {
           try {
-            const parsedMarks = JSON.parse(marksRes[0].value);
-            setStudentMarks(parsedMarks);
-            localStorage.setItem('kts_student_marks', JSON.stringify(parsedMarks));
+            setStudentMarks(JSON.parse(marksRes[0].value));
           } catch (e) {
             console.error('Error parsing kts_student_marks:', e);
           }
         }
       } catch (err) {
         console.error('Error loading performance page data:', err);
+      } finally {
+        setLoading(false);
       }
     }
     loadData();
@@ -235,13 +230,31 @@ export function Performance() {
     for (const dateStr in classSched) {
       const entries = classSched[dateStr];
       if (Array.isArray(entries)) {
-        const found = entries.find((e) => e.subject?.toLowerCase().trim() === subjectName.toLowerCase().trim());
+        const found = entries.find((e) => normalizeSubjectName(e.subject) === normalizeSubjectName(subjectName));
         if (found && found.maxMarks && Number(found.maxMarks) > 0) {
           return Number(found.maxMarks);
         }
       }
     }
     return fallbackMax;
+  };
+
+  const getMarksForSubject = (examId: string, subjectName: string) => {
+    const examMarks = studentMarks[examId];
+    if (!examMarks) return null;
+    
+    // Direct match first
+    if (examMarks[subjectName]) {
+      return examMarks[subjectName];
+    }
+    
+    // Normalized match
+    const targetNorm = normalizeSubjectName(subjectName);
+    const matchedKey = Object.keys(examMarks).find(
+      (k) => normalizeSubjectName(k) === targetNorm
+    );
+    
+    return matchedKey ? examMarks[matchedKey] : null;
   };
 
   // Handle default selector values on role validation
@@ -280,20 +293,11 @@ export function Performance() {
       const cleanRoll = roll.replace(/^[0-9]+[A-Z]+-?/i, '');
 
       activeExams.forEach((exam) => {
-        // Find saved marks using keys: roll, id, cleanRoll
+        // Find saved marks using keys: roll, id, cleanRoll via getMarksForSubject helper
         let savedMark = undefined;
-        const examMarks = studentMarks[exam.id]?.[selectedSubject];
+        const examMarks = getMarksForSubject(exam.id, selectedSubject);
         if (examMarks) {
           savedMark = examMarks[roll] ?? (id ? examMarks[id] : undefined) ?? examMarks[cleanRoll];
-        }
-
-        // Handle loose match for Mathematics/Maths
-        if (savedMark === undefined && (selectedSubject === 'Mathematics' || selectedSubject === 'Maths')) {
-          const altSubject = selectedSubject === 'Mathematics' ? 'Maths' : 'Mathematics';
-          const altExamMarks = studentMarks[exam.id]?.[altSubject];
-          if (altExamMarks) {
-            savedMark = altExamMarks[roll] ?? (id ? altExamMarks[id] : undefined) ?? altExamMarks[cleanRoll];
-          }
         }
 
         if (savedMark !== undefined && savedMark !== null && savedMark !== '') {
@@ -430,7 +434,11 @@ export function Performance() {
             <Badge variant="blue">{selectedSubject}</Badge>
           </div>
           <div className="overflow-x-auto">
-            {studentData.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
+                Loading student performance data directly from DB...
+              </div>
+            ) : studentData.length === 0 ? (
               <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
                 No student details found for Class {selectedClass}.
               </div>
@@ -489,7 +497,11 @@ export function Performance() {
           <Card>
             <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Score Ranges Distribution</div>
             <div className="h-[210px]">
-              {scoredStudents.length === 0 ? (
+              {loading ? (
+                <div className="h-full flex items-center justify-center text-[12px] text-[var(--tx3)]">
+                  Loading statistics...
+                </div>
+              ) : scoredStudents.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-[12px] text-[var(--tx3)]">
                   No distribution statistics available.
                 </div>
@@ -511,25 +523,30 @@ export function Performance() {
           <Card>
             <div className="text-[12.5px] font-semibold text-[var(--tx)] mb-3">Top Performers</div>
             <div className="space-y-2">
-              {studentData.slice(0, 3).map((st) => (
-                <div key={st.roll} className="flex items-center justify-between p-2.5 bg-[var(--surf2)] rounded-xl border border-[var(--b)]">
-                  <div className="flex items-center gap-2">
-                    <Avatar initials={st.init} bg={AVATAR_COLORS[st.init]?.bg ?? 'var(--purple-bg)'} color={AVATAR_COLORS[st.init]?.color ?? 'var(--purple-tx)'} />
-                    <div>
-                      <span className="text-[12px] font-bold text-[var(--tx)]">{st.name}</span>
-                      <div className="text-[9.5px] text-[var(--tx3)] font-mono">{st.roll}</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[12.5px] font-bold text-[var(--blue-tx)]">{st.average}%</span>
-                    <div className="text-[9px] text-[var(--tx3)]">Overall Average</div>
-                  </div>
+              {loading ? (
+                <div className="text-center py-6 text-[12px] text-[var(--tx3)]">
+                  Loading...
                 </div>
-              ))}
-              {studentData.length === 0 && (
+              ) : studentData.length === 0 ? (
                 <div className="text-center py-6 text-[12px] text-[var(--tx3)]">
                   No records.
                 </div>
+              ) : (
+                studentData.slice(0, 3).map((st) => (
+                  <div key={st.roll} className="flex items-center justify-between p-2.5 bg-[var(--surf2)] rounded-xl border border-[var(--b)]">
+                    <div className="flex items-center gap-2">
+                      <Avatar initials={st.init} bg={AVATAR_COLORS[st.init]?.bg ?? 'var(--purple-bg)'} color={AVATAR_COLORS[st.init]?.color ?? 'var(--purple-tx)'} />
+                      <div>
+                        <span className="text-[12px] font-bold text-[var(--tx)]">{st.name}</span>
+                        <div className="text-[9.5px] text-[var(--tx3)] font-mono">{st.roll}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[12.5px] font-bold text-[var(--blue-tx)]">{st.average}%</span>
+                      <div className="text-[9px] text-[var(--tx3)]">Overall Average</div>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </Card>
