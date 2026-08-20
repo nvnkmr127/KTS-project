@@ -10,7 +10,7 @@ import { BUS_ROUTES_CONFIG, fetchLiveBusPositions, LiveBusData } from '../../ser
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAYOIEB9I2lOiJbGM7t723CUtDEjm4-Yj0';
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
