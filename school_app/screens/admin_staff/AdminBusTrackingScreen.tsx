@@ -10,7 +10,7 @@ import { BUS_ROUTES_CONFIG, fetchLiveBusPositions, LiveBusData } from '../../ser
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyAYOIEB9I2lOiJbGM7t723CUtDEjm4-Yj0';
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
@@ -95,6 +95,9 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
 
   // Google Maps Reverse Geocoding API function
   const fetchAreaFromCoords = async (lat: number, lng: number): Promise<string> => {
+    if (!GOOGLE_MAPS_API_KEY) {
+      return `Area: ${lat.toFixed(3)}, ${lng.toFixed(3)}`;
+    }
     try {
       const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`);
       const data = await res.json();
@@ -160,7 +163,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
             * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
             html, body, #map { height: 100%; width: 100%; margin: 0; padding: 0; background: #e5e3df; touch-action: manipulation; }
           </style>
-          <script src="https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&v=weekly"></script>
+          <script src="https://maps.googleapis.com/maps/api/js${GOOGLE_MAPS_API_KEY ? `?key=${GOOGLE_MAPS_API_KEY}&v=weekly` : '?v=weekly'}"></script>
           <script>
             function initMap() {
               const allBuses = ${allBusesJson};
