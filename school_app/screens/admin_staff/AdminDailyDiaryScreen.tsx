@@ -189,57 +189,64 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
         {!selectedClassDetail ? (
           <>
             {/* Top 3 Web KPI Header Cards */}
-            <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
-              <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/80 items-center">
-                <View className={`w-8 h-8 rounded-xl items-center justify-center mb-1.5 ${primaryBadgeClass}`}>
-                  <BookOpen size={16} color={primaryColor} />
+            <View className="px-5 mb-5 flex-row justify-between" style={{ gap: 6 }}>
+              <GlassCard intensity="low" className="flex-1 p-2.5 sm:p-3.5 border-white/10 bg-[#101415]/80 items-center">
+                <View className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl items-center justify-center mb-1 ${primaryBadgeClass}`}>
+                  <BookOpen size={15} color={primaryColor} />
                 </View>
-                <Text className="text-white/50 text-[9px] font-bold uppercase text-center">Diaries Submitted</Text>
-                <Text className="text-white text-xl font-extrabold mt-0.5">{classesSubmittedCount}</Text>
-                <Text className={`${primaryTextClass} text-[9px] font-semibold text-center mt-0.5`}>Out of {totalClasses} classes</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[8.5px] sm:text-[9px] font-bold uppercase text-center">Diaries Submitted</Text>
+                <Text numberOfLines={1} className="text-white text-lg sm:text-xl font-extrabold mt-0.5">{classesSubmittedCount}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className={`${primaryTextClass} text-[8.5px] sm:text-[9px] font-semibold text-center mt-0.5`}>Out of {totalClasses} classes</Text>
               </GlassCard>
 
-              <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/80 items-center">
-                <View className="w-8 h-8 rounded-xl bg-sky-500/20 border border-sky-500/40 items-center justify-center mb-1.5">
-                  <Send size={16} color="#38bdf8" />
+              <GlassCard intensity="low" className="flex-1 p-2.5 sm:p-3.5 border-white/10 bg-[#101415]/80 items-center">
+                <View className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-sky-500/20 border border-sky-500/40 items-center justify-center mb-1">
+                  <Send size={15} color="#38bdf8" />
                 </View>
-                <Text className="text-white/50 text-[9px] font-bold uppercase text-center">Messages Delivered</Text>
-                <Text className="text-white text-xl font-extrabold mt-0.5">{classesSubmittedCount * 28}</Text>
-                <Text className="text-sky-400 text-[9px] font-semibold text-center mt-0.5">WhatsApp + SMS</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[8.5px] sm:text-[9px] font-bold uppercase text-center">Messages Delivered</Text>
+                <Text numberOfLines={1} className="text-white text-lg sm:text-xl font-extrabold mt-0.5">{classesSubmittedCount * 28}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-sky-400 text-[8.5px] sm:text-[9px] font-semibold text-center mt-0.5">WhatsApp + SMS</Text>
               </GlassCard>
 
-              <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/80 items-center">
-                <View className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 items-center justify-center mb-1.5">
-                  <Clock size={16} color="#f59e0b" />
+              <GlassCard intensity="low" className="flex-1 p-2.5 sm:p-3.5 border-white/10 bg-[#101415]/80 items-center">
+                <View className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 items-center justify-center mb-1">
+                  <Clock size={15} color="#f59e0b" />
                 </View>
-                <Text className="text-white/50 text-[9px] font-bold uppercase text-center">Pending</Text>
-                <Text className="text-amber-400 text-xl font-extrabold mt-0.5">{pendingClassesCount}</Text>
-                <Text className="text-amber-300 text-[9px] font-semibold text-center mt-0.5">Not yet updated</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[8.5px] sm:text-[9px] font-bold uppercase text-center">Pending</Text>
+                <Text numberOfLines={1} className="text-amber-400 text-lg sm:text-xl font-extrabold mt-0.5">{pendingClassesCount}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-amber-300 text-[8.5px] sm:text-[9px] font-semibold text-center mt-0.5">Not yet updated</Text>
               </GlassCard>
             </View>
 
             {/* Sub-header Controls Bar */}
-            <View className="px-5 mb-4 flex-row justify-between items-center">
-              <View>
-                <Text className="text-white font-extrabold text-base">Diary Submissions</Text>
-                <Text className="text-white/40 text-[10.5px]">Select a class section to view period breakdown</Text>
-              </View>
+            <View className="px-5 mb-4">
+              <View className="flex-row justify-between items-center mb-1">
+                <Text className="text-white font-extrabold text-lg sm:text-xl" style={{ fontSize: 20 }} numberOfLines={1}>
+                  Diary Submissions
+                </Text>
 
-              <View className="flex-row items-center" style={{ gap: 8 }}>
-                {/* Interactive Calendar View Date Picker Trigger */}
-                <Pressable
-                  onPress={() => setShowDatePickerModal(true)}
-                  className={`${isSuperAdmin ? 'bg-[#f0c110]/15 border border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border border-[#00f1a1]/40'} px-3 py-1.5 rounded-xl flex-row items-center`}
-                >
-                  <Calendar size={13} color={primaryColor} style={{ marginRight: 5 }} />
-                  <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedDate}</Text>
-                </Pressable>
+                <View className="flex-row items-center flex-shrink-0" style={{ gap: 6 }}>
+                  {/* Interactive Calendar View Date Picker Trigger */}
+                  <Pressable
+                    onPress={() => setShowDatePickerModal(true)}
+                    className={`${isSuperAdmin ? 'bg-[#f0c110]/15 border border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border border-[#00f1a1]/40'} px-2.5 sm:px-3 py-1.5 rounded-xl flex-row items-center flex-shrink-0 active:scale-95`}
+                  >
+                    <Calendar size={12} color={primaryColor} style={{ marginRight: 4 }} />
+                    <Text className={`${primaryTextClass} text-[11px] sm:text-xs font-bold`} numberOfLines={1}>{selectedDate}</Text>
+                  </Pressable>
 
-                <View className={`${primaryPillClass} px-2.5 py-1.5 rounded-xl flex-row items-center`}>
-                  <RefreshCw size={11} color={primaryColor} style={{ marginRight: 4 }} />
-                  <Text className={`${primaryTextClass} text-[10px] font-bold`}>Live Sync</Text>
+                  <View className={`${primaryPillClass} px-2.5 py-1.5 rounded-xl flex-row items-center flex-shrink-0`}>
+                    <RefreshCw size={11} color={primaryColor} style={{ marginRight: 4 }} />
+                    <Text className={`${primaryTextClass} text-[10px] font-bold`} numberOfLines={1} style={{ flexShrink: 0 }}>
+                      Live Sync
+                    </Text>
+                  </View>
                 </View>
               </View>
+
+              <Text className="text-white/40 text-[11px]">
+                Select a class section to view period breakdown
+              </Text>
             </View>
 
             {/* Search Bar */}
@@ -273,35 +280,42 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable key={cls.classId} onPress={() => setSelectedClassDetail(cls.classId)}>
                     <GlassCard intensity="low" className="mb-3 p-4 border-white/10 bg-[#101415]/90">
                       <View className="flex-row justify-between items-center">
-                        <View className="flex-row items-center flex-1 mr-2">
-                          <View className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mr-3">
+                        <View className="flex-row items-center flex-1 mr-2 min-w-0">
+                          <View className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 items-center justify-center mr-2.5 flex-shrink-0">
                             <Text className={`${primaryTextClass} text-xs font-extrabold`}>{cls.classId}</Text>
                           </View>
 
-                          <View className="flex-1">
-                            <View className="flex-row items-center">
-                              <Text className="text-white font-extrabold text-sm mr-2">{cls.className}</Text>
+                          <View className="flex-1 min-w-0">
+                            <View className="flex-row items-center flex-wrap" style={{ gap: 4 }}>
+                              <Text className="text-white font-extrabold text-sm" numberOfLines={1}>{cls.className}</Text>
                               {isNoSchedule ? (
                                 <Text className="text-white/40 text-[10px] italic">No Schedule</Text>
                               ) : isFullySubmitted ? (
-                                <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                                <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass} flex-shrink-0`}>
                                   <Text className={`${primaryTextClass} text-[9px] font-bold`}>Complete</Text>
                                 </View>
                               ) : (
-                                <View className="bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md">
+                                <View className="bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md flex-shrink-0">
                                   <Text className="text-amber-400 text-[9px] font-bold">Pending</Text>
                                 </View>
                               )}
                             </View>
-                            <Text className="text-white/60 text-[11px] mt-0.5">
+                            <Text className="text-white/60 text-[11px] mt-0.5" numberOfLines={1}>
                               {isNoSchedule ? 'No Schedule' : `${subCount} Teacher${subCount === 1 ? '' : 's'} Submitted`}
                             </Text>
                           </View>
                         </View>
 
-                        <View className="flex-row items-center">
-                          <Text className={`${primaryTextClass} text-xs font-bold mr-1`}>Click to view details</Text>
-                          <ChevronRight size={15} color={primaryColor} />
+                        <View className="flex-row items-center flex-shrink-0">
+                          <Text
+                            numberOfLines={1}
+                            adjustsFontSizeToFit
+                            className={`${primaryTextClass} text-xs font-bold mr-1`}
+                            style={{ flexShrink: 0 }}
+                          >
+                            Click to view details
+                          </Text>
+                          <ChevronRight size={14} color={primaryColor} />
                         </View>
                       </View>
                     </GlassCard>
