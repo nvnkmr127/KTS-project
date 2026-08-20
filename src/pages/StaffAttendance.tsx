@@ -421,9 +421,48 @@ export function StaffAttendance() {
       });
   }, [date]);
 
+  // Check biometric status & connectivity
+  const checkBiometricStatus = useCallback(async (silent = false) => {
+    if (!navigator.onLine) {
+      setConnectionStatus('disconnected');
+      setAttendanceMode('manual');
+      if (!silent) setLastSyncMsg('✗ No internet connection. Operating in Manual Mode.');
+      return false;
+    }
+
+    try {
+      const res = await api.biometricStatus();
+      if (res?.configured && res?.connected) {
+        setConnectionStatus('connected');
+        if (res.last_sync) {
+          const d = new Date(res.last_sync);
+          setLastSyncTime(d.toLocaleString());
+        }
+        return true;
+      } else {
+        setConnectionStatus('disconnected');
+        setAttendanceMode('manual');
+        if (!silent && res?.connection_message) {
+          setLastSyncMsg(`⚠ Biometric device offline: ${res.connection_message}`);
+        }
+        return false;
+      }
+    } catch {
+      setConnectionStatus('disconnected');
+      setAttendanceMode('manual');
+      return false;
+    }
+  }, []);
+
   // Sync biometric IN/OUT data for the selected date from the real API
   const syncBiometric = useCallback((silent = false) => {
     if (syncInProgress.current) return;
+    if (!navigator.onLine) {
+      setConnectionStatus('disconnected');
+      setAttendanceMode('manual');
+      if (!silent) setLastSyncMsg('✗ No internet connection. Operating in Manual Mode.');
+      return;
+    }
 
     syncInProgress.current = true;
     setIsSyncing(true);
@@ -471,23 +510,26 @@ export function StaffAttendance() {
           }
         } else if (result?.message?.includes('not configured')) {
           setConnectionStatus('disconnected');
+          setAttendanceMode('manual');
           if (!silent) setLastSyncMsg('⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.');
           fetchLocalBiometricLogs();
         } else {
           setConnectionStatus('disconnected');
-          if (!silent) setLastSyncMsg(`⚠ ${result?.message || 'Sync returned no data'}`);
+          setAttendanceMode('manual');
+          if (!silent) setLastSyncMsg(`⚠ ${result?.message || 'Biometric device offline'}`);
           fetchLocalBiometricLogs();
         }
       })
       .catch((err: any) => {
         setConnectionStatus('disconnected');
+        setAttendanceMode('manual');
         const errStr = String(err?.message || err || '');
         const isTimeout = errStr.includes('ERR_CONNECTION_TIMED_OUT') || errStr.includes('timed out') || errStr.includes('Unable to connect');
         if (!silent) {
           setLastSyncMsg(
             isTimeout
-              ? '✗ Server connection timed out (ERR_CONNECTION_TIMED_OUT). Please check backend server status or network connection.'
-              : '✗ Sync failed — check biometric credentials in Settings.'
+              ? '✗ Server connection timed out (ERR_CONNECTION_TIMED_OUT). Biometric device is offline.'
+              : '✗ Biometric device is offline (not connected to internet).'
           );
         }
         fetchLocalBiometricLogs();
@@ -501,6 +543,11 @@ export function StaffAttendance() {
   // Sync biometric raw punch logs (DownloadPunchData) every second during school hours
   const syncBiometricPunches = useCallback((silent = false) => {
     if (syncPunchesInProgress.current) return;
+    if (!navigator.onLine) {
+      setConnectionStatus('disconnected');
+      setAttendanceMode('manual');
+      return;
+    }
 
     syncPunchesInProgress.current = true;
     setIsSyncingPunches(true);
@@ -512,10 +559,12 @@ export function StaffAttendance() {
           setConnectionStatus('connected');
         } else {
           setConnectionStatus('disconnected');
+          setAttendanceMode('manual');
         }
       })
       .catch((err) => {
         setConnectionStatus('disconnected');
+        setAttendanceMode('manual');
         const errStr = String(err?.message || err || '');
         const isExpectedOfflineErr =
           errStr.includes('Biometric credentials not configured') ||
@@ -541,36 +590,54 @@ export function StaffAttendance() {
     fetchLocalBiometricLogsRef.current = fetchLocalBiometricLogs;
   }, [fetchLocalBiometricLogs]);
 
+  // Monitor browser network online/offline state
+  useEffect(() => {
+    const handleOnline = () => {
+      checkBiometricStatus();
+      syncBiometricPunches(true);
+      syncBiometric(true);
+    };
+    const handleOffline = () => {
+      setConnectionStatus('disconnected');
+      setAttendanceMode('manual');
+    };
+
+    if (!navigator.onLine) {
+      setConnectionStatus('disconnected');
+      setAttendanceMode('manual');
+    }
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [checkBiometricStatus, syncBiometric, syncBiometricPunches]);
+
   // Check biometric status on mount
   useEffect(() => {
-    setConnectionStatus('testing');
-    api.biometricStatus()
-      .then((res) => {
-        if (res?.configured) {
-          if (res.last_sync) {
-            const d = new Date(res.last_sync);
-            setLastSyncTime(d.toLocaleString());
-          }
-          // Silently sync yesterday's biometric data to ensure it is stored in the database
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().slice(0, 10);
-          api.biometricSyncPunch(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
-          api.biometricSyncInOut(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
+    if (!navigator.onLine) {
+      setConnectionStatus('disconnected');
+      setAttendanceMode('manual');
+      return;
+    }
 
-          // Determine live connection status
-          syncBiometricPunches(true);
-          syncBiometric(true);
-        } else {
-          setConnectionStatus('disconnected');
-          setAttendanceMode('manual');
-        }
-      })
-      .catch(() => {
-        setConnectionStatus('disconnected');
-        setAttendanceMode('manual');
-      });
-  }, [syncBiometric, syncBiometricPunches]);
+    setConnectionStatus('testing');
+    checkBiometricStatus(true).then((isLive) => {
+      if (isLive) {
+        // Silently sync yesterday's biometric data to ensure it is stored in the database
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+        api.biometricSyncPunch(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
+        api.biometricSyncInOut(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
+
+        syncBiometricPunches(true);
+        syncBiometric(true);
+      }
+    });
+  }, [checkBiometricStatus, syncBiometric, syncBiometricPunches]);
 
   // Auto-sync when date changes
   useEffect(() => {

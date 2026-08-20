@@ -644,12 +644,12 @@ export const api = {
 
   // ── Biometric e-TimeOffice Integration ────────────────────────────────
   async biometricStatus() {
-    return request('/biometric/status', { timeoutMs: 20000 });
+    return request('/biometric/status', { timeoutMs: 8000 });
   },
 
   async biometricTestConnection(credentials?: { corporate_id?: string; username?: string; password?: string }) {
     const params = credentials ? new URLSearchParams(credentials as any).toString() : '';
-    return request(params ? `/biometric/test-connection?${params}` : '/biometric/test-connection', { timeoutMs: 35000 });
+    return request(params ? `/biometric/test-connection?${params}` : '/biometric/test-connection', { timeoutMs: 10000 });
   },
 
   async biometricSaveCredentials(credentials: any) {

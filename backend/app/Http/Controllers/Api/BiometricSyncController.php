@@ -29,9 +29,20 @@ class BiometricSyncController extends Controller
     {
         try {
             $stats = $this->etimeoffice->getComprehensiveStats();
+            $configured = $stats['configuration']['valid'] ?? false;
+            $connected = false;
+            $connectionMessage = '';
+
+            if ($configured) {
+                $test = $this->etimeoffice->testConnection();
+                $connected = $test['success'] ?? false;
+                $connectionMessage = $test['message'] ?? '';
+            }
 
             return response()->json([
-                'configured' => $stats['configuration']['valid'] ?? false,
+                'configured' => $configured,
+                'connected' => $connected,
+                'connection_message' => $connectionMessage,
                 'issues' => $stats['configuration']['issues'] ?? [],
                 'api_url' => $stats['configuration']['api_url'] ?? null,
                 'corporate_id' => $stats['configuration']['corporate_id'] ?? null,
@@ -45,6 +56,7 @@ class BiometricSyncController extends Controller
             Log::error('BiometricSyncController::status error', ['error' => $e->getMessage()]);
             return response()->json([
                 'configured' => false,
+                'connected' => false,
                 'issues' => ['Unable to load configuration: ' . $e->getMessage()],
             ]);
         }
