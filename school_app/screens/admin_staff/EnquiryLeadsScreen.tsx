@@ -7,6 +7,7 @@ import { StatusBadge } from '../../components/StatusBadge';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { Search, Phone, MessageSquare, GraduationCap, Calendar, Smile, UserPlus } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 const leadsData = [
   { id: 1, parent: 'Mr. Rajan', child: 'Aarav', class: 'Class 1', date: 'Oct 25', status: 'NEW' },
@@ -18,6 +19,7 @@ const leadsData = [
 
 export const EnquiryLeadsScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
+  const { insets, isSmallPhone } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [activeTab, setActiveTab] = useState('All Leads');
   const tabs = ['All Leads', 'New', 'Contacted', 'Follow-up'];

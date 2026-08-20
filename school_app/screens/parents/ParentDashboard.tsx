@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { mockFees, mockHomework, mockExams } from '../../services/mockData';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,12 +21,12 @@ import {
   FlaskConical,
   MessageCircle
 } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../../utils/responsive';
 
 export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user, activeChildId, switchChild } = useAuthStore();
   const [showChildPicker, setShowChildPicker] = useState(false);
+  const { isSmallPhone, insets, headerPaddingTop, scrollBottomPadding } = useResponsive();
 
   if (!user || !user.children) return null;
 
@@ -57,29 +57,41 @@ export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) =
       />
 
       {/* Top App Bar */}
-      <View style={styles.header}>
-        <View className="flex-row items-center gap-3">
+      <View 
+        style={[
+          styles.header,
+          { paddingTop: headerPaddingTop }
+        ]}
+      >
+        <View className="flex-row items-center gap-3 flex-1 mr-2">
           <Pressable 
             onPress={() => navigation.navigate('StudentProfileDetails')}
             className="w-10 h-10 rounded-full overflow-hidden border border-white/20"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Image
               source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCMrIIqhz709VeW2BpRqLVg1j7U7Pl9daXfwRKA-2HDDgcA9W7mXSd5OKr4pnpdIm8PH7zmg2kpcIfjndCo00bTp-Axh-ozzk6NmCmBUgatneU-MIJXsqAP3jNupEJEVMnZddUdmfbtXx9Pf104uwZfzaiIwRgyJZ8fQhJHzGToBXPUzvkGYakj-ALyh-X-w-OuUIWQTLleEFRHfU4lEubjrHCKU1coc5G8ockGv2_JF5fyZw89gZymwweZDxq0LKQFld8hZ2gu1G6t' }}
               className="w-full h-full object-cover"
             />
           </Pressable>
-          <View>
+          <View className="flex-1">
             <Text className="text-white/70 text-xs font-semibold">Good Morning,</Text>
-            <Text className="text-white text-lg font-bold font-headline-md">{user.name} 👋</Text>
+            <Text numberOfLines={1} className="text-white text-base md:text-lg font-bold font-headline-md">{user.name} 👋</Text>
           </View>
         </View>
-        <Pressable className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95">
+        <Pressable 
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
           <Bell size={20} color="#5E5CE6" />
         </Pressable>
       </View>
 
       <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding + 20 }
+        ]} 
         showsVerticalScrollIndicator={false}
       >
         {/* Child Switcher */}
@@ -318,7 +330,10 @@ export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) =
       {/* FAB Chat Button */}
       <Pressable 
         onPress={() => navigation.navigate('Messages')}
-        style={styles.fab}
+        style={[
+          styles.fab,
+          { bottom: Math.max(insets.bottom, 16) + (isSmallPhone ? 76 : 86) }
+        ]}
         className="active:scale-90 shadow-2xl"
       >
         <MessageCircle size={24} color="#FFFFFF" />

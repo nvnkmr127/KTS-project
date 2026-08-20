@@ -11,6 +11,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { useDiaryStore, DiaryEntry } from '../../store/diaryStore';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface ClassDiarySubmissionSummary {
   classId: string;

@@ -8,6 +8,7 @@ import {
   Bell, Search, Check, Lock, ChevronLeft, Calendar, 
   Clock, ShieldCheck, CheckCircle2, AlertCircle, Users, Sun, Sunset
 } from 'lucide-react-native';
+import { useResponsive } from '../../utils/responsive';
 
 export interface StudentMarkItem {
   id: string;
@@ -85,6 +86,7 @@ const ALLOTTED_CLASSES_DATA: AllottedClassSession[] = [
 export const AttendanceMarkingScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop, scrollBottomPadding } = useResponsive();
 
   const [selectedSession, setSelectedSession] = useState<'first_period' | 'lunch_period'>('first_period');
   const [selectedClassIndex, setSelectedClassIndex] = useState(0);
@@ -113,19 +115,24 @@ export const AttendanceMarkingScreen: React.FC = () => {
     setToastData({ visible: true, title, message, type });
   };
 
-  const handleToggleStatus = (id: string, status: 'P' | 'A' | 'L' | 'HD') => {
-    setStudentStatusMap(prev => ({ ...prev, [id]: status }));
+  const handleStatusChange = (studentId: string, newStatus: 'P' | 'A' | 'L' | 'HD') => {
+    setStudentStatusMap(prev => ({
+      ...prev,
+      [studentId]: newStatus
+    }));
   };
 
   const handleMarkAllPresent = () => {
-    setStudentStatusMap(prev => {
-      const updated = { ...prev };
-      activeClassObj.students.forEach(s => {
-        if (!s.locked) updated[s.id] = 'P';
-      });
-      return updated;
+    const map: Record<string, 'P' | 'A' | 'L' | 'HD'> = {};
+    activeClassObj.students.forEach(s => {
+      if (s.locked) {
+        map[s.id] = studentStatusMap[s.id] || s.status;
+      } else {
+        map[s.id] = 'P';
+      }
     });
-    showToast('Marked All Present', `All active students in ${activeClassObj.className} set to Present.`, 'success');
+    setStudentStatusMap(map);
+    showToast('Success', `All students marked Present for ${activeClassObj.className}`);
   };
 
   const handleConfirmSubmitAttendance = () => {
@@ -158,9 +165,9 @@ export const AttendanceMarkingScreen: React.FC = () => {
         <BlurView 
           intensity={30} 
           tint="dark" 
-          style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 24 : 16) }]}
+          style={[styles.header, { paddingTop: headerPaddingTop }]}
         >
-          <View className="flex-row items-center">
+          <View className="flex-row items-center flex-1 mr-2">
             {navigation.canGoBack() && (
               <Pressable onPress={() => navigation.goBack()} className="mr-3 p-1">
                 <ChevronLeft size={24} color="#ddb7ff" />
@@ -175,9 +182,9 @@ export const AttendanceMarkingScreen: React.FC = () => {
               </View>
               <View className="absolute bottom-0 right-0 w-3 h-3 bg-[#00f1a1] rounded-full border-2 border-[#0d0d12]" />
             </View>
-            <View className="ml-3">
-              <Text className="text-[#ddb7ff] text-xl font-bold">Attendance Allotment</Text>
-              <Text className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">Teacher Login Directory</Text>
+            <View className="ml-3 flex-1">
+              <Text numberOfLines={1} className="text-[#ddb7ff] text-lg md:text-xl font-bold">Attendance Allotment</Text>
+              <Text numberOfLines={1} className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">Teacher Login Directory</Text>
             </View>
           </View>
           
@@ -339,7 +346,7 @@ export const AttendanceMarkingScreen: React.FC = () => {
                   return (
                     <Pressable
                       key={stKey}
-                      onPress={() => handleToggleStatus(st.id, stKey)}
+                      onPress={() => handleStatusChange(st.id, stKey)}
                       className={`w-8 h-8 rounded-xl items-center justify-center border ${getBg()}`}
                     >
                       <Text className={`text-xs font-extrabold ${isSel && stKey === 'P' ? 'text-[#101415]' : isSel ? 'text-white' : 'text-white/60'}`}>

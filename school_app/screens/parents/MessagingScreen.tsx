@@ -10,10 +10,12 @@ import {
   Phone,
   Video
 } from 'lucide-react-native';
+import { useResponsive } from '../../utils/responsive';
 
 export const MessagingScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
   const chatKey = route?.params?.chatKey || 'teacher_parent';
   const hasTabBar = route?.name === 'Messages';
   const [inputText, setInputText] = useState('');
@@ -103,22 +105,25 @@ export const MessagingScreen: React.FC = () => {
     }, 1500);
   };
 
+  const inputBottomMargin = isKeyboardVisible 
+    ? 8 
+    : (hasTabBar ? (insets.bottom + (isSmallPhone ? 72 : 80)) : Math.max(insets.bottom, 14));
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       className="flex-1"
       style={styles.container}
     >
-      {/* Background Gradient */}
       <LinearGradient
-        colors={['#18181B', '#0F0F11']}
+        colors={['#0E0F26', '#121330']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFillObject}
       />
 
       {/* Main Title Header Bar */}
-      <View style={styles.topTitleBar}>
+      <View style={[styles.topTitleBar, { paddingTop: headerPaddingTop }]}>
         <Text className="text-white text-3xl font-bold font-headline-md">Messages</Text>
         <View className="w-9 h-9 rounded-full border border-white/20 overflow-hidden">
           <Image
@@ -211,13 +216,7 @@ export const MessagingScreen: React.FC = () => {
       <View 
         style={[
           styles.inputBarContainer, 
-          { 
-            paddingBottom: isKeyboardVisible 
-              ? (Platform.OS === 'ios' ? 20 : 12) 
-              : (hasTabBar
-                  ? (Platform.OS === 'ios' ? 120 : 108)
-                  : (Platform.OS === 'ios' ? 34 : 16))
-          }
+          { paddingBottom: inputBottomMargin }
         ]}
       >
         <View className="flex-row items-center px-4">

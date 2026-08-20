@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { GlassCard } from '../../components/GlassCard';
 import { ArrowLeft, Calendar, Info } from 'lucide-react-native';
+import { useResponsive } from '../../utils/responsive';
 
 export const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
   const events = [
     { id: "e1", title: "Term 2 Mid-Term Exams", date: "June 15 - June 22", category: "Academic" },
     { id: "e2", title: "Parent-Teacher Conference (PTC)", date: "June 27, 09:00 AM", category: "Meeting" },
@@ -12,12 +14,23 @@ export const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
   ];
 
   return (
-    <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
+    <ScrollView 
+      style={styles.scrollView} 
+      contentContainerStyle={[
+        styles.contentContainer,
+        { paddingTop: headerPaddingTop, paddingBottom: insets.bottom + 40 }
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
       <View className="flex-row items-center mb-6">
-        <Pressable onPress={() => navigation.goBack()} className="p-3 bg-white/5 border border-white/10 rounded-2xl">
+        <Pressable 
+          onPress={() => navigation.goBack()} 
+          className="p-3 bg-white/5 border border-white/10 rounded-2xl active:scale-95"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
           <ArrowLeft size={20} color="#FFFFFF" />
         </Pressable>
-        <Text className="text-white text-xl font-bold ml-4">Academy Calendar</Text>
+        <Text numberOfLines={1} className="text-white text-lg md:text-xl font-bold ml-4 flex-1">Academy Calendar</Text>
       </View>
 
       <Text className="text-white/80 text-sm font-semibold mb-3 ml-1">Key Events & Milestones</Text>
@@ -26,9 +39,9 @@ export const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
           <View className="flex-row justify-between items-center">
             <View className="flex-row items-center flex-1 mr-2">
               <Calendar size={18} color="#60A5FA" />
-              <View className="ml-3">
-                <Text className="text-white font-bold text-sm">{event.title}</Text>
-                <Text className="text-white/50 text-[10px] uppercase font-semibold mt-0.5">{event.category}</Text>
+              <View className="ml-3 flex-1">
+                <Text numberOfLines={1} className="text-white font-bold text-sm">{event.title}</Text>
+                <Text numberOfLines={1} className="text-white/50 text-[10px] uppercase font-semibold mt-0.5">{event.category}</Text>
               </View>
             </View>
             <Text className="text-brand-indigo text-xs font-bold">{event.date.split(',')[0]}</Text>
@@ -46,8 +59,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 24,
-    paddingBottom: 40,
   },
 });
 

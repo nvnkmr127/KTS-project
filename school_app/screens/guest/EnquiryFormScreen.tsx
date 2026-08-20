@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, TextInput, Modal, Image } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, TextInput, Modal, Image, KeyboardAvoidingView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Send, Zap, ArrowRight, UserPlus, Info, CheckCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../store/useAuthStore';
 import { GuestHeader } from '../../components/GuestHeader';
+import { useResponsive } from '../../utils/responsive';
 
 export const EnquiryFormScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
+  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
   const [parentName, setParentName] = useState('');
   const [mobile, setMobile] = useState('');
   const [childName, setChildName] = useState('');
@@ -58,7 +60,10 @@ export const EnquiryFormScreen: React.FC = () => {
   ];
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={styles.container}
+    >
       <LinearGradient
         colors={['#1a2a3a', '#101415']}
         start={{ x: 1, y: 0 }}
@@ -66,7 +71,19 @@ export const EnquiryFormScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <GuestHeader title="Apply Now" showBack />
+
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: headerPaddingTop + 45,
+            paddingBottom: insets.bottom + 90,
+          }
+        ]} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Title */}
         <View className="px-5 mb-6">
           <Text className="text-white text-3xl font-extrabold leading-tight mb-3">
@@ -285,7 +302,7 @@ export const EnquiryFormScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 

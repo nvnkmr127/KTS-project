@@ -7,10 +7,12 @@ import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../store/useAuthStore';
 import { GuestHeader } from '../../components/GuestHeader';
 import { useFeeStore } from '../../store/useFeeStore';
+import { useResponsive } from '../../utils/responsive';
 
 export const FeeStructureScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
+  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
 
   // Read dynamic fee data and active categories from the global store
   const { categories, feeData } = useFeeStore();
@@ -64,7 +66,29 @@ export const FeeStructureScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <GuestHeader 
+        title="Fee Structure" 
+        showBack 
+        rightAction={
+          <Pressable 
+            onPress={() => navigation.navigate('EnquiryForm')}
+            className="bg-[#38bdf8] px-4 py-2 md:px-5 md:py-2.5 rounded-full active:scale-95 shadow-[0_0_16px_rgba(56,189,248,0.4)]"
+          >
+            <Text className="text-[#004965] font-semibold text-xs font-label-lg">Apply Now</Text>
+          </Pressable>
+        }
+      />
+
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: headerPaddingTop + 45,
+            paddingBottom: insets.bottom + 90,
+          }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Title */}
         <View className="px-5 mb-6">
           <Text className="text-white text-3xl font-extrabold leading-tight mb-3">

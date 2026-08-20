@@ -59,13 +59,12 @@ export const InteractiveButton: React.FC<InteractiveButtonProps> = ({
       onPressOut={handlePressOut}
       disabled={disabled}
       style={[animatedStyle, style]}
-      className={`py-4 px-6 rounded-2xl flex items-center justify-center ${getVariantStyles()} ${className}`}
+      className={`py-3.5 px-5 md:py-4 md:px-6 rounded-2xl min-h-[48px] flex items-center justify-center ${getVariantStyles()} ${className}`}
     >
       <Text
         style={textStyle}
-        className={`font-semibold text-center tracking-wide ${
-          variant === 'glass' ? 'text-white' : 'text-white'
-        }`}
+        className="font-semibold text-center text-sm md:text-base tracking-wide text-white"
+        numberOfLines={1}
       >
         {title}
       </Text>
@@ -74,3 +73,4 @@ export const InteractiveButton: React.FC<InteractiveButtonProps> = ({
 };
 
 export default InteractiveButton;
+

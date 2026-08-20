@@ -8,12 +8,14 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { BUS_ROUTES_CONFIG, fetchLiveBusPositions, LiveBusData } from '../../services/millitrack';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAYOIEB9I2lOiJbGM7t723CUtDEjm4-Yj0';
 
 export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
+  const { insets, isSmallPhone } = useResponsive();
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
 

@@ -4,9 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Bell, Calendar, BookOpen, Plus } from 'lucide-react-native';
+import { useResponsive } from '../../utils/responsive';
 
 export const HomeworkAssignmentsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop } = useResponsive();
   const [autoReminder, setAutoReminder] = useState(true);
 
   return (
@@ -20,10 +22,10 @@ export const HomeworkAssignmentsScreen: React.FC = () => {
           tint="dark"
           style={[
             styles.header,
-            { paddingTop: insets.top + (Platform.OS === "android" ? 24 : 16) },
+            { paddingTop: headerPaddingTop },
           ]}
         >
-          <View className="flex-row items-center">
+          <View className="flex-row items-center flex-1 mr-2">
             <View className="relative">
               <View className="w-12 h-12 rounded-full border-2 border-[#ddb7ff] p-0.5 items-center justify-center bg-[#1a1525]">
                 <Image
@@ -35,14 +37,17 @@ export const HomeworkAssignmentsScreen: React.FC = () => {
               </View>
               <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00f1a1] rounded-full border-2 border-[#0d0d12]" />
             </View>
-            <View className="ml-3">
-              <Text className="text-[#ddb7ff] text-xl font-bold">Homework</Text>
-              <Text className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">
+            <View className="ml-3 flex-1">
+              <Text numberOfLines={1} className="text-[#ddb7ff] text-lg md:text-xl font-bold">Homework</Text>
+              <Text numberOfLines={1} className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">
                 Homework Hub
               </Text>
             </View>
           </View>
-          <Pressable className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10">
+          <Pressable 
+            className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
             <Bell size={20} color="#fff" />
           </Pressable>
         </BlurView>
@@ -55,13 +60,19 @@ export const HomeworkAssignmentsScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Title & Toggle */}
         <View className="flex-row justify-between items-center mb-8">
-          <Text className="text-white text-[32px] font-extrabold tracking-tight w-[60%] leading-tight">Homework{'\n'}Dashboard</Text>
-          <View className="flex-row items-center">
-            <Text className="text-[#A1A1AA] text-[9px] font-bold tracking-widest uppercase mr-3">AUTO-{'\n'}REMINDER</Text>
+          <Text className="text-white text-2xl md:text-[32px] font-extrabold tracking-tight flex-1 mr-3 leading-tight">Homework{'\n'}Dashboard</Text>
+          <View className="flex-row items-center flex-shrink-0">
+            <Text className="text-[#A1A1AA] text-[9px] font-bold tracking-widest uppercase mr-2.5">AUTO-{'\n'}REMINDER</Text>
             <Switch
               trackColor={{ false: "#2a1b4e", true: "#2a1b4e" }}
               thumbColor={autoReminder ? "#EABFFF" : "#a1a1aa"}

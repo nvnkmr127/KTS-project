@@ -9,6 +9,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface StudentPromotionItem {
   id: string;
@@ -116,6 +117,7 @@ const MOCK_CLASS_10A_STUDENTS: StudentPromotionItem[] = [
 
 export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
+  const { insets, isSmallPhone } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [currentAcademicYear] = useState('2026-2027');
   const [upcomingAcademicYear] = useState('2026-2027');

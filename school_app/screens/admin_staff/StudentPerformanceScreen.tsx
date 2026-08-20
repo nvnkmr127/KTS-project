@@ -10,6 +10,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface FeeItem {
   id: string;
@@ -390,36 +391,40 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
 
         {/* TOP PROFILE CARD SUMMARY */}
         <View className="px-5 mb-4">
-          <GlassCard intensity="low" className={`p-4 border bg-[#101415]/90 rounded-2xl ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
+          <GlassCard intensity="low" className={`p-3.5 sm:p-4 border bg-[#101415]/90 rounded-2xl ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
             <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 mr-2">
-                <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-3 border shadow-sm ${primaryBadgeClass}`}>
-                  <Text className={`${primaryTextClass} font-extrabold text-lg`}>
+              <View className="flex-row items-center flex-1 mr-2 min-w-0">
+                <View className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl items-center justify-center mr-2.5 sm:mr-3 border shadow-sm flex-shrink-0 ${primaryBadgeClass}`}>
+                  <Text className={`${primaryTextClass} font-extrabold text-base sm:text-lg`}>
                     {studentName.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                   </Text>
                 </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center">
-                    <Text className="text-white font-extrabold text-base mr-2">{studentName}</Text>
-                    <View className={`px-2 py-0.5 rounded-full ${primaryBadgeClass}`}>
-                      <Text className={`${primaryTextClass} text-[10px] font-bold`}>Active Student</Text>
+                <View className="flex-1 min-w-0">
+                  <View className="flex-row items-center flex-wrap" style={{ gap: 4 }}>
+                    <Text className="text-white font-extrabold text-sm sm:text-base mr-1" numberOfLines={1}>
+                      {studentName}
+                    </Text>
+                    <View className={`px-2 py-0.5 rounded-full flex-shrink-0 ${primaryBadgeClass}`}>
+                      <Text className={`${primaryTextClass} text-[9.5px] font-bold`}>Active Student</Text>
                     </View>
                   </View>
-                  <Text className="text-white/60 text-xs mt-0.5">{className} • Admission: {admissionNo}</Text>
+                  <Text className="text-white/60 text-xs mt-0.5" numberOfLines={1}>
+                    {className} • Admission: {admissionNo}
+                  </Text>
                 </View>
               </View>
 
               <Pressable
                 onPress={() => setIsDetailsExpanded(!isDetailsExpanded)}
-                className={`p-2 rounded-xl flex-row items-center border ${isSuperAdmin ? 'border-[#f0c110]/40 bg-[#f0c110]/10' : 'border-[#00f1a1]/40 bg-[#00f1a1]/10'}`}
+                className={`px-2.5 py-1.5 rounded-xl flex-row items-center border flex-shrink-0 active:scale-95 ${isSuperAdmin ? 'border-[#f0c110]/40 bg-[#f0c110]/10' : 'border-[#00f1a1]/40 bg-[#00f1a1]/10'}`}
               >
                 <Text className={`${primaryTextClass} text-xs font-bold mr-1`}>
                   {isDetailsExpanded ? 'Hide Details' : 'View Profile'}
                 </Text>
                 {isDetailsExpanded ? (
-                  <ChevronUp size={16} color={primaryColor} />
+                  <ChevronUp size={15} color={primaryColor} />
                 ) : (
-                  <ChevronDown size={16} color={primaryColor} />
+                  <ChevronDown size={15} color={primaryColor} />
                 )}
               </Pressable>
             </View>
@@ -517,38 +522,38 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
         <View className="px-5 mb-5">
           <GlassCard intensity="low" className={`p-4 bg-[#101415]/90 rounded-2xl border ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
             <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-4">
-              <View className="flex-row items-center">
-                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+              <View className="flex-row items-center flex-1 mr-2 min-w-0">
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 flex-shrink-0 ${primaryBadgeClass}`}>
                   <TrendingUp size={16} color={primaryColor} />
                 </View>
-                <View>
-                  <Text className="text-white font-extrabold text-sm">Academic Performance & Attendance</Text>
-                  <Text className="text-white/50 text-[10px]">Academic Year 2026-2027 Overview</Text>
+                <View className="flex-1 min-w-0">
+                  <Text className="text-white font-extrabold text-xs sm:text-sm" numberOfLines={1} adjustsFontSizeToFit>Academic Performance & Attendance</Text>
+                  <Text className="text-white/50 text-[9.5px] sm:text-[10px]" numberOfLines={1}>Academic Year 2026-2027 Overview</Text>
                 </View>
               </View>
-              <View className={`px-2.5 py-1 rounded-full ${primaryBadgeClass}`}>
-                <Text className={`${primaryTextClass} text-[10px] font-bold`}>Grade A+ (94.2%)</Text>
+              <View className={`px-2.5 py-1 rounded-full flex-shrink-0 ${primaryBadgeClass}`}>
+                <Text className={`${primaryTextClass} text-[9.5px] sm:text-[10px] font-bold`}>Grade A+ (94.2%)</Text>
               </View>
             </View>
 
             {/* Academic Metrics 3 Cards Row */}
-            <View className="flex-row justify-between mb-4" style={{ gap: 8 }}>
-              <View className="flex-1 bg-black/40 p-3 rounded-xl border border-white/5 items-center">
-                <Text className="text-white/40 text-[10px] uppercase font-bold mb-1">Rank</Text>
-                <Text className={`${primaryTextClass} text-lg font-extrabold`}>Rank 1</Text>
-                <Text className="text-white/50 text-[9px]">Class Top Performer</Text>
+            <View className="flex-row justify-between mb-4" style={{ gap: 6 }}>
+              <View className="flex-1 bg-black/40 p-2 sm:p-3 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[9px] sm:text-[10px] uppercase font-bold mb-1" numberOfLines={1}>Rank</Text>
+                <Text className={`${primaryTextClass} text-base sm:text-lg font-extrabold`} numberOfLines={1}>Rank 1</Text>
+                <Text className="text-white/50 text-[8.5px] sm:text-[9px] text-center" numberOfLines={1}>Class Top Performer</Text>
               </View>
 
-              <View className="flex-1 bg-black/40 p-3 rounded-xl border border-white/5 items-center">
-                <Text className="text-white/40 text-[10px] uppercase font-bold mb-1">Attendance</Text>
-                <Text className="text-sky-400 text-lg font-extrabold">91.6%</Text>
-                <Text className="text-white/50 text-[9px]">165 / 180 Days</Text>
+              <View className="flex-1 bg-black/40 p-2 sm:p-3 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[9px] sm:text-[10px] uppercase font-bold mb-1" numberOfLines={1}>Attendance</Text>
+                <Text className="text-sky-400 text-base sm:text-lg font-extrabold" numberOfLines={1}>91.6%</Text>
+                <Text className="text-white/50 text-[8.5px] sm:text-[9px] text-center" numberOfLines={1}>165 / 180 Days</Text>
               </View>
 
-              <View className="flex-1 bg-black/40 p-3 rounded-xl border border-white/5 items-center">
-                <Text className="text-white/40 text-[10px] uppercase font-bold mb-1">GPA Score</Text>
-                <Text className="text-purple-300 text-lg font-extrabold">9.8 / 10</Text>
-                <Text className="text-white/50 text-[9px]">Term 1 Assessment</Text>
+              <View className="flex-1 bg-black/40 p-2 sm:p-3 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[9px] sm:text-[10px] uppercase font-bold mb-1" numberOfLines={1}>GPA Score</Text>
+                <Text className="text-purple-300 text-base sm:text-lg font-extrabold" numberOfLines={1}>9.8 / 10</Text>
+                <Text className="text-white/50 text-[8.5px] sm:text-[9px] text-center" numberOfLines={1}>Term 1 Assessment</Text>
               </View>
             </View>
 
@@ -676,55 +681,55 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
         {/* SECTION 2: FEE SUMMARY & LEDGER */}
         <View className="px-5 mb-5">
           <GlassCard intensity="low" className={`p-4 bg-[#101415]/90 rounded-2xl border ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
-            <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-4">
-              <View className="flex-row items-center">
-                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+            <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-4 flex-wrap" style={{ gap: 6 }}>
+              <View className="flex-row items-center flex-1 mr-1 min-w-[130px]">
+                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2 flex-shrink-0 ${primaryBadgeClass}`}>
                   <DollarSign size={16} color={primaryColor} />
                 </View>
-                <View>
-                  <Text className="text-white font-extrabold text-sm">Fee Summary & Ledger</Text>
-                  <Text className="text-white/50 text-[10px]">Component Allotments & Payments</Text>
+                <View className="flex-1 min-w-0">
+                  <Text className="text-white font-extrabold text-xs sm:text-sm" numberOfLines={1}>Fee Summary & Ledger</Text>
+                  <Text className="text-white/50 text-[9px] sm:text-[10px]" numberOfLines={1}>Component Allotments & Payments</Text>
                 </View>
               </View>
 
-              <View className="flex-row items-center" style={{ gap: 6 }}>
+              <View className="flex-row items-center flex-shrink-0" style={{ gap: 5 }}>
                 <Pressable
                   onPress={() => setShowConcessionModal(true)}
-                  className="bg-purple-500/20 border border-purple-500/40 px-3 py-1.5 rounded-xl flex-row items-center"
+                  className="bg-purple-500/20 border border-purple-500/40 px-2.5 py-1.5 rounded-xl flex-row items-center active:scale-95 flex-shrink-0"
                 >
-                  <Text className="text-purple-300 text-xs font-bold">+ Concession</Text>
+                  <Text className="text-purple-300 text-[11px] sm:text-xs font-bold">+ Concession</Text>
                 </Pressable>
 
                 <Pressable
                   onPress={() => setShowCollectModal(true)}
-                  className={`${primaryBtnClass} px-3 py-1.5 rounded-xl flex-row items-center shadow-lg`}
+                  className={`${primaryBtnClass} px-2.5 py-1.5 rounded-xl flex-row items-center shadow-lg active:scale-95 flex-shrink-0`}
                 >
-                  <Plus size={14} color="#101415" className="mr-1" />
-                  <Text className="text-[#101415] text-xs font-bold">Collect Fee</Text>
+                  <Plus size={13} color="#101415" style={{ marginRight: 3 }} />
+                  <Text className="text-[#101415] text-[11px] sm:text-xs font-bold">Collect Fee</Text>
                 </Pressable>
               </View>
             </View>
 
             {/* Fee Totals Ribbon */}
-            <View className="flex-row justify-between mb-4" style={{ gap: 8 }}>
-              <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
-                <Text className="text-white/40 text-[9.5px] uppercase font-bold">Total Assigned</Text>
-                <Text className="text-white text-sm font-extrabold mt-0.5">₹{feeTotals.total.toLocaleString()}</Text>
+            <View className="flex-row justify-between mb-4" style={{ gap: 4 }}>
+              <View className="flex-1 bg-black/40 p-2 sm:p-2.5 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[8px] sm:text-[9px] uppercase font-bold text-center" numberOfLines={1} adjustsFontSizeToFit>TOTAL ASSIGNED</Text>
+                <Text className="text-white text-xs sm:text-sm font-extrabold mt-0.5 text-center" numberOfLines={1} adjustsFontSizeToFit>₹{feeTotals.total.toLocaleString()}</Text>
               </View>
 
-              <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
-                <Text className="text-white/40 text-[9.5px] uppercase font-bold">Paid Till Date</Text>
-                <Text className={`${primaryTextClass} text-sm font-extrabold mt-0.5`}>₹{feeTotals.paid.toLocaleString()}</Text>
+              <View className="flex-1 bg-black/40 p-2 sm:p-2.5 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[8px] sm:text-[9px] uppercase font-bold text-center" numberOfLines={1} adjustsFontSizeToFit>PAID TILL DATE</Text>
+                <Text className={`${primaryTextClass} text-xs sm:text-sm font-extrabold mt-0.5 text-center`} numberOfLines={1} adjustsFontSizeToFit>₹{feeTotals.paid.toLocaleString()}</Text>
               </View>
 
-              <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
-                <Text className="text-white/40 text-[9.5px] uppercase font-bold">Concessions</Text>
-                <Text className="text-purple-300 text-sm font-extrabold mt-0.5">₹{feeTotals.concession.toLocaleString()}</Text>
+              <View className="flex-1 bg-black/40 p-2 sm:p-2.5 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[8px] sm:text-[9px] uppercase font-bold text-center" numberOfLines={1} adjustsFontSizeToFit>CONCESSIONS</Text>
+                <Text className="text-purple-300 text-xs sm:text-sm font-extrabold mt-0.5 text-center" numberOfLines={1} adjustsFontSizeToFit>₹{feeTotals.concession.toLocaleString()}</Text>
               </View>
 
-              <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
-                <Text className="text-white/40 text-[9.5px] uppercase font-bold">Outstanding</Text>
-                <Text className="text-rose-400 text-sm font-extrabold mt-0.5">₹{feeTotals.due.toLocaleString()}</Text>
+              <View className="flex-1 bg-black/40 p-2 sm:p-2.5 rounded-xl border border-white/5 items-center">
+                <Text className="text-white/40 text-[8px] sm:text-[9px] uppercase font-bold text-center" numberOfLines={1} adjustsFontSizeToFit>OUTSTANDING</Text>
+                <Text className="text-rose-400 text-xs sm:text-sm font-extrabold mt-0.5 text-center" numberOfLines={1} adjustsFontSizeToFit>₹{feeTotals.due.toLocaleString()}</Text>
               </View>
             </View>
 

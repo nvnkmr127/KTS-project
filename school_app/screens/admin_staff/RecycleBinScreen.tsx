@@ -7,6 +7,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { useResponsive } from '../../utils/responsive';
 
 export interface DeletedEntityItem {
   id: string;
@@ -31,6 +32,7 @@ const MOCK_DELETED_LOGS: DeletedEntityItem[] = [
 ];
 
 export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
+  const { insets, isSmallPhone } = useResponsive();
   const [activeTab, setActiveTab] = useState<'students' | 'staff' | 'logs'>('students');
   const [deletedStudents, setDeletedStudents] = useState<DeletedEntityItem[]>(MOCK_DELETED_STUDENTS);
   const [deletedStaff, setDeletedStaff] = useState<DeletedEntityItem[]>(MOCK_DELETED_STAFF);

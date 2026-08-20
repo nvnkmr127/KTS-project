@@ -45,6 +45,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface StudentItem {
   id: string;
@@ -246,6 +247,7 @@ export const StudentDirectoryScreen: React.FC = () => {
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
   const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
   const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
+  const { insets, isSmallPhone, scrollBottomPadding } = useResponsive();
   const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
   const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
 
@@ -296,6 +298,21 @@ export const StudentDirectoryScreen: React.FC = () => {
     type?: 'success' | 'warning' | 'info';
     onConfirm?: () => void;
   }>({ visible: false, title: '', message: '', type: 'success' });
+
+  // Action Dialog State for Transfer and Delete Confirmation (matching web app)
+  const [actionModal, setActionModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    actionType: 'transfer' | 'delete';
+    student: StudentItem | null;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    actionType: 'transfer',
+    student: null,
+  });
 
   const showToast = (title: string, message: string, type: 'success' | 'warning' | 'info' = 'success', onConfirm?: () => void) => {
     setToastData({ visible: true, title, message, type, onConfirm });
@@ -455,7 +472,15 @@ export const StudentDirectoryScreen: React.FC = () => {
     if (route?.params?.openAddStudent) {
       navigation.navigate('AddStudent');
     }
-  }, [route?.params?.openAddStudent]);
+    if (route?.params?.updatedStudent) {
+      const updated = route.params.updatedStudent;
+      setStudentsList(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));
+    }
+    if (route?.params?.newStudent) {
+      const newSt = route.params.newStudent;
+      setStudentsList(prev => [newSt, ...prev.filter(s => s.id !== newSt.id)]);
+    }
+  }, [route?.params?.openAddStudent, route?.params?.updatedStudent, route?.params?.newStudent]);
 
   // Active Filter Applied Counter
   const activeFilterCount = useMemo(() => {
@@ -499,6 +524,54 @@ export const StudentDirectoryScreen: React.FC = () => {
 
   const handleOpenStudentPerformance = (student: StudentItem) => {
     navigation.navigate('StudentPerformance', { student });
+  };
+
+  // Transfer Student (matching web app)
+  const handleTransferClick = (student: StudentItem) => {
+    setActionModal({
+      visible: true,
+      title: 'Transfer Student',
+      message: `Are you sure you want to mark "${student.name}" as Transferred? Their status will be set to Transferred.`,
+      actionType: 'transfer',
+      student,
+    });
+  };
+
+  // Delete Student (matching web app - moves to Recycle Bin)
+  const handleDeleteClick = (student: StudentItem) => {
+    setActionModal({
+      visible: true,
+      title: 'Delete Student',
+      message: `Are you sure you want to delete "${student.name}"? They will be moved to the Recycle Bin.`,
+      actionType: 'delete',
+      student,
+    });
+  };
+
+  // Execute Confirmed Transfer / Delete
+  const handleConfirmAction = async () => {
+    const { student, actionType } = actionModal;
+    if (!student) return;
+
+    setActionModal(prev => ({ ...prev, visible: false }));
+
+    if (actionType === 'transfer') {
+      try {
+        await api.updateResource('students', student.id, { status: 'transfer' });
+      } catch (e) {
+        console.log('Error updating student status to transfer:', e);
+      }
+      setStudentsList(prev => prev.map(s => s.id === student.id ? { ...s, status: 'Transfer' } : s));
+      showToast('Student Transferred', `Student "${student.name}" has been marked as Transferred.`, 'success');
+    } else if (actionType === 'delete') {
+      try {
+        await api.updateResource('students', student.id, { status: 'left' });
+      } catch (e) {
+        console.log('Error moving student to recycle bin:', e);
+      }
+      setStudentsList(prev => prev.filter(s => s.id !== student.id));
+      showToast('Student Deleted', `Student "${student.name}" has been moved to the Recycle Bin.`, 'success');
+    }
   };
 
   const renderFeeBadge = (status: StudentItem['feeStatus']) => {
@@ -575,29 +648,32 @@ export const StudentDirectoryScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {/* Top Header & Actions */}
-        <View className="flex-row justify-between items-center mb-5 px-5">
-          <View>
-            <Text className="text-white text-2xl font-bold">Student Directory</Text>
+        <View className="flex-row justify-between items-center mb-5 px-5 flex-wrap" style={{ gap: 10 }}>
+          <View className="min-w-[140px] flex-1">
+            <Text className="text-white text-xl md:text-2xl font-bold">Student Directory</Text>
             <Text className="text-white/60 text-xs mt-0.5">
               Showing {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
             </Text>
           </View>
-          <View className="flex-row items-center" style={{ gap: 8 }}>
+          <View className="flex-row items-center flex-shrink-0" style={{ gap: 8 }}>
             {/* Import Button */}
             <Pressable
               onPress={() => setIsImportModalOpen(true)}
-              className="bg-white/5 border border-white/15 px-3 py-2 rounded-xl flex-row items-center"
+              className="bg-white/5 border border-white/15 px-3 py-2 rounded-xl flex-row items-center active:scale-95 flex-shrink-0"
             >
-              <Upload size={14} color={primaryColor} className="mr-1.5" />
+              <Upload size={14} color={primaryColor} style={{ marginRight: 6 }} />
               <Text className="text-white text-xs font-semibold">Import</Text>
             </Pressable>
             {/* Add Student Button */}
             <Pressable
               onPress={() => navigation.navigate('AddStudent')}
-              className={`${primaryBtnClass} px-3 py-2 rounded-xl flex-row items-center shadow-lg`}
+              className={`${primaryBtnClass} px-3.5 py-2 rounded-xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+              style={{ minWidth: 110 }}
             >
-              <Plus size={16} color="#101415" className="mr-1" />
-              <Text className="text-[#101415] text-xs font-bold">Add Student</Text>
+              <Plus size={15} color="#101415" style={{ marginRight: 4 }} />
+              <Text numberOfLines={1} style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+                Add Student
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -757,28 +833,34 @@ export const StudentDirectoryScreen: React.FC = () => {
                 {/* Action Buttons Row */}
                 <View className="flex-row justify-between items-center pt-1">
                   <Text className="text-white/40 text-[10px]">Tap icon to trigger action</Text>
-                  <View className="flex-row items-center" style={{ gap: 8 }}>
+                  <View className="flex-row items-center" style={{ gap: 7 }}>
                     {/* View Performance Button */}
                     <Pressable
                       onPress={() => handleOpenStudentPerformance(student)}
-                      className={`p-2 rounded-xl flex-row items-center px-2.5 ${primaryBadgeClass}`}
+                      className={`p-2 rounded-xl flex-row items-center px-2.5 active:scale-95 ${primaryBadgeClass}`}
                     >
-                      <Eye size={14} color={primaryColor} className="mr-1" />
+                      <Eye size={14} color={primaryColor} style={{ marginRight: 4 }} />
                       <Text className={`${primaryTextClass} text-xs font-bold`}>Performance</Text>
                     </Pressable>
                     {/* Edit */}
                     <Pressable 
                       onPress={() => navigation.navigate('AddStudent', { student, isEdit: true })}
-                      className="bg-white/5 border border-white/10 p-2 rounded-xl"
+                      className="bg-white/5 border border-white/10 p-2 rounded-xl active:bg-white/15 active:scale-95"
                     >
                       <Pencil size={14} color="rgba(255, 255, 255, 0.7)" />
                     </Pressable>
                     {/* Transfer */}
-                    <Pressable className="bg-white/5 border border-white/10 p-2 rounded-xl">
-                      <ArrowLeftRight size={14} color="rgba(255, 255, 255, 0.7)" />
+                    <Pressable 
+                      onPress={() => handleTransferClick(student)}
+                      className="bg-purple-500/10 border border-purple-500/30 p-2 rounded-xl active:bg-purple-500/20 active:scale-95"
+                    >
+                      <ArrowLeftRight size={14} color="#c084fc" />
                     </Pressable>
                     {/* Delete */}
-                    <Pressable className="bg-rose-500/10 border border-rose-500/30 p-2 rounded-xl">
+                    <Pressable 
+                      onPress={() => handleDeleteClick(student)}
+                      className="bg-rose-500/10 border border-rose-500/30 p-2 rounded-xl active:bg-rose-500/20 active:scale-95"
+                    >
                       <Trash2 size={14} color="#ff516a" />
                     </Pressable>
                   </View>
@@ -1104,6 +1186,53 @@ export const StudentDirectoryScreen: React.FC = () => {
                   </Text>
                 </Pressable>
               </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ACTION CONFIRMATION MODAL (Transfer & Delete to Recycle Bin) */}
+      <Modal
+        visible={actionModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActionModal(prev => ({ ...prev, visible: false }))}
+      >
+        <View className="flex-1 bg-black/80 justify-center items-center p-4">
+          <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-6 items-center shadow-2xl ${
+            actionModal.actionType === 'delete' ? 'border-rose-500/40' : (isSuperAdmin ? 'border-[#f0c110]/40' : 'border-purple-500/40')
+          }`}>
+            <View className={`w-14 h-14 rounded-full items-center justify-center mb-4 border ${
+              actionModal.actionType === 'delete' ? 'bg-rose-500/20 border-rose-500/40' : 'bg-purple-500/20 border-purple-500/40'
+            }`}>
+              {actionModal.actionType === 'delete' ? (
+                <Trash2 size={26} color="#ff516a" />
+              ) : (
+                <ArrowLeftRight size={26} color="#c084fc" />
+              )}
+            </View>
+
+            <Text className="text-white text-lg font-extrabold text-center mb-1.5">{actionModal.title}</Text>
+            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{actionModal.message}</Text>
+
+            <View className="flex-row w-full" style={{ gap: 10 }}>
+              <Pressable
+                onPress={() => setActionModal(prev => ({ ...prev, visible: false }))}
+                className="flex-1 py-3 rounded-xl bg-white/10 items-center justify-center active:bg-white/15"
+              >
+                <Text className="text-white font-bold text-xs">Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={handleConfirmAction}
+                className={`flex-1 py-3 rounded-xl items-center justify-center shadow-lg active:scale-95 ${
+                  actionModal.actionType === 'delete' ? 'bg-rose-500' : 'bg-purple-500'
+                }`}
+              >
+                <Text className="text-white font-extrabold text-xs">
+                  {actionModal.actionType === 'delete' ? 'Delete' : 'Confirm'}
+                </Text>
+              </Pressable>
             </View>
           </View>
         </View>

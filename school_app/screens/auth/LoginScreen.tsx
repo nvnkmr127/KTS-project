@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, Pressable, ScrollView, Alert, ActivityIndicator, Platform, Modal } from 'react-native';
+import { StyleSheet, View, Text, Pressable, ScrollView, Alert, ActivityIndicator, Platform, Modal, KeyboardAvoidingView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,6 +9,7 @@ import { CustomInput } from '../../components/CustomInput';
 import { InteractiveButton } from '../../components/InteractiveButton';
 import { GlassCard } from '../../components/GlassCard';
 import { Mail, Lock, CheckCircle, Users, GraduationCap, Briefcase, Shield, Compass, AlertTriangle } from 'lucide-react-native';
+import { useResponsive } from '../../utils/responsive';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email format" }),
@@ -17,6 +19,8 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const { isSmallPhone, isTablet } = useResponsive();
   const [selectedRole, setSelectedRole] = useState<UserRole>('parent');
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((state) => state.login);
@@ -145,60 +149,77 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   };
 
   return (
-    <ScrollView contentContainerClassName="bg-brand-darkNavy flex-grow justify-center px-6 py-12">
-      <View className="items-center mb-10">
-        <Text className="text-white text-4xl font-extrabold tracking-wider">EduVision</Text>
-        <Text className="text-white/60 text-sm mt-2 font-medium">Elite Campus Management Portal</Text>
-      </View>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      className="flex-1 bg-brand-darkNavy"
+    >
+      <ScrollView 
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          paddingTop: Math.max(insets.top, 16) + 16,
+          paddingBottom: Math.max(insets.bottom, 16) + 24,
+          paddingHorizontal: isSmallPhone ? 16 : isTablet ? 32 : 24,
+          maxWidth: isTablet ? 600 : undefined,
+          alignSelf: isTablet ? 'center' : undefined,
+          width: isTablet ? '100%' : undefined,
+        }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="items-center mb-8">
+          <Text className={`text-white ${isSmallPhone ? 'text-3xl' : 'text-4xl'} font-extrabold tracking-wider`}>EduVision</Text>
+          <Text className="text-white/60 text-xs md:text-sm mt-1.5 font-medium text-center">Elite Campus Management Portal</Text>
+        </View>
 
-      <GlassCard className="p-6">
-        <Text className="text-white text-xl font-bold mb-4">Select Portal Profile</Text>
-        
-        {/* Role Selector Grid */}
-        <View className="flex-row flex-wrap justify-between mb-6">
-          {rolesConfigs.map((item) => {
-            const isSelected = selectedRole === item.role;
-            const isFullWidth = item.role === 'guest';
-            const IconComponent = item.icon;
-            
-            return (
-              <Pressable
-                key={item.role}
-                onPress={() => setSelectedRole(item.role)}
-                style={{
-                  width: isFullWidth ? '100%' : '48%',
-                  shadowColor: isSelected ? item.glowColor : 'transparent',
-                  shadowOffset: isSelected ? { width: 0, height: 6 } : { width: 0, height: 0 },
-                  shadowOpacity: isSelected ? 0.45 : 0,
-                  shadowRadius: isSelected ? 12 : 0,
-                  elevation: Platform.OS === 'android' ? 0 : (isSelected ? 6 : 0),
-                }}
-                className={`p-4 rounded-2xl mb-4 flex-col items-center justify-center border transition-all duration-300 ${
-                  isSelected
-                    ? `${item.bgClass} ${item.borderClass}`
-                    : 'bg-black/35 border-white/5'
-                }`}
-              >
-                <View 
-                  className={`p-3 rounded-2xl mb-3 flex items-center justify-center border ${
-                    isSelected ? 'bg-white/10 border-transparent' : 'bg-white/5 border-white/40'
+        <GlassCard className={isSmallPhone ? 'p-4' : 'p-6'}>
+          <Text className="text-white text-lg md:text-xl font-bold mb-4">Select Portal Profile</Text>
+          
+          {/* Role Selector Grid */}
+          <View className="flex-row flex-wrap justify-between mb-4">
+            {rolesConfigs.map((item) => {
+              const isSelected = selectedRole === item.role;
+              const isFullWidth = item.role === 'guest';
+              const IconComponent = item.icon;
+              
+              return (
+                <Pressable
+                  key={item.role}
+                  onPress={() => setSelectedRole(item.role)}
+                  style={{
+                    width: isFullWidth ? '100%' : '48%',
+                    shadowColor: isSelected ? item.glowColor : 'transparent',
+                    shadowOffset: isSelected ? { width: 0, height: 6 } : { width: 0, height: 0 },
+                    shadowOpacity: isSelected ? 0.45 : 0,
+                    shadowRadius: isSelected ? 12 : 0,
+                    elevation: Platform.OS === 'android' ? 0 : (isSelected ? 6 : 0),
+                  }}
+                  className={`${isSmallPhone ? 'p-3' : 'p-4'} rounded-2xl mb-3 flex-col items-center justify-center border transition-all duration-300 ${
+                    isSelected
+                      ? `${item.bgClass} ${item.borderClass}`
+                      : 'bg-black/35 border-white/5'
                   }`}
                 >
-                  <IconComponent 
-                    size={28} 
-                    color={isSelected ? item.activeColor : '#FFFFFF'} 
-                  />
-                </View>
-                <Text className={`text-base font-bold text-center mb-1 ${item.colorClass}`}>
-                  {item.label}
-                </Text>
-                <Text className="text-white/50 text-[11px] text-center font-medium leading-4 px-2">
-                  {item.description}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+                  <View 
+                    className={`p-2.5 md:p-3 rounded-2xl mb-2.5 flex items-center justify-center border ${
+                      isSelected ? 'bg-white/10 border-transparent' : 'bg-white/5 border-white/40'
+                    }`}
+                  >
+                    <IconComponent 
+                      size={isSmallPhone ? 24 : 28} 
+                      color={isSelected ? item.activeColor : '#FFFFFF'} 
+                    />
+                  </View>
+                  <Text className={`text-sm md:text-base font-bold text-center mb-0.5 ${item.colorClass}`}>
+                    {item.label}
+                  </Text>
+                  <Text className="text-white/50 text-[10px] md:text-[11px] text-center font-medium leading-4 px-1" numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
         {/* Inputs */}
         <Controller
@@ -316,7 +337,8 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </GlassCard>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

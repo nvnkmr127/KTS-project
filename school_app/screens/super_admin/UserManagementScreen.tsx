@@ -6,10 +6,12 @@ import { ChevronLeft, ChevronRight, Search, Plus, Trash2, X, Edit3, ShieldAlert,
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { GlassCard } from '../../components/GlassCard';
+import { useResponsive } from '../../utils/responsive';
 
 export const UserManagementScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop } = useResponsive();
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -56,7 +58,7 @@ export const UserManagementScreen: React.FC = () => {
       role: 'Prefect',
       status: 'Active',
       dept: 'STUDENTS',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAndwa0JtwR8W_27didVnmC9PrLPiL350lGvC9yHH9dKTtsry4veG7zNtHXFU8KSBiTYmzKFGXBu9U4EfP96PCjPpZrc4K3K3fW7zQuAsbXBeV92AKeWrYXQsa1cuaCIMFsejBWTS76em22m3o9ws3h5pSORTkou6e7zsApA0iYI5gCRSswn5vBiD-A1z0VKRD5r300bhBhIKYJoGBP5JSFUkEbS4ImPuzJpE_kExhhiwkQI42EE6dSyzdv3RZDBRRgy8OaixcSJSGh'
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAndwa0JtwR8W_27didVnmC9PrLPiL350lGvC9yHH9dKTtsry4veG7zNtHXFU8KSBiTYmzKFGXBu9U4EfP96PCjPpZrc4K3K3fW7zQuAsbXBeV92AKeWrYXQsa1cuaCIMFsejBWTS76em22m3o9ws3h5SORTkou6e7zsApA0iYI5gCRSswn5vBiD-A1z0VKRD5r300bhBhIKYJoGBP5JSFUkEbS4ImPuzJpE_kExhhiwkQI42EE6dSyzdv3RZDBRRgy8OaixcSJSGh'
     }
   ];
 
@@ -91,14 +93,21 @@ export const UserManagementScreen: React.FC = () => {
       {/* Header with Custom Glow Shadow */}
       <View style={{ zIndex: 50 }}>
         {/* Top App Bar */}
-        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 28 : 20) }]}>
-          <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => navigation.goBack()} className="p-1 active:scale-95">
+        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <View className="flex-row items-center gap-3 flex-1 mr-2">
+            <Pressable 
+              onPress={() => navigation.goBack()} 
+              className="p-1 active:scale-95"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
               <ChevronLeft size={24} color="#ffe5a0" />
             </Pressable>
-            <Text className="text-xl font-bold text-white font-display-lg">User Management</Text>
+            <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg flex-1">User Management</Text>
           </View>
-          <Pressable className="bg-[#f0c110] w-9 h-9 rounded-full items-center justify-center active:scale-95 shadow-[0_0_12px_rgba(240,193,16,0.4)]">
+          <Pressable 
+            className="bg-[#f0c110] w-9 h-9 rounded-full items-center justify-center active:scale-95 shadow-[0_0_12px_rgba(240,193,16,0.4)]"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
             <Plus size={18} color="#000" />
           </Pressable>
         </BlurView>
@@ -111,7 +120,13 @@ export const UserManagementScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Search Bar */}
         <View className="px-5 mb-6">
           <View className="flex-row items-center bg-white/5 border border-white/10 px-4 py-3 rounded-2xl">

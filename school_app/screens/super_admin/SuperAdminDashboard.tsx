@@ -11,10 +11,12 @@ import {
   Briefcase, Receipt, ShieldCheck, Settings, AlertTriangle, 
   ChevronRight, Info, Check 
 } from 'lucide-react-native';
+import { useResponsive } from '../../utils/responsive';
 
 export const SuperAdminDashboard: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop, scrollBottomPadding } = useResponsive();
 
   // Custom alert dialog state
   const [customAlert, setCustomAlert] = useState<{
@@ -79,20 +81,21 @@ export const SuperAdminDashboard: React.FC = () => {
       {/* Header with Custom Glow Shadow */}
       <View style={{ zIndex: 50 }}>
         {/* Top App Bar */}
-        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 28 : 20) }]}>
-          <View className="flex-row items-center gap-3">
+        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <View className="flex-row items-center gap-3 flex-1 mr-2">
             <View className="w-10 h-10 rounded-xl bg-[#f5c518] items-center justify-center">
               <School size={22} color="#241a00" />
             </View>
-            <View>
-              <Text className="text-xl font-bold text-white font-display-lg">EduVision</Text>
-              <Text className="text-[9px] uppercase tracking-widest text-[#d1c5ac]">Super Admin Terminal</Text>
+            <View className="flex-1">
+              <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg">EduVision</Text>
+              <Text numberOfLines={1} className="text-[9px] uppercase tracking-widest text-[#d1c5ac]">Super Admin Terminal</Text>
             </View>
           </View>
 
           <Pressable 
             onPress={handleEmergencyAlert} 
             className="w-10 h-10 rounded-full bg-red-600 items-center justify-center active:scale-95 shadow-[0_0_15px_rgba(220,38,38,0.6)]"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <AlertTriangle size={18} color="#FFF" />
           </Pressable>
@@ -106,7 +109,13 @@ export const SuperAdminDashboard: React.FC = () => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding + 20 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Welcome greeting */}
         <View className="px-5 mb-6">
           <Text className="text-white text-2xl font-bold font-display-lg leading-tight">

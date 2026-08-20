@@ -8,6 +8,7 @@ import { QuickActionIcon } from '../../components/QuickActionIcon';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 import { 
   Users, Banknote, CalendarDays, Bus, 
   Search, UserSquare2, Wallet, CalendarRange, 
@@ -46,6 +47,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
   const { user, logout } = useAuthStore();
+  const { isSmallPhone, scrollBottomPadding } = useResponsive();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -242,10 +244,13 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
       />
 
       <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding + 20 }
+        ]} 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00f1a1" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={primaryColor} />
         }
       >
         {/* Welcome Section */}

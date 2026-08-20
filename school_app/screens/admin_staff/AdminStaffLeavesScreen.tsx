@@ -7,9 +7,11 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
+  const { insets, isSmallPhone } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [customAlert, setCustomAlert] = useState({
@@ -158,40 +160,40 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
 
         {/* Tab Selector */}
         <View className="px-5 mb-5">
-          <View className="flex-row bg-[#101415]/90 p-1.5 rounded-2xl border border-white/10 w-full justify-between">
+          <View className="flex-row bg-[#101415]/90 p-1 sm:p-1.5 rounded-2xl border border-white/10 w-full justify-between" style={{ gap: 4 }}>
             <Pressable
               onPress={() => setActiveTab('pending')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${
+              className={`flex-1 py-2.5 sm:py-3 rounded-xl items-center justify-center flex-row ${
                 activeTab === 'pending' ? (isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]') : ''
               }`}
             >
-              <Text className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'pending' ? 'text-[#101415]' : 'text-white/40'}`}>Pending</Text>
-              <View className={`w-5 h-5 rounded-full items-center justify-center ml-1.5 ${activeTab === 'pending' ? 'bg-[#101415]/20' : 'bg-white/10'}`}>
-                <Text className={`text-[10px] font-bold ${activeTab === 'pending' ? 'text-[#101415]' : 'text-white/60'}`}>{pendingCount}</Text>
+              <Text className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${activeTab === 'pending' ? 'text-[#101415]' : 'text-white/40'}`}>Pending</Text>
+              <View className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full items-center justify-center ml-1 ${activeTab === 'pending' ? 'bg-[#101415]/20' : 'bg-white/10'}`}>
+                <Text className={`text-[9px] sm:text-[10px] font-bold ${activeTab === 'pending' ? 'text-[#101415]' : 'text-white/60'}`}>{pendingCount}</Text>
               </View>
             </Pressable>
 
             <Pressable
               onPress={() => setActiveTab('approved')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${
+              className={`flex-1 py-2.5 sm:py-3 rounded-xl items-center justify-center flex-row ${
                 activeTab === 'approved' ? (isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]') : ''
               }`}
             >
-              <Text className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'approved' ? 'text-[#101415]' : 'text-white/40'}`}>Approved</Text>
-              <View className={`w-5 h-5 rounded-full items-center justify-center ml-1.5 ${activeTab === 'approved' ? 'bg-[#101415]/20' : 'bg-white/10'}`}>
-                <Text className={`text-[10px] font-bold ${activeTab === 'approved' ? 'text-[#101415]' : 'text-white/60'}`}>{approvedCount}</Text>
+              <Text className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${activeTab === 'approved' ? 'text-[#101415]' : 'text-white/40'}`}>Approved</Text>
+              <View className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full items-center justify-center ml-1 ${activeTab === 'approved' ? 'bg-[#101415]/20' : 'bg-white/10'}`}>
+                <Text className={`text-[9px] sm:text-[10px] font-bold ${activeTab === 'approved' ? 'text-[#101415]' : 'text-white/60'}`}>{approvedCount}</Text>
               </View>
             </Pressable>
 
             <Pressable
               onPress={() => setActiveTab('rejected')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${
+              className={`flex-1 py-2.5 sm:py-3 rounded-xl items-center justify-center flex-row ${
                 activeTab === 'rejected' ? (isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]') : ''
               }`}
             >
-              <Text className={`text-xs font-bold uppercase tracking-wider ${activeTab === 'rejected' ? 'text-[#101415]' : 'text-white/40'}`}>Rejected</Text>
-              <View className={`w-5 h-5 rounded-full items-center justify-center ml-1.5 ${activeTab === 'rejected' ? 'bg-[#101415]/20' : 'bg-white/10'}`}>
-                <Text className={`text-[10px] font-bold ${activeTab === 'rejected' ? 'text-[#101415]' : 'text-white/60'}`}>{rejectedCount}</Text>
+              <Text className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${activeTab === 'rejected' ? 'text-[#101415]' : 'text-white/40'}`}>Rejected</Text>
+              <View className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full items-center justify-center ml-1 ${activeTab === 'rejected' ? 'bg-[#101415]/20' : 'bg-white/10'}`}>
+                <Text className={`text-[9px] sm:text-[10px] font-bold ${activeTab === 'rejected' ? 'text-[#101415]' : 'text-white/60'}`}>{rejectedCount}</Text>
               </View>
             </Pressable>
           </View>

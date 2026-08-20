@@ -10,6 +10,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface HolidayItem {
   id: string;
@@ -40,6 +41,7 @@ const HIGHLIGHT_COLORS = ['#ef4444', '#3b82f6', '#00f1a1', '#a855f7', '#f59e0b']
 export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const navigation = useNavigation<any>() || propNavigation;
   const { user } = useAuthStore();
+  const { insets, isSmallPhone } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [holidays, setHolidays] = useState<HolidayItem[]>(MOCK_HOLIDAYS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -322,10 +324,13 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
 
             <Pressable
               onPress={handleOpenAdd}
-              className={`${primaryBtnClass} px-4 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
+              className={`${primaryBtnClass} px-3.5 py-2.5 rounded-2xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+              style={{ minWidth: 110 }}
             >
-              <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
-              <Text className="text-[#101415] text-xs font-extrabold">Add Holiday</Text>
+              <Plus size={15} color="#101415" style={{ marginRight: 4 }} />
+              <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+                Add Holiday
+              </Text>
             </Pressable>
           </View>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Image, Dimensions, Platform, Modal } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable, Image, Platform, Modal } from 'react-native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,12 +11,12 @@ import {
   MapPin,
   Award
 } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../../utils/responsive';
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user, activeChildId } = useAuthStore();
+  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
   const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'fees' | 'docs' | 'transport'>('overview');
 
   // Custom alert dialog state
@@ -76,19 +76,37 @@ export const ProfileScreen: React.FC = () => {
       />
 
       {/* Top Header */}
-      <View style={styles.header}>
+      <View 
+        style={[
+          styles.header,
+          { paddingTop: headerPaddingTop }
+        ]}
+      >
         <View className="flex-row items-center gap-3">
-          <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95">
+          <Pressable 
+            onPress={() => navigation.goBack()} 
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
             <ChevronLeft size={20} color="#46f1c5" />
           </Pressable>
           <Text className="text-white text-lg font-bold font-headline-md">Student Profile</Text>
         </View>
-        <Pressable className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95">
+        <Pressable 
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
           <Search size={18} color="#46f1c5" />
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Student Hero Header */}
         <View className="items-center mb-6">
           <View className="relative mb-4">

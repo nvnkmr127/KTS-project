@@ -17,10 +17,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { GlassCard } from '../../components/GlassCard';
 import { useFeeStore, GradeFee, Category } from '../../store/useFeeStore';
+import { useResponsive } from '../../utils/responsive';
 
 export const AssignFeeStructureScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop } = useResponsive();
 
   // Load from global Zustand store
   const { categories, feeData, updateClassFee, addCategory, removeCategory } = useFeeStore();
@@ -109,49 +111,35 @@ export const AssignFeeStructureScreen: React.FC = () => {
     showCustomAlert('Success', `${selectedGrade.grade} fee structure has been updated.`, 'success');
   };
 
-  // Create new category in global store
+  // Create new category globally
   const handleCreateCategory = () => {
     if (!newCategoryName.trim()) {
-      showCustomAlert('Validation Error', 'Category name is required.', 'error');
+      showCustomAlert('Validation Error', 'Category name cannot be empty', 'error');
       return;
     }
 
-    const defaultAmt = parseInt(newCategoryAmount || '0', 10);
-    if (isNaN(defaultAmt) || defaultAmt < 0) {
-      showCustomAlert('Validation Error', 'Please enter a valid positive default amount.', 'error');
+    const defaultAmountNum = parseInt(newCategoryAmount.trim() || '0', 10);
+    if (isNaN(defaultAmountNum) || defaultAmountNum < 0) {
+      showCustomAlert('Validation Error', 'Please enter a valid positive default fee amount', 'error');
       return;
     }
 
-    const key = newCategoryName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-
-    // Check if category key already exists
-    if (categories.some(c => c.key === key)) {
-      showCustomAlert('Duplicate Category', 'A category with this name already exists.', 'error');
-      return;
-    }
-
-    addCategory(newCategoryName.trim(), defaultAmt);
-
-    // Reset fields and close modal
+    addCategory(newCategoryName.trim(), defaultAmountNum);
     setNewCategoryName('');
     setNewCategoryAmount('');
     setCategoryModalVisible(false);
-    showCustomAlert('Success', `New category "${newCategoryName.trim()}" has been successfully added to all grades.`, 'success');
+    showCustomAlert('Success', `Fee category "${newCategoryName.trim()}" added to all classes.`, 'success');
   };
 
-  // Confirm deletion of category
-  const handleConfirmDeleteCategory = (cat: Category) => {
-    const isCore = cat.key === 'tuition' || cat.key === 'transport';
-    const warningMessage = isCore
-      ? `WARNING: "${cat.label}" is a core system category. Deleting it may alter default views. Are you sure you want to proceed?`
-      : `Are you sure you want to delete the category "${cat.label}"? This will permanently remove this fee category from all grade structures.`;
-
+  // Confirm delete category
+  const handleDeleteCategory = (catKey: string, catLabel: string) => {
     showCustomAlert(
-      isCore ? 'Delete Core Category' : 'Remove Fee Category',
-      warningMessage,
+      'Confirm Deletion',
+      `Are you sure you want to delete the "${catLabel}" category? This will remove this fee head across all classes.`,
       'confirm_delete',
       () => {
-        removeCategory(cat.key);
+        removeCategory(catKey);
+        setCustomAlert(prev => ({ ...prev, visible: false }));
       }
     );
   };
@@ -166,35 +154,38 @@ export const AssignFeeStructureScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Header */}
+      {/* Top App Header */}
       <View style={{ zIndex: 50 }}>
-        <BlurView
-          intensity={30}
-          tint="dark"
-          style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 28 : 20) }]}
-        >
-          <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => navigation.goBack()} className="p-1 active:scale-95">
+        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <View className="flex-row items-center gap-3 flex-1 mr-2">
+            <Pressable 
+              onPress={() => navigation.goBack()} 
+              className="p-1 active:scale-95"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
               <ChevronLeft size={24} color="#ffe5a0" />
             </Pressable>
-            <Text className="text-xl font-bold text-white font-display-lg">Assign Fee Structure</Text>
+            <View className="flex-1">
+              <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg">Assign Fee Structure</Text>
+              <Text numberOfLines={1} className="text-[9px] uppercase tracking-widest text-[#d1c5ac]">ACADEMIC SESSION 2025-26</Text>
+            </View>
           </View>
-          <Pressable
-            onPress={() => setCategoryModalVisible(true)}
-            className="bg-[#f0c110] px-4 py-2 rounded-full flex-row items-center gap-1 active:scale-95 shadow-[0_0_12px_rgba(240,193,16,0.3)]"
-          >
-            <Plus size={16} color="#000" />
-            <Text className="text-[#000] text-xs font-bold font-label-md">Add Category</Text>
-          </Pressable>
         </BlurView>
+
         <LinearGradient
-          colors={['rgba(245, 197, 24, 0.12)', 'transparent']}
+          colors={['rgba(245, 197, 24, 0.15)', 'transparent']}
           style={{ position: 'absolute', bottom: -15, left: 0, right: 0, height: 15 }}
           pointerEvents="none"
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* ERP Info & Summary Stats */}
         <View className="px-5 mb-6">
@@ -233,7 +224,7 @@ export const AssignFeeStructureScreen: React.FC = () => {
                 <Text className="text-white/40 text-[10px] font-medium">(${cat.defaultAmount})</Text>
 
                 <Pressable
-                  onPress={() => handleConfirmDeleteCategory(cat)}
+                  onPress={() => handleDeleteCategory(cat.key, cat.label)}
                   className="p-1 rounded-full bg-white/10 active:bg-red-500/20"
                 >
                   <X size={12} color="#ffb4ab" />

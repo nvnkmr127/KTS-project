@@ -25,9 +25,11 @@ import {
   Lock,
   Plus,
 } from "lucide-react-native";
+import { useResponsive } from "../../utils/responsive";
 
 export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop, scrollBottomPadding } = useResponsive();
   
   return (
     <View style={styles.container}>
@@ -40,12 +42,12 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
           tint="dark"
           style={[
             styles.header,
-            { paddingTop: insets.top + (Platform.OS === "android" ? 24 : 16) },
+            { paddingTop: headerPaddingTop },
           ]}
         >
-          <View className="flex-row items-center">
+          <View className="flex-row items-center flex-1 mr-2">
             <View className="relative">
-              <View className="w-12 h-12 rounded-full border-2 border-[#ddb7ff] p-0.5 items-center justify-center bg-[#1a1525]">
+              <View className="w-11 h-11 md:w-12 md:h-12 rounded-full border-2 border-[#ddb7ff] p-0.5 items-center justify-center bg-[#1a1525]">
                 <Image
                   source={{
                     uri: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150",
@@ -55,16 +57,19 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
               </View>
               <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00f1a1] rounded-full border-2 border-[#0d0d12]" />
             </View>
-            <View className="ml-3">
-              <Text className="text-[#ddb7ff] text-xl font-bold">
+            <View className="ml-3 flex-1">
+              <Text numberOfLines={1} className="text-[#ddb7ff] text-lg md:text-xl font-bold">
                 Ms. Priya Reddy
               </Text>
-              <Text className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">
+              <Text numberOfLines={1} className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">
                 Class Teacher: 8-A
               </Text>
             </View>
           </View>
-          <Pressable className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10">
+          <Pressable 
+            className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
             <Bell size={20} color="#fff" />
           </Pressable>
         </BlurView>
@@ -78,7 +83,10 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding + 20 }
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Leave Balances (Relocated inside scrollview at the top) */}

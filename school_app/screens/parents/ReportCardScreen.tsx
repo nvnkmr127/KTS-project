@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from 'react-native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { mockExams } from '../../services/mockData';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,12 +14,12 @@ import {
   Beaker,
   Languages
 } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../../utils/responsive';
 
 export const ReportCardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user, activeChildId } = useAuthStore();
+  const { width, isSmallPhone, insets, headerPaddingTop } = useResponsive();
   const [activeTab, setActiveTab] = useState<'ut1' | 'mid' | 'final'>('ut1');
 
   if (!user) return null;
@@ -69,21 +69,39 @@ export const ReportCardScreen: React.FC = () => {
       />
 
       {/* Top Header */}
-      <View style={styles.header}>
-        <View className="flex-row items-center gap-3">
-          <Pressable onPress={() => navigation?.goBack()} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95">
+      <View 
+        style={[
+          styles.header,
+          { paddingTop: headerPaddingTop }
+        ]}
+      >
+        <View className="flex-row items-center gap-3 flex-1 mr-2">
+          <Pressable 
+            onPress={() => navigation?.goBack()} 
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
             <ChevronLeft size={20} color="#818CF8" />
           </Pressable>
-          <View>
-            <Text className="text-white text-lg font-bold font-headline-md">Academic Results</Text>
+          <View className="flex-1">
+            <Text numberOfLines={1} className="text-white text-base md:text-lg font-bold font-headline-md">Academic Results</Text>
           </View>
         </View>
-        <Pressable className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95">
+        <Pressable 
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
           <Bell size={20} color="#5E5CE6" />
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Exam Selector Pill Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6 pl-5" contentContainerStyle={{ paddingRight: 30 }}>
           <Pressable 

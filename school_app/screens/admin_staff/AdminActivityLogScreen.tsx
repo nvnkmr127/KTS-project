@@ -10,6 +10,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
+import { useResponsive } from '../../utils/responsive';
 
 export interface ActivityLogItem {
   id: string;
@@ -202,7 +203,7 @@ export const AdminActivityLogScreen: React.FC<any> = ({ navigation: propNavigati
 
             <Pressable
               onPress={handleExportLogs}
-              className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3.5 py-2.5 rounded-2xl flex-row items-center"
+              className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3.5 py-2.5 rounded-2xl flex-row items-center active:scale-95 flex-shrink-0"
             >
               <FileSpreadsheet size={15} color="#00f1a1" style={{ marginRight: 4 }} />
               <Text className="text-[#00f1a1] text-xs font-bold">Export</Text>

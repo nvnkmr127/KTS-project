@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, Dimensions, Pressable } from 'react-native';
+import { View, Text, Pressable, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/useAuthStore';
 import { InteractiveButton } from '../../components/InteractiveButton';
 import { Shield, BookOpen, Truck, MessageSquare } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../../utils/responsive';
 
 const slides = [
   {
@@ -36,6 +36,8 @@ const slides = [
 export const OnboardingScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [activeIdx, setActiveIdx] = useState(0);
   const setOnboarded = useAuthStore((state) => state.setOnboarded);
+  const insets = useSafeAreaInsets();
+  const { isSmallPhone } = useResponsive();
 
   const handleNext = () => {
     if (activeIdx < slides.length - 1) {
@@ -49,55 +51,71 @@ export const OnboardingScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   const ActiveIcon = slides[activeIdx].icon;
 
   return (
-    <View className="flex-1 justify-between py-12 px-6 bg-brand-darkNavy">
-      {/* Top Header */}
-      <View className="flex-row justify-between items-center mt-6">
-        <Text className="text-white text-xl font-bold tracking-wider">EduVision</Text>
-        <Pressable onPress={() => { setOnboarded(true); navigation.replace('Login'); }}>
-          <Text className="text-white/60 text-sm font-semibold">Skip</Text>
-        </Pressable>
-      </View>
-
-      {/* Slide Content */}
-      <View className="items-center my-auto">
-        <View
-          style={{ backgroundColor: `${slides[activeIdx].color}20` }}
-          className="p-8 rounded-full mb-8 border border-white/10"
-        >
-          <ActiveIcon size={72} color={slides[activeIdx].color} strokeWidth={1.5} />
-        </View>
-        <Text className="text-white text-3xl font-extrabold text-center mb-4 px-4">
-          {slides[activeIdx].title}
-        </Text>
-        <Text className="text-white/60 text-base text-center px-6 leading-6">
-          {slides[activeIdx].desc}
-        </Text>
-      </View>
-
-      {/* Footer Controls */}
-      <View className="mb-6">
-        {/* Indicators */}
-        <View className="flex-row justify-center space-x-2 mb-8">
-          {slides.map((_, idx) => (
-            <View
-              key={idx}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                idx === activeIdx ? 'w-6 bg-brand-indigo' : 'w-2 bg-white/20'
-              }`}
-            />
-          ))}
+    <View className="flex-1 bg-brand-darkNavy">
+      <ScrollView 
+        contentContainerStyle={{ 
+          flexGrow: 1, 
+          justifyContent: 'space-between',
+          paddingTop: Math.max(insets.top, 16) + 8,
+          paddingBottom: Math.max(insets.bottom, 16) + 12,
+          paddingHorizontal: isSmallPhone ? 16 : 24,
+        }}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* Top Header */}
+        <View className="flex-row justify-between items-center mb-6">
+          <Text className="text-white text-xl font-bold tracking-wider">EduVision</Text>
+          <Pressable 
+            onPress={() => { setOnboarded(true); navigation.replace('Login'); }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text className="text-white/60 text-sm font-semibold">Skip</Text>
+          </Pressable>
         </View>
 
-        {/* Action Button */}
-        <InteractiveButton
-          onPress={handleNext}
-          title={activeIdx === slides.length - 1 ? "Get Started" : "Continue"}
-          variant="secondary"
-        />
-      </View>
+        {/* Slide Content */}
+        <View className="items-center my-auto py-6">
+          <View
+            style={{ backgroundColor: `${slides[activeIdx].color}20` }}
+            className={`${isSmallPhone ? 'p-6 mb-6' : 'p-8 mb-8'} rounded-full border border-white/10`}
+          >
+            <ActiveIcon size={isSmallPhone ? 56 : 72} color={slides[activeIdx].color} strokeWidth={1.5} />
+          </View>
+          <Text className={`text-white ${isSmallPhone ? 'text-2xl' : 'text-3xl'} font-extrabold text-center mb-3 px-4`}>
+            {slides[activeIdx].title}
+          </Text>
+          <Text className={`text-white/60 ${isSmallPhone ? 'text-sm' : 'text-base'} text-center px-4 leading-6 max-w-md`}>
+            {slides[activeIdx].desc}
+          </Text>
+        </View>
+
+        {/* Footer Controls */}
+        <View className="mt-6">
+          {/* Indicators */}
+          <View className="flex-row justify-center gap-2 mb-6">
+            {slides.map((_, idx) => (
+              <View
+                key={idx}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  idx === activeIdx ? 'w-6 bg-brand-indigo' : 'w-2 bg-white/20'
+                }`}
+              />
+            ))}
+          </View>
+
+          {/* Action Button */}
+          <InteractiveButton
+            onPress={handleNext}
+            title={activeIdx === slides.length - 1 ? "Get Started" : "Continue"}
+            variant="secondary"
+          />
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
 export default OnboardingScreen;
+
 

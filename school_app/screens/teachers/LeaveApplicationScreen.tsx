@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Bell, Calendar, CalendarDays, CloudUpload, Send, ExternalLink, Info } from 'lucide-react-native';
+import { useResponsive } from '../../utils/responsive';
 
 const leaveHistory = [
   {
@@ -34,6 +35,7 @@ const leaveHistory = [
 
 export const LeaveApplicationScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop } = useResponsive();
   const [leaveType, setLeaveType] = useState('CL');
   const [reason, setReason] = useState('');
 
@@ -57,10 +59,10 @@ export const LeaveApplicationScreen: React.FC = () => {
           tint="dark"
           style={[
             styles.header,
-            { paddingTop: insets.top + (Platform.OS === "android" ? 24 : 16) },
+            { paddingTop: headerPaddingTop },
           ]}
         >
-          <View className="flex-row items-center">
+          <View className="flex-row items-center flex-1 mr-2">
             <View className="relative">
               <View className="w-12 h-12 rounded-full border-2 border-[#ddb7ff] p-0.5 items-center justify-center bg-[#1a1525]">
                 <Image
@@ -72,14 +74,17 @@ export const LeaveApplicationScreen: React.FC = () => {
               </View>
               <View className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#00f1a1] rounded-full border-2 border-[#0d0d12]" />
             </View>
-            <View className="ml-3">
-              <Text className="text-[#ddb7ff] text-xl font-bold">Leave Command</Text>
-              <Text className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">
+            <View className="ml-3 flex-1">
+              <Text numberOfLines={1} className="text-[#ddb7ff] text-lg md:text-xl font-bold">Leave Command</Text>
+              <Text numberOfLines={1} className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">
                 Leave Center
               </Text>
             </View>
           </View>
-          <Pressable className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10">
+          <Pressable 
+            className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
             <Bell size={20} color="#fff" />
           </Pressable>
         </BlurView>
@@ -92,29 +97,35 @@ export const LeaveApplicationScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Title */}
         <View className="mb-8 mt-2">
-          <Text className="text-white text-[32px] font-extrabold tracking-tight mb-2 leading-tight">Leave Command{'\n'}Center</Text>
+          <Text className="text-white text-[28px] md:text-[32px] font-extrabold tracking-tight mb-2 leading-tight">Leave Command{'\n'}Center</Text>
         </View>
 
         {/* Balances */}
         <View className="flex-row justify-between mb-8">
-          <View className="bg-[#1C1C1E] border border-white/5 rounded-2xl p-5 w-[31%] items-center shadow-lg">
-            <Text className="text-[#A1A1AA] text-[10px] font-bold tracking-widest uppercase mb-2 text-center">Casual (CL)</Text>
-            <Text className="text-[#EABFFF] text-3xl font-bold mb-2">04</Text>
-            <Text className="text-[#A1A1AA]/50 text-[9px] font-medium tracking-widest uppercase text-center">DAYS LEFT</Text>
+          <View className={`bg-[#1C1C1E] border border-white/5 rounded-2xl ${isSmallPhone ? 'p-3' : 'p-5'} w-[31%] items-center shadow-lg`}>
+            <Text className={`text-[#A1A1AA] ${isSmallPhone ? 'text-[9px]' : 'text-[10px]'} font-bold tracking-widest uppercase mb-2 text-center`}>Casual (CL)</Text>
+            <Text className={`text-[#EABFFF] ${isSmallPhone ? 'text-2xl' : 'text-3xl'} font-bold mb-2`}>04</Text>
+            <Text className="text-[#A1A1AA]/50 text-[8px] md:text-[9px] font-medium tracking-widest uppercase text-center">DAYS LEFT</Text>
           </View>
-          <View className="bg-[#1C1C1E] border border-white/5 rounded-2xl p-5 w-[31%] items-center shadow-lg">
-            <Text className="text-[#A1A1AA] text-[10px] font-bold tracking-widest uppercase mb-2 text-center">Sick (SL)</Text>
-            <Text className="text-[#ddb7ff] text-3xl font-bold mb-2">08</Text>
-            <Text className="text-[#A1A1AA]/50 text-[9px] font-medium tracking-widest uppercase text-center">DAYS LEFT</Text>
+          <View className={`bg-[#1C1C1E] border border-white/5 rounded-2xl ${isSmallPhone ? 'p-3' : 'p-5'} w-[31%] items-center shadow-lg`}>
+            <Text className={`text-[#A1A1AA] ${isSmallPhone ? 'text-[9px]' : 'text-[10px]'} font-bold tracking-widest uppercase mb-2 text-center`}>Sick (SL)</Text>
+            <Text className={`text-[#3b82f6] ${isSmallPhone ? 'text-2xl' : 'text-3xl'} font-bold mb-2`}>02</Text>
+            <Text className="text-[#A1A1AA]/50 text-[8px] md:text-[9px] font-medium tracking-widest uppercase text-center">DAYS LEFT</Text>
           </View>
-          <View className="bg-[#1C1C1E] border border-white/5 rounded-2xl p-5 w-[31%] items-center shadow-lg">
-            <Text className="text-[#A1A1AA] text-[10px] font-bold tracking-widest uppercase mb-2 text-center">Earned (EL)</Text>
-            <Text className="text-white text-3xl font-bold mb-2">12</Text>
-            <Text className="text-[#A1A1AA]/50 text-[9px] font-medium tracking-widest uppercase text-center">DAYS LEFT</Text>
+          <View className={`bg-[#1C1C1E] border border-white/5 rounded-2xl ${isSmallPhone ? 'p-3' : 'p-5'} w-[31%] items-center shadow-lg`}>
+            <Text className={`text-[#A1A1AA] ${isSmallPhone ? 'text-[9px]' : 'text-[10px]'} font-bold tracking-widest uppercase mb-2 text-center`}>Earned (EL)</Text>
+            <Text className={`text-[#eab308] ${isSmallPhone ? 'text-2xl' : 'text-3xl'} font-bold mb-2`}>12</Text>
+            <Text className="text-[#A1A1AA]/50 text-[8px] md:text-[9px] font-medium tracking-widest uppercase text-center">DAYS LEFT</Text>
           </View>
         </View>
 

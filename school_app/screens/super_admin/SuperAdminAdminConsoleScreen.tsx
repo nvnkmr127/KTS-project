@@ -11,6 +11,7 @@ import {
   Wallet, Tag, CalendarDays, CalendarOff, CalendarRange, 
   FileEdit, ArrowLeftRight, Megaphone, UserSearch, Bus
 } from 'lucide-react-native';
+import { useResponsive } from '../../utils/responsive';
 
 interface AdminOption {
   id: string;
@@ -52,6 +53,7 @@ const ADMIN_OPTIONS: AdminOption[] = [
 export const SuperAdminAdminConsoleScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop } = useResponsive();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Students' | 'Academics' | 'Finance' | 'Operations'>('All');
 
@@ -76,17 +78,18 @@ export const SuperAdminAdminConsoleScreen: React.FC = () => {
 
       {/* Header matching Super Admin Theme */}
       <View style={{ zIndex: 50 }}>
-        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 28 : 20) }]}>
-          <View className="flex-row items-center gap-3">
+        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <View className="flex-row items-center gap-3 flex-1 mr-2">
             <Pressable 
               onPress={() => navigation.goBack()}
               className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 items-center justify-center active:bg-white/20"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
               <ArrowLeft size={18} color="#ffe5a0" />
             </Pressable>
-            <View>
-              <Text className="text-xl font-bold text-white font-display-lg">Admin Operations</Text>
-              <Text className="text-[9px] uppercase tracking-widest text-[#ffe5a0] font-bold">SUPER ADMIN CONSOLE</Text>
+            <View className="flex-1">
+              <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg">Admin Operations</Text>
+              <Text numberOfLines={1} className="text-[9px] uppercase tracking-widest text-[#ffe5a0] font-bold">SUPER ADMIN CONSOLE</Text>
             </View>
           </View>
 
@@ -102,7 +105,13 @@ export const SuperAdminAdminConsoleScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Search Bar & Category Filters */}
         <View className="px-5 mb-6">

@@ -1,24 +1,25 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ChevronLeft, Bell, AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
-
-const { width } = Dimensions.get('window');
-const SCREEN_MARGIN = 20;
-const CARD_PADDING = 16;
-const GRID_GAP = 8;
-const CELL_SIZE = Math.floor((width - 2 * SCREEN_MARGIN - 2 * CARD_PADDING - 6 * GRID_GAP) / 7);
+import { useResponsive } from '../../utils/responsive';
 
 export const AttendanceHistoryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { user, activeChildId } = useAuthStore();
+  const { width, isSmallPhone, insets, headerPaddingTop, scrollBottomPadding } = useResponsive();
   const currentChild = user?.children?.find(c => c.id === activeChildId) || user?.children?.[0];
   const isTab = route.name === 'Attendance';
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+
+  const screenMargin = isSmallPhone ? 14 : 20;
+  const cardPadding = isSmallPhone ? 12 : 16;
+  const gridGap = isSmallPhone ? 5 : 8;
+  const cellSize = Math.max(30, Math.floor((width - 2 * screenMargin - 2 * cardPadding - 6 * gridGap) / 7));
 
   const stats = [
     { label: 'Present', val: '22', color: '#10B981' },
@@ -127,7 +128,12 @@ export const AttendanceHistoryScreen: React.FC = () => {
       />
 
       {/* Header - Matching other screens pattern */}
-      <View style={styles.header}>
+      <View 
+        style={[
+          styles.header,
+          { paddingTop: headerPaddingTop }
+        ]}
+      >
         <View className="flex-row items-center gap-3">
           {isTab ? (
             <Pressable 
@@ -140,21 +146,34 @@ export const AttendanceHistoryScreen: React.FC = () => {
               />
             </Pressable>
           ) : (
-            <Pressable onPress={() => navigation.goBack()} className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95">
+            <Pressable 
+              onPress={() => navigation.goBack()} 
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
               <ChevronLeft size={20} color="#818CF8" />
             </Pressable>
           )}
           <View>
             <Text className="text-white/70 text-xs font-semibold">Parent Profile</Text>
-            <Text className="text-white text-lg font-bold font-headline-md">Good Morning, {user?.name || 'Ramesh'} 👋</Text>
+            <Text numberOfLines={1} className="text-white text-base md:text-lg font-bold font-headline-md">Good Morning, {user?.name || 'Ramesh'} 👋</Text>
           </View>
         </View>
-        <Pressable className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95">
+        <Pressable 
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
           <Bell size={20} color="#5E5CE6" />
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: scrollBottomPadding + 20 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Attendance Warning Card - Frosted Glass */}
         <View className="px-5 mb-5">
           <View style={styles.warningCard} className="overflow-hidden relative">
@@ -374,7 +393,7 @@ const styles = StyleSheet.create({
     borderColor: '#26244C',
     borderWidth: 1,
     borderRadius: 24,
-    padding: CARD_PADDING,
+    padding: 16,
     paddingTop: 20,
   },
   // Day header row
@@ -391,7 +410,7 @@ const styles = StyleSheet.create({
   // Week rows with proper spacing
   weekRow: {
     flexDirection: 'row',
-    marginBottom: GRID_GAP,
+    marginBottom: 6,
   },
   // Day cells - using flex for even distribution
   dayCell: {
@@ -402,7 +421,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.2,
     borderColor: 'transparent',
-    marginHorizontal: GRID_GAP / 2,
+    marginHorizontal: 3,
   },
   dayText: {
     fontSize: 12,

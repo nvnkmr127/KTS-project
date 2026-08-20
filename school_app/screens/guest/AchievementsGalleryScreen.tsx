@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Image, Dimensions, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Image, Modal } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Award, Newspaper, ArrowRight, ChevronRight, Gem, ChevronLeft, Info } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,8 +7,7 @@ import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../store/useAuthStore';
 import { GuestHeader } from '../../components/GuestHeader';
 import { GuestScreenNavigationProp } from '../../navigation/types';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../../utils/responsive';
 
 // Module-level static datasets to avoid allocation on re-render cycles
 const TOPPERS = [
@@ -48,6 +47,7 @@ export const AchievementsGalleryScreen: React.FC = () => {
   const navigation = useNavigation<GuestScreenNavigationProp<'AchievementsGallery'>>();
   const logout = useAuthStore((state) => state.logout);
   const galleryRef = useRef<ScrollView>(null);
+  const { width, isSmallPhone, insets, headerPaddingTop } = useResponsive();
 
   const [customAlert, setCustomAlert] = useState<{
     visible: boolean;
@@ -72,7 +72,29 @@ export const AchievementsGalleryScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <GuestHeader 
+        title="Achievements" 
+        showBack 
+        rightAction={
+          <Pressable 
+            onPress={() => navigation.navigate('EnquiryForm')}
+            className="bg-[#38bdf8] px-4 py-2 md:px-5 md:py-2.5 rounded-full active:scale-95 shadow-[0_0_16px_rgba(56,189,248,0.4)]"
+          >
+            <Text className="text-[#004965] font-semibold text-xs font-label-lg">Apply Now</Text>
+          </Pressable>
+        }
+      />
+
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: headerPaddingTop + 45,
+            paddingBottom: insets.bottom + 90,
+          }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Subtitle Label + Title */}
         <View className="px-5 mb-8 items-center">
           <View className="flex-row items-center gap-2 mb-3">
@@ -387,7 +409,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   galleryImage: {
-    width: width * 0.55,
+    width: 220,
     height: 160,
     borderRadius: 16,
   },

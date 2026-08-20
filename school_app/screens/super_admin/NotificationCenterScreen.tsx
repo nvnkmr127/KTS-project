@@ -7,10 +7,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { GlassCard } from '../../components/GlassCard';
 import { mockNotifications } from '../../services/mockData';
+import { useResponsive } from '../../utils/responsive';
 
 export const NotificationCenterScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop } = useResponsive();
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'academic' | 'finance' | 'emergency'>('academic');
   const [notifications, setNotifications] = useState(mockNotifications);
@@ -83,12 +85,16 @@ export const NotificationCenterScreen: React.FC = () => {
       {/* Header with Custom Glow Shadow */}
       <View style={{ zIndex: 50 }}>
         {/* Top App Bar */}
-        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 28 : 20) }]}>
-          <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => navigation.goBack()} className="p-1 active:scale-95">
+        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <View className="flex-row items-center gap-3 flex-1 mr-2">
+            <Pressable 
+              onPress={() => navigation.goBack()} 
+              className="p-1 active:scale-95"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
               <ChevronLeft size={24} color="#ffe5a0" />
             </Pressable>
-            <Text className="text-xl font-bold text-white font-display-lg">Noticeboard Center</Text>
+            <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg flex-1">Noticeboard Center</Text>
           </View>
         </BlurView>
         
@@ -100,7 +106,13 @@ export const NotificationCenterScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Broadcast Creator Panel */}
         <View className="px-5 mb-8">

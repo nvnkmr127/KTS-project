@@ -13,6 +13,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface StudentFeeRecord {
   id: string;
@@ -85,6 +86,7 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
   const navigation = useNavigation<any>() || propNavigation;
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
+  const { insets, isSmallPhone } = useResponsive();
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
   const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
@@ -427,10 +429,13 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
               if (feeRecords.length > 0) setSelectedStudentForAssign(feeRecords[0].id);
               setShowAssignFeeModal(true);
             }}
-            className={`${primaryBtnClass} py-2 px-3.5 rounded-xl flex-row items-center shadow-lg`}
+            className={`${primaryBtnClass} py-2 px-3.5 rounded-xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+            style={{ minWidth: 105 }}
           >
             <Plus size={14} color="#101415" style={{ marginRight: 4 }} />
-            <Text className="text-[#101415] text-xs font-extrabold">Assign Fee</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+              Assign Fee
+            </Text>
           </Pressable>
         </View>
 
@@ -474,19 +479,19 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
         </View>
 
         {/* Directory Header & Status Tabs */}
-        <View className="px-5 mb-3 flex-row items-center justify-between">
-          <Text className="text-white font-extrabold text-sm">Fee Collection Directory</Text>
+        <View className="px-5 mb-3 flex-row items-center justify-between flex-wrap" style={{ gap: 8 }}>
+          <Text className="text-white font-extrabold text-xs sm:text-sm flex-1 min-w-[130px]" numberOfLines={1}>Fee Collection Directory</Text>
 
-          <View className="flex-row bg-[#101415] border border-white/10 p-0.5 rounded-xl">
+          <View className="flex-row bg-[#101415] border border-white/10 p-0.5 rounded-xl flex-shrink-0">
             {(['All', 'Paid', 'Partial', 'Unpaid'] as const).map((filter) => {
               const active = statusFilter === filter;
               return (
                 <Pressable
                   key={filter}
                   onPress={() => setStatusFilter(filter)}
-                  className={`px-2.5 py-1 rounded-lg ${active ? primaryBtnClass : ''}`}
+                  className={`px-2 sm:px-2.5 py-1 rounded-lg ${active ? primaryBtnClass : ''}`}
                 >
-                  <Text className={`text-[10px] font-bold ${active ? 'text-[#101415]' : 'text-white/60'}`}>
+                  <Text className={`text-[9.5px] sm:text-[10px] font-bold ${active ? 'text-[#101415]' : 'text-white/60'}`}>
                     {filter}
                   </Text>
                 </Pressable>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable, Image, StyleSheet, Dimensions, Platform, Modal, Animated, Easing, LayoutAnimation, UIManager } from 'react-native';
+import { View, Text, Pressable, Image, StyleSheet, Platform, Modal, Animated, Easing, LayoutAnimation, UIManager } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Reanimated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
@@ -18,8 +18,7 @@ import {
   ChevronDown
 } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
-
-const { width, height } = Dimensions.get('window');
+import { useResponsive } from '../../utils/responsive';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -31,6 +30,7 @@ if (Platform.OS === 'android') {
 export const BusTrackingScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
+  const { width, height, isSmallPhone, insets, headerPaddingTop } = useResponsive();
   const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Custom alert dialog state
@@ -164,44 +164,47 @@ export const BusTrackingScreen: React.FC = () => {
       </View>
 
       {/* Top Header (Tab view style, no back button) */}
-      <View style={styles.header}>
-        <View className="flex-row items-center gap-3">
+      <View 
+        style={[
+          styles.header,
+          { paddingTop: headerPaddingTop }
+        ]}
+      >
+        <View className="flex-row items-center gap-3 flex-1 mr-2">
           <Pressable 
             onPress={() => navigation.navigate('StudentProfileDetails')}
             className="w-10 h-10 rounded-full overflow-hidden border border-white/20 active:scale-95"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
             <Image
               source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCMrIIqhz709VeW2BpRqLVg1j7U7Pl9daXfwRKA-2HDDgcA9W7mXSd5OKr4pnpdIm8PH7zmg2kpcIfjndCo00bTp-Axh-ozzk6NmCmBUgatneU-MIJXsqAP3jNupEJEVMnZddUdmfbtXx9Pf104uwZfzaiIwRgyJZ8fQhJHzGToBXPUzvkGYakj-ALyh-X-w-OuUIWQTLleEFRHfU4lEubjrHCKU1coc5G8ockGv2_JF5fyZw89gZymwweZDxq0LKQFld8hZ2gu1G6t' }}
               className="w-full h-full object-cover"
             />
           </Pressable>
-          <View>
+          <View className="flex-1">
             <Text className="text-white/70 text-xs font-semibold">Good Morning,</Text>
-            <Text className="text-white text-lg font-bold font-headline-md">{user?.name || 'Ramesh'} 👋</Text>
+            <Text numberOfLines={1} className="text-white text-base md:text-lg font-bold font-headline-md">{user?.name || 'Ramesh'} 👋</Text>
           </View>
         </View>
-        <Pressable className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95">
+        <Pressable 
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
           <Bell size={20} color="#5E5CE6" />
         </Pressable>
       </View>
 
-
-
-      {/* Floating Alerts Container */}
-      <View style={styles.floatingAlerts} className="px-5 gap-3">
-        {/* Delay Alert */}
-        <View style={[styles.delayCard, { borderWidth: 1, borderRadius: 20 }]} className="overflow-hidden relative">
-          <BlurView intensity={95} tint="dark" style={[StyleSheet.absoluteFillObject, { zIndex: -1 }]} />
-          <View className="p-5 flex-row items-center gap-4">
-            <View className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle size={20} color="#F87171" strokeWidth={2} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[#F87171] font-bold text-[11px] uppercase tracking-widest font-headline-md">DELAY ALERT</Text>
-              <Text className="text-white/80 text-[13px] font-semibold mt-1 leading-snug">
-                Bus delayed 20 min —{"\n"}traffic near Hitech City
-              </Text>
-            </View>
+      {/* Overlay Status Notifications */}
+      <View style={[styles.floatingAlertContainer, { top: headerPaddingTop + 70 }]}>
+        <View className="bg-[#13131A]/90 border border-red-500/30 p-3 rounded-2xl flex-row items-center gap-3 shadow-lg mb-3">
+          <View className="w-9 h-9 rounded-xl bg-red-500/20 items-center justify-center">
+            <AlertTriangle size={20} color="#F87171" strokeWidth={2} />
+          </View>
+          <View className="flex-1">
+            <Text className="text-[#F87171] font-bold text-[11px] uppercase tracking-widest font-headline-md">DELAY ALERT</Text>
+            <Text className="text-white/80 text-[13px] font-semibold mt-1 leading-snug">
+              Bus delayed 20 min —{"\n"}traffic near Hitech City
+            </Text>
           </View>
         </View>
 
@@ -223,7 +226,13 @@ export const BusTrackingScreen: React.FC = () => {
       </View>
 
       {/* Bottom Sheet Information Card with BlurView */}
-      <View style={styles.bottomSheet} className="overflow-hidden">
+      <View 
+        style={[
+          styles.bottomSheet,
+          { bottom: Math.max(insets.bottom, 12) + (isSmallPhone ? 75 : 85) }
+        ]} 
+        className="overflow-hidden"
+      >
         {/* Glow Background Layer */}
         <View style={[StyleSheet.absoluteFillObject, { zIndex: -2 }]}>
           {/* Base Dark Background (Translucent to let map show through) */}
@@ -552,6 +561,12 @@ const styles = StyleSheet.create({
   delayCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
     borderColor: 'rgba(255, 255, 255, 0.45)',
+  },
+  floatingAlertContainer: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    zIndex: 50,
   },
   etaBadge: {
     flexDirection: 'row',

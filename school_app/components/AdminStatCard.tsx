@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { GlassCard } from './GlassCard';
+import { useResponsive } from '../utils/responsive';
 
 interface AdminStatCardProps {
   title: string;
@@ -22,6 +23,8 @@ export const AdminStatCard: React.FC<AdminStatCardProps> = ({
   progress,
   onPress,
 }) => {
+  const { isSmallPhone } = useResponsive();
+
   return (
     <Pressable
       onPress={onPress}
@@ -36,15 +39,15 @@ export const AdminStatCard: React.FC<AdminStatCardProps> = ({
     >
       <GlassCard 
         intensity="low" 
-        className="p-4 flex-1 bg-[#101415]/80 border border-[#00f1a1]/20"
+        className={`${isSmallPhone ? 'p-3' : 'p-4'} flex-1 bg-[#101415]/80 border border-[#00f1a1]/20`}
       >
-        <View className="flex-row justify-between items-start mb-3">
-          <Text numberOfLines={1} className="text-white/70 text-xs font-semibold tracking-wider uppercase flex-1 mr-2">{title}</Text>
-          <View className="items-center justify-center p-1.5 rounded-lg bg-white/5 border border-white/10">
+        <View className="flex-row justify-between items-start mb-2.5">
+          <Text numberOfLines={1} adjustsFontSizeToFit className={`text-white/70 ${isSmallPhone ? 'text-[10px]' : 'text-xs'} font-semibold tracking-wider uppercase flex-1 mr-2`}>{title}</Text>
+          <View className="items-center justify-center p-1 rounded-lg bg-white/5 border border-white/10">
             {icon}
           </View>
         </View>
-        <Text numberOfLines={1} className="text-white text-2xl font-bold mb-1">{value}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit className={`text-white ${isSmallPhone ? 'text-xl' : 'text-2xl'} font-bold mb-1`}>{value}</Text>
         
         {progress !== undefined && (
           <View className="h-1.5 bg-white/10 rounded-full mt-2 overflow-hidden">
@@ -56,16 +59,17 @@ export const AdminStatCard: React.FC<AdminStatCardProps> = ({
         )}
 
         {subtitle && !trend && (
-          <Text numberOfLines={1} className="text-white/50 text-xs mt-1">{subtitle}</Text>
+          <Text numberOfLines={1} className={`text-white/50 ${isSmallPhone ? 'text-[10px]' : 'text-xs'} mt-1`}>{subtitle}</Text>
         )}
         
         {trend && (
           <View className="flex-row items-center mt-1 flex-wrap">
             <Text className="text-[#00f1a1] text-[10px] font-bold mr-1">↗ {trend}</Text>
-            {subtitle && <Text className="text-white/50 text-[10px]">{subtitle}</Text>}
+            {subtitle && <Text numberOfLines={1} className="text-white/50 text-[10px] flex-1">{subtitle}</Text>}
           </View>
         )}
       </GlassCard>
     </Pressable>
   );
 };
+

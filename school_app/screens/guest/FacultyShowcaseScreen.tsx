@@ -6,10 +6,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../store/useAuthStore';
 import { GuestHeader } from '../../components/GuestHeader';
+import { useResponsive } from '../../utils/responsive';
 
 export const FacultyShowcaseScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
+  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
   const [selectedDept, setSelectedDept] = useState('All Departments');
 
   // Custom alert dialog state
@@ -99,7 +101,29 @@ export const FacultyShowcaseScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <GuestHeader 
+        title="Faculty" 
+        showBack 
+        rightAction={
+          <Pressable 
+            onPress={() => navigation.navigate('EnquiryForm')}
+            className="bg-[#38bdf8] px-4 py-2 md:px-5 md:py-2.5 rounded-full active:scale-95 shadow-[0_0_16px_rgba(56,189,248,0.4)]"
+          >
+            <Text className="text-[#004965] font-semibold text-xs font-label-lg">Apply Now</Text>
+          </Pressable>
+        }
+      />
+
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: headerPaddingTop + 45,
+            paddingBottom: insets.bottom + 90,
+          }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header */}
         <View className="px-5 mb-6 items-center">
           <Text className="text-white text-3xl font-extrabold leading-tight mb-2 text-center">

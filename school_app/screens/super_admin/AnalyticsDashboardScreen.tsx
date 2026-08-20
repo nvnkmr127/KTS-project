@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { ChevronLeft, FileSpreadsheet, FileText, AlertCircle, Award, UserMinus, Landmark } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { GlassCard } from '../../components/GlassCard';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '../../utils/responsive';
 
 export const AnalyticsDashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop } = useResponsive();
   const [activeFilter, setActiveFilter] = useState<'week' | 'month' | 'term' | 'year'>('week');
 
   const kpis = [
@@ -60,12 +60,16 @@ export const AnalyticsDashboardScreen: React.FC = () => {
       {/* Header with Custom Glow Shadow */}
       <View style={{ zIndex: 50 }}>
         {/* Top App Bar */}
-        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 28 : 20) }]}>
-          <View className="flex-row items-center gap-3">
-            <Pressable onPress={() => navigation.goBack()} className="p-1 active:scale-95">
+        <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <View className="flex-row items-center gap-3 flex-1 mr-2">
+            <Pressable 
+              onPress={() => navigation.goBack()} 
+              className="p-1 active:scale-95"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
               <ChevronLeft size={24} color="#ffe5a0" />
             </Pressable>
-            <Text className="text-xl font-bold text-white font-display-lg">Portal Analytics</Text>
+            <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg flex-1">Portal Analytics</Text>
           </View>
         </BlurView>
         
@@ -77,7 +81,13 @@ export const AnalyticsDashboardScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Filters & Actions Strip */}
         <View className="px-5 mb-6 gap-4">

@@ -9,6 +9,7 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface ClassItemSummary {
   id: string;
@@ -356,15 +357,15 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 onPress={() => handleSelectClass(item)}
                 className={`mb-3.5 p-4 rounded-2xl border bg-[#101415]/90 flex-row items-center justify-between active:scale-[0.98] ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}
               >
-                <View className="flex-row items-center flex-1 mr-3">
-                  <View className={`w-11 h-11 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                <View className="flex-row items-center flex-1 mr-2 min-w-0">
+                  <View className={`w-11 h-11 rounded-2xl items-center justify-center mr-3 flex-shrink-0 ${primaryBadgeClass}`}>
                     <Text className={`${primaryTextClass} font-extrabold text-sm`}>{item.className.replace('Class ', '')}</Text>
                   </View>
 
-                  <View className="flex-1">
-                    <Text className="text-white font-extrabold text-sm">{item.className}</Text>
-                    <Text className="text-white/50 text-xs mt-0.5">{item.teacherName}</Text>
-                    <View className="flex-row items-center mt-1.5" style={{ gap: 10 }}>
+                  <View className="flex-1 min-w-0">
+                    <Text className="text-white font-extrabold text-sm" numberOfLines={1}>{item.className}</Text>
+                    <Text className="text-white/50 text-xs mt-0.5" numberOfLines={1}>{item.teacherName}</Text>
+                    <View className="flex-row items-center flex-wrap mt-1.5" style={{ gap: 6 }}>
                       <Text className="text-white/60 text-[11px] font-medium">Students: <Text className="text-white font-bold">{item.totalStudents}</Text></Text>
                       <Text className="text-emerald-400 text-[11px] font-medium">Present: <Text className="font-bold">{item.presentToday}</Text></Text>
                       <Text className="text-rose-400 text-[11px] font-medium">Absent: <Text className="font-bold">{item.absentToday}</Text></Text>
@@ -372,7 +373,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   </View>
                 </View>
 
-                <View className="items-end">
+                <View className="items-end flex-shrink-0">
                   <View className="flex-row items-center mb-1">
                     <Text className={`${primaryTextClass} font-extrabold text-sm mr-1`}>{item.todayAvg}%</Text>
                     <ChevronRight size={12} color={primaryColor} />

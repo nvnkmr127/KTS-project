@@ -9,6 +9,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface StaffAttendanceItem {
   id: string;
@@ -88,6 +89,7 @@ const INITIAL_STAFF_MEMBERS: StaffAttendanceItem[] = [
 
 export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
+  const { insets, isSmallPhone } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [selectedDate, setSelectedDate] = useState('2026-08-05');
   const [searchQuery, setSearchQuery] = useState('');
@@ -329,13 +331,13 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 </View>
 
                 {/* Timing Info & Biometric Sync Tag */}
-                <View className="flex-row justify-between items-center bg-black/40 p-2.5 rounded-xl border border-white/5">
-                  <View className="flex-row items-center">
+                <View className="flex-row justify-between items-center flex-wrap bg-black/40 p-2.5 rounded-xl border border-white/5" style={{ gap: 6 }}>
+                  <View className="flex-row items-center flex-shrink-0">
                     <Clock size={13} color={primaryColor} style={{ marginRight: 4 }} />
                     <Text className="text-white/70 text-xs font-bold">IN: {staff.inTime}  |  OUT: {staff.outTime}</Text>
                   </View>
 
-                  <View className="flex-row items-center">
+                  <View className="flex-row items-center flex-shrink-0">
                     <Fingerprint size={12} color={staff.biometricSynced ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 3 }} />
                     <Text className={`text-[9px] font-bold ${staff.biometricSynced ? primaryTextClass : 'text-white/40'}`}>
                       {staff.biometricSynced ? 'e-TimeOffice Live' : 'Recorded'}

@@ -10,6 +10,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface AlumniMember {
   id: string;
@@ -304,10 +305,13 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={handleOpenAddModal}
-              className={`${primaryBtnClass} px-3.5 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
+              className={`${primaryBtnClass} px-3.5 py-2.5 rounded-2xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+              style={{ minWidth: 105 }}
             >
-              <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
-              <Text className="text-[#101415] text-xs font-extrabold">Add Alumni</Text>
+              <Plus size={15} color="#101415" style={{ marginRight: 4 }} />
+              <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+                Add Alumni
+              </Text>
             </Pressable>
           </View>
 

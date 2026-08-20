@@ -11,6 +11,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface SubjectTeacher {
   subject: string;
@@ -111,47 +112,24 @@ const MOCK_CLASSES: ClassItem[] = [
     classTeacher: 'Dr. Meenakshi Sundaram',
     teacherSubject: 'Chemistry',
     teacherPhone: '+91 97001 22334',
-    totalStudents: 45,
-    maxCapacity: 45,
+    totalStudents: 38,
+    maxCapacity: 40,
     roomNo: 'Room 201',
-    buildingBlock: 'C.V. Raman Block • Floor 2',
-    attendanceRate: '96.8%',
-    presentToday: 43,
-    absentToday: 2,
+    buildingBlock: 'Aryabhata Block • Floor 2',
+    attendanceRate: '92.1%',
+    presentToday: 35,
+    absentToday: 3,
     classRank: '#2 in High School',
     academicYear: '2026-2027',
-    avatarColor: '#c084fc',
+    avatarColor: '#ec4899',
     subjectTeachers: [
       { subject: 'Chemistry', teacherName: 'Dr. Meenakshi Sundaram', phone: '+91 97001 22334', hoursPerWeek: 6 },
-      { subject: 'Mathematics', teacherName: 'Mrs. Anita Sharma', phone: '+91 98765 43210', hoursPerWeek: 6 },
+      { subject: 'Mathematics', teacherName: 'Mrs. Anita Sharma', phone: '+91 98765 43210', hoursPerWeek: 5 },
       { subject: 'English', teacherName: 'Mr. David Miller', phone: '+91 99887 76655', hoursPerWeek: 4 },
     ]
   },
   {
     id: 'cls_4',
-    grade: 'Class 9',
-    section: 'Section B',
-    wing: 'High School',
-    classTeacher: 'Mr. David Miller',
-    teacherSubject: 'English Literature',
-    teacherPhone: '+91 99887 76655',
-    totalStudents: 38,
-    maxCapacity: 40,
-    roomNo: 'Room 202',
-    buildingBlock: 'C.V. Raman Block • Floor 2',
-    attendanceRate: '94.6%',
-    presentToday: 36,
-    absentToday: 2,
-    classRank: '#4 in High School',
-    academicYear: '2026-2027',
-    avatarColor: '#f59e0b',
-    subjectTeachers: [
-      { subject: 'English', teacherName: 'Mr. David Miller', phone: '+91 99887 76655', hoursPerWeek: 6 },
-      { subject: 'Mathematics', teacherName: 'Mrs. Anita Sharma', phone: '+91 98765 43210', hoursPerWeek: 5 },
-    ]
-  },
-  {
-    id: 'cls_5',
     grade: 'Class 8',
     section: 'Section A',
     wing: 'Middle School',
@@ -501,10 +479,13 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
 
             <Pressable
               onPress={handleOpenAddModal}
-              className={`${primaryBtnClass} px-4 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
+              className={`${primaryBtnClass} px-3.5 py-2.5 rounded-2xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+              style={{ minWidth: 98 }}
             >
-              <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
-              <Text className="text-[#101415] text-xs font-extrabold">Add Class</Text>
+              <Plus size={15} color="#101415" style={{ marginRight: 4 }} />
+              <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+                Add Class
+              </Text>
             </Pressable>
           </View>
 

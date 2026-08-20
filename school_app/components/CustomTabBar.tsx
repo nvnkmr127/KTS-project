@@ -4,14 +4,13 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Dimensions,
   Platform,
 } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../store/useAuthStore";
-
-const { width } = Dimensions.get("window");
+import { useResponsive } from "../utils/responsive";
 
 export const CustomTabBar = ({
   state,
@@ -19,6 +18,8 @@ export const CustomTabBar = ({
   navigation,
 }: BottomTabBarProps) => {
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  const { isSmallPhone, isTablet } = useResponsive();
   const role = user?.role || "guest";
   const isFloating =
     role === "super_admin" ||
@@ -34,10 +35,18 @@ export const CustomTabBar = ({
     return ["#1c2222", "#101415"] as const;
   };
 
+  const bottomPosition = Math.max(insets.bottom, Platform.OS === "ios" ? 12 : 10);
+  const containerHeight = isSmallPhone ? 66 : 72;
+
   return (
     <View
       style={[
         isFloating ? styles.floatingContainer : styles.fullWidthContainer,
+        isFloating && {
+          bottom: bottomPosition,
+          height: containerHeight,
+          ...(isTablet ? { maxWidth: 560, alignSelf: "center" } : {}),
+        },
         role === "teacher"
           ? {
               shadowColor: "#ddb7ff",
@@ -67,7 +76,7 @@ export const CustomTabBar = ({
         style={[
           styles.blurContainer,
           isFloating
-            ? { borderRadius: 37, overflow: "hidden" }
+            ? { borderRadius: 36, overflow: "hidden" }
             : {
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
@@ -124,25 +133,25 @@ export const CustomTabBar = ({
               onPress={onPress}
               style={[
                 styles.tabItem,
-                hasManyTabs && { paddingHorizontal: 4, marginHorizontal: 1 },
                 isFocused ? activeStyle : styles.tabItemInactive,
               ]}
+              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
             >
               {options.tabBarIcon &&
                 options.tabBarIcon({
                   focused: isFocused,
                   color: isFocused ? activeColor : inactiveColor,
-                  size: 20,
+                  size: isSmallPhone ? 18 : 20,
                 })}
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
                 style={{
                   color: isFocused ? activeColor : inactiveColor,
-                  fontSize: hasManyTabs ? 9 : 10,
-                  marginTop: 4,
+                  fontSize: isSmallPhone ? 8.5 : hasManyTabs ? 9 : 10,
+                  marginTop: isSmallPhone ? 2 : 4,
                   fontWeight: isFocused ? "bold" : "600",
-                  letterSpacing: hasManyTabs ? 0.1 : 0.5,
+                  letterSpacing: hasManyTabs ? 0.1 : 0.4,
                 }}
               >
                 {label as string}
@@ -158,12 +167,9 @@ export const CustomTabBar = ({
 const styles = StyleSheet.create({
   floatingContainer: {
     position: "absolute",
-    bottom: Platform.OS === "ios" ? 36 : 28,
-    left: "2%",
-    right: "2%",
-    width: "96%",
-    height: 74,
-    borderRadius: 37,
+    left: 12,
+    right: 12,
+    borderRadius: 36,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
@@ -196,15 +202,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingHorizontal: 10,
-    paddingBottom: Platform.OS === "ios" ? 10 : 0, // safe area bottom on iOS
+    paddingHorizontal: 6,
   },
   tabItem: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    marginHorizontal: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+    minWidth: 0,
   },
   tabItemFocused: {
     backgroundColor: "#46f1c5",
@@ -219,3 +225,5 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
 });
+
+export default CustomTabBar;

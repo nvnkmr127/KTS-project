@@ -11,10 +11,12 @@ import {
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
+  const { insets, isSmallPhone } = useResponsive();
   const { user } = useAuthStore();
 
   // Settings Toggles State

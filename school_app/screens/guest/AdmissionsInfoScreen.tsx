@@ -6,10 +6,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../store/useAuthStore';
 import { GuestHeader } from '../../components/GuestHeader';
+import { useResponsive } from '../../utils/responsive';
 
 export const AdmissionsInfoScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
+  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
 
   // Custom alert dialog state
   const [customAlert, setCustomAlert] = useState<{
@@ -65,7 +67,16 @@ export const AdmissionsInfoScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { 
+            paddingTop: headerPaddingTop + 45,
+            paddingBottom: insets.bottom + 90,
+          }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Hero */}
         <View className="px-5 mb-8">
           <Text className="text-white text-3xl font-extrabold leading-tight mb-3">

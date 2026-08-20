@@ -11,6 +11,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface AlertLogItem {
   id: string;
@@ -32,6 +33,7 @@ const INITIAL_ALERT_LOGS: AlertLogItem[] = [
 export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
+  const { insets, isSmallPhone } = useResponsive();
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
 

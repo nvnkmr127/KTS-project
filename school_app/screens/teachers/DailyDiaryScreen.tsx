@@ -9,6 +9,7 @@ import {
   ChevronLeft, CheckCircle2, AlertCircle, BookOpen, Clock, X
 } from 'lucide-react-native';
 import { useDiaryStore } from '../../store/diaryStore';
+import { useResponsive } from '../../utils/responsive';
 
 const CLASSES_LIST = ['10A', '10B', '9A', '9B', '8A', '8B', '7A', '7B', '6A', '6B'];
 const PERIODS_LIST = [
@@ -23,6 +24,7 @@ const PERIODS_LIST = [
 export const DailyDiaryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { isSmallPhone, headerPaddingTop } = useResponsive();
   const addOrUpdateEntry = useDiaryStore((state) => state.addOrUpdateEntry);
   const diaryEntries = useDiaryStore((state) => state.diaryEntries);
 
@@ -84,10 +86,10 @@ export const DailyDiaryScreen: React.FC = () => {
           tint="dark"
           style={[
             styles.header,
-            { paddingTop: insets.top + (Platform.OS === 'android' ? 24 : 16) },
+            { paddingTop: headerPaddingTop },
           ]}
         >
-          <View className="flex-row items-center">
+          <View className="flex-row items-center flex-1 mr-2">
             {navigation.canGoBack() && (
               <Pressable onPress={() => navigation.goBack()} className="mr-3 p-1">
                 <ChevronLeft size={24} color="#ddb7ff" />
@@ -104,12 +106,15 @@ export const DailyDiaryScreen: React.FC = () => {
               </View>
               <View className="absolute bottom-0 right-0 w-3 h-3 bg-[#00f1a1] rounded-full border-2 border-[#0d0d12]" />
             </View>
-            <View className="ml-3">
-              <Text className="text-[#ddb7ff] text-xl font-bold">Teacher Daily Diary</Text>
-              <Text className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">Live Admin Sync Active</Text>
+            <View className="ml-3 flex-1">
+              <Text numberOfLines={1} className="text-[#ddb7ff] text-lg md:text-xl font-bold">Teacher Daily Diary</Text>
+              <Text numberOfLines={1} className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">Live Admin Sync Active</Text>
             </View>
           </View>
-          <Pressable className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10">
+          <Pressable 
+            className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
             <Bell size={20} color="#fff" />
           </Pressable>
         </BlurView>
@@ -121,7 +126,13 @@ export const DailyDiaryScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 40 }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Title */}
         <View className="mb-5">

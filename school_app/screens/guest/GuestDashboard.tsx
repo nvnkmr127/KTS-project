@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Image, Dimensions, Platform } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Image, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowRight, CheckCircle, GraduationCap } from 'lucide-react-native';
@@ -7,12 +7,12 @@ import { useNavigation } from '@react-navigation/native';
 import { GlassCard } from '../../components/GlassCard';
 import { useAuthStore } from '../../store/useAuthStore';
 import { GuestHeader } from '../../components/GuestHeader';
-
-const { width, height } = Dimensions.get('window');
+import { useResponsive } from '../../utils/responsive';
 
 export const GuestDashboard: React.FC = () => {
   const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
+  const { width, height, isSmallPhone, insets, headerPaddingTop } = useResponsive();
   const [activeChip, setActiveChip] = useState('Overview');
 
   const chips = [
@@ -38,6 +38,8 @@ export const GuestDashboard: React.FC = () => {
     'Ivy League Placement Cell'
   ];
 
+  const heroHeight = Math.max(460, Math.min(height * 0.62, 540));
+
   return (
     <View style={styles.container}>
       {/* Background Gradient */}
@@ -62,7 +64,7 @@ export const GuestDashboard: React.FC = () => {
         rightAction={
           <Pressable 
             onPress={() => navigation.navigate('EnquiryForm')}
-            className="bg-[#38bdf8] px-5 py-2.5 rounded-full active:scale-95 shadow-[0_0_16px_rgba(56,189,248,0.4)]"
+            className="bg-[#38bdf8] px-4 py-2 md:px-5 md:py-2.5 rounded-full active:scale-95 shadow-[0_0_16px_rgba(56,189,248,0.4)]"
           >
             <Text className="text-[#004965] font-semibold text-xs font-label-lg">Apply Now</Text>
           </Pressable>
@@ -70,12 +72,21 @@ export const GuestDashboard: React.FC = () => {
       />
 
       <ScrollView 
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={[
+          styles.scrollContent, 
+          { 
+            paddingTop: headerPaddingTop + 45,
+            paddingBottom: insets.bottom + 90,
+          }
+        ]} 
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
         {/* Hero Section */}
-        <View className="relative w-full h-[580] items-start justify-center overflow-hidden rounded-b-[40px] border-b border-white/10 mb-8">
+        <View 
+          style={{ height: heroHeight }}
+          className="relative w-full items-start justify-center overflow-hidden rounded-b-[40px] border-b border-white/10 mb-8"
+        >
           <Image 
             source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA9k2qrRKn6EjnwySdK8mvWGIpe-XMCT6PjXLgtiDE5O-zAs0M728KjEs2lEYzwC_UZJsD8w8Zzwmv_XflmUM8_AEnEGLAU4ferUD-PhSHAKJrd4_pJmBpBbkPgAtPLtwCyeFJJVMwOVLT0h2ecFRef8MHSXHhVUwFTucejkwH3ax5o4O36r1cvDPie5aQEMrhgPBFBl5H8p8uI8Ymb-rszmCJuKbQvR_KHb4oTXqQNDjh6RNFwtQ21EZndWWRkXCz79yeZzQ6KHK7s' }}
             className="absolute inset-0 w-full h-full"
@@ -86,7 +97,7 @@ export const GuestDashboard: React.FC = () => {
             style={StyleSheet.absoluteFillObject}
           />
           
-          <View className="relative z-10 px-5 gap-6 mt-16">
+          <View className="relative z-10 px-5 gap-5 mt-10 md:mt-16">
             <View className="flex-row items-center gap-3">
               <View className="bg-[#38bdf8]/20 border border-[#38bdf8]/40 px-3 py-1 rounded-full">
                 <Text className="text-[#8ed5ff] text-[10px] font-bold tracking-widest uppercase">CBSE / ICSE Accredited</Text>
@@ -94,26 +105,26 @@ export const GuestDashboard: React.FC = () => {
               <Text className="text-white/60 text-[10px] font-semibold tracking-wider font-label-md">Est. 1998</Text>
             </View>
 
-            <Text className="text-white text-4xl font-extrabold leading-tight font-display-lg">
+            <Text className={`text-white ${isSmallPhone ? 'text-3xl' : 'text-4xl'} font-extrabold leading-tight font-display-lg`}>
               EduVision{'\n'}
               <Text className="text-[#8ed5ff]">International School</Text>
             </Text>
 
-            <Text className="text-white/70 text-sm leading-relaxed max-w-xs font-body-lg">
+            <Text className="text-white/70 text-xs md:text-sm leading-relaxed max-w-xs font-body-lg">
               Empowering the next generation of global thinkers through excellence in academic rigor and holistic development in a tech-integrated ecosystem.
             </Text>
 
-            <View className="flex-row gap-4 mt-2">
+            <View className="flex-row flex-wrap gap-3 mt-1">
               <Pressable 
                 onPress={() => navigation.navigate('SchoolFacilities')}
-                className="bg-[#38bdf8] px-6 py-3.5 rounded-xl active:scale-95 shadow-[0_0_16px_rgba(56,189,248,0.4)]"
+                className="bg-[#38bdf8] px-5 py-3 rounded-xl active:scale-95 shadow-[0_0_16px_rgba(56,189,248,0.4)]"
               >
                 <Text className="text-[#004965] font-bold text-xs font-label-lg">Explore Virtual Tour</Text>
               </Pressable>
               <Pressable 
                 onPress={() => navigation.navigate('AdmissionsInfo')}
                 style={styles.secondaryButton}
-                className="px-6 py-3.5 rounded-xl active:scale-95"
+                className="px-5 py-3 rounded-xl active:scale-95"
               >
                 <Text className="text-white font-semibold text-xs font-label-lg">Download Prospectus</Text>
               </Pressable>
@@ -376,7 +387,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
     borderTopWidth: 1,
     borderColor: 'rgba(142, 213, 255, 0.2)',
     alignItems: 'center',
@@ -386,3 +399,4 @@ const styles = StyleSheet.create({
 });
 
 export default GuestDashboard;
+

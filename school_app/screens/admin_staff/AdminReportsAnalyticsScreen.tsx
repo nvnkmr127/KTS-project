@@ -5,8 +5,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart2, TrendingUp, Award, AlertCircle, UserMinus, Landmark, FileText, FileSpreadsheet } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { useResponsive } from '../../utils/responsive';
 
 export const AdminReportsAnalyticsScreen: React.FC<any> = ({ navigation }) => {
+  const { insets, isSmallPhone } = useResponsive();
   const [activeFilter, setActiveFilter] = useState<'week' | 'month' | 'term' | 'year'>('week');
 
   // Handle Hardware Back Button & System Back Gesture
@@ -141,20 +143,20 @@ export const AdminReportsAnalyticsScreen: React.FC<any> = ({ navigation }) => {
 
             <View className="divide-y divide-white/5">
               <View className="flex-row bg-white/5 p-3 justify-between">
-                <Text className="text-white/40 text-[9.5px] font-bold uppercase w-[35%]">Grade / Class</Text>
-                <Text className="text-white/40 text-[9.5px] font-bold uppercase w-[20%] text-center">Avg Score</Text>
-                <Text className="text-white/40 text-[9.5px] font-bold uppercase w-[25%] text-center">Attendance</Text>
-                <Text className="text-white/40 text-[9.5px] font-bold uppercase w-[20%] text-right">Status</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/40 text-[9px] sm:text-[9.5px] font-bold uppercase w-[35%]">Grade / Class</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/40 text-[9px] sm:text-[9.5px] font-bold uppercase w-[20%] text-center">Avg Score</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/40 text-[9px] sm:text-[9.5px] font-bold uppercase w-[25%] text-center">Attendance</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/40 text-[9px] sm:text-[9.5px] font-bold uppercase w-[20%] text-right">Status</Text>
               </View>
 
               {classData.map(cls => (
                 <View key={cls.id} className="flex-row p-3.5 items-center justify-between">
-                  <Text className="text-white font-extrabold text-xs w-[35%]">{cls.name}</Text>
-                  <Text className="text-[#00f1a1] font-bold text-xs w-[20%] text-center">{cls.avgScore}</Text>
-                  <Text className="text-white/70 text-xs w-[25%] text-center">{cls.attendance}</Text>
+                  <Text numberOfLines={1} className="text-white font-extrabold text-xs w-[35%]">{cls.name}</Text>
+                  <Text numberOfLines={1} className="text-[#00f1a1] font-bold text-xs w-[20%] text-center">{cls.avgScore}</Text>
+                  <Text numberOfLines={1} className="text-white/70 text-xs w-[25%] text-center">{cls.attendance}</Text>
                   <View className="w-[20%] items-end">
                     <View className="px-2 py-0.5 rounded-md border" style={{ borderColor: cls.statusColor + '40', backgroundColor: cls.statusColor + '20' }}>
-                      <Text className="text-[9px] font-extrabold" style={{ color: cls.statusColor }}>{cls.status}</Text>
+                      <Text numberOfLines={1} className="text-[9px] font-extrabold" style={{ color: cls.statusColor }}>{cls.status}</Text>
                     </View>
                   </View>
                 </View>

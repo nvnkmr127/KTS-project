@@ -11,6 +11,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import * as Print from 'expo-print';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface PeriodTiming {
   period: number;
@@ -90,6 +91,7 @@ const SUBJECT_COLORS: Record<string, { bg: string; border: string; text: string 
 
 export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
+  const { insets, isSmallPhone } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [selectedClass, setSelectedClass] = useState('10A');
   const [activeDay, setActiveDay] = useState('Monday');
@@ -530,9 +532,9 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
         {/* Web Header Controls Bar (Periods Count Badge, Print, Edit Timings, Save Timetable) */}
         <View className="px-5 mb-4">
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90">
-            <View className="flex-row justify-between items-center mb-3">
-              <View className="flex-row items-center">
-                <View className="bg-sky-500/15 border border-sky-500/30 px-3 py-1 rounded-xl mr-2">
+            <View className="flex-row justify-between items-center mb-3 flex-wrap" style={{ gap: 8 }}>
+              <View className="flex-row items-center flex-wrap" style={{ gap: 6 }}>
+                <View className="bg-sky-500/15 border border-sky-500/30 px-3 py-1 rounded-xl">
                   <Text className="text-sky-400 text-xs font-bold">{countFilledPeriods()} Periods Assigned</Text>
                 </View>
                 {hasUnsavedChanges && (
@@ -544,7 +546,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
 
               <Pressable
                 onPress={handleMobilePrintSchedule}
-                className="bg-white/5 border border-white/15 px-3 py-1.5 rounded-xl flex-row items-center"
+                className="bg-white/5 border border-white/15 px-3 py-1.5 rounded-xl flex-row items-center active:scale-95 flex-shrink-0"
               >
                 <Printer size={13} color={primaryColor} style={{ marginRight: 5 }} />
                 <Text className={`${primaryTextClass} text-xs font-bold`}>Print Schedule</Text>

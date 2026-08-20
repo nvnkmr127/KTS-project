@@ -9,6 +9,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface AbsentTeacherItem {
   id: string;
@@ -40,6 +41,7 @@ const MOCK_FREE_TEACHERS: AvailableTeacherItem[] = [
 
 export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
+  const { insets, isSmallPhone } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [absentTeachers, setAbsentTeachers] = useState<AbsentTeacherItem[]>(MOCK_ABSENT_TEACHERS);
   const [availableTeachers] = useState<AvailableTeacherItem[]>(MOCK_FREE_TEACHERS);
@@ -175,10 +177,13 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
 
                   <Pressable
                     onPress={() => handleOpenAssignModal(ab)}
-                    className={`${primaryBtnClass} px-3.5 py-2 rounded-xl flex-row items-center shadow-lg`}
+                    className={`${primaryBtnClass} px-3.5 py-2 rounded-xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+                    style={{ minWidth: 100 }}
                   >
-                    <UserPlus size={13} color="#101415" style={{ marginRight: 5 }} />
-                    <Text className="text-[#101415] text-xs font-extrabold">Assign Sub</Text>
+                    <UserPlus size={13} color="#101415" style={{ marginRight: 4 }} />
+                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+                      Assign Sub
+                    </Text>
                   </Pressable>
                 </View>
               </GlassCard>

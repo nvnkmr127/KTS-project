@@ -36,10 +36,12 @@ export const GuestHeader: React.FC<GuestHeaderProps> = ({ title, showBack = fals
     { label: 'Admission Enquiry',  icon: FileText,     routeName: 'EnquiryForm' },
   ];
 
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 12 : 16) + (Platform.OS === 'android' ? 8 : 4);
+
   return (
     <>
       {/* Top App Bar */}
-      <View style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 12 : 6) }]}>
+      <View style={[styles.header, { paddingTop: topPadding }]}>
         <View style={styles.headerLeft}>
           {showBack && (
             <Pressable
@@ -51,12 +53,13 @@ export const GuestHeader: React.FC<GuestHeaderProps> = ({ title, showBack = fals
                 }
               }}
               style={styles.backButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <ChevronLeft size={24} color="#8ed5ff" />
             </Pressable>
           )}
-          <School size={26} color="#8ed5ff" />
-          <Text style={styles.headerTitle}>{title}</Text>
+          <School size={24} color="#8ed5ff" />
+          <Text numberOfLines={1} adjustsFontSizeToFit style={styles.headerTitle}>{title}</Text>
         </View>
         <View style={styles.headerRight}>
           {rightAction}
@@ -82,7 +85,7 @@ export const GuestHeader: React.FC<GuestHeaderProps> = ({ title, showBack = fals
         <Pressable style={styles.modalOverlay} onPress={() => setMenuVisible(false)}>
           {/* Menu panel — stop propagation so taps inside don't close modal */}
           <Pressable
-            style={[styles.menuContainer, { top: insets.top + 60 }]}
+            style={[styles.menuContainer, { top: insets.top + 56 }]}
             onPress={() => {}}
           >
             {/* Layer 1: Dark blur base matching guest screen tone */}
@@ -173,7 +176,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingBottom: 16,
+    paddingBottom: 14,
     paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -186,18 +189,21 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+    flex: 1,
+    marginRight: 10,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#e0e3e5',
     marginLeft: 4,
+    flex: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   backButton: {
     padding: 4,
@@ -215,6 +221,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 16,
     width: 235,
+    maxWidth: '80%',
     borderRadius: 22,
     overflow: 'hidden',
     borderWidth: 1,

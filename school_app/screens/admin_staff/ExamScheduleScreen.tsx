@@ -9,6 +9,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useResponsive } from '../../utils/responsive';
 
 export interface ExamScheduleItem {
   id: string;
@@ -31,6 +32,7 @@ const MOCK_EXAM_SCHEDULES: ExamScheduleItem[] = [
 
 export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
+  const { insets, isSmallPhone } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
@@ -278,10 +280,13 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
 
                 <Pressable
                   onPress={handleOpenAdd}
-                  className={`${primaryBtnClass} px-4 py-2.5 rounded-2xl flex-row items-center shadow-lg`}
+                  className={`${primaryBtnClass} px-3.5 py-2.5 rounded-2xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+                  style={{ minWidth: 120 }}
                 >
-                  <Plus size={16} color="#101415" style={{ marginRight: 4 }} />
-                  <Text className="text-[#101415] text-xs font-extrabold">Schedule Exam</Text>
+                  <Plus size={15} color="#101415" style={{ marginRight: 4 }} />
+                  <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+                    Schedule Exam
+                  </Text>
                 </Pressable>
               </View>
 

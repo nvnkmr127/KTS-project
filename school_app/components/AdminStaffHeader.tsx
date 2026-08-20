@@ -35,13 +35,19 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
   const primaryColor = isSuperAdmin ? '#f0c110' : '#00f1a1';
   const glowColors: [string, string] = isSuperAdmin ? ['rgba(245, 197, 24, 0.15)', 'transparent'] : ['rgba(0, 241, 161, 0.15)', 'transparent'];
   
+  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 12 : 16) + (Platform.OS === 'android' ? 8 : 4);
+
   return (
     <View style={{ zIndex: 50 }}>
       {/* Top App Bar */}
-      <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: insets.top + (Platform.OS === 'android' ? 28 : 20) }]}>
-        <View className="flex-row items-center gap-3">
+      <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: topPadding }]}>
+        <View className="flex-row items-center gap-2.5 flex-1 mr-2">
           {onBackPress && (
-            <Pressable onPress={onBackPress} className="mr-1 active:opacity-60">
+            <Pressable 
+              onPress={onBackPress} 
+              className="mr-0.5 active:opacity-60"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <ChevronLeft size={24} color={accentColor} />
             </Pressable>
           )}
@@ -54,10 +60,10 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
             icon
           )}
 
-          <View>
-            <Text className={`font-bold text-white ${subtitle ? 'text-xl font-display-lg' : 'text-lg tracking-tight'}`}>{title}</Text>
+          <View className="flex-1">
+            <Text numberOfLines={1} adjustsFontSizeToFit className={`font-bold text-white ${subtitle ? 'text-base md:text-lg' : 'text-sm md:text-base tracking-tight'}`}>{title}</Text>
             {subtitle && (
-              <Text className={`text-[9px] uppercase tracking-[0.2em] font-bold ${isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]'}`}>
+              <Text numberOfLines={1} className={`text-[8.5px] md:text-[9px] uppercase tracking-[0.12em] font-bold ${isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]'}`}>
                 {subtitle}
               </Text>
             )}
@@ -70,6 +76,7 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
           <Pressable 
             onPress={onNotificationPress}
             className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative active:bg-white/10 shadow-[0_0_10px_rgba(0,241,161,0.1)]"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Bell size={18} color={primaryColor} />
             {unreadCount > 0 && (
@@ -91,8 +98,8 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    paddingBottom: 16,
-    paddingHorizontal: 20,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -102,3 +109,4 @@ const styles = StyleSheet.create({
 });
 
 export default AdminStaffHeader;
+

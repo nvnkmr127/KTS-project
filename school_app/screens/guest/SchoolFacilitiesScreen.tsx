@@ -6,11 +6,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useAuthStore } from '../../store/useAuthStore';
 import { GuestHeader } from '../../components/GuestHeader';
+import { useResponsive } from '../../utils/responsive';
 
 export const SchoolFacilitiesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
+  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
 
   // Custom alert dialog state
   const [customAlert, setCustomAlert] = useState<{
@@ -109,10 +111,29 @@ export const SchoolFacilitiesScreen: React.FC = () => {
         style={StyleSheet.absoluteFillObject}
       />
 
-      {/* Top App Bar - EduVision Branding */}
-      <GuestHeader title="Facilities" showBack />
+      <GuestHeader
+        title="Facilities"
+        showBack
+        rightAction={
+          <Pressable
+            onPress={() => navigation.navigate('EnquiryForm')}
+            className="bg-[#38bdf8] px-4 py-2 md:px-5 md:py-2.5 rounded-full active:scale-95 shadow-[0_0_16px_rgba(56,189,248,0.4)]"
+          >
+            <Text className="text-[#004965] font-semibold text-xs">Apply Now</Text>
+          </Pressable>
+        }
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: headerPaddingTop + 45,
+            paddingBottom: insets.bottom + 90,
+          }
+        ]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Section Header */}
         <View className="px-5 mb-8">
           <Text className="text-[#8ed5ff] text-[10px] font-bold uppercase tracking-[3px] mb-2">
