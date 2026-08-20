@@ -372,31 +372,6 @@ export function StaffAttendance() {
   }, []);
 
 
-  // Check biometric status on mount
-  useEffect(() => {
-    api.biometricStatus()
-      .then((res) => {
-        if (res?.configured) {
-          setConnectionStatus('connected');
-          if (res.last_sync) {
-            const d = new Date(res.last_sync);
-            setLastSyncTime(d.toLocaleString());
-          }
-          // Silently sync yesterday's biometric data to ensure it is stored in the database
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().slice(0, 10);
-          api.biometricSyncPunch(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
-          api.biometricSyncInOut(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
-        } else {
-          setConnectionStatus('disconnected');
-        }
-      })
-      .catch(() => {
-        setConnectionStatus('disconnected');
-      });
-  }, []);
-
   // Fetch logs from the local biometric_logs table (which gets instant webhook data)
   const fetchLocalBiometricLogs = useCallback(() => {
     api.getResources('biometric-logs', { date })
@@ -449,7 +424,6 @@ export function StaffAttendance() {
   // Sync biometric IN/OUT data for the selected date from the real API
   const syncBiometric = useCallback((silent = false) => {
     if (syncInProgress.current) return;
-    if (silent && connectionStatus === 'disconnected') return;
 
     syncInProgress.current = true;
     setIsSyncing(true);
@@ -500,6 +474,7 @@ export function StaffAttendance() {
           if (!silent) setLastSyncMsg('⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.');
           fetchLocalBiometricLogs();
         } else {
+          setConnectionStatus('disconnected');
           if (!silent) setLastSyncMsg(`⚠ ${result?.message || 'Sync returned no data'}`);
           fetchLocalBiometricLogs();
         }
@@ -521,12 +496,11 @@ export function StaffAttendance() {
         syncInProgress.current = false;
         setIsSyncing(false);
       });
-  }, [date, staffList, fetchLocalBiometricLogs, connectionStatus]);
+  }, [date, staffList, fetchLocalBiometricLogs]);
 
   // Sync biometric raw punch logs (DownloadPunchData) every second during school hours
   const syncBiometricPunches = useCallback((silent = false) => {
     if (syncPunchesInProgress.current) return;
-    if (silent && connectionStatus === 'disconnected') return;
 
     syncPunchesInProgress.current = true;
     setIsSyncingPunches(true);
@@ -536,6 +510,8 @@ export function StaffAttendance() {
         if (result?.success) {
           fetchLocalBiometricLogs();
           setConnectionStatus('connected');
+        } else {
+          setConnectionStatus('disconnected');
         }
       })
       .catch((err) => {
@@ -556,7 +532,7 @@ export function StaffAttendance() {
         syncPunchesInProgress.current = false;
         setIsSyncingPunches(false);
       });
-  }, [date, fetchLocalBiometricLogs, connectionStatus]);
+  }, [date, fetchLocalBiometricLogs]);
 
   // Ref to hold the latest function reference for the 1s local-DB poll below
   const fetchLocalBiometricLogsRef = useRef(fetchLocalBiometricLogs);
@@ -564,6 +540,37 @@ export function StaffAttendance() {
   useEffect(() => {
     fetchLocalBiometricLogsRef.current = fetchLocalBiometricLogs;
   }, [fetchLocalBiometricLogs]);
+
+  // Check biometric status on mount
+  useEffect(() => {
+    setConnectionStatus('testing');
+    api.biometricStatus()
+      .then((res) => {
+        if (res?.configured) {
+          if (res.last_sync) {
+            const d = new Date(res.last_sync);
+            setLastSyncTime(d.toLocaleString());
+          }
+          // Silently sync yesterday's biometric data to ensure it is stored in the database
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().slice(0, 10);
+          api.biometricSyncPunch(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
+          api.biometricSyncInOut(yesterdayStr, yesterdayStr, 'ALL').catch(() => {});
+
+          // Determine live connection status
+          syncBiometricPunches(true);
+          syncBiometric(true);
+        } else {
+          setConnectionStatus('disconnected');
+          setAttendanceMode('manual');
+        }
+      })
+      .catch(() => {
+        setConnectionStatus('disconnected');
+        setAttendanceMode('manual');
+      });
+  }, [syncBiometric, syncBiometricPunches]);
 
   // Auto-sync when date changes
   useEffect(() => {
@@ -597,7 +604,6 @@ export function StaffAttendance() {
             });
 
             setBiometricRecords(mapped);
-            setConnectionStatus('connected');
 
             // Convert biometric records to LocalPunch format for saving
             const newPunches: LocalPunch[] = [];
@@ -683,10 +689,18 @@ export function StaffAttendance() {
   }, [manualAttendance]);
 
    
-  // Force biometric mode if the device is connected/working
+  // Automatically switch mode based on biometric connectivity:
+  // - When biometric device is online (connected): manual option is disabled, biometric mode is active.
+  // - When biometric device is offline (disconnected): manual mode is enabled and active.
   useEffect(() => {
-    if (connectionStatus === 'connected' && attendanceMode !== 'biometric') {
-      setAttendanceMode('biometric');
+    if (connectionStatus === 'connected') {
+      if (attendanceMode !== 'biometric') {
+        setAttendanceMode('biometric');
+      }
+    } else if (connectionStatus === 'disconnected') {
+      if (attendanceMode !== 'manual') {
+        setAttendanceMode('manual');
+      }
     }
   }, [connectionStatus, attendanceMode]);
 
@@ -934,11 +948,17 @@ export function StaffAttendance() {
               <button
                 type="button"
                 onClick={() => setAttendanceMode('biometric')}
-                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                disabled={connectionStatus === 'disconnected'}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                  connectionStatus === 'disconnected'
+                    ? 'opacity-40 cursor-not-allowed text-[var(--tx3)]'
+                    : 'cursor-pointer hover:text-[var(--tx2)]'
+                } ${
                   attendanceMode === 'biometric'
                     ? 'bg-[var(--blue)] text-white'
-                    : 'text-[var(--tx3)] hover:text-[var(--tx2)]'
+                    : 'text-[var(--tx3)]'
                 }`}
+                title={connectionStatus === 'disconnected' ? "Biometric is offline (not connected to internet)" : "Biometric mode"}
               >
                 Biometric
               </button>
@@ -955,7 +975,7 @@ export function StaffAttendance() {
                     ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)] border border-[var(--amber-tx)]/20'
                     : 'text-[var(--tx3)]'
                 }`}
-                title={connectionStatus === 'connected' ? "Manual mode is disabled because the biometric device is connected and working." : "Use this if biometric machine is under maintenance or offline"}
+                title={connectionStatus === 'connected' ? "Manual mode is disabled because the biometric device is online." : "Biometric device is offline. Manual attendance is enabled."}
               >
                 Manual
               </button>
@@ -1029,7 +1049,7 @@ export function StaffAttendance() {
                 </>
               ) : (
                 <>
-                  <strong>Manual Override active:</strong> Attendance is editable manually. Use this when the biometric machine is offline or under maintenance.
+                  <strong>Manual Attendance Mode (Offline):</strong> Biometric device is offline (not connected to internet). Manual attendance controls are enabled.
                 </>
               )}
             </span>
@@ -1260,18 +1280,18 @@ export function StaffAttendance() {
                             <button
                               key={opt.value}
                               type="button"
-                              disabled={attendanceMode === 'biometric'}
+                              disabled={attendanceMode === 'biometric' || connectionStatus === 'connected'}
                               onClick={() => setManualStatus(s.id, opt.value as AttendanceStatus)}
                               className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all ${
-                                attendanceMode === 'biometric'
+                                (attendanceMode === 'biometric' || connectionStatus === 'connected')
                                   ? 'opacity-40 cursor-not-allowed'
                                   : 'cursor-pointer'
                               } ${
                                 status === opt.value
                                   ? opt.active
-                                  : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${attendanceMode === 'biometric' ? '' : opt.bg}`
+                                  : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${(attendanceMode === 'biometric' || connectionStatus === 'connected') ? '' : opt.bg}`
                               }`}
-                              title={attendanceMode === 'biometric' ? "Manual overrides are disabled in Biometric Mode" : `Set to ${opt.value}`}
+                              title={(attendanceMode === 'biometric' || connectionStatus === 'connected') ? "Manual mode is disabled when biometric device is online" : `Set to ${opt.value}`}
                             >
                               {opt.value}
                             </button>
