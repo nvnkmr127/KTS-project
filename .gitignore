@@ -22,11 +22,6 @@ dist-ssr
 *.sw?
 .env
 .env*
-.env.production
-.env.local
-.env.*.local
-!.env.example
-!.env.*.example
 
 composer.phar
 eslint-results.json
