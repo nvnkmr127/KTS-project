@@ -434,8 +434,10 @@ export function StaffAttendance() {
     }
 
     try {
-      const res = await api.biometricStatus();
-      if (res?.configured) {
+      const res = await api.biometricStatus(true);
+      if (res?.configured && res?.connected) {
+        setConnectionStatus('connected');
+        setAttendanceMode('biometric');
         if (res.last_sync) {
           const d = new Date(res.last_sync);
           setLastSyncTime(d.toLocaleString());
@@ -444,8 +446,12 @@ export function StaffAttendance() {
       } else {
         setConnectionStatus('disconnected');
         setAttendanceMode('manual');
-        if (!silent && res?.connection_message) {
-          setLastSyncMsg(`⚠ Biometric device offline: ${res.connection_message}`);
+        if (!silent) {
+          setLastSyncMsg(
+            res?.connection_message
+              ? `⚠ Biometric device offline: ${res.connection_message}`
+              : '⚠ Biometric device is offline (not connected to internet). Manual mode active.'
+          );
         }
         return false;
       }
@@ -628,8 +634,8 @@ export function StaffAttendance() {
     }
 
     setConnectionStatus('testing');
-    checkBiometricStatus(true).then((isConfigured) => {
-      if (isConfigured) {
+    checkBiometricStatus(true).then((isLive) => {
+      if (isLive) {
         // Silently sync yesterday's biometric data to ensure it is stored in the database
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -639,6 +645,9 @@ export function StaffAttendance() {
 
         syncBiometricPunches(true);
         syncBiometric(true);
+      } else {
+        setConnectionStatus('disconnected');
+        setAttendanceMode('manual');
       }
     });
   }, [checkBiometricStatus, syncBiometric, syncBiometricPunches]);
@@ -1142,12 +1151,17 @@ export function StaffAttendance() {
                   syncBiometricPunches(false);
                   syncBiometric(false);
                 }}
-                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
+                disabled={connectionStatus === 'disconnected'}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
+                  connectionStatus === 'disconnected'
+                    ? 'opacity-40 cursor-not-allowed text-[var(--tx3)]'
+                    : 'cursor-pointer hover:text-[var(--tx2)]'
+                } ${
                   attendanceMode === 'biometric'
                     ? 'bg-[var(--blue)] text-white'
-                    : 'text-[var(--tx3)] hover:text-[var(--tx2)]'
+                    : 'text-[var(--tx3)]'
                 }`}
-                title="Biometric mode (synced with eTimeOffice)"
+                title={connectionStatus === 'disconnected' ? "Biometric is offline (not connected to internet)" : "Biometric mode"}
               >
                 Biometric
               </button>
