@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../services/api';
-import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff, Save, CheckCircle } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/ui';
@@ -229,6 +229,9 @@ export function StaffAttendance() {
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
   const [isSyncingPunches, setIsSyncingPunches] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  const [leavesList, setLeavesList] = useState<any[]>([]);
   const syncInProgress = useRef(false);
   const syncPunchesInProgress = useRef(false);
   const [lastSyncMsg, setLastSyncMsg] = useState<string | null>(null);
@@ -432,8 +435,7 @@ export function StaffAttendance() {
 
     try {
       const res = await api.biometricStatus();
-      if (res?.configured && res?.connected) {
-        setConnectionStatus('connected');
+      if (res?.configured) {
         if (res.last_sync) {
           const d = new Date(res.last_sync);
           setLastSyncTime(d.toLocaleString());
@@ -488,6 +490,7 @@ export function StaffAttendance() {
           });
 
           setConnectionStatus('connected');
+          setAttendanceMode('biometric');
           const now = new Date().toLocaleTimeString();
           setLastSyncTime(now);
 
@@ -557,6 +560,7 @@ export function StaffAttendance() {
         if (result?.success) {
           fetchLocalBiometricLogs();
           setConnectionStatus('connected');
+          setAttendanceMode('biometric');
         } else {
           setConnectionStatus('disconnected');
           setAttendanceMode('manual');
@@ -624,8 +628,8 @@ export function StaffAttendance() {
     }
 
     setConnectionStatus('testing');
-    checkBiometricStatus(true).then((isLive) => {
-      if (isLive) {
+    checkBiometricStatus(true).then((isConfigured) => {
+      if (isConfigured) {
         // Silently sync yesterday's biometric data to ensure it is stored in the database
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -734,19 +738,19 @@ export function StaffAttendance() {
     return () => window.removeEventListener('focus', handleFocus);
   }, [syncBiometric, syncBiometricPunches]);
 
-  const saveSettingToDb = (key: string, value: string) => {
-    api.getResources('settings')
-      .then((settings) => {
-        const setting = settings.find((s: any) => s.key === key);
-        if (setting) {
-          return api.updateResource('settings', setting.id, { key, value });
-        } else {
-          return api.createResource('settings', { key, value, group: 'staff' });
-        }
-      })
-      .catch((err) => {
-        console.error(`Error saving setting ${key} to DB:`, err);
-      });
+  const saveSettingToDb = async (key: string, value: string) => {
+    try {
+      const settings = await api.getResources('settings');
+      const settingsArray = Array.isArray(settings) ? settings : (settings?.data && Array.isArray(settings.data) ? settings.data : []);
+      const setting = settingsArray.find((s: any) => s.key === key);
+      if (setting && setting.id) {
+        return await api.updateResource('settings', setting.id, { key, value });
+      } else {
+        return await api.createResource('settings', { key, value, group: 'staff' });
+      }
+    } catch (err) {
+      console.error(`Error saving setting ${key} to DB:`, err);
+    }
   };
 
   // Persistence hooks
@@ -783,6 +787,65 @@ export function StaffAttendance() {
   // Extract unique categories for filtering
   const allCategories = Array.from(new Set(staffList.map((s) => s.category || 'Teaching')));
 
+  // Fetch leaves directly from API on mount and when date changes
+  const fetchLeaves = useCallback(async () => {
+    try {
+      const res = await api.getResources('leaves');
+      const leavesArray = Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : []);
+      const mapped = leavesArray.map((l: any) => ({
+        id: String(l.id),
+        staffId: String(l.user_id || l.staff_id || l.faculty_id || ''),
+        staffName: l.staff_name || '',
+        from: l.start_date || l.from || '',
+        to: l.end_date || l.to || l.start_date || l.from || '',
+        status: (l.status || 'Pending').toString(),
+        type: typeof l.leave_type === 'object' && l.leave_type ? l.leave_type.name : (l.leave_type || 'Leave'),
+      }));
+      setLeavesList(mapped);
+    } catch (e) {
+      console.error('Failed to fetch leaves in StaffAttendance:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeaves();
+  }, [fetchLeaves, date]);
+
+  const allLeaves = useMemo(() => {
+    const combined = [...leaveRequests];
+    leavesList.forEach((l) => {
+      if (!combined.some((c) => String(c.id) === String(l.id))) {
+        combined.push(l);
+      }
+    });
+    return combined;
+  }, [leaveRequests, leavesList]);
+
+  // Check if a staff member has an approved leave for a given date
+  const isStaffOnLeave = useCallback((staff: StaffMember, checkDate: string): boolean => {
+    const staffIdStr = String(staff.id).trim().toLowerCase();
+    const staffUserIdStr = String((staff as any).user_id || '').trim().toLowerCase();
+    const staffEmpCodeStr = String(staff.biometric_employee_code || (staff as any).employee_code || '').trim().toLowerCase();
+    const staffNameStr = String(staff.name || '').trim().toLowerCase();
+
+    return allLeaves.some((l) => {
+      const lStatus = String(l.status || '').trim().toLowerCase();
+      if (lStatus !== 'approved') return false;
+
+      const lFrom = String(l.from || l.start_date || '').slice(0, 10);
+      const lTo = String(l.to || l.end_date || lFrom).slice(0, 10);
+      if (checkDate < lFrom || checkDate > lTo) return false;
+
+      const lStaffId = String(l.staffId || l.user_id || l.staff_id || '').trim().toLowerCase();
+      const lStaffName = String(l.staffName || '').trim().toLowerCase();
+
+      const matchId = lStaffId && (lStaffId === staffIdStr || lStaffId === staffUserIdStr || (staffEmpCodeStr && lStaffId === staffEmpCodeStr));
+      const matchName = lStaffName && staffNameStr && (lStaffName === staffNameStr || lStaffName.includes(staffNameStr) || staffNameStr.includes(lStaffName));
+
+      return matchId || matchName;
+    });
+  }, [allLeaves]);
+
   // Find biometric record(s) for a given staff member on the selected date
   const getBiometricRecordsForStaff = (staff: StaffMember): BiometricRecord[] => {
     return biometricRecords.filter((record) => matchesStaffOnDate(record, staff, date));
@@ -791,8 +854,8 @@ export function StaffAttendance() {
   // Helper to count all punches (biometric API + local simulation)
   const getPunchesForStaffOnDate = (staff: StaffMember) => {
     if (attendanceMode === 'manual') {
-      const manualStatus = manualAttendance[date]?.[staff.id] || 'Present';
-      if (manualStatus === 'Present') {
+      const manualStatus = manualAttendance[date]?.[staff.id];
+      if (manualStatus === 'Present' || (!manualStatus && !isStaffOnLeave(staff, date))) {
         return [
           { id: 'm1', staffId: staff.id, timestamp: `${date} 09:00:00` },
           { id: 'm2', staffId: staff.id, timestamp: `${date} 17:00:00` },
@@ -824,20 +887,14 @@ export function StaffAttendance() {
       return manualStatus;
     }
 
+    // In BOTH biometric mode and manual mode:
     // Check if there is an approved leave request for this staff member on the selected date
-    const hasApprovedLeave = leaveRequests.some((l) => 
-      String(l.staffId) === String(staff.id) &&
-      l.status === 'Approved' &&
-      date >= l.from &&
-      date <= l.to
-    );
-
-    if (hasApprovedLeave) {
+    if (isStaffOnLeave(staff, date)) {
       return 'Leave';
     }
 
     if (attendanceMode === 'manual') {
-      return 'Present'; // Default to Present in manual mode
+      return 'Present'; // Default to Present in manual mode if not on approved leave
     }
 
     // Biometric Mode
@@ -889,6 +946,72 @@ export function StaffAttendance() {
       }
       return { ...prev, [date]: dateRecords };
     });
+  };
+
+  // Save manual attendance to database
+  const handleSaveManualAttendance = async () => {
+    setIsSaving(true);
+    setSaveSuccessMsg(null);
+
+    try {
+      // 1. Build complete day's attendance snapshot for all staff
+      const dayRecords: Record<string, AttendanceStatus> = {};
+      staffList.forEach((staff) => {
+        dayRecords[staff.id] = getStatus(staff);
+      });
+
+      const updatedManualAttendance = {
+        ...manualAttendance,
+        [date]: dayRecords,
+      };
+
+      // 2. Save to local state and localStorage
+      setManualAttendance(updatedManualAttendance);
+      localStorage.setItem('kts_staff_attendance', JSON.stringify(updatedManualAttendance));
+
+      // 3. Save to database settings table (kts_staff_attendance)
+      await saveSettingToDb('kts_staff_attendance', JSON.stringify(updatedManualAttendance));
+
+      // 4. Save/update each staff's record in backend attendances resource
+      const savePromises = staffList.map(async (staff) => {
+        const staffStatus = dayRecords[staff.id];
+        const payload = {
+          faculty_id: staff.id,
+          attendance_date: date,
+          status: staffStatus,
+          device_id: 'manual',
+          notes: `Staff attendance marked manually on ${date}`,
+        };
+
+        try {
+          const existing = await api.getResources('attendance', {
+            faculty_id: staff.id,
+            attendance_date: date,
+          }).catch(() => []);
+
+          const existingArr = Array.isArray(existing) ? existing : (existing?.data || []);
+          if (existingArr.length > 0 && existingArr[0]?.id) {
+            await api.updateResource('attendance', existingArr[0].id, payload);
+          } else {
+            await api.createResource('attendance', payload);
+          }
+        } catch {
+          // Settings table serves as primary reliable backup
+        }
+      });
+
+      await Promise.allSettled(savePromises);
+
+      setSaveSuccessMsg(`✓ Attendance for ${formatDate(date)} saved to database successfully!`);
+      setTimeout(() => {
+        setSaveSuccessMsg(null);
+      }, 5000);
+    } catch (err: any) {
+      console.error('Error saving manual attendance to database:', err);
+      setSaveSuccessMsg('⚠ Error saving attendance to database. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Add a test simulated biometric punch
@@ -1014,18 +1137,17 @@ export function StaffAttendance() {
               </span>
               <button
                 type="button"
-                onClick={() => setAttendanceMode('biometric')}
-                disabled={connectionStatus === 'disconnected'}
-                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
-                  connectionStatus === 'disconnected'
-                    ? 'opacity-40 cursor-not-allowed text-[var(--tx3)]'
-                    : 'cursor-pointer hover:text-[var(--tx2)]'
-                } ${
+                onClick={() => {
+                  setAttendanceMode('biometric');
+                  syncBiometricPunches(false);
+                  syncBiometric(false);
+                }}
+                className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                   attendanceMode === 'biometric'
                     ? 'bg-[var(--blue)] text-white'
-                    : 'text-[var(--tx3)]'
+                    : 'text-[var(--tx3)] hover:text-[var(--tx2)]'
                 }`}
-                title={connectionStatus === 'disconnected' ? "Biometric is offline (not connected to internet)" : "Biometric mode"}
+                title="Biometric mode (synced with eTimeOffice)"
               >
                 Biometric
               </button>
@@ -1048,6 +1170,28 @@ export function StaffAttendance() {
               </button>
             </div>
 
+            {attendanceMode === 'manual' && (
+              <button
+                type="button"
+                onClick={handleSaveManualAttendance}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                title="Save manual attendance to database"
+              >
+                {isSaving ? (
+                  <>
+                    <RefreshCw size={12} className="animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <Save size={13} />
+                    Save Attendance
+                  </>
+                )}
+              </button>
+            )}
+
             {attendanceMode === 'biometric' && (
               <button
                 type="button"
@@ -1064,6 +1208,14 @@ export function StaffAttendance() {
             )}
           </div>
         </div>
+
+        {/* Save success banner */}
+        {saveSuccessMsg && (
+          <div className="flex items-center gap-2 p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[11.5px] font-medium rounded-xl mb-4">
+            <CheckCircle size={15} className="shrink-0 text-emerald-600" />
+            <span>{saveSuccessMsg}</span>
+          </div>
+        )}
 
         {/* Filters and Date Picker */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
@@ -1116,7 +1268,7 @@ export function StaffAttendance() {
                 </>
               ) : (
                 <>
-                  <strong>Manual Attendance Mode (Offline):</strong> Biometric device is offline (not connected to internet). Manual attendance controls are enabled.
+                  <strong>Manual Attendance Mode (Offline):</strong> Biometric device is offline (not connected to internet). Manual attendance controls are enabled. Click <strong>Save Attendance</strong> to commit changes to the database.
                 </>
               )}
             </span>
@@ -1149,6 +1301,7 @@ export function StaffAttendance() {
             <tbody>
               {filteredStaff.map((s) => {
                 const status        = getStatus(s);
+                const onLeave       = isStaffOnLeave(s, date);
                 const punchesList   = getPunchesForStaffOnDate(s);
                 const bioRecords    = getBiometricRecordsForStaff(s);
                 const bioRecord     = bioRecords[0]; // primary record
@@ -1213,12 +1366,6 @@ export function StaffAttendance() {
                 } else if (bioRecord?.WorkTime && bioRecord.WorkTime !== '00:00') {
                   workTime = bioRecord.WorkTime;
                 }
-                const hasApprovedLeave = leaveRequests.some((l) => 
-                  String(l.staffId) === String(s.id) &&
-                  l.status === 'Approved' &&
-                  date >= l.from &&
-                  date <= l.to
-                );
 
                 return (
                   <tr key={s.id} className="border-b border-[var(--b)] hover:bg-[var(--surf2)]/40 transition-colors last:border-0">
@@ -1231,7 +1378,14 @@ export function StaffAttendance() {
                           color="var(--purple-tx)"
                         />
                         <div>
-                          <span className="font-semibold text-[var(--tx)]">{s.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-[var(--tx)]">{s.name}</span>
+                            {onLeave && (
+                              <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 text-[9px] font-bold border border-purple-500/20">
+                                On Leave
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-[var(--tx3)]">{s.designation}</div>
                         </div>
                       </div>
@@ -1333,9 +1487,9 @@ export function StaffAttendance() {
                     {/* Controls */}
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1.5">
-                        {hasApprovedLeave ? (
-                          <span className="px-2.5 py-1 text-[10px] font-bold text-purple-600 bg-purple-500/10 border border-purple-500/20 rounded-lg">
-                            Approved Leave
+                        {onLeave && status === 'Leave' ? (
+                          <span className="px-2.5 py-1 text-[10px] font-bold text-purple-600 bg-purple-500/10 border border-purple-500/20 rounded-lg flex items-center gap-1">
+                            <AlertCircle size={11} /> Approved Leave
                           </span>
                         ) : (
                           [

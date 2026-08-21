@@ -644,7 +644,7 @@ export const api = {
 
   // ── Biometric e-TimeOffice Integration ────────────────────────────────
   async biometricStatus() {
-    return request('/biometric/status', { timeoutMs: 8000 });
+    return request('/biometric/status', { timeoutMs: 15000 });
   },
 
   async biometricTestConnection(credentials?: { corporate_id?: string; username?: string; password?: string }) {

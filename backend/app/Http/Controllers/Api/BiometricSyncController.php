@@ -25,15 +25,15 @@ class BiometricSyncController extends Controller
      *
      * GET /api/v1/biometric/status
      */
-    public function status()
+    public function status(Request $request)
     {
         try {
             $stats = $this->etimeoffice->getComprehensiveStats();
             $configured = $stats['configuration']['valid'] ?? false;
-            $connected = false;
+            $connected = $configured;
             $connectionMessage = '';
 
-            if ($configured) {
+            if ($configured && $request->query('test') === '1') {
                 $test = $this->etimeoffice->testConnection();
                 $connected = $test['success'] ?? false;
                 $connectionMessage = $test['message'] ?? '';

@@ -18,6 +18,10 @@ export interface LeaveRequest {
   status: 'Pending' | 'Approved' | 'Rejected';
   appliedOn: string;
   adminNotes?: string;
+  start_date?: string;
+  end_date?: string;
+  user_id?: string;
+  staff_id?: any;
 }
 
 export interface Notification {
