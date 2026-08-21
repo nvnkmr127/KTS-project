@@ -475,54 +475,56 @@ export function StaffAttendance() {
 
     api.biometricSyncInOut(date, date, 'ALL')
       .then((result) => {
-        const records: BiometricRecord[] = result?.data || [];
+        if (result?.success) {
+          const records: BiometricRecord[] = result?.data || [];
 
-        if (result?.success && records.length > 0) {
-          // Merge with existing biometricRecords to keep webhook punches
-          setBiometricRecords((prev) => {
-            const map = new Map<string, BiometricRecord>();
-            prev.forEach((r) => {
-              const key = `${r.Empcode}-${r.PunchDate || r.INTime || r.OUTTime}`;
-              map.set(key, r);
+          if (records.length > 0) {
+            // Merge with existing biometricRecords to keep webhook punches
+            setBiometricRecords((prev) => {
+              const map = new Map<string, BiometricRecord>();
+              prev.forEach((r) => {
+                const key = `${r.Empcode}-${r.PunchDate || r.INTime || r.OUTTime}`;
+                map.set(key, r);
+              });
+              records.forEach((r) => {
+                const key = `${r.Empcode}-${r.PunchDate || r.INTime || r.OUTTime}`;
+                map.set(key, r);
+              });
+              return Array.from(map.values());
             });
-            records.forEach((r) => {
-              const key = `${r.Empcode}-${r.PunchDate || r.INTime || r.OUTTime}`;
-              map.set(key, r);
+
+            // Convert biometric records to LocalPunch format for saving
+            const newPunches: LocalPunch[] = [];
+
+            staffList.forEach((staff) => {
+              const staffBioRecords = records.filter((record) => matchesStaffOnDate(record, staff, date));
+              newPunches.push(...buildPunchesFromBioRecords(staffBioRecords, staff, date, `-${date}`));
             });
-            return Array.from(map.values());
-          });
+
+            // Update localPunches (filter out previous punches for this date)
+            setLocalPunches((prev) => {
+              const otherDatePunches = prev.filter((p) => !p.timestamp.startsWith(date));
+              return [...otherDatePunches, ...newPunches];
+            });
+          }
 
           setConnectionStatus('connected');
           setAttendanceMode('biometric');
           const now = new Date().toLocaleTimeString();
           setLastSyncTime(now);
 
-          // Convert biometric records to LocalPunch format for saving
-          const newPunches: LocalPunch[] = [];
-
-          staffList.forEach((staff) => {
-            const staffBioRecords = records.filter((record) => matchesStaffOnDate(record, staff, date));
-            newPunches.push(...buildPunchesFromBioRecords(staffBioRecords, staff, date, `-${date}`));
-          });
-
-          // Update localPunches (filter out previous punches for this date)
-          setLocalPunches((prev) => {
-            const otherDatePunches = prev.filter((p) => !p.timestamp.startsWith(date));
-            return [...otherDatePunches, ...newPunches];
-          });
-
           if (!silent) {
             setLastSyncMsg(`✓ Synced ${result.saved ?? records.length} records at ${now}`);
           }
         } else {
-          // No live punch records from machine or API error -> device is offline
+          // Sync failed or device not reachable -> offline
           setConnectionStatus('disconnected');
           setAttendanceMode('manual');
           if (!silent) {
             setLastSyncMsg(
               result?.message?.includes('not configured')
                 ? '⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.'
-                : '⚠ Biometric device is offline (no live data received). Manual mode enabled.'
+                : '⚠ Biometric device is offline (not connected to internet). Manual mode active.'
             );
           }
           fetchLocalBiometricLogs();
@@ -562,8 +564,7 @@ export function StaffAttendance() {
 
     api.biometricSyncPunch(date, date, 'ALL')
       .then((result) => {
-        const rawPunches = Array.isArray(result?.data) ? result.data : [];
-        if (result?.success && (result?.saved > 0 || rawPunches.length > 0)) {
+        if (result?.success) {
           fetchLocalBiometricLogs();
           setConnectionStatus('connected');
           setAttendanceMode('biometric');

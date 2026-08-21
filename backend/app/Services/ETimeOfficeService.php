@@ -65,6 +65,14 @@ class ETimeOfficeService
     {
         $this->ensureConfigurationLoaded();
 
+        $validation = $this->validateConfiguration();
+        if (!$validation['valid']) {
+            return [
+                'success' => false,
+                'message' => 'Credentials not configured: ' . implode(', ', $validation['issues']),
+            ];
+        }
+
         try {
             $response = $this->makeApiCall('DownloadPunchData', [
                 'Empcode' => 'ALL',
@@ -73,28 +81,21 @@ class ETimeOfficeService
             ]);
 
             if ($response['success']) {
-                $punchData = $response['data']['PunchData'] ?? (is_array($response['data']) ? $response['data'] : []);
-                if (!empty($punchData) && !isset($punchData[0])) {
-                    $punchData = [$punchData];
-                }
-                $dataCount = is_array($punchData) ? count($punchData) : 0;
-
                 return [
                     'success' => true,
-                    'message' => 'API connection successful',
-                    'data_count' => $dataCount,
+                    'message' => 'Device connected to internet',
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'API connection failed: '.$response['error'],
+                    'message' => 'Device not connected to internet: ' . ($response['error'] ?? 'Connection failed'),
                 ];
             }
 
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Connection error: '.$e->getMessage(),
+                'message' => 'Connection error: ' . $e->getMessage(),
             ];
         }
     }
@@ -402,9 +403,9 @@ class ETimeOfficeService
             ]);
 
             // Ensure PHP doesn't get killed by Apache/LiteSpeed before we respond cleanly
-            set_time_limit(30);
+            set_time_limit(15);
 
-            $response = Http::timeout(25)
+            $response = Http::timeout(10)
                 ->withoutVerifying()
                 ->withHeaders([
                     'Authorization' => 'Basic '.$this->authToken,
