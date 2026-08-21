@@ -62,12 +62,14 @@ export const BUS_DEVICE_MAP: Record<string, number> = {
 };
 
 // Whether the system is configured (always true when BUS_DEVICE_MAP is populated)
+import { config } from '../config';
+
 export const millitrackConfigured = Object.keys(BUS_DEVICE_MAP).length > 0;
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 /** Base URL for your Laravel API (same as the rest of the app's API calls) */
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1';
+const API_BASE = config.apiUrl;
 
 /**
  * Build fetch options that attach the Sanctum Bearer token stored by
