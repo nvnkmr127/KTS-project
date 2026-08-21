@@ -30,19 +30,26 @@ class BiometricSyncController extends Controller
         try {
             $stats = $this->etimeoffice->getComprehensiveStats();
             $configured = $stats['configuration']['valid'] ?? false;
-            $connected = $configured;
+            $connected = false;
             $connectionMessage = '';
+            $dataCount = 0;
 
-            if ($configured && $request->query('test') === '1') {
-                $test = $this->etimeoffice->testConnection();
-                $connected = $test['success'] ?? false;
-                $connectionMessage = $test['message'] ?? '';
+            if ($configured) {
+                if ($request->query('test') === '1') {
+                    $test = $this->etimeoffice->testConnection();
+                    $dataCount = $test['data_count'] ?? 0;
+                    $connected = ($test['success'] ?? false) && ($dataCount > 0 || ($stats['today_records'] ?? 0) > 0);
+                    $connectionMessage = $test['message'] ?? ($connected ? 'Device online and syncing' : 'Device offline (no recent punches)');
+                } else {
+                    $connected = ($stats['today_records'] ?? 0) > 0;
+                }
             }
 
             return response()->json([
                 'configured' => $configured,
                 'connected' => $connected,
                 'connection_message' => $connectionMessage,
+                'data_count' => $dataCount,
                 'issues' => $stats['configuration']['issues'] ?? [],
                 'api_url' => $stats['configuration']['api_url'] ?? null,
                 'corporate_id' => $stats['configuration']['corporate_id'] ?? null,

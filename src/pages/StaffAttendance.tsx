@@ -218,10 +218,7 @@ export function StaffAttendance() {
   const [biometricRecords, setBiometricRecords] = useState<BiometricRecord[]>([]);
 
   // Attendance Mode
-  const [attendanceMode, setAttendanceMode] = useState<'biometric' | 'manual'>(() => {
-    const saved = localStorage.getItem('kts_staff_attendance_mode');
-    return (saved as 'biometric' | 'manual') || 'biometric';
-  });
+  const [attendanceMode, setAttendanceMode] = useState<'biometric' | 'manual'>('manual');
 
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -478,9 +475,9 @@ export function StaffAttendance() {
 
     api.biometricSyncInOut(date, date, 'ALL')
       .then((result) => {
-        if (result?.success) {
-          const records: BiometricRecord[] = result.data || [];
-          
+        const records: BiometricRecord[] = result?.data || [];
+
+        if (result?.success && records.length > 0) {
           // Merge with existing biometricRecords to keep webhook punches
           setBiometricRecords((prev) => {
             const map = new Map<string, BiometricRecord>();
@@ -517,15 +514,17 @@ export function StaffAttendance() {
           if (!silent) {
             setLastSyncMsg(`✓ Synced ${result.saved ?? records.length} records at ${now}`);
           }
-        } else if (result?.message?.includes('not configured')) {
-          setConnectionStatus('disconnected');
-          setAttendanceMode('manual');
-          if (!silent) setLastSyncMsg('⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.');
-          fetchLocalBiometricLogs();
         } else {
+          // No live punch records from machine or API error -> device is offline
           setConnectionStatus('disconnected');
           setAttendanceMode('manual');
-          if (!silent) setLastSyncMsg(`⚠ ${result?.message || 'Biometric device offline'}`);
+          if (!silent) {
+            setLastSyncMsg(
+              result?.message?.includes('not configured')
+                ? '⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.'
+                : '⚠ Biometric device is offline (no live data received). Manual mode enabled.'
+            );
+          }
           fetchLocalBiometricLogs();
         }
       })
@@ -538,7 +537,7 @@ export function StaffAttendance() {
           setLastSyncMsg(
             isTimeout
               ? '✗ Server connection timed out (ERR_CONNECTION_TIMED_OUT). Biometric device is offline.'
-              : '✗ Biometric device is offline (not connected to internet).'
+              : '✗ Biometric device is offline (not connected to internet). Operating in Manual Mode.'
           );
         }
         fetchLocalBiometricLogs();
@@ -563,7 +562,8 @@ export function StaffAttendance() {
 
     api.biometricSyncPunch(date, date, 'ALL')
       .then((result) => {
-        if (result?.success) {
+        const rawPunches = Array.isArray(result?.data) ? result.data : [];
+        if (result?.success && (result?.saved > 0 || rawPunches.length > 0)) {
           fetchLocalBiometricLogs();
           setConnectionStatus('connected');
           setAttendanceMode('biometric');
