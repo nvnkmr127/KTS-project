@@ -73,10 +73,16 @@ class ETimeOfficeService
             ]);
 
             if ($response['success']) {
+                $punchData = $response['data']['PunchData'] ?? (is_array($response['data']) ? $response['data'] : []);
+                if (!empty($punchData) && !isset($punchData[0])) {
+                    $punchData = [$punchData];
+                }
+                $dataCount = is_array($punchData) ? count($punchData) : 0;
+
                 return [
                     'success' => true,
                     'message' => 'API connection successful',
-                    'data_count' => count($response['data']['PunchData'] ?? []),
+                    'data_count' => $dataCount,
                 ];
             } else {
                 return [
