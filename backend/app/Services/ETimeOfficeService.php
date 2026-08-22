@@ -69,11 +69,13 @@ class ETimeOfficeService
         if (!$validation['valid']) {
             return [
                 'success' => false,
+                'device_online' => false,
                 'message' => 'Credentials not configured: ' . implode(', ', $validation['issues']),
             ];
         }
 
         try {
+            // Check for recent punches from the physical device (today / last 24h)
             $response = $this->makeApiCall('DownloadPunchData', [
                 'Empcode' => 'ALL',
                 'FromDate' => now()->subHours(24)->format('d/m/Y H:i'),
@@ -81,21 +83,33 @@ class ETimeOfficeService
             ]);
 
             if ($response['success']) {
+                $punchData = $response['data']['PunchData'] ?? $response['data'] ?? [];
+                if (!empty($punchData) && !isset($punchData[0])) {
+                    $punchData = [$punchData];
+                }
+                $hasRecentPunches = is_array($punchData) && count($punchData) > 0;
+
                 return [
                     'success' => true,
-                    'message' => 'Device connected to internet',
+                    'device_online' => $hasRecentPunches,
+                    'data_count' => is_array($punchData) ? count($punchData) : 0,
+                    'message' => $hasRecentPunches 
+                        ? 'Biometric physical device connected & transmitting data' 
+                        : 'Biometric cloud connected, but physical device has no recent punch transmissions',
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Device not connected to internet: ' . ($response['error'] ?? 'Connection failed'),
+                    'device_online' => false,
+                    'message' => 'Biometric physical device is offline: ' . ($response['error'] ?? 'Connection failed'),
                 ];
             }
 
         } catch (\Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Connection error: ' . $e->getMessage(),
+                'device_online' => false,
+                'message' => 'Biometric physical device is offline: ' . $e->getMessage(),
             ];
         }
     }

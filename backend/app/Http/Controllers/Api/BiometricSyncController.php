@@ -37,12 +37,15 @@ class BiometricSyncController extends Controller
             if ($configured) {
                 $test = $this->etimeoffice->testConnection();
                 $connected = (bool) ($test['success'] ?? false);
-                $connectionMessage = $test['message'] ?? ($connected ? 'Device connected to internet' : 'Device not connected to internet');
+                $deviceOnline = (bool) ($test['device_online'] ?? false);
+                $connectionMessage = $test['message'] ?? ($deviceOnline ? 'Biometric device connected to internet' : 'Biometric device offline (not connected to internet)');
+                $dataCount = $test['data_count'] ?? 0;
             }
 
             return response()->json([
                 'configured' => $configured,
                 'connected' => $connected,
+                'device_online' => $deviceOnline ?? false,
                 'connection_message' => $connectionMessage,
                 'data_count' => $dataCount,
                 'issues' => $stats['configuration']['issues'] ?? [],

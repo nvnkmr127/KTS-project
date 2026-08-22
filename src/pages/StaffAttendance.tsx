@@ -607,6 +607,41 @@ export function StaffAttendance() {
     return () => clearInterval(timer);
   }, []);
 
+  // Determine date metrics & conditions
+  const todayStr = getLocalDateStr();
+  const isToday = date === todayStr;
+  const isPastDate = date < todayStr;
+
+  const selectedDateObj = new Date(date + 'T00:00:00');
+  const isSunday = !isNaN(selectedDateObj.getTime()) && selectedDateObj.getDay() === 0;
+  const holidayOnDate = holidays.find((h) => h.date === date);
+  const isHoliday = !!holidayOnDate || isSunday;
+  const holidayTitle = holidayOnDate ? holidayOnDate.name : (isSunday ? 'Sunday Holiday' : '');
+
+  // Calculate total punches for selected date
+  const totalPunchesOnSelectedDate = useMemo(() => {
+    const localMatches = localPunches.filter((p) => p.timestamp.startsWith(date));
+    const bioMatches = biometricRecords.filter((r) => {
+      const pDate = r.DateString || (r.PunchDate ? parsePunchDate(r.PunchDate) || r.PunchDate.slice(0, 10) : '');
+      return pDate === date;
+    });
+    return localMatches.length + bioMatches.length;
+  }, [localPunches, biometricRecords, date]);
+
+  // Is cutoff time reached for today with 0 punches received?
+  const isCutoffExceededToday = isToday && currentTimeStr >= biometricMachineCutoff && totalPunchesOnSelectedDate === 0;
+
+  // Is this a past date with 0 biometric punches?
+  const isPastDateWithoutPunches = isPastDate && totalPunchesOnSelectedDate === 0;
+
+  // Determine if manual mode / editing controls are allowed
+  const isManualAllowed = !isHoliday && (
+    connectionStatus === 'disconnected' ||
+    isCutoffExceededToday ||
+    isPastDateWithoutPunches ||
+    attendanceMode === 'manual'
+  );
+
   // Fetch holidays from API resources directly
   useEffect(() => {
     api.getResources('holidays')
@@ -833,7 +868,7 @@ export function StaffAttendance() {
       });
   }, [date]);
 
-  // Check biometric status & connectivity
+  // Check biometric status & connectivity (physical device internet status)
   const checkBiometricStatus = useCallback(async (silent = false) => {
     if (!navigator.onLine) {
       setConnectionStatus('disconnected');
@@ -844,12 +879,19 @@ export function StaffAttendance() {
 
     try {
       const res = await api.biometricStatus(true);
-      if (res?.configured && res?.connected) {
+      const isDeviceConnected = Boolean(
+        res?.configured &&
+        res?.connected &&
+        (res?.device_online !== false || totalPunchesOnSelectedDate > 0) &&
+        !isCutoffExceededToday
+      );
+
+      if (isDeviceConnected) {
         setConnectionStatus('connected');
         setAttendanceMode('biometric');
         if (res.last_sync) {
           const d = new Date(res.last_sync);
-          setLastSyncTime(d.toLocaleString());
+          setLastSyncTime(d.toLocaleTimeString());
         }
         return true;
       } else {
@@ -858,8 +900,8 @@ export function StaffAttendance() {
         if (!silent) {
           setLastSyncMsg(
             res?.connection_message
-              ? `⚠ Biometric device offline: ${res.connection_message}`
-              : '⚠ Biometric device is offline (not connected to internet). Manual mode active.'
+              ? `⚠ Biometric device: ${res.connection_message}`
+              : '⚠ Biometric physical device is offline (not connected to internet). Manual mode active.'
           );
         }
         return false;
@@ -869,7 +911,7 @@ export function StaffAttendance() {
       setAttendanceMode('manual');
       return false;
     }
-  }, []);
+  }, [isCutoffExceededToday, totalPunchesOnSelectedDate]);
 
   // Sync biometric IN/OUT data for the selected date from the real API
   const syncBiometric = useCallback((silent = false) => {
@@ -918,20 +960,33 @@ export function StaffAttendance() {
               const otherDatePunches = prev.filter((p) => !p.timestamp.startsWith(date));
               return [...otherDatePunches, ...newPunches];
             });
-          }
+            setConnectionStatus('connected');
+            setAttendanceMode('biometric');
+            const now = new Date().toLocaleTimeString();
+            setLastSyncTime(now);
 
-          setConnectionStatus('connected');
-          setAttendanceMode('biometric');
-          const now = new Date().toLocaleTimeString();
-          setLastSyncTime(now);
-
-          if (!silent) {
-            setLastSyncMsg(`✓ Synced ${result.saved ?? records.length} records at ${now}`);
+            if (!silent) {
+              setLastSyncMsg(`✓ Synced ${result.saved ?? records.length} records at ${now}`);
+            }
+          } else {
+            // 0 records received from physical device
+            if (isCutoffExceededToday || isPastDateWithoutPunches) {
+              setConnectionStatus('disconnected');
+              setAttendanceMode('manual');
+              if (!silent) {
+                setLastSyncMsg('⚠ No biometric punch data received from physical device. Manual mode active.');
+              }
+            } else {
+              const now = new Date().toLocaleTimeString();
+              setLastSyncTime(now);
+            }
           }
         } else {
           // Sync failed or device not reachable -> offline
           setConnectionStatus('disconnected');
-          setAttendanceMode('manual');
+          if (!isPastDateWithoutPunches) {
+            setAttendanceMode('manual');
+          }
           if (!silent) {
             setLastSyncMsg(
               result?.message?.includes('not configured')
@@ -944,7 +999,9 @@ export function StaffAttendance() {
       })
       .catch((err: any) => {
         setConnectionStatus('disconnected');
-        setAttendanceMode('manual');
+        if (!isPastDateWithoutPunches) {
+          setAttendanceMode('manual');
+        }
         const errStr = String(err?.message || err || '');
         const isTimeout = errStr.includes('ERR_CONNECTION_TIMED_OUT') || errStr.includes('timed out') || errStr.includes('Unable to connect');
         if (!silent) {
@@ -960,7 +1017,7 @@ export function StaffAttendance() {
         syncInProgress.current = false;
         setIsSyncing(false);
       });
-  }, [date, staffList, fetchLocalBiometricLogs]);
+  }, [date, staffList, fetchLocalBiometricLogs, isCutoffExceededToday, isPastDateWithoutPunches]);
 
   // Sync biometric raw punch logs (DownloadPunchData) every second during school hours
   const syncBiometricPunches = useCallback((silent = false) => {
@@ -978,8 +1035,10 @@ export function StaffAttendance() {
       .then((result) => {
         if (result?.success) {
           fetchLocalBiometricLogs();
-          setConnectionStatus('connected');
-          setAttendanceMode('biometric');
+          if (isCutoffExceededToday && totalPunchesOnSelectedDate === 0) {
+            setConnectionStatus('disconnected');
+            setAttendanceMode('manual');
+          }
         } else {
           setConnectionStatus('disconnected');
           setAttendanceMode('manual');
@@ -1004,7 +1063,7 @@ export function StaffAttendance() {
         syncPunchesInProgress.current = false;
         setIsSyncingPunches(false);
       });
-  }, [date, fetchLocalBiometricLogs]);
+  }, [date, fetchLocalBiometricLogs, isCutoffExceededToday, totalPunchesOnSelectedDate]);
 
   // Ref to hold the latest function reference for the 1s local-DB poll below
   const fetchLocalBiometricLogsRef = useRef(fetchLocalBiometricLogs);
@@ -1180,42 +1239,6 @@ export function StaffAttendance() {
     localStorage.setItem('kts_staff_attendance', JSON.stringify(manualAttendance));
     saveSettingToDb('kts_staff_attendance', JSON.stringify(manualAttendance));
   }, [manualAttendance]);
-
-   
-  // Determine date metrics & conditions
-  const todayStr = getLocalDateStr();
-  const isToday = date === todayStr;
-  const isPastDate = date < todayStr;
-
-  const selectedDateObj = new Date(date + 'T00:00:00');
-  const isSunday = !isNaN(selectedDateObj.getTime()) && selectedDateObj.getDay() === 0;
-  const holidayOnDate = holidays.find((h) => h.date === date);
-  const isHoliday = !!holidayOnDate || isSunday;
-  const holidayTitle = holidayOnDate ? holidayOnDate.name : (isSunday ? 'Sunday Holiday' : '');
-
-  // Calculate total punches for selected date
-  const totalPunchesOnSelectedDate = useMemo(() => {
-    const localMatches = localPunches.filter((p) => p.timestamp.startsWith(date));
-    const bioMatches = biometricRecords.filter((r) => {
-      const pDate = r.DateString || (r.PunchDate ? parsePunchDate(r.PunchDate) || r.PunchDate.slice(0, 10) : '');
-      return pDate === date;
-    });
-    return localMatches.length + bioMatches.length;
-  }, [localPunches, biometricRecords, date]);
-
-  // Is cutoff time reached for today with 0 punches received?
-  const isCutoffExceededToday = isToday && currentTimeStr >= biometricMachineCutoff && totalPunchesOnSelectedDate === 0;
-
-  // Is this a past date with 0 biometric punches?
-  const isPastDateWithoutPunches = isPastDate && totalPunchesOnSelectedDate === 0;
-
-  // Determine if manual mode / editing controls are allowed
-  const isManualAllowed = !isHoliday && (
-    connectionStatus === 'disconnected' ||
-    isCutoffExceededToday ||
-    isPastDateWithoutPunches ||
-    attendanceMode === 'manual'
-  );
 
   // Automatically switch mode based on conditions:
   // - If device is disconnected: manual mode is active.
@@ -1523,19 +1546,38 @@ export function StaffAttendance() {
   const leaveCount   = staffList.filter((s) => getStatus(s) === 'Leave').length;
 
   const ConnectionDot = () => (
-    <span className="flex items-center gap-1.5">
+    <span
+      className="flex items-center gap-1.5"
+      title={
+        connectionStatus === 'connected'
+          ? 'e-TimeOffice physical biometric machine is online and connected to internet'
+          : 'e-TimeOffice physical biometric machine is offline (not connected to internet)'
+      }
+    >
       {connectionStatus === 'connected' ? (
-        <><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
-        <span className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5"><Wifi size={10} /> Live</span></>
+        <>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+          <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+            <Wifi size={10} /> Biometric Device Online
+          </span>
+        </>
       ) : connectionStatus === 'disconnected' ? (
-        <><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />
-        <span className="text-[10px] text-red-500 font-medium flex items-center gap-0.5"><WifiOff size={10} /> Offline</span></>
+        <>
+          <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+          <span className="text-[10px] text-red-500 font-bold flex items-center gap-0.5">
+            <WifiOff size={10} /> Biometric Device Offline
+          </span>
+        </>
       ) : connectionStatus === 'testing' ? (
-        <><span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
-        <span className="text-[10px] text-amber-600 font-medium">Testing…</span></>
+        <>
+          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse inline-block" />
+          <span className="text-[10px] text-amber-600 font-medium">Checking Device…</span>
+        </>
       ) : (
-        <><span className="w-2 h-2 rounded-full bg-[var(--tx3)]/40 inline-block" />
-        <span className="text-[10px] text-[var(--tx3)] font-medium">Unknown</span></>
+        <>
+          <span className="w-2 h-2 rounded-full bg-[var(--tx3)]/40 inline-block" />
+          <span className="text-[10px] text-[var(--tx3)] font-medium">Unknown</span>
+        </>
       )}
     </span>
   );
@@ -1591,10 +1633,14 @@ export function StaffAttendance() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5 border-b border-[var(--b)] pb-4">
           <div>
             <div className="text-[13.5px] font-bold text-[var(--tx)]">Staff Daily Attendance</div>
-            <div className="text-[11px] text-[var(--tx3)] flex items-center gap-1.5 mt-0.5">
-              <Fingerprint size={12} className="text-[var(--blue-tx)]" />
-              e-TimeOffice biometric sync •&nbsp;<ConnectionDot />
-              {lastSyncTime && <span className="ml-1 text-[var(--tx3)]">· Last sync: {lastSyncTime}</span>}
+            <div className="text-[11px] text-[var(--tx3)] flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className="flex items-center gap-1">
+                <Fingerprint size={12} className="text-[var(--blue-tx)]" />
+                e-TimeOffice Biometric Machine
+              </span>
+              <span>•</span>
+              <ConnectionDot />
+              {lastSyncTime && <span className="text-[var(--tx3)] font-mono text-[10.5px]">· Last sync: {lastSyncTime}</span>}
             </div>
           </div>
 
