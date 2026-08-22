@@ -69,6 +69,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
   const [presentCutoffEvening, setPresentCutoffEvening] = useState('16:30');
   const [lateEntryCutoff, setLateEntryCutoff] = useState('09:50');
   const [earlyEntryCutoff, setEarlyEntryCutoff] = useState('15:00');
+  const [biometricMachineCutoff, setBiometricMachineCutoff] = useState('10:00');
   const [savingTimings, setSavingTimings] = useState(false);
   const [timingsSuccess, setTimingsSuccess] = useState('');
   const [timingsError, setTimingsError] = useState('');
@@ -185,6 +186,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         const presESetting = settings.find((s: any) => s.key === 'present_cutoff_evening');
         const lateSetting = settings.find((s: any) => s.key === 'late_entry_cutoff');
         const earlySetting = settings.find((s: any) => s.key === 'early_entry_cutoff');
+        const bioCutoffSetting = settings.find((s: any) => s.key === 'biometric_machine_status_cutoff');
 
         if (startSetting) setSchoolStartTime(startSetting.value);
         if (endSetting) setSchoolEndTime(endSetting.value);
@@ -192,6 +194,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         if (presESetting) setPresentCutoffEvening(presESetting.value);
         if (lateSetting) setLateEntryCutoff(lateSetting.value);
         if (earlySetting) setEarlyEntryCutoff(earlySetting.value);
+        if (bioCutoffSetting) setBiometricMachineCutoff(bioCutoffSetting.value);
       }
     } catch (err: any) {
       console.error('Error loading biometric status:', err);
@@ -216,6 +219,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
         { key: 'present_cutoff_evening', value: presentCutoffEvening },
         { key: 'late_entry_cutoff', value: lateEntryCutoff },
         { key: 'early_entry_cutoff', value: earlyEntryCutoff },
+        { key: 'biometric_machine_status_cutoff', value: biometricMachineCutoff },
       ];
 
       const allSettings = await api.getResources('settings').catch(() => []);
@@ -1318,7 +1322,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-3 border-b border-[var(--b)]/50">
                   <div>
                     <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Morning Late Entry Cutoff *</label>
                     <input 
@@ -1340,6 +1344,20 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                       className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
                     />
                     <span className="text-[10px] text-[var(--tx3)] mt-1 block">Punches between this cutoff and evening Present Cutoff are marked "Early". Punches before this cutoff are ignored.</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11.5px] font-semibold text-[var(--tx2)] mb-1.5">Biometric Machine Status Cutoff Time *</label>
+                    <input 
+                      type="time"
+                      value={biometricMachineCutoff}
+                      onChange={(e) => setBiometricMachineCutoff(e.target.value)}
+                      required 
+                      className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12.5px] text-[var(--tx)] outline-none focus:border-[var(--blue)] font-mono" 
+                    />
+                    <span className="text-[10px] text-[var(--tx3)] mt-1 block">If no punch data is received from the biometric device up to this time, manual attendance mode is automatically enabled for staff attendance.</span>
                   </div>
                 </div>
 

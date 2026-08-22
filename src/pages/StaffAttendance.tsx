@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../services/api';
-import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff, Save, CheckCircle } from 'lucide-react';
+import { Search, Calendar, UserCheck, UserX, AlertCircle, Clock, Fingerprint, RefreshCw, Wifi, WifiOff, Save, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Avatar } from '../components/ui';
@@ -10,6 +10,341 @@ import { useApp } from '../context/AppContext';
 import { useDialog } from '../context/DialogContext';
 import { utcDateTimeToParts, scanDateTimeToParts, formatDate, getLocalDateStr } from '../utils/date';
 
+export interface Holiday {
+  date: string;
+  name: string;
+  description?: string;
+  isHoliday?: boolean;
+  color?: string;
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+interface StaffAttendanceDatePickerProps {
+  value: string;
+  onChange: (dateStr: string) => void;
+  holidays: Holiday[];
+  maxDate?: string;
+}
+
+function StaffAttendanceDatePicker({ value, onChange, holidays, maxDate }: StaffAttendanceDatePickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const todayStr = maxDate || getLocalDateStr();
+
+  const [currentYear, setCurrentYear] = useState(() => {
+    const d = value ? new Date(value + 'T00:00:00') : new Date();
+    return !isNaN(d.getFullYear()) ? d.getFullYear() : new Date().getFullYear();
+  });
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = value ? new Date(value + 'T00:00:00') : new Date();
+    return !isNaN(d.getMonth()) ? d.getMonth() : new Date().getMonth();
+  });
+
+  // Sync view when value changes
+  useEffect(() => {
+    if (value) {
+      const d = new Date(value + 'T00:00:00');
+      if (!isNaN(d.getTime())) {
+        setCurrentYear(d.getFullYear());
+        setCurrentMonth(d.getMonth());
+      }
+    }
+  }, [value]);
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+
+  const calendarDays: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) calendarDays.push(null);
+  for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
+
+  const getCalendarDateStr = (day: number) =>
+    `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  const getHolidayForDate = (dateStr: string) => {
+    return holidays.find((h) => h.date === dateStr);
+  };
+
+  const selectedHoliday = getHolidayForDate(value);
+  const selectedDateObj = new Date(value + 'T00:00:00');
+  const isSelectedSunday = !isNaN(selectedDateObj.getTime()) && selectedDateObj.getDay() === 0;
+
+  // Holidays in currently viewed month
+  const monthHolidays = useMemo(() => {
+    const monthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    return holidays.filter((h) => h.date.startsWith(monthPrefix));
+  }, [holidays, currentYear, currentMonth]);
+
+  const getColorClasses = (color?: string) => {
+    switch (color) {
+      case 'blue':
+        return {
+          bg: 'bg-blue-500/15 text-blue-600 border border-blue-500/30',
+          dot: 'bg-blue-500',
+          badge: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+        };
+      case 'teal':
+        return {
+          bg: 'bg-teal-500/15 text-teal-600 border border-teal-500/30',
+          dot: 'bg-teal-500',
+          badge: 'bg-teal-500/10 text-teal-600 border-teal-500/20',
+        };
+      case 'purple':
+        return {
+          bg: 'bg-purple-500/15 text-purple-600 border border-purple-500/30',
+          dot: 'bg-purple-500',
+          badge: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+        };
+      case 'amber':
+        return {
+          bg: 'bg-amber-500/15 text-amber-600 border border-amber-500/30',
+          dot: 'bg-amber-500',
+          badge: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+        };
+      case 'red':
+      default:
+        return {
+          bg: 'bg-red-500/15 text-red-600 border border-red-500/30',
+          dot: 'bg-red-500',
+          badge: 'bg-red-500/10 text-red-600 border-red-500/20',
+        };
+    }
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between gap-2 bg-[var(--surf2)] border border-[var(--b)] hover:border-[var(--blue)] rounded-lg px-2.5 py-1.5 text-[12px] text-[var(--tx)] cursor-pointer outline-none transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Calendar size={13} className="text-[var(--blue-tx)] shrink-0" />
+          <span className="font-semibold truncate">
+            {value ? formatDate(value) : '-- Select Date --'}
+          </span>
+          {selectedHoliday && (
+            <span
+              className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold truncate max-w-[110px] ${
+                getColorClasses(selectedHoliday.color).badge
+              } border`}
+              title={selectedHoliday.name}
+            >
+              {selectedHoliday.name}
+            </span>
+          )}
+          {!selectedHoliday && isSelectedSunday && (
+            <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold text-red-600 bg-red-500/10 border border-red-500/20">
+              Sunday
+            </span>
+          )}
+        </div>
+        <span className="text-[10px] text-[var(--tx3)] font-mono shrink-0">
+          {isOpen ? '▲' : '▼'}
+        </span>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 sm:left-0 mt-1 bg-[var(--surf)] border border-[var(--b)] rounded-2xl shadow-2xl z-50 p-3.5 w-[310px] animate-in fade-in slide-in-from-top-1 duration-150">
+          {/* Header Month/Year Nav */}
+          <div className="flex items-center justify-between mb-3 border-b border-[var(--b)] pb-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (currentMonth === 0) {
+                  setCurrentMonth(11);
+                  setCurrentYear((y) => y - 1);
+                } else {
+                  setCurrentMonth((m) => m - 1);
+                }
+              }}
+              className="p-1 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)] hover:text-[var(--tx)] transition-colors"
+              title="Previous Month"
+            >
+              <ChevronLeft size={15} />
+            </button>
+
+            <div className="text-[12px] font-bold text-[var(--tx)] flex items-center gap-1.5">
+              <span>{MONTH_NAMES[currentMonth]}</span>
+              <span className="font-mono text-[var(--blue-tx)]">{currentYear}</span>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  setCurrentYear(now.getFullYear());
+                  setCurrentMonth(now.getMonth());
+                  onChange(todayStr);
+                  setIsOpen(false);
+                }}
+                className="px-2 py-0.5 text-[10px] font-bold bg-[var(--blue-bg)] text-[var(--blue-tx)] hover:opacity-80 rounded-md cursor-pointer transition-opacity"
+                title="Select Today"
+              >
+                Today
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentMonth === 11) {
+                    setCurrentMonth(0);
+                    setCurrentYear((y) => y + 1);
+                  } else {
+                    setCurrentMonth((m) => m + 1);
+                  }
+                }}
+                className="p-1 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)] hover:text-[var(--tx)] transition-colors"
+                title="Next Month"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
+
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-[var(--tx3)] mb-1.5">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d, idx) => (
+              <div key={d} className={idx === 0 ? 'text-red-500' : ''}>
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map((day, i) => {
+              if (day === null) return <div key={`empty-${i}`} className="h-8" />;
+              const dateStr = getCalendarDateStr(day);
+              const dateObj = new Date(dateStr + 'T00:00:00');
+              const isSunday = dateObj.getDay() === 0;
+              const holiday = getHolidayForDate(dateStr);
+              const isFuture = dateStr > todayStr;
+              const isSelected = value === dateStr;
+              const isToday = dateStr === todayStr;
+
+              let styleClasses = 'hover:bg-[var(--surf2)] text-[var(--tx)]';
+              let holidayColorMeta = holiday ? getColorClasses(holiday.color) : null;
+
+              if (isSelected) {
+                styleClasses = 'bg-[var(--blue)] text-white font-bold shadow-sm';
+              } else if (isFuture) {
+                styleClasses = 'opacity-25 cursor-not-allowed text-[var(--tx3)] bg-[var(--surf2)]/30 select-none';
+              } else if (holiday) {
+                styleClasses = `${holidayColorMeta?.bg} font-semibold`;
+              } else if (isSunday) {
+                styleClasses = 'bg-red-500/10 text-red-500 font-semibold';
+              }
+
+              return (
+                <button
+                  key={dateStr}
+                  type="button"
+                  disabled={isFuture}
+                  onClick={() => {
+                    if (!isFuture) {
+                      onChange(dateStr);
+                      setIsOpen(false);
+                    }
+                  }}
+                  title={
+                    isFuture
+                      ? 'Future dates are disabled'
+                      : holiday
+                      ? `Holiday: ${holiday.name}${holiday.description ? ` (${holiday.description})` : ''}`
+                      : isSunday
+                      ? 'Sunday Holiday'
+                      : isToday
+                      ? 'Today'
+                      : dateStr
+                  }
+                  className={`h-8 rounded-lg flex flex-col items-center justify-center text-[11px] relative transition-all cursor-pointer ${styleClasses} ${
+                    isToday && !isSelected ? 'ring-1.5 ring-[var(--blue)] ring-offset-1 ring-offset-[var(--surf)]' : ''
+                  }`}
+                >
+                  <span>{day}</span>
+                  {/* Indicator Dot for Holidays */}
+                  {holiday && !isSelected && (
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${holidayColorMeta?.dot} absolute bottom-0.5`}
+                    />
+                  )}
+                  {isSunday && !holiday && !isSelected && !isFuture && (
+                    <span className="w-1 h-1 rounded-full bg-red-400 absolute bottom-0.5" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Month Holidays List / Summary */}
+          {monthHolidays.length > 0 && (
+            <div className="mt-3 pt-2.5 border-t border-[var(--b)] max-h-[100px] overflow-y-auto">
+              <div className="text-[10px] font-bold text-[var(--tx3)] mb-1.5 uppercase tracking-wider">
+                Holidays this month:
+              </div>
+              <div className="space-y-1">
+                {monthHolidays.map((h) => {
+                  const meta = getColorClasses(h.color);
+                  return (
+                    <div
+                      key={h.date}
+                      onClick={() => {
+                        if (h.date <= todayStr) {
+                          onChange(h.date);
+                          setIsOpen(false);
+                        }
+                      }}
+                      className={`flex items-center justify-between text-[10.5px] px-2 py-1 rounded-md ${
+                        meta.badge
+                      } border ${h.date <= todayStr ? 'cursor-pointer hover:opacity-80' : 'opacity-60 cursor-not-allowed'}`}
+                    >
+                      <span className="font-semibold truncate max-w-[190px]">{h.name}</span>
+                      <span className="font-mono text-[9.5px] shrink-0">{formatDate(h.date)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Color Legend Footer */}
+          <div className="mt-2.5 pt-2 border-t border-[var(--b)] flex items-center justify-between text-[9.5px] text-[var(--tx3)] flex-wrap gap-1">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Holiday/Sunday
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-[var(--blue)] inline-block" /> Selected
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-gray-400 opacity-40 inline-block" /> Future (Disabled)
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type AttendanceStatus = 'Present' | 'Absent' | 'Leave' | 'Half Day';
 
@@ -242,6 +577,65 @@ export function StaffAttendance() {
   const [presentCutoffEvening, setPresentCutoffEvening] = useState('16:30');
   const [lateEntryCutoff, setLateEntryCutoff] = useState('09:50');
   const [earlyEntryCutoff, setEarlyEntryCutoff] = useState('15:00');
+  const [biometricMachineCutoff, setBiometricMachineCutoff] = useState<string>(() => {
+    return localStorage.getItem('biometric_machine_status_cutoff') || '10:00';
+  });
+
+  // Holidays state
+  const [holidays, setHolidays] = useState<Holiday[]>(() => {
+    try {
+      const saved = localStorage.getItem('kts_holidays');
+      return (saved && JSON.parse(saved)) || [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Current local time ticker (updates every 15s to reactively enable manual mode when cutoff passes)
+  const [currentTimeStr, setCurrentTimeStr] = useState<string>(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  });
+
+  useEffect(() => {
+    const updateCurrentTime = () => {
+      const now = new Date();
+      setCurrentTimeStr(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+    };
+    updateCurrentTime();
+    const timer = setInterval(updateCurrentTime, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch holidays from API resources directly
+  useEffect(() => {
+    api.getResources('holidays')
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : []);
+        if (list.length > 0) {
+          setHolidays((prev) => {
+            const map = new Map<string, Holiday>();
+            prev.forEach((h) => map.set(h.date, h));
+            list.forEach((h: any) => {
+              const d = h.date ? h.date.slice(0, 10) : '';
+              if (d) {
+                map.set(d, {
+                  date: d,
+                  name: h.name || 'Holiday',
+                  description: h.description || '',
+                  color: h.color || 'red',
+                  isHoliday: true,
+                });
+              }
+            });
+            const merged = Array.from(map.values());
+            localStorage.setItem('kts_holidays', JSON.stringify(merged));
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Load staff members, attendance, and biometric punches from DB settings / localStorage
   useEffect(() => {
@@ -295,6 +689,8 @@ export function StaffAttendance() {
         const presESetting = settingsArray.find((s: any) => s.key === 'present_cutoff_evening');
         const lateSetting = settingsArray.find((s: any) => s.key === 'late_entry_cutoff');
         const earlySetting = settingsArray.find((s: any) => s.key === 'early_entry_cutoff');
+        const bioCutoffSetting = settingsArray.find((s: any) => s.key === 'biometric_machine_status_cutoff');
+        const holidaysSetting = settingsArray.find((s: any) => s.key === 'kts_holidays');
 
         const sStart = startSetting?.value || '08:30';
         const sEnd = endSetting?.value || '17:30';
@@ -302,6 +698,7 @@ export function StaffAttendance() {
         const pCutE = presESetting?.value || '16:30';
         const lCutM = lateSetting?.value || '09:50';
         const eCutE = earlySetting?.value || '15:00';
+        const bCutM = bioCutoffSetting?.value || '10:00';
 
         setSchoolStartTime(sStart);
         setSchoolEndTime(sEnd);
@@ -309,6 +706,20 @@ export function StaffAttendance() {
         setPresentCutoffEvening(pCutE);
         setLateEntryCutoff(lCutM);
         setEarlyEntryCutoff(eCutE);
+        setBiometricMachineCutoff(bCutM);
+        localStorage.setItem('biometric_machine_status_cutoff', bCutM);
+
+        if (holidaysSetting && holidaysSetting.value) {
+          try {
+            const parsedHolidays = JSON.parse(holidaysSetting.value);
+            if (Array.isArray(parsedHolidays)) {
+              setHolidays(parsedHolidays);
+              (localStorage as any).originalSetItem('kts_holidays', holidaysSetting.value);
+            }
+          } catch (err) {
+            console.error('Error parsing holidays setting:', err);
+          }
+        }
 
         const attendanceSetting = settingsArray.find((s: any) => s.key === 'kts_staff_attendance');
         const punchesSetting = settingsArray.find((s: any) => s.key === 'kts_biometric_punches');
@@ -338,8 +749,6 @@ export function StaffAttendance() {
       .catch((err) => {
         console.error('Error syncing data from DB in StaffAttendance:', err);
         // Fallback to localStorage if API fails
-        // Not falling back to localStorage for staff members since we use the database API now
-        
         const savedAtt = localStorage.getItem('kts_staff_attendance');
         const parsedAtt = savedAtt && JSON.parse(savedAtt);
         if (parsedAtt) setManualAttendance(parsedAtt);
@@ -350,18 +759,21 @@ export function StaffAttendance() {
       });
   }, []);
 
-  // Listen to cross-tab updates to kts_staff_members, kts_staff_attendance, kts_biometric_punches, and kts_staff_attendance_mode
+  // Listen to cross-tab updates to kts_staff_members, kts_staff_attendance, kts_biometric_punches, kts_staff_attendance_mode, kts_holidays, biometric_machine_status_cutoff
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.newValue) return;
       try {
-        // Staff members are now loaded from the database directly
         if (e.key === 'kts_staff_attendance') {
           setManualAttendance(JSON.parse(e.newValue));
         } else if (e.key === 'kts_biometric_punches') {
           setLocalPunches(JSON.parse(e.newValue));
         } else if (e.key === 'kts_staff_attendance_mode') {
           setAttendanceMode(e.newValue as 'biometric' | 'manual');
+        } else if (e.key === 'kts_holidays') {
+          setHolidays(JSON.parse(e.newValue));
+        } else if (e.key === 'biometric_machine_status_cutoff') {
+          setBiometricMachineCutoff(e.newValue);
         }
       } catch (err) {
         console.error('Error parsing storage change in StaffAttendance:', err);
@@ -770,20 +1182,67 @@ export function StaffAttendance() {
   }, [manualAttendance]);
 
    
-  // Automatically switch mode based on biometric connectivity:
-  // - When biometric device is online (connected): manual option is disabled, biometric mode is active.
-  // - When biometric device is offline (disconnected): manual mode is enabled and active.
+  // Determine date metrics & conditions
+  const todayStr = getLocalDateStr();
+  const isToday = date === todayStr;
+  const isPastDate = date < todayStr;
+
+  const selectedDateObj = new Date(date + 'T00:00:00');
+  const isSunday = !isNaN(selectedDateObj.getTime()) && selectedDateObj.getDay() === 0;
+  const holidayOnDate = holidays.find((h) => h.date === date);
+  const isHoliday = !!holidayOnDate || isSunday;
+  const holidayTitle = holidayOnDate ? holidayOnDate.name : (isSunday ? 'Sunday Holiday' : '');
+
+  // Calculate total punches for selected date
+  const totalPunchesOnSelectedDate = useMemo(() => {
+    const localMatches = localPunches.filter((p) => p.timestamp.startsWith(date));
+    const bioMatches = biometricRecords.filter((r) => {
+      const pDate = r.DateString || (r.PunchDate ? parsePunchDate(r.PunchDate) || r.PunchDate.slice(0, 10) : '');
+      return pDate === date;
+    });
+    return localMatches.length + bioMatches.length;
+  }, [localPunches, biometricRecords, date]);
+
+  // Is cutoff time reached for today with 0 punches received?
+  const isCutoffExceededToday = isToday && currentTimeStr >= biometricMachineCutoff && totalPunchesOnSelectedDate === 0;
+
+  // Is this a past date with 0 biometric punches?
+  const isPastDateWithoutPunches = isPastDate && totalPunchesOnSelectedDate === 0;
+
+  // Determine if manual mode / editing controls are allowed
+  const isManualAllowed = !isHoliday && (
+    connectionStatus === 'disconnected' ||
+    isCutoffExceededToday ||
+    isPastDateWithoutPunches ||
+    attendanceMode === 'manual'
+  );
+
+  // Automatically switch mode based on conditions:
+  // - If device is disconnected: manual mode is active.
+  // - If today cutoff reached with 0 punches: auto-enable manual mode.
+  // - If past date with 0 punches: auto-enable manual mode.
+  // - If online and punches exist or before cutoff on today: biometric mode active.
   useEffect(() => {
-    if (connectionStatus === 'connected') {
-      if (attendanceMode !== 'biometric') {
-        setAttendanceMode('biometric');
-      }
-    } else if (connectionStatus === 'disconnected') {
+    if (isHoliday) return;
+
+    if (connectionStatus === 'disconnected') {
       if (attendanceMode !== 'manual') {
         setAttendanceMode('manual');
       }
+    } else if (isCutoffExceededToday) {
+      if (attendanceMode !== 'manual') {
+        setAttendanceMode('manual');
+      }
+    } else if (isPastDate && isPastDateWithoutPunches) {
+      if (attendanceMode !== 'manual') {
+        setAttendanceMode('manual');
+      }
+    } else if (connectionStatus === 'connected' && !isPastDate && !isCutoffExceededToday) {
+      if (attendanceMode !== 'biometric') {
+        setAttendanceMode('biometric');
+      }
     }
-  }, [connectionStatus, attendanceMode]);
+  }, [connectionStatus, isCutoffExceededToday, isPastDate, isPastDateWithoutPunches, isHoliday, attendanceMode]);
 
   useEffect(() => {
     localStorage.setItem('kts_biometric_punches', JSON.stringify(localPunches));
@@ -1152,9 +1611,9 @@ export function StaffAttendance() {
                   syncBiometricPunches(false);
                   syncBiometric(false);
                 }}
-                disabled={connectionStatus === 'disconnected'}
+                disabled={connectionStatus === 'disconnected' || isHoliday}
                 className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
-                  connectionStatus === 'disconnected'
+                  connectionStatus === 'disconnected' || isHoliday
                     ? 'opacity-40 cursor-not-allowed text-[var(--tx3)]'
                     : 'cursor-pointer hover:text-[var(--tx2)]'
                 } ${
@@ -1162,16 +1621,22 @@ export function StaffAttendance() {
                     ? 'bg-[var(--blue)] text-white'
                     : 'text-[var(--tx3)]'
                 }`}
-                title={connectionStatus === 'disconnected' ? "Biometric is offline (not connected to internet)" : "Biometric mode"}
+                title={
+                  isHoliday
+                    ? `Holiday: ${holidayTitle}`
+                    : connectionStatus === 'disconnected'
+                    ? "Biometric is offline (not connected to internet)"
+                    : "Biometric mode"
+                }
               >
                 Biometric
               </button>
               <button
                 type="button"
                 onClick={() => setAttendanceMode('manual')}
-                disabled={connectionStatus === 'connected'}
+                disabled={isHoliday}
                 className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${
-                  connectionStatus === 'connected'
+                  isHoliday
                     ? 'opacity-40 cursor-not-allowed text-[var(--tx3)]'
                     : 'cursor-pointer hover:text-[var(--tx2)]'
                 } ${
@@ -1179,24 +1644,32 @@ export function StaffAttendance() {
                     ? 'bg-[var(--amber-bg)] text-[var(--amber-tx)] border border-[var(--amber-tx)]/20'
                     : 'text-[var(--tx3)]'
                 }`}
-                title={connectionStatus === 'connected' ? "Manual mode is disabled because the biometric device is online." : "Biometric device is offline. Manual attendance is enabled."}
+                title={
+                  isHoliday
+                    ? `Holiday: ${holidayTitle}`
+                    : isCutoffExceededToday
+                    ? `Biometric cutoff reached (${biometricMachineCutoff}) with no punch data. Manual mode enabled.`
+                    : isPastDateWithoutPunches
+                    ? "No biometric punches for previous date. Manual mode enabled."
+                    : "Manual attendance mode"
+                }
               >
                 Manual
               </button>
             </div>
 
-            {attendanceMode === 'manual' && (
+            {attendanceMode === 'manual' && !isHoliday && (
               <button
                 type="button"
                 onClick={handleSaveManualAttendance}
                 disabled={isSaving}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all shadow-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                title="Save manual attendance to database"
+                title="Save attendance directly to database"
               >
                 {isSaving ? (
                   <>
                     <RefreshCw size={12} className="animate-spin" />
-                    Saving…
+                    Saving to DB…
                   </>
                 ) : (
                   <>
@@ -1207,7 +1680,7 @@ export function StaffAttendance() {
               </button>
             )}
 
-            {attendanceMode === 'biometric' && (
+            {attendanceMode === 'biometric' && !isHoliday && (
               <button
                 type="button"
                 onClick={() => {
@@ -1232,7 +1705,7 @@ export function StaffAttendance() {
           </div>
         )}
 
-        {/* Filters and Date Picker */}
+        {/* Filters and Custom Date Picker */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
           <div className="flex items-center gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5">
             <Search size={13} className="text-[var(--tx3)]" />
@@ -1255,48 +1728,97 @@ export function StaffAttendance() {
             ))}
           </select>
 
-          <div className="flex items-center gap-2 bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5">
-            <Calendar size={13} className="text-[var(--tx3)]" />
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="flex-1 bg-transparent text-[12px] text-[var(--tx)] outline-none cursor-pointer font-medium"
-            />
-          </div>
+          {/* Color-coded Holiday Date Picker with Future Dates Disabled */}
+          <StaffAttendanceDatePicker
+            value={date}
+            onChange={(newDate) => setDate(newDate)}
+            holidays={holidays}
+            maxDate={todayStr}
+          />
         </div>
 
         {/* Mode banner */}
-        <div className="flex items-center justify-between p-3.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl mb-4">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Fingerprint size={15} className={attendanceMode === 'biometric' ? 'text-[var(--blue-tx)] shrink-0' : 'text-[var(--amber-tx)] shrink-0'} />
-            <span className="text-[11.5px] text-[var(--tx2)] leading-relaxed">
-              {attendanceMode === 'biometric' ? (
-                <>
-                  <strong>Biometric Mode:</strong> Attendance driven by e-TimeOffice impressions for <strong>{formatDate(date)}</strong>.<br />
-                  <span className="text-[10px] text-[var(--tx3)]">Rules: 0 punches = Absent · 1 punch = Half Day · 2+ punches = Present.</span>
-                  {lastSyncMsg && (
-                    <span className={`block mt-0.5 text-[10.5px] ${lastSyncMsg.startsWith('✓') ? 'text-emerald-600' : lastSyncMsg.startsWith('⚠') ? 'text-amber-600' : 'text-red-500'}`}>
-                      {lastSyncMsg}
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <strong>Manual Attendance Mode (Offline):</strong> Biometric device is offline (not connected to internet). Manual attendance controls are enabled. Click <strong>Save Attendance</strong> to commit changes to the database.
-                </>
-              )}
+        {isHoliday ? (
+          <div className="flex items-center justify-between p-3.5 bg-purple-500/10 border border-purple-500/20 rounded-xl mb-4 text-purple-700 dark:text-purple-300">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle size={16} className="text-purple-600 shrink-0" />
+              <div>
+                <div className="text-[12px] font-bold">Holiday / Non-Working Day: {holidayTitle}</div>
+                <div className="text-[11px] opacity-85">
+                  {holidayOnDate?.description || 'School holiday / Sunday. Attendance marking is disabled for this date.'}
+                </div>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 text-[10.5px] font-bold bg-purple-500/20 text-purple-700 dark:text-purple-300 rounded-lg shrink-0">
+              Holiday
             </span>
           </div>
-          {attendanceMode === 'biometric' && (
-            <button
-              onClick={clearSimulatedPunches}
-              className="text-[10.5px] text-[var(--red-tx)] hover:underline cursor-pointer font-medium ml-3 shrink-0"
-            >
-              Clear Simulation Punches
-            </button>
-          )}
-        </div>
+        ) : isCutoffExceededToday ? (
+          <div className="flex items-center justify-between p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-xl mb-4 text-amber-800 dark:text-amber-300">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <Clock size={16} className="text-amber-600 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[12px] font-bold">Biometric Machine Status Cutoff Reached ({biometricMachineCutoff})</div>
+                <div className="text-[11px] opacity-85">
+                  No punch data received from the biometric device up to {biometricMachineCutoff}. Manual Mode is enabled for admin to allot staff attendance. Click <strong>Save Attendance</strong> to commit changes directly to the database.
+                </div>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 text-[10.5px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-lg shrink-0 ml-3">
+              Cutoff Failover Active
+            </span>
+          </div>
+        ) : isPastDateWithoutPunches ? (
+          <div className="flex items-center justify-between p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-xl mb-4 text-blue-800 dark:text-blue-300">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <Calendar size={16} className="text-blue-600 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[12px] font-bold">Previous Date Manual Entry ({formatDate(date)})</div>
+                <div className="text-[11px] opacity-85">
+                  No biometric punch data found for this past date. Manual entry is enabled so admin can mark attendance for previous dates. Click <strong>Save Attendance</strong> to save directly to the database.
+                </div>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 text-[10.5px] font-bold bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg shrink-0 ml-3">
+              Past Date Manual
+            </span>
+          </div>
+        ) : attendanceMode === 'manual' ? (
+          <div className="flex items-center justify-between p-3.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl mb-4">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <Fingerprint size={16} className="text-[var(--amber-tx)] shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[12px] font-bold text-[var(--tx)]">Manual Attendance Mode Active</div>
+                <div className="text-[11px] text-[var(--tx3)]">
+                  Admin can mark staff attendance manually. Click <strong>Save Attendance</strong> to save changes directly to the database.
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-3.5 bg-[var(--surf2)] border border-[var(--b)] rounded-xl mb-4">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Fingerprint size={15} className="text-[var(--blue-tx)] shrink-0" />
+              <span className="text-[11.5px] text-[var(--tx2)] leading-relaxed">
+                <strong>Biometric Mode:</strong> Attendance driven by e-TimeOffice impressions for <strong>{formatDate(date)}</strong>.<br />
+                <span className="text-[10px] text-[var(--tx3)]">Rules: 0 punches = Absent · 1 punch = Half Day · 2+ punches = Present.</span>
+                {lastSyncMsg && (
+                  <span className={`block mt-0.5 text-[10.5px] ${lastSyncMsg.startsWith('✓') ? 'text-emerald-600' : lastSyncMsg.startsWith('⚠') ? 'text-amber-600' : 'text-red-500'}`}>
+                    {lastSyncMsg}
+                  </span>
+                )}
+              </span>
+            </div>
+            {attendanceMode === 'biometric' && (
+              <button
+                onClick={clearSimulatedPunches}
+                className="text-[10.5px] text-[var(--red-tx)] hover:underline cursor-pointer font-medium ml-3 shrink-0"
+              >
+                Clear Simulation Punches
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Staff Attendance Table */}
         <div className="overflow-x-auto">
@@ -1502,7 +2024,11 @@ export function StaffAttendance() {
                     {/* Controls */}
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-1.5">
-                        {onLeave && status === 'Leave' ? (
+                        {isHoliday ? (
+                          <span className="px-2.5 py-1 text-[10px] font-bold text-purple-600 bg-purple-500/10 border border-purple-500/20 rounded-lg flex items-center gap-1">
+                            <AlertCircle size={11} /> Holiday
+                          </span>
+                        ) : onLeave && status === 'Leave' ? (
                           <span className="px-2.5 py-1 text-[10px] font-bold text-purple-600 bg-purple-500/10 border border-purple-500/20 rounded-lg flex items-center gap-1">
                             <AlertCircle size={11} /> Approved Leave
                           </span>
@@ -1516,18 +2042,22 @@ export function StaffAttendance() {
                             <button
                               key={opt.value}
                               type="button"
-                              disabled={attendanceMode === 'biometric' || connectionStatus === 'connected'}
+                              disabled={!isManualAllowed}
                               onClick={() => setManualStatus(s.id, opt.value as AttendanceStatus)}
                               className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg border transition-all ${
-                                (attendanceMode === 'biometric' || connectionStatus === 'connected')
+                                !isManualAllowed
                                   ? 'opacity-40 cursor-not-allowed'
                                   : 'cursor-pointer'
                               } ${
                                 status === opt.value
                                   ? opt.active
-                                  : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${(attendanceMode === 'biometric' || connectionStatus === 'connected') ? '' : opt.bg}`
+                                  : `text-[var(--tx3)] border-[var(--b)] bg-transparent ${!isManualAllowed ? '' : opt.bg}`
                               }`}
-                              title={(attendanceMode === 'biometric' || connectionStatus === 'connected') ? "Manual mode is disabled when biometric device is online" : `Set to ${opt.value}`}
+                              title={
+                                !isManualAllowed
+                                  ? "Manual mode is disabled while biometric device is online"
+                                  : `Set to ${opt.value}`
+                              }
                             >
                               {opt.value}
                             </button>
