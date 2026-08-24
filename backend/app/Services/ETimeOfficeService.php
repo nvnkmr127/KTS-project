@@ -32,17 +32,23 @@ class ETimeOfficeService
      */
     private function loadConfiguration(): void
     {
-        // Prioritize Database Settings from the UI.
-        $dbUrl = Setting::where('key', 'etimeoffice_api_url')->value('value');
-        $dbCorporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value');
-        $dbUsername = Setting::where('key', 'etimeoffice_username')->value('value');
-        $dbPassword = Setting::where('key', 'etimeoffice_password')->value('value');
+        try {
+            $dbUrl = Setting::where('key', 'etimeoffice_api_url')->value('value');
+            $dbCorporateId = Setting::where('key', 'etimeoffice_corporate_id')->value('value');
+            $dbUsername = Setting::where('key', 'etimeoffice_username')->value('value');
+            $dbPassword = Setting::where('key', 'etimeoffice_password')->value('value');
+        } catch (\Exception $e) {
+            $dbUrl = null;
+            $dbCorporateId = null;
+            $dbUsername = null;
+            $dbPassword = null;
+        }
 
         // Fallback to config, and finally fallback to raw env() to match your .env file
         $this->apiUrl = $dbUrl ?: config('services.etimeoffice.url') ?: env('ETIMEOFFICE_API_URL') ?: 'https://api.etimeoffice.com/api';
         $this->corporateId = (string) ($dbCorporateId ?: config('services.etimeoffice.corporate_id') ?: env('ETIMEOFFICE_CORPORATE_ID'));
-        $this->username = (string) ($dbUsername ?: config('services.etimeoffice.username') ?: env('USERNAME'));
-        $this->password = (string) ($dbPassword ?: config('services.etimeoffice.password') ?: env('PASSWORD'));
+        $this->username = (string) ($dbUsername ?: config('services.etimeoffice.username') ?: env('ETIMEOFFICE_USERNAME'));
+        $this->password = (string) ($dbPassword ?: config('services.etimeoffice.password') ?: env('ETIMEOFFICE_PASSWORD'));
 
         // Create Basic Auth token (base64 encoded)
         $this->authToken = base64_encode("{$this->corporateId}:{$this->username}:{$this->password}:true");
@@ -59,7 +65,7 @@ class ETimeOfficeService
     }
 
     /**
-     * Test API connection
+     * Test API connection and verify physical biometric machine status
      */
     public function testConnection(): array
     {
@@ -75,11 +81,12 @@ class ETimeOfficeService
         }
 
         try {
-            // Check for recent punches from the physical device (today / last 24h)
+            // Check for actual punches from the physical device TODAY
+            $today = now()->format('d/m/Y');
             $response = $this->makeApiCall('DownloadPunchData', [
                 'Empcode' => 'ALL',
-                'FromDate' => now()->subHours(24)->format('d/m/Y H:i'),
-                'ToDate' => now()->format('d/m/Y H:i'),
+                'FromDate' => "{$today}_00:00",
+                'ToDate' => "{$today}_23:59",
             ]);
 
             if ($response['success']) {
@@ -87,15 +94,38 @@ class ETimeOfficeService
                 if (!empty($punchData) && !isset($punchData[0])) {
                     $punchData = [$punchData];
                 }
-                $hasRecentPunches = is_array($punchData) && count($punchData) > 0;
+                $hasTodayPunches = is_array($punchData) && count($punchData) > 0;
+
+                // If raw punches are empty, also check InOutPunchData for any non-placeholder punches today
+                if (!$hasTodayPunches) {
+                    $inOutResp = $this->makeApiCall('DownloadInOutPunchData', [
+                        'Empcode' => 'ALL',
+                        'FromDate' => $today,
+                        'ToDate' => $today,
+                    ]);
+                    if ($inOutResp['success']) {
+                        $inOutData = $inOutResp['data']['InOutPunchData'] ?? $inOutResp['data']['PunchData'] ?? [];
+                        if (!empty($inOutData) && !isset($inOutData[0])) {
+                            $inOutData = [$inOutData];
+                        }
+                        foreach ($inOutData as $row) {
+                            $in = $row['INTime'] ?? '--:--';
+                            $out = $row['OUTTime'] ?? '--:--';
+                            if (($in && $in !== '--:--') || ($out && $out !== '--:--')) {
+                                $hasTodayPunches = true;
+                                break;
+                            }
+                        }
+                    }
+                }
 
                 return [
                     'success' => true,
-                    'device_online' => $hasRecentPunches,
+                    'device_online' => $hasTodayPunches,
                     'data_count' => is_array($punchData) ? count($punchData) : 0,
-                    'message' => $hasRecentPunches 
-                        ? 'Biometric physical device connected & transmitting data' 
-                        : 'Biometric cloud connected, but physical device has no recent punch transmissions',
+                    'message' => $hasTodayPunches 
+                        ? 'Biometric physical device is online & transmitting data' 
+                        : 'Biometric physical device is offline (no punch transmission received today)',
                 ];
             } else {
                 return [

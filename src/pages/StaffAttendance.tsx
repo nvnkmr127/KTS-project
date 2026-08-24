@@ -446,6 +446,14 @@ const buildPunchesFromBioRecords = (records: BiometricRecord[], staff: StaffMemb
   return punches;
 };
 
+// Check if a biometric record has actual punch data (not empty or '--:--' placeholders)
+const hasRealPunchData = (record: BiometricRecord): boolean => {
+  if (record.INTime && record.INTime !== '--:--' && record.INTime.trim() !== '') return true;
+  if (record.OUTTime && record.OUTTime !== '--:--' && record.OUTTime.trim() !== '') return true;
+  if (record.PunchDate && record.PunchDate.trim() !== '' && !record.INTime && !record.OUTTime) return true;
+  return false;
+};
+
 // Matches a biometric record to a staff member by employee code (preferred) or name, plus the selected date
 const matchesStaffOnDate = (record: BiometricRecord, staff: StaffMember, targetDate: string): boolean => {
   const empCode = String(record.Empcode || '').toLowerCase().trim();
@@ -618,12 +626,12 @@ export function StaffAttendance() {
   const isHoliday = !!holidayOnDate || isSunday;
   const holidayTitle = holidayOnDate ? holidayOnDate.name : (isSunday ? 'Sunday Holiday' : '');
 
-  // Calculate total punches for selected date
+  // Calculate total real punches for selected date
   const totalPunchesOnSelectedDate = useMemo(() => {
     const localMatches = localPunches.filter((p) => p.timestamp.startsWith(date));
     const bioMatches = biometricRecords.filter((r) => {
-      const pDate = r.DateString || (r.PunchDate ? parsePunchDate(r.PunchDate) || r.PunchDate.slice(0, 10) : '');
-      return pDate === date;
+      const pDate = r.DateString ? (parsePunchDate(r.DateString) || r.DateString) : (r.PunchDate ? parsePunchDate(r.PunchDate) || r.PunchDate.slice(0, 10) : '');
+      return pDate === date && hasRealPunchData(r);
     });
     return localMatches.length + bioMatches.length;
   }, [localPunches, biometricRecords, date]);
@@ -879,11 +887,11 @@ export function StaffAttendance() {
 
     try {
       const res = await api.biometricStatus(true);
+      // The physical biometric device is connected ONLY when backend verifies physical device has transmitted live punch data today
       const isDeviceConnected = Boolean(
         res?.configured &&
         res?.connected &&
-        (res?.device_online !== false || totalPunchesOnSelectedDate > 0) &&
-        !isCutoffExceededToday
+        res?.device_online === true
       );
 
       if (isDeviceConnected) {
@@ -911,7 +919,7 @@ export function StaffAttendance() {
       setAttendanceMode('manual');
       return false;
     }
-  }, [isCutoffExceededToday, totalPunchesOnSelectedDate]);
+  }, []);
 
   // Sync biometric IN/OUT data for the selected date from the real API
   const syncBiometric = useCallback((silent = false) => {
@@ -931,6 +939,7 @@ export function StaffAttendance() {
       .then((result) => {
         if (result?.success) {
           const records: BiometricRecord[] = result?.data || [];
+          const realPunchRecords = records.filter(hasRealPunchData);
 
           if (records.length > 0) {
             // Merge with existing biometricRecords to keep webhook punches
@@ -960,46 +969,60 @@ export function StaffAttendance() {
               const otherDatePunches = prev.filter((p) => !p.timestamp.startsWith(date));
               return [...otherDatePunches, ...newPunches];
             });
-            setConnectionStatus('connected');
-            setAttendanceMode('biometric');
+
             const now = new Date().toLocaleTimeString();
             setLastSyncTime(now);
 
-            if (!silent) {
-              setLastSyncMsg(`✓ Synced ${result.saved ?? records.length} records at ${now}`);
+            // Physical device online status is determined by real punches transmitted on today's date
+            if (isToday) {
+              if (realPunchRecords.length > 0) {
+                setConnectionStatus('connected');
+                setAttendanceMode('biometric');
+                if (!silent) {
+                  setLastSyncMsg(`✓ Synced ${realPunchRecords.length} punch records from biometric device at ${now}`);
+                }
+              } else {
+                // 0 real punches transmitted from physical device today -> offline
+                setConnectionStatus('disconnected');
+                setAttendanceMode('manual');
+                if (!silent) {
+                  setLastSyncMsg('⚠ Biometric device is offline (no punch transmission received today). Manual mode active.');
+                }
+              }
+            } else {
+              if (!silent) {
+                setLastSyncMsg(`✓ Loaded ${realPunchRecords.length} punch records for ${date}`);
+              }
             }
           } else {
             // 0 records received from physical device
-            if (isCutoffExceededToday || isPastDateWithoutPunches) {
+            if (isToday) {
               setConnectionStatus('disconnected');
               setAttendanceMode('manual');
               if (!silent) {
                 setLastSyncMsg('⚠ No biometric punch data received from physical device. Manual mode active.');
               }
-            } else {
-              const now = new Date().toLocaleTimeString();
-              setLastSyncTime(now);
             }
           }
         } else {
           // Sync failed or device not reachable -> offline
-          setConnectionStatus('disconnected');
-          if (!isPastDateWithoutPunches) {
+          if (isToday) {
+            setConnectionStatus('disconnected');
             setAttendanceMode('manual');
           }
           if (!silent) {
             setLastSyncMsg(
               result?.message?.includes('not configured')
                 ? '⚠ Biometric credentials not set. Configure them in Settings → Biometric Integration.'
-                : '⚠ Biometric device is offline (not connected to internet). Manual mode active.'
+                : '⚠ Biometric physical device is offline (not connected to internet). Manual mode active.'
             );
           }
           fetchLocalBiometricLogs();
         }
       })
       .catch((err: any) => {
-        setConnectionStatus('disconnected');
-        if (!isPastDateWithoutPunches) {
+        if (isToday) {
+          setConnectionStatus('disconnected');
           setAttendanceMode('manual');
         }
         const errStr = String(err?.message || err || '');
@@ -1017,7 +1040,7 @@ export function StaffAttendance() {
         syncInProgress.current = false;
         setIsSyncing(false);
       });
-  }, [date, staffList, fetchLocalBiometricLogs, isCutoffExceededToday, isPastDateWithoutPunches]);
+  }, [date, staffList, fetchLocalBiometricLogs, isToday]);
 
   // Sync biometric raw punch logs (DownloadPunchData) every second during school hours
   const syncBiometricPunches = useCallback((silent = false) => {
@@ -1035,18 +1058,28 @@ export function StaffAttendance() {
       .then((result) => {
         if (result?.success) {
           fetchLocalBiometricLogs();
-          if (isCutoffExceededToday && totalPunchesOnSelectedDate === 0) {
+          const punchCount = Array.isArray(result?.data) ? result.data.length : (result?.saved || 0);
+          if (isToday) {
+            if (punchCount > 0) {
+              setConnectionStatus('connected');
+              setAttendanceMode('biometric');
+            } else {
+              setConnectionStatus('disconnected');
+              setAttendanceMode('manual');
+            }
+          }
+        } else {
+          if (isToday) {
             setConnectionStatus('disconnected');
             setAttendanceMode('manual');
           }
-        } else {
-          setConnectionStatus('disconnected');
-          setAttendanceMode('manual');
         }
       })
       .catch((err) => {
-        setConnectionStatus('disconnected');
-        setAttendanceMode('manual');
+        if (isToday) {
+          setConnectionStatus('disconnected');
+          setAttendanceMode('manual');
+        }
         const errStr = String(err?.message || err || '');
         const isExpectedOfflineErr =
           errStr.includes('Biometric credentials not configured') ||
@@ -1063,7 +1096,7 @@ export function StaffAttendance() {
         syncPunchesInProgress.current = false;
         setIsSyncingPunches(false);
       });
-  }, [date, fetchLocalBiometricLogs, isCutoffExceededToday, totalPunchesOnSelectedDate]);
+  }, [date, fetchLocalBiometricLogs, isToday]);
 
   // Ref to hold the latest function reference for the 1s local-DB poll below
   const fetchLocalBiometricLogsRef = useRef(fetchLocalBiometricLogs);
@@ -1120,9 +1153,10 @@ export function StaffAttendance() {
       } else {
         setConnectionStatus('disconnected');
         setAttendanceMode('manual');
+        fetchLocalBiometricLogs();
       }
     });
-  }, [checkBiometricStatus, syncBiometric, syncBiometricPunches]);
+  }, [checkBiometricStatus, syncBiometric, syncBiometricPunches, fetchLocalBiometricLogs]);
 
   // Auto-sync when date changes
   useEffect(() => {

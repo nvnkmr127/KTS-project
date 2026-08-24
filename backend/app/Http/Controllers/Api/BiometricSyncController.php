@@ -31,6 +31,7 @@ class BiometricSyncController extends Controller
             $stats = $this->etimeoffice->getComprehensiveStats();
             $configured = $stats['configuration']['valid'] ?? false;
             $connected = false;
+            $deviceOnline = false;
             $connectionMessage = '';
             $dataCount = 0;
 
@@ -38,14 +39,14 @@ class BiometricSyncController extends Controller
                 $test = $this->etimeoffice->testConnection();
                 $connected = (bool) ($test['success'] ?? false);
                 $deviceOnline = (bool) ($test['device_online'] ?? false);
-                $connectionMessage = $test['message'] ?? ($deviceOnline ? 'Biometric device connected to internet' : 'Biometric device offline (not connected to internet)');
+                $connectionMessage = $test['message'] ?? ($deviceOnline ? 'Biometric physical device is online & transmitting data' : 'Biometric physical device is offline (not connected to internet)');
                 $dataCount = $test['data_count'] ?? 0;
             }
 
             return response()->json([
                 'configured' => $configured,
                 'connected' => $connected,
-                'device_online' => $deviceOnline ?? false,
+                'device_online' => $deviceOnline,
                 'connection_message' => $connectionMessage,
                 'data_count' => $dataCount,
                 'issues' => $stats['configuration']['issues'] ?? [],
@@ -62,6 +63,8 @@ class BiometricSyncController extends Controller
             return response()->json([
                 'configured' => false,
                 'connected' => false,
+                'device_online' => false,
+                'connection_message' => 'Unable to load configuration: ' . $e->getMessage(),
                 'issues' => ['Unable to load configuration: ' . $e->getMessage()],
             ]);
         }
