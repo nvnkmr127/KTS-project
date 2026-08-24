@@ -90,11 +90,21 @@ class ETimeOfficeService
             ]);
 
             if ($response['success']) {
-                $punchData = $response['data']['PunchData'] ?? $response['data'] ?? [];
-                if (!empty($punchData) && !isset($punchData[0])) {
-                    $punchData = [$punchData];
+                $rawPunch = $response['data']['PunchData'] ?? (isset($response['data'][0]) ? $response['data'] : []);
+                if (!empty($rawPunch) && !isset($rawPunch[0])) {
+                    $rawPunch = [$rawPunch];
                 }
-                $hasTodayPunches = is_array($punchData) && count($punchData) > 0;
+
+                // Filter to genuine punch records
+                $realPunches = [];
+                if (is_array($rawPunch)) {
+                    foreach ($rawPunch as $item) {
+                        if (is_array($item) && (!empty($item['Empcode']) || !empty($item['EmpcardNo']) || !empty($item['PunchDate']) || !empty($item['LogDateTime']))) {
+                            $realPunches[] = $item;
+                        }
+                    }
+                }
+                $hasTodayPunches = count($realPunches) > 0;
 
                 // If raw punches are empty, also check InOutPunchData for any non-placeholder punches today
                 if (!$hasTodayPunches) {
@@ -104,15 +114,17 @@ class ETimeOfficeService
                         'ToDate' => $today,
                     ]);
                     if ($inOutResp['success']) {
-                        $inOutData = $inOutResp['data']['InOutPunchData'] ?? $inOutResp['data']['PunchData'] ?? [];
+                        $inOutData = $inOutResp['data']['InOutPunchData'] ?? $inOutResp['data']['PunchData'] ?? (isset($inOutResp['data'][0]) ? $inOutResp['data'] : []);
                         if (!empty($inOutData) && !isset($inOutData[0])) {
                             $inOutData = [$inOutData];
                         }
                         foreach ($inOutData as $row) {
+                            if (!is_array($row)) continue;
                             $in = $row['INTime'] ?? '--:--';
                             $out = $row['OUTTime'] ?? '--:--';
-                            if (($in && $in !== '--:--') || ($out && $out !== '--:--')) {
+                            if (($in && $in !== '--:--' && $in !== '00:00') || ($out && $out !== '--:--' && $out !== '00:00')) {
                                 $hasTodayPunches = true;
+                                $realPunches[] = $row;
                                 break;
                             }
                         }
@@ -122,7 +134,7 @@ class ETimeOfficeService
                 return [
                     'success' => true,
                     'device_online' => $hasTodayPunches,
-                    'data_count' => is_array($punchData) ? count($punchData) : 0,
+                    'data_count' => count($realPunches),
                     'message' => $hasTodayPunches 
                         ? 'Biometric physical device is online & transmitting data' 
                         : 'Biometric physical device is offline (no punch transmission received today)',
@@ -172,11 +184,20 @@ class ETimeOfficeService
                 ];
             }
 
-            $punchData = $response['data']['PunchData'] ?? $response['data'] ?? [];
+            $rawPunch = $response['data']['PunchData'] ?? (isset($response['data'][0]) ? $response['data'] : []);
 
             // Normalize single associative array to list
-            if (!empty($punchData) && !isset($punchData[0])) {
-                $punchData = [$punchData];
+            if (!empty($rawPunch) && !isset($rawPunch[0])) {
+                $rawPunch = [$rawPunch];
+            }
+
+            $punchData = [];
+            if (is_array($rawPunch)) {
+                foreach ($rawPunch as $item) {
+                    if (is_array($item) && (!empty($item['Empcode']) || !empty($item['EmpcardNo']) || !empty($item['PunchDate']) || !empty($item['LogDateTime']))) {
+                        $punchData[] = $item;
+                    }
+                }
             }
 
             Log::info('eTimeOffice data fetched successfully', [
@@ -229,11 +250,20 @@ class ETimeOfficeService
             }
 
             // DownloadInOutPunchData returns 'InOutPunchData' key (not 'PunchData')
-            $inOutData = $response['data']['InOutPunchData'] ?? $response['data']['PunchData'] ?? $response['data'] ?? [];
+            $rawInOut = $response['data']['InOutPunchData'] ?? $response['data']['PunchData'] ?? (isset($response['data'][0]) ? $response['data'] : []);
 
             // Normalize single associative array to list
-            if (!empty($inOutData) && !isset($inOutData[0])) {
-                $inOutData = [$inOutData];
+            if (!empty($rawInOut) && !isset($rawInOut[0])) {
+                $rawInOut = [$rawInOut];
+            }
+
+            $inOutData = [];
+            if (is_array($rawInOut)) {
+                foreach ($rawInOut as $item) {
+                    if (is_array($item) && (!empty($item['Empcode']) || !empty($item['EmpcardNo']) || !empty($item['INTime']) || !empty($item['OUTTime']) || !empty($item['DateString']))) {
+                        $inOutData[] = $item;
+                    }
+                }
             }
 
             Log::info('eTimeOffice IN/OUT data fetched', [
@@ -288,7 +318,19 @@ class ETimeOfficeService
                 ];
             }
 
-            $punchData = $response['data']['PunchData'] ?? $response['data'] ?? [];
+            $rawPunch = $response['data']['PunchData'] ?? (isset($response['data'][0]) ? $response['data'] : []);
+            if (!empty($rawPunch) && !isset($rawPunch[0])) {
+                $rawPunch = [$rawPunch];
+            }
+
+            $punchData = [];
+            if (is_array($rawPunch)) {
+                foreach ($rawPunch as $item) {
+                    if (is_array($item) && (!empty($item['Empcode']) || !empty($item['EmpcardNo']) || !empty($item['PunchDate']) || !empty($item['LogDateTime']))) {
+                        $punchData[] = $item;
+                    }
+                }
+            }
             $maxRecord = $response['data']['MaxRecord'] ?? $lastRecord;
 
             // Update last sync record for next incremental sync
