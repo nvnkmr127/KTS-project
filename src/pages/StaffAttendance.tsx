@@ -887,19 +887,23 @@ export function StaffAttendance() {
 
     try {
       const res = await api.biometricStatus(true);
-      // The physical biometric device is connected ONLY when backend verifies physical device has transmitted live punch data today
+      // The physical biometric device is connected when the API is configured and reachable
       const isDeviceConnected = Boolean(
         res?.configured &&
         res?.connected &&
-        res?.device_online === true
+        res?.device_online !== false
       );
 
       if (isDeviceConnected) {
         setConnectionStatus('connected');
         setAttendanceMode('biometric');
-        if (res.last_sync) {
-          const d = new Date(res.last_sync);
-          setLastSyncTime(d.toLocaleTimeString());
+        if (res.last_sync || res.last_punch_time) {
+          const d = new Date(res.last_sync || res.last_punch_time);
+          if (!isNaN(d.getTime())) {
+            setLastSyncTime(d.toLocaleTimeString());
+          } else if (res.last_punch_time) {
+            setLastSyncTime(res.last_punch_time);
+          }
         }
         return true;
       } else {
@@ -1130,7 +1134,7 @@ export function StaffAttendance() {
     };
   }, [checkBiometricStatus, syncBiometric, syncBiometricPunches]);
 
-  // Check biometric status on mount
+  // Check biometric status on mount and periodic 45s heartbeat poll
   useEffect(() => {
     if (!navigator.onLine) {
       setConnectionStatus('disconnected');
@@ -1156,6 +1160,15 @@ export function StaffAttendance() {
         fetchLocalBiometricLogs();
       }
     });
+
+    // Method 1: Periodic 45s Cloud Heartbeat Check (Irrespective of punches)
+    const heartbeatInterval = setInterval(() => {
+      if (navigator.onLine) {
+        checkBiometricStatus(true);
+      }
+    }, 45000);
+
+    return () => clearInterval(heartbeatInterval);
   }, [checkBiometricStatus, syncBiometric, syncBiometricPunches, fetchLocalBiometricLogs]);
 
   // Auto-sync when date changes

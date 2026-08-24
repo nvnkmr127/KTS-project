@@ -76,12 +76,16 @@ class ETimeOfficeService
             return [
                 'success' => false,
                 'device_online' => false,
+                'status' => 'offline',
+                'latency_ms' => null,
                 'message' => 'Credentials not configured: ' . implode(', ', $validation['issues']),
             ];
         }
 
+        $startTime = microtime(true);
+
         try {
-            // Check for actual punches from the physical device TODAY
+            // Method 1: Cloud API Gateway & Heartbeat Probe
             $today = now()->format('d/m/Y');
             $response = $this->makeApiCall('DownloadPunchData', [
                 'Empcode' => 'ALL',
@@ -89,69 +93,79 @@ class ETimeOfficeService
                 'ToDate' => "{$today}_23:59",
             ]);
 
+            $latencyMs = (int) round((microtime(true) - $startTime) * 1000);
+
             if ($response['success']) {
                 $rawPunch = $response['data']['PunchData'] ?? (isset($response['data'][0]) ? $response['data'] : []);
                 if (!empty($rawPunch) && !isset($rawPunch[0])) {
                     $rawPunch = [$rawPunch];
                 }
 
-                // Filter to genuine punch records
-                $realPunches = [];
+                // Filter to genuine punch records for today
+                $todayPunches = [];
                 if (is_array($rawPunch)) {
                     foreach ($rawPunch as $item) {
                         if (is_array($item) && (!empty($item['Empcode']) || !empty($item['EmpcardNo']) || !empty($item['PunchDate']) || !empty($item['LogDateTime']))) {
-                            $realPunches[] = $item;
+                            $todayPunches[] = $item;
                         }
                     }
                 }
-                $hasTodayPunches = count($realPunches) > 0;
+                $todayCount = count($todayPunches);
 
-                // If raw punches are empty, also check InOutPunchData for any non-placeholder punches today
-                if (!$hasTodayPunches) {
-                    $inOutResp = $this->makeApiCall('DownloadInOutPunchData', [
+                // Fetch latest punch info to determine last activity timestamp
+                $lastPunchTime = null;
+                if ($todayCount > 0) {
+                    $lastItem = end($todayPunches);
+                    $lastPunchTime = $lastItem['PunchDate'] ?? $todayPunches[0]['PunchDate'] ?? null;
+                } else {
+                    $month = now()->format('mY');
+                    $lastResp = $this->makeApiCall('DownloadLastPunchData', [
                         'Empcode' => 'ALL',
-                        'FromDate' => $today,
-                        'ToDate' => $today,
+                        'LastRecord' => "{$month}$0",
                     ]);
-                    if ($inOutResp['success']) {
-                        $inOutData = $inOutResp['data']['InOutPunchData'] ?? $inOutResp['data']['PunchData'] ?? (isset($inOutResp['data'][0]) ? $inOutResp['data'] : []);
-                        if (!empty($inOutData) && !isset($inOutData[0])) {
-                            $inOutData = [$inOutData];
+                    if ($lastResp['success']) {
+                        $lastData = $lastResp['data']['PunchData'] ?? (isset($lastResp['data'][0]) ? $lastResp['data'] : []);
+                        if (!empty($lastData) && !isset($lastData[0])) {
+                            $lastData = [$lastData];
                         }
-                        foreach ($inOutData as $row) {
-                            if (!is_array($row)) continue;
-                            $in = $row['INTime'] ?? '--:--';
-                            $out = $row['OUTTime'] ?? '--:--';
-                            if (($in && $in !== '--:--' && $in !== '00:00') || ($out && $out !== '--:--' && $out !== '00:00')) {
-                                $hasTodayPunches = true;
-                                $realPunches[] = $row;
-                                break;
-                            }
+                        if (is_array($lastData) && count($lastData) > 0) {
+                            $lastItem = end($lastData);
+                            $lastPunchTime = $lastItem['PunchDate'] ?? null;
                         }
                     }
                 }
 
                 return [
                     'success' => true,
-                    'device_online' => $hasTodayPunches,
-                    'data_count' => count($realPunches),
-                    'message' => $hasTodayPunches 
-                        ? 'Biometric physical device is online & transmitting data' 
-                        : 'Biometric physical device is offline (no punch transmission received today)',
+                    'device_online' => true,
+                    'status' => 'online',
+                    'latency_ms' => $latencyMs,
+                    'data_count' => $todayCount,
+                    'last_punch_time' => $lastPunchTime,
+                    'message' => $todayCount > 0
+                        ? "Biometric Device Online — {$todayCount} punch(es) synced today ({$latencyMs}ms)"
+                        : ($lastPunchTime 
+                            ? "Biometric Device Online & Connected (Last activity: {$lastPunchTime})"
+                            : "Biometric Device Online (Cloud link active: {$latencyMs}ms)"),
                 ];
             } else {
                 return [
                     'success' => false,
                     'device_online' => false,
-                    'message' => 'Biometric physical device is offline: ' . ($response['error'] ?? 'Connection failed'),
+                    'status' => 'offline',
+                    'latency_ms' => $latencyMs,
+                    'message' => 'Biometric Device Offline: ' . ($response['error'] ?? 'Unable to connect to biometric cloud gateway'),
                 ];
             }
 
         } catch (\Exception $e) {
+            $latencyMs = (int) round((microtime(true) - $startTime) * 1000);
             return [
                 'success' => false,
                 'device_online' => false,
-                'message' => 'Biometric physical device is offline: ' . $e->getMessage(),
+                'status' => 'offline',
+                'latency_ms' => $latencyMs,
+                'message' => 'Biometric Device Offline: ' . $e->getMessage(),
             ];
         }
     }

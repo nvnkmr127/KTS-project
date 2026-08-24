@@ -33,22 +33,30 @@ class BiometricSyncController extends Controller
             $connected = false;
             $deviceOnline = false;
             $connectionMessage = '';
-            $dataCount = 0;
+            $lastPunchTime = null;
+            $latencyMs = null;
+            $deviceStatus = 'offline';
 
             if ($configured) {
                 $test = $this->etimeoffice->testConnection();
                 $connected = (bool) ($test['success'] ?? false);
                 $deviceOnline = (bool) ($test['device_online'] ?? false);
-                $connectionMessage = $test['message'] ?? ($deviceOnline ? 'Biometric physical device is online & transmitting data' : 'Biometric physical device is offline (not connected to internet)');
+                $deviceStatus = $test['status'] ?? ($deviceOnline ? 'online' : 'offline');
+                $latencyMs = $test['latency_ms'] ?? null;
+                $connectionMessage = $test['message'] ?? ($deviceOnline ? 'Biometric Device Online' : 'Biometric Device Offline');
                 $dataCount = $test['data_count'] ?? 0;
+                $lastPunchTime = $test['last_punch_time'] ?? null;
             }
 
             return response()->json([
                 'configured' => $configured,
                 'connected' => $connected,
                 'device_online' => $deviceOnline,
+                'status' => $deviceStatus,
+                'latency_ms' => $latencyMs,
                 'connection_message' => $connectionMessage,
                 'data_count' => $dataCount,
+                'last_punch_time' => $lastPunchTime,
                 'issues' => $stats['configuration']['issues'] ?? [],
                 'api_url' => $stats['configuration']['api_url'] ?? null,
                 'corporate_id' => $stats['configuration']['corporate_id'] ?? null,
@@ -64,6 +72,8 @@ class BiometricSyncController extends Controller
                 'configured' => false,
                 'connected' => false,
                 'device_online' => false,
+                'status' => 'offline',
+                'latency_ms' => null,
                 'connection_message' => 'Unable to load configuration: ' . $e->getMessage(),
                 'issues' => ['Unable to load configuration: ' . $e->getMessage()],
             ]);
@@ -88,8 +98,12 @@ class BiometricSyncController extends Controller
 
             return response()->json([
                 'connected' => $result['success'],
+                'device_online' => $result['device_online'] ?? $result['success'],
+                'status' => $result['status'] ?? ($result['success'] ? 'online' : 'offline'),
+                'latency_ms' => $result['latency_ms'] ?? null,
                 'message' => $result['message'] ?? ($result['success'] ? 'Connection successful' : 'Connection failed'),
                 'data_count' => $result['data_count'] ?? 0,
+                'last_punch_time' => $result['last_punch_time'] ?? null,
                 'tested_at' => now()->toISOString(),
             ], $result['success'] ? 200 : 422);
 
@@ -97,6 +111,9 @@ class BiometricSyncController extends Controller
             Log::error('BiometricSyncController::testConnection error', ['error' => $e->getMessage()]);
             return response()->json([
                 'connected' => false,
+                'device_online' => false,
+                'status' => 'offline',
+                'latency_ms' => null,
                 'message' => 'Connection error: ' . $e->getMessage(),
             ], 400);
         }
