@@ -56,10 +56,16 @@ export type SuperAdminTabParamList = {
   Analytics: undefined;
   Users: undefined;
   Broadcast: undefined;
+  ActivityLogs: undefined;
   Settings: undefined;
   SalaryExpenses: undefined;
   LeaveApprovals: undefined;
   AssignFee: undefined;
+  StaffManagement: undefined;
+  StaffAttendance: undefined;
+  SalaryCategories: undefined;
+  RolesPermissions: undefined;
+  SuperAdminActivityLog: undefined;
 };
 
 // Strongly typed navigation prop helpers

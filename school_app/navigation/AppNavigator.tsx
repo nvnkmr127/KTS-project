@@ -10,7 +10,7 @@ import {
   Home, Bell, Calendar, User, MessageCircle, 
   GraduationCap, Banknote, Bus, ClipboardCheck, 
   ClipboardList, Star, CalendarOff, Users, 
-  BarChart, Megaphone, Settings, FileText, Sliders
+  BarChart, Megaphone, Settings, FileText, Sliders, History
 } from 'lucide-react-native';
 
 // Auth Screens
@@ -30,6 +30,12 @@ import NotificationCenterScreen from '../screens/super_admin/NotificationCenterS
 import PortalToolsScreen from '../screens/super_admin/PortalToolsScreen';
 import AssignFeeStructureScreen from '../screens/super_admin/AssignFeeStructureScreen';
 import SuperAdminAdminConsoleScreen from '../screens/super_admin/SuperAdminAdminConsoleScreen';
+import SuperAdminStaffManagementScreen from '../screens/super_admin/SuperAdminStaffManagementScreen';
+import SuperAdminStaffAttendanceScreen from '../screens/super_admin/SuperAdminStaffAttendanceScreen';
+import SuperAdminSalaryCategoriesScreen from '../screens/super_admin/SuperAdminSalaryCategoriesScreen';
+import SuperAdminRolesPermissionsScreen from '../screens/super_admin/SuperAdminRolesPermissionsScreen';
+import SuperAdminActivityLogScreen from '../screens/super_admin/SuperAdminActivityLogScreen';
+import SuperAdminAllUsersActivityLogsScreen from '../screens/super_admin/SuperAdminAllUsersActivityLogsScreen';
 
 // Admin Staff Screens
 import AdminStaffDashboard from '../screens/admin_staff/AdminStaffDashboard';
@@ -104,6 +110,7 @@ const SuperAdminTabs = () => (
     <Tab.Screen name="Analytics" component={AnalyticsDashboardScreen} options={getTabOptions(BarChart, '#f0c110')} />
     <Tab.Screen name="Users" component={UserManagementScreen} options={getTabOptions(Users, '#f0c110')} />
     <Tab.Screen name="Broadcast" component={NotificationCenterScreen} options={getTabOptions(Megaphone, '#f0c110')} />
+    <Tab.Screen name="ActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} options={getTabOptions(History, '#f0c110', 'Activity Logs')} />
     <Tab.Screen name="Settings" component={PortalToolsScreen} options={getTabOptions(Settings, '#f0c110')} />
   </Tab.Navigator>
 );
@@ -213,7 +220,11 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="StudentProfileDetails" component={ProfileScreen} />
       <AppStack.Screen name="AssignFeeStructure" component={AssignFeeStructureScreen} />
       <AppStack.Screen name="AdminAlertConfiguration" component={AdminAlertConfigurationScreen} />
-      <AppStack.Screen name="AdminActivityLog" component={AdminActivityLogScreen} />
+      <AppStack.Screen 
+        name="AdminActivityLog" 
+        component={user?.role === 'super_admin' ? SuperAdminActivityLogScreen : AdminActivityLogScreen} 
+      />
+      <AppStack.Screen name="SuperAdminActivityLog" component={SuperAdminActivityLogScreen} />
       <AppStack.Screen name="AdminStaffSettings" component={AdminStaffSettingsScreen} />
       <AppStack.Screen name="ClassPromotions" component={ClassPromotionsScreen} />
       <AppStack.Screen name="AlumniManagement" component={AlumniManagementScreen} />
@@ -227,8 +238,20 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="AdminStaffLeaves" component={AdminStaffLeavesScreen} />
       <AppStack.Screen name="AdminBusTracking" component={AdminBusTrackingScreen} />
       <AppStack.Screen name="AdminReportsAnalytics" component={AdminReportsAnalyticsScreen} />
-      <AppStack.Screen name="StaffAttendance" component={AdminStaffAttendanceScreen} />
+      <AppStack.Screen 
+        name="StaffAttendance" 
+        component={user?.role === 'super_admin' ? SuperAdminStaffAttendanceScreen : AdminStaffAttendanceScreen} 
+      />
+      <AppStack.Screen name="StaffManagement" component={SuperAdminStaffManagementScreen} />
+      <AppStack.Screen name="SuperAdminStaffManagement" component={SuperAdminStaffManagementScreen} />
+      <AppStack.Screen name="SuperAdminStaffAttendance" component={SuperAdminStaffAttendanceScreen} />
+      <AppStack.Screen name="SalaryCategories" component={SuperAdminSalaryCategoriesScreen} />
+      <AppStack.Screen name="SuperAdminSalaryCategories" component={SuperAdminSalaryCategoriesScreen} />
+      <AppStack.Screen name="RolesPermissions" component={SuperAdminRolesPermissionsScreen} />
+      <AppStack.Screen name="SuperAdminRolesPermissions" component={SuperAdminRolesPermissionsScreen} />
       <AppStack.Screen name="SuperAdminAdminConsole" component={SuperAdminAdminConsoleScreen} />
+      <AppStack.Screen name="AllUsersActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
+      <AppStack.Screen name="ActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
     </AppStack.Navigator>
   );
 };

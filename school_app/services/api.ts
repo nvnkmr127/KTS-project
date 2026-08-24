@@ -151,6 +151,42 @@ class ApiClient {
     });
   }
 
+  // Roles & Permissions
+  async getRoles() {
+    return await this.request('/roles');
+  }
+
+  async createRole(data: { name: string; permissions?: string[] }) {
+    return await this.request('/roles', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRole(id: string | number, data: { name: string; permissions?: string[] }) {
+    return await this.request(`/roles/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRole(id: string | number) {
+    return await this.request(`/roles/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async syncRolePermissions(id: string | number, permissions: string[]) {
+    return await this.request(`/roles/${id}/permissions`, {
+      method: 'POST',
+      body: JSON.stringify({ permissions }),
+    });
+  }
+
+  async getPermissions() {
+    return await this.request('/permissions');
+  }
+
   // Notifications
   async getNotifications() {
     return await this.request('/notifications');

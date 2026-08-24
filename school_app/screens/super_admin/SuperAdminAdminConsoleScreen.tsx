@@ -40,14 +40,17 @@ const ADMIN_OPTIONS: AdminOption[] = [
   // Finance
   { id: '11', title: 'Fee Collection', subtitle: 'Ledger & receipt entries', icon: <Wallet size={24} color="#ffe5a0" />, route: 'FeeList', category: 'Finance' },
   { id: '12', title: 'Fee Categories', subtitle: 'Tuition & transport heads', icon: <Tag size={24} color="#ffe5a0" />, route: 'FeeCategory', category: 'Finance' },
+  { id: '13', title: 'Salary Categories', subtitle: 'Payroll heads & allotments', icon: <Wallet size={24} color="#ffe5a0" />, route: 'SalaryCategories', category: 'Finance' },
 
   // Operations
-  { id: '13', title: 'Staff Leaves', subtitle: 'Review & approve leaves', icon: <CalendarOff size={24} color="#ffe5a0" />, route: 'AdminStaffLeaves', category: 'Operations' },
-  { id: '14', title: 'Substitution Assign', subtitle: 'Teacher proxy allotments', icon: <ArrowLeftRight size={24} color="#ffe5a0" />, route: 'SubstitutionManagement', category: 'Operations' },
-  { id: '15', title: 'Circulars & Alerts', subtitle: 'Parent & staff broadcasts', icon: <Megaphone size={24} color="#ffe5a0" />, route: 'AdminAlertConfiguration', category: 'Operations' },
-  { id: '16', title: 'Enquiry Leads', subtitle: 'Admission CRM & inquiries', icon: <UserSearch size={24} color="#ffe5a0" />, route: 'EnquiryLeads', category: 'Operations' },
-  { id: '17', title: 'Staff Attendance', subtitle: 'Faculty biometric logs', icon: <UserCheck size={24} color="#ffe5a0" />, route: 'StaffAttendance', category: 'Operations' },
-  { id: '18', title: 'Bus GPS Tracking', subtitle: 'Route movement monitor', icon: <Bus size={24} color="#ffe5a0" />, route: 'AdminBusTracking', category: 'Operations' },
+  { id: '14', title: 'Staff Management', subtitle: 'Faculty directory & onboard', icon: <UserSquare2 size={24} color="#ffe5a0" />, route: 'StaffManagement', category: 'Operations' },
+  { id: '15', title: 'Staff Attendance', subtitle: 'Faculty biometric logs & roster', icon: <UserCheck size={24} color="#ffe5a0" />, route: 'StaffAttendance', category: 'Operations' },
+  { id: '16', title: 'Staff Leaves', subtitle: 'Review & approve leaves', icon: <CalendarOff size={24} color="#ffe5a0" />, route: 'AdminStaffLeaves', category: 'Operations' },
+  { id: '17', title: 'Roles & Privileges', subtitle: 'Role based access matrix', icon: <ShieldCheck size={24} color="#ffe5a0" />, route: 'RolesPermissions', category: 'Operations' },
+  { id: '18', title: 'Substitution Assign', subtitle: 'Teacher proxy allotments', icon: <ArrowLeftRight size={24} color="#ffe5a0" />, route: 'SubstitutionManagement', category: 'Operations' },
+  { id: '19', title: 'Circulars & Alerts', subtitle: 'Parent & staff broadcasts', icon: <Megaphone size={24} color="#ffe5a0" />, route: 'AdminAlertConfiguration', category: 'Operations' },
+  { id: '20', title: 'Enquiry Leads', subtitle: 'Admission CRM & inquiries', icon: <UserSearch size={24} color="#ffe5a0" />, route: 'EnquiryLeads', category: 'Operations' },
+  { id: '21', title: 'Bus GPS Tracking', subtitle: 'Route movement monitor', icon: <Bus size={24} color="#ffe5a0" />, route: 'AdminBusTracking', category: 'Operations' },
 ];
 
 export const SuperAdminAdminConsoleScreen: React.FC = () => {

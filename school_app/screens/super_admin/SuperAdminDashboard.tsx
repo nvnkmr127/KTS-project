@@ -1,22 +1,72 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Modal, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { GlassCard } from '../../components/GlassCard';
+import { useAuthStore } from '../../store/useAuthStore';
 import { 
   School, Users, TrendingUp, TrendingDown, LayoutGrid, 
   UserCheck, Banknote, BarChart, Megaphone, CalendarCheck, 
   Briefcase, Receipt, ShieldCheck, Settings, AlertTriangle, 
-  ChevronRight, Info, Check 
+  ChevronRight, Info, Check, Tag, Key, Bell, X, CheckCircle2,
+  LogOut, History, Building2, Smartphone 
 } from 'lucide-react-native';
 import { useResponsive } from '../../utils/responsive';
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  category: 'Fees' | 'Leaves' | 'Staff' | 'System' | 'Bus';
+  read: boolean;
+}
+
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+  { id: 'n1', title: 'Morning Attendance Complete', message: '98.2% reported by Class Teachers. 4 faculty logs verified.', time: '15 mins ago', category: 'Staff', read: false },
+  { id: 'n2', title: 'Pending Staff Leave Applications', message: 'Prof. Michael Chen submitted sick leave request for review.', time: '35 mins ago', category: 'Leaves', read: false },
+  { id: 'n3', title: 'Term Fee Installments Collected', message: '₹1.42L collected today across Senior secondary batches.', time: '1 hour ago', category: 'Fees', read: false },
+  { id: 'n4', title: 'Biometric Server Sync Status', message: 'e-TimeOffice biometric terminal device online and synchronized.', time: '2 hours ago', category: 'System', read: true },
+  { id: 'n5', title: 'Bus Fleet Movement Alert', message: 'All 8 GPS fleet buses completed morning pickup routes.', time: '3 hours ago', category: 'Bus', read: true },
+];
 
 export const SuperAdminDashboard: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { isSmallPhone, headerPaddingTop, scrollBottomPadding } = useResponsive();
+  const { user, logout } = useAuthStore();
+
+  const [showSidebarModal, setShowSidebarModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState<'All' | 'Fees' | 'Leaves' | 'Staff' | 'System' | 'Bus'>('All');
+  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+
+  // Safe BackHandler effect
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        if (showSidebarModal) {
+          setShowSidebarModal(false);
+          return true;
+        }
+        if (showNotificationModal) {
+          setShowNotificationModal(false);
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [showSidebarModal, showNotificationModal])
+  );
+
+  const handleSignOut = () => {
+    setShowSidebarModal(false);
+    logout();
+  };
 
   // Custom alert dialog state
   const [customAlert, setCustomAlert] = useState<{
@@ -32,6 +82,15 @@ export const SuperAdminDashboard: React.FC = () => {
   const showCustomAlert = (title: string, message: string) => {
     setCustomAlert({ visible: true, title, message });
   };
+
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+  const filteredNotifications = notifications.filter(n => 
+    notificationFilter === 'All' || n.category === notificationFilter
+  );
 
   // Format current date
   const getFormattedDate = () => {
@@ -82,23 +141,43 @@ export const SuperAdminDashboard: React.FC = () => {
       <View style={{ zIndex: 50 }}>
         {/* Top App Bar */}
         <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
-          <View className="flex-row items-center gap-3 flex-1 mr-2">
-            <View className="w-10 h-10 rounded-xl bg-[#f5c518] items-center justify-center">
+          {/* Header Left Profile Area (Click to open Left Sidebar Drawer) */}
+          <Pressable 
+            onPress={() => setShowSidebarModal(true)} 
+            className="flex-row items-center gap-3 flex-1 mr-2 active:opacity-80"
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <View className="w-10 h-10 rounded-xl bg-[#f5c518] items-center justify-center shadow-[0_0_12px_rgba(245,197,24,0.4)]">
               <School size={22} color="#241a00" />
             </View>
             <View className="flex-1">
               <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg">EduVision</Text>
               <Text numberOfLines={1} className="text-[9px] uppercase tracking-widest text-[#d1c5ac]">Super Admin Terminal</Text>
             </View>
-          </View>
-
-          <Pressable 
-            onPress={handleEmergencyAlert} 
-            className="w-10 h-10 rounded-full bg-red-600 items-center justify-center active:scale-95 shadow-[0_0_15px_rgba(220,38,38,0.6)]"
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
-            <AlertTriangle size={18} color="#FFF" />
           </Pressable>
+
+          {/* Top Right Header Action Icons: Emergency Alert + Notification Bell (rightmost) */}
+          <View className="flex-row items-center gap-2">
+            <Pressable 
+              onPress={handleEmergencyAlert} 
+              className="w-10 h-10 rounded-full bg-red-600 items-center justify-center active:scale-95 shadow-[0_0_15px_rgba(220,38,38,0.6)]"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <AlertTriangle size={18} color="#FFF" />
+            </Pressable>
+
+            <Pressable 
+              onPress={() => setShowNotificationModal(true)} 
+              className="w-10 h-10 rounded-full bg-white/10 border border-white/15 items-center justify-center active:bg-white/20 active:scale-95 relative"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Bell size={18} color="#ffe5a0" />
+              {/* Notification Active Dot Badge */}
+              {unreadCount > 0 && (
+                <View className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#f0c110] shadow-[0_0_6px_#f0c110]" />
+              )}
+            </Pressable>
+          </View>
         </BlurView>
         
         {/* The glowing shadow below the line */}
@@ -207,64 +286,97 @@ export const SuperAdminDashboard: React.FC = () => {
           </View>
 
           <View className="flex-row flex-wrap justify-between">
-            {/* Action 1: Admin */}
+            {/* ROW 1: Staff Management, Staff Attendance, Staff Access */}
+            {/* Action 1: Staff Management */}
             <Pressable 
-              onPress={() => navigation.navigate('SuperAdminAdminConsole')}
+              onPress={() => navigation.navigate('StaffManagement')}
               style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
-              <ShieldCheck size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Admin</Text>
+              <Users size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Staff Management</Text>
             </Pressable>
 
-            {/* Action 2: Fee Structure */}
+            {/* Action 2: Staff Attendance */}
             <Pressable 
-              onPress={() => navigation.navigate('AssignFeeStructure')}
+              onPress={() => navigation.navigate('StaffAttendance')}
               style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
-              <Banknote size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Fee Structure</Text>
+              <UserCheck size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Staff Attendance</Text>
             </Pressable>
 
-            {/* Action 3: Leave Approvals */}
-            <Pressable 
-              onPress={() => navigation.navigate('LeaveApprovals')}
-              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
-            >
-              <CalendarCheck size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Leave Approvals</Text>
-            </Pressable>
-
-            {/* Action 4: Salary & Payroll */}
-            <Pressable 
-              onPress={() => navigation.navigate('SalaryExpenses')}
-              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
-            >
-              <Briefcase size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Salary & Payroll</Text>
-            </Pressable>
-
-            {/* Action 5: Expenses */}
-            <Pressable 
-              onPress={() => navigation.navigate('SalaryExpenses')}
-              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
-            >
-              <Receipt size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Expenses</Text>
-            </Pressable>
-
-            {/* Action 6: Staff Access */}
+            {/* Action 3: Staff Access */}
             <Pressable 
               onPress={() => navigation.navigate('Users')}
               style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
-              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-4 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
             >
-              <UserCheck size={24} color="#ffe5a0" />
-              <Text className="text-white text-[10px] font-bold text-center mt-2">Staff Access</Text>
+              <Key size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Staff Access</Text>
+            </Pressable>
+
+            {/* ROW 2: Salary Category, Salary & Payroll, Expenses */}
+            {/* Action 4: Salary Category */}
+            <Pressable 
+              onPress={() => navigation.navigate('SalaryCategories')}
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+            >
+              <Tag size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Salary Category</Text>
+            </Pressable>
+
+            {/* Action 5: Salary & Payroll */}
+            <Pressable 
+              onPress={() => navigation.navigate('SalaryExpenses')}
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+            >
+              <Briefcase size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Salary & Payroll</Text>
+            </Pressable>
+
+            {/* Action 6: Expenses */}
+            <Pressable 
+              onPress={() => navigation.navigate('SalaryExpenses')}
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+            >
+              <Receipt size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Expenses</Text>
+            </Pressable>
+
+            {/* ROW 3: Admin Operations, Leave Approvals, Roles & Permissions */}
+            {/* Action 7: Admin Operations */}
+            <Pressable 
+              onPress={() => navigation.navigate('SuperAdminAdminConsole')}
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+            >
+              <LayoutGrid size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Admin Operations</Text>
+            </Pressable>
+
+            {/* Action 8: Leave Approvals */}
+            <Pressable 
+              onPress={() => navigation.navigate('LeaveApprovals')}
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+            >
+              <CalendarCheck size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Leave Approvals</Text>
+            </Pressable>
+
+            {/* Action 9: Roles & Permissions */}
+            <Pressable 
+              onPress={() => navigation.navigate('RolesPermissions')}
+              style={({ pressed }) => [pressed && { backgroundColor: 'rgba(240, 193, 16, 0.25)', borderColor: 'rgba(240, 193, 16, 0.6)' }]}
+              className="w-[31%] bg-white/5 border border-white/10 rounded-2xl p-3.5 items-center justify-center mb-3 active:bg-[#f0c110]/25 active:border-[#f0c110]/60 active:scale-95"
+            >
+              <ShieldCheck size={24} color="#ffe5a0" />
+              <Text className="text-white text-[10px] font-bold text-center mt-2" numberOfLines={2}>Roles & Permissions</Text>
             </Pressable>
           </View>
         </View>
@@ -313,6 +425,252 @@ export const SuperAdminDashboard: React.FC = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* NOTIFICATION CARD POPOVER MODAL (Top-Right Popover Below Bell Icon) */}
+      {showNotificationModal && (
+        <Modal 
+          visible={showNotificationModal} 
+          transparent 
+          animationType="fade" 
+          onRequestClose={() => setShowNotificationModal(false)}
+        >
+          <Pressable 
+            onPress={() => setShowNotificationModal(false)}
+            className="flex-1 bg-black/60 pt-20 px-4 items-end"
+          >
+            <Pressable 
+              onPress={(e) => e.stopPropagation()} 
+              className="w-[94%] max-w-sm p-4 border border-[#f0c110]/40 rounded-3xl shadow-2xl" 
+              style={{ 
+                backgroundColor: '#16191b', 
+                marginTop: 8,
+                shadowColor: '#f0c110',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.3,
+                shadowRadius: 20,
+                elevation: 10,
+              }}
+            >
+              {/* Header Bar */}
+              <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
+                <View className="flex-row items-center">
+                  <View className="w-8 h-8 rounded-xl items-center justify-center mr-2.5 bg-[#f0c110]/20 border border-[#f0c110]/40">
+                    <Bell size={16} color="#ffe5a0" />
+                  </View>
+                  <View>
+                    <Text className="text-white font-extrabold text-base">Notification Center</Text>
+                    <Text className="text-[#ffe5a0] text-[10px] font-bold">
+                      {unreadCount} Unread System Alert{unreadCount === 1 ? '' : 's'}
+                    </Text>
+                  </View>
+                </View>
+                
+                <Pressable onPress={() => setShowNotificationModal(false)} className="p-1 active:scale-95">
+                  <X size={20} color="rgba(255,255,255,0.6)" />
+                </Pressable>
+              </View>
+
+              {/* Notification Category Filters */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                <View className="flex-row" style={{ gap: 6 }}>
+                  {(['All', 'Staff', 'Leaves', 'Fees', 'System', 'Bus'] as const).map(cat => {
+                    const isSel = notificationFilter === cat;
+                    return (
+                      <Pressable
+                        key={cat}
+                        onPress={() => setNotificationFilter(cat)}
+                        className={`px-3 py-1.5 rounded-xl border ${
+                          isSel ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-white/5 border-white/10'
+                        }`}
+                      >
+                        <Text className={`text-[10px] font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
+                          {cat}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
+              {/* Notifications List */}
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }} className="mb-4">
+                {filteredNotifications.length === 0 ? (
+                  <View className="py-8 items-center justify-center">
+                    <Text className="text-white/40 text-xs font-bold">No notifications in this category.</Text>
+                  </View>
+                ) : (
+                  filteredNotifications.map(n => (
+                    <View 
+                      key={n.id} 
+                      className={`p-3 rounded-2xl mb-2.5 border ${
+                        n.read ? 'bg-white/5 border-white/5' : 'bg-[#f0c110]/10 border-[#f0c110]/30'
+                      }`}
+                    >
+                      <View className="flex-row justify-between items-start mb-1">
+                        <Text className="text-white font-extrabold text-xs flex-1 mr-2">{n.title}</Text>
+                        <Text className="text-[#ffe5a0]/70 text-[9px] font-semibold">{n.time}</Text>
+                      </View>
+                      <Text className="text-white/70 text-[11px] leading-snug">{n.message}</Text>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+
+              {/* Footer Actions */}
+              <View className="flex-row" style={{ gap: 8 }}>
+                <Pressable
+                  onPress={handleMarkAllRead}
+                  className="flex-1 py-2.5 bg-white/10 border border-white/15 rounded-xl items-center flex-row justify-center active:scale-95"
+                >
+                  <CheckCircle2 size={14} color="#ffe5a0" style={{ marginRight: 4 }} />
+                  <Text className="text-white text-xs font-bold">Mark All Read</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setShowNotificationModal(false);
+                    navigation.navigate('Broadcast');
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-[#f0c110] items-center justify-center active:scale-95 shadow-md shadow-[#f0c110]/30"
+                >
+                  <Text className="text-[#101415] text-xs font-extrabold uppercase">Broadcasts</Text>
+                </Pressable>
+              </View>
+
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {/* LEFT SIDEBAR DRAWER MODAL (Profile Details & Sign Out - Super Admin Theme) */}
+      {showSidebarModal && (
+        <Modal 
+          visible={showSidebarModal} 
+          transparent 
+          animationType="fade" 
+          onRequestClose={() => setShowSidebarModal(false)}
+        >
+          <View className="flex-1 bg-black/80 flex-row">
+            <View 
+              className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-[#f0c110]/30" 
+              style={{ backgroundColor: '#101415' }}
+            >
+              {/* Sidebar Header & Close */}
+              <View>
+                <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5 pt-4">
+                  <View className="flex-row items-center">
+                    <View className="w-9 h-9 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center mr-2.5">
+                      <School size={20} color="#f0c110" />
+                    </View>
+                    <View>
+                      <Text className="text-white font-extrabold text-sm">EduVision</Text>
+                      <Text className="text-[#ffe5a0] text-[9px] font-bold uppercase tracking-widest">SUPER ADMIN TERMINAL</Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={() => setShowSidebarModal(false)} className="p-1 active:scale-95">
+                    <X size={20} color="rgba(255,255,255,0.6)" />
+                  </Pressable>
+                </View>
+
+                {/* Profile Avatar Card */}
+                <View className="bg-black/60 p-4 rounded-3xl border border-[#f0c110]/20 mb-5 items-center">
+                  <View className="w-16 h-16 rounded-full items-center justify-center mb-3 bg-[#f0c110]/20 border-2 border-[#f0c110] shadow-[0_0_15px_rgba(240,193,16,0.3)]">
+                    <Text className="text-[#ffe5a0] font-extrabold text-xl">
+                      {(user?.name || 'Principal Sharma').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
+                    </Text>
+                  </View>
+                  <Text className="text-white font-extrabold text-base text-center">{user?.name || 'Principal Sharma'}</Text>
+                  <Text className="text-white/50 text-xs text-center mt-0.5">{user?.email || 'principal@krishnaveni.edu'}</Text>
+
+                  <View className="px-3 py-1 rounded-xl mt-3 bg-[#f0c110]/20 border border-[#f0c110]/40">
+                    <Text className="text-[#ffe5a0] text-[10px] font-black uppercase tracking-wider">SUPER ADMINISTRATOR</Text>
+                  </View>
+                </View>
+
+                {/* Staff Info Details List */}
+                <View className="bg-white/5 p-3.5 rounded-2xl border border-white/10 mb-4" style={{ gap: 10 }}>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Admin ID</Text>
+                    <Text className="text-white font-extrabold text-xs">ED-001 (Root Master)</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Department</Text>
+                    <Text className="text-[#ffe5a0] font-bold text-xs">Executive Administration</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Campus</Text>
+                    <Text className="text-white font-bold text-xs">KTS Central Campus</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">System Version</Text>
+                    <Text className="text-white/70 font-semibold text-xs">v2.4.0 (Expo SDK 56)</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Bottom Actions: Activity Logs, Settings, Admin Operations & Sign Out */}
+              <View className="pb-6">
+                <Pressable
+                  onPress={() => {
+                    setShowSidebarModal(false);
+                    navigation.navigate('SuperAdminActivityLog');
+                  }}
+                  className="w-full py-3.5 px-4 mb-2.5 bg-white/5 border border-white/15 rounded-2xl flex-row items-center justify-between active:bg-white/10"
+                >
+                  <View className="flex-row items-center">
+                    <History size={18} color="#ffe5a0" style={{ marginRight: 10 }} />
+                    <Text className="text-white font-extrabold text-xs">My Activity Logs</Text>
+                  </View>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setShowSidebarModal(false);
+                    navigation.navigate('PortalTools');
+                  }}
+                  className="w-full py-3.5 px-4 mb-2.5 bg-white/5 border border-white/15 rounded-2xl flex-row items-center justify-between active:bg-white/10"
+                >
+                  <View className="flex-row items-center">
+                    <Settings size={18} color="#ffe5a0" style={{ marginRight: 10 }} />
+                    <Text className="text-white font-extrabold text-xs">Portal Settings</Text>
+                  </View>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setShowSidebarModal(false);
+                    navigation.navigate('SuperAdminAdminConsole');
+                  }}
+                  className="w-full py-3.5 px-4 mb-2.5 rounded-2xl flex-row items-center justify-between bg-[#f0c110]/15 border border-[#f0c110]/30 active:bg-[#f0c110]/25"
+                >
+                  <View className="flex-row items-center">
+                    <LayoutGrid size={18} color="#f0c110" style={{ marginRight: 10 }} />
+                    <Text className="text-[#ffe5a0] font-extrabold text-xs">Admin Operations Console</Text>
+                  </View>
+                  <ChevronRight size={16} color="#f0c110" />
+                </Pressable>
+
+                <Pressable
+                  onPress={handleSignOut}
+                  className="w-full py-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30"
+                >
+                  <LogOut size={18} color="#ff516a" style={{ marginRight: 8 }} />
+                  <Text className="text-[#ff516a] font-extrabold text-xs uppercase tracking-wider">Sign Out</Text>
+                </Pressable>
+              </View>
+
+            </View>
+
+            {/* Tap Backdrop Outside Drawer to Dismiss */}
+            <Pressable onPress={() => setShowSidebarModal(false)} className="flex-1" />
+          </View>
+        </Modal>
+      )}
 
       {/* Custom Dialog Alert Modal */}
       <Modal
