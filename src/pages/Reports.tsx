@@ -17,6 +17,7 @@ import { STAFF } from './StaffManagement';
 import { useApp } from '../context/AppContext';
 import { StaffAttendanceAnalytics } from './StaffAttendanceAnalytics';
 import { StudentDataReport } from './StudentDataReport';
+import { syncAndReconcileAttendanceRecords } from '../utils/studentAttendanceUtils';
 
 // --- FALLBACK MOCK DATA (used if database is empty) ---
 const defaultTermData: any[] = [];
@@ -139,12 +140,12 @@ export function Reports() {
         setAllStudentsList(studentsArr);
         setAllStudentFeesList(studentFeesArr);
 
-        // Load student attendance
+        // Load student attendance with rollover reconciliation
         let attendanceRecords: any[] = [];
         try {
           const attendanceRes = await api.getResources('settings', { key: 'kts_student_attendance_records' }).catch(() => []);
           if (Array.isArray(attendanceRes) && attendanceRes[0]?.value) {
-            attendanceRecords = JSON.parse(attendanceRes[0].value);
+            attendanceRecords = typeof attendanceRes[0].value === 'string' ? JSON.parse(attendanceRes[0].value) : attendanceRes[0].value;
           }
         } catch (e) {
           console.error(e);
@@ -159,7 +160,8 @@ export function Reports() {
             }
           }
         }
-        setStudentAttendanceList(attendanceRecords);
+        const reconciled = await syncAndReconcileAttendanceRecords(attendanceRecords);
+        setStudentAttendanceList(reconciled);
 
         // 1. KPI & Overview Calculations
         if (hasStudents) {

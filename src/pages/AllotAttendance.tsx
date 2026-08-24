@@ -6,6 +6,7 @@ import { Avatar } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
+import { syncAndReconcileAttendanceRecords, isRecordAutoAllotted, StudentPeriodAttendance } from '../utils/studentAttendanceUtils';
 
 interface Student {
   id: string;
@@ -21,20 +22,6 @@ interface Batch {
   name: string;
   class_teacher_id?: number;
   class_teacher_name?: string;
-}
-
-// Custom interface for local storage/database synced attendance entries
-export interface StudentPeriodAttendance {
-  studentId: string;
-  studentName: string;
-  roll: string;
-  className: string;
-  date: string; // YYYY-MM-DD
-  session: 'first_period' | 'lunch_period';
-  status: 'present' | 'absent';
-  markedBy: string;
-  markedById: string;
-  markedAt: string;
 }
 
 
@@ -103,6 +90,7 @@ export function AllotAttendance() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [isFacultySubmitted, setIsFacultySubmitted] = useState(false);
+  const [isAutoAllotted, setIsAutoAllotted] = useState(false);
   const [facultyWhoSubmitted, setFacultyWhoSubmitted] = useState('');
 
   // Day of week from selected date
@@ -164,22 +152,28 @@ export function AllotAttendance() {
           status: s.status || 'active'
         })));
 
-        // Load and sync attendance records from settings
+        // Load and sync attendance records from settings with rollover reconciliation
         const settingsRes = await api.getResources('settings', { key: 'kts_student_attendance_records' });
+        let loadedRecords: any[] = [];
         if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
           try {
-            const parsed = JSON.parse(settingsRes[0].value);
-            setAttendanceRecords(parsed);
-            (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
+            loadedRecords = typeof settingsRes[0].value === 'string' ? JSON.parse(settingsRes[0].value) : settingsRes[0].value;
           } catch (e) {
             console.error('Error parsing kts_student_attendance_records:', e);
           }
         } else {
           const local = localStorage.getItem('kts_student_attendance_records');
           if (local) {
-            setAttendanceRecords(JSON.parse(local));
+            try {
+              loadedRecords = JSON.parse(local);
+            } catch {
+              loadedRecords = [];
+            }
           }
         }
+
+        const reconciled = await syncAndReconcileAttendanceRecords(loadedRecords);
+        setAttendanceRecords(reconciled);
       } catch (err) {
         console.error('Error loading data for allotment:', err);
       } finally {
@@ -433,19 +427,30 @@ export function AllotAttendance() {
 
       setStatusMap(initialMap);
 
-      // Check if attendance was submitted by a faculty member
-      const facultyRecord = records.find(
-        r => r.markedBy && !r.markedBy.toLowerCase().includes('(admin)') && !r.markedBy.toLowerCase().includes('admin')
-      );
+      // Check if attendance is auto-allotted via morning rollover
+      const autoRecord = records.find(r => isRecordAutoAllotted(r));
 
-      if (facultyRecord) {
-        setIsFacultySubmitted(true);
-        setFacultyWhoSubmitted(facultyRecord.markedBy || 'Faculty');
-        setIsLocked(true);
-      } else {
+      if (autoRecord) {
+        setIsAutoAllotted(true);
         setIsFacultySubmitted(false);
         setFacultyWhoSubmitted('');
-        setIsLocked(records.length > 0);
+        setIsLocked(false);
+      } else {
+        setIsAutoAllotted(false);
+        // Check if attendance was submitted by a faculty member
+        const facultyRecord = records.find(
+          r => r.markedBy && !r.markedBy.toLowerCase().includes('(admin)') && !r.markedBy.toLowerCase().includes('admin') && !isRecordAutoAllotted(r)
+        );
+
+        if (facultyRecord) {
+          setIsFacultySubmitted(true);
+          setFacultyWhoSubmitted(facultyRecord.markedBy || 'Faculty');
+          setIsLocked(true);
+        } else {
+          setIsFacultySubmitted(false);
+          setFacultyWhoSubmitted('');
+          setIsLocked(records.length > 0);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -653,7 +658,16 @@ export function AllotAttendance() {
           {allowedClasses.length > 0 &&
             (isAdmin || isClassTeacherForSelected || teachesAfterLunchForSelected || isSubstituteFirstPeriodForSelected || isSubstituteAfterLunchForSelected) && (
               <Card>
-                {isFacultySubmitted ? (
+                {isAutoAllotted ? (
+                  <div className="mb-4 p-3.5 bg-[var(--blue-bg)]/25 border border-[var(--blue-tx)]/25 rounded-xl flex items-center justify-between gap-3 text-[12px] text-[var(--blue-tx)]">
+                    <div className="flex items-center gap-2.5">
+                      <AlertCircle size={17} className="flex-shrink-0 text-[var(--blue-tx)]" />
+                      <span>
+                        Afternoon attendance for Class <strong>{selectedClass}</strong> on <strong>{date}</strong> was <strong>auto-allotted from morning attendance</strong> because it was not submitted by the teacher on that day. You can review or make adjustments and re-submit below.
+                      </span>
+                    </div>
+                  </div>
+                ) : isFacultySubmitted ? (
                   <div className="mb-4 p-3.5 bg-[var(--amber-bg)]/30 border border-[var(--amber-tx)]/30 rounded-xl flex items-center gap-3 text-[12px] text-[var(--amber-tx)]">
                     <AlertCircle size={18} className="flex-shrink-0 text-[var(--amber-tx)]" />
                     <span>

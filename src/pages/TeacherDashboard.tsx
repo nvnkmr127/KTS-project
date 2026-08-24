@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PAGE_TO_PATH } from '../routes';
 import { api } from '../services/api';
+import { syncAndReconcileAttendanceRecords, reconcileStudentAttendance } from '../utils/studentAttendanceUtils';
 
 const DAY_NAMES = ['Sunday', ...TIMETABLE_DAYS];
 
@@ -65,18 +66,25 @@ export function TeacherDashboard() {
           api.getResources('batches').catch(() => [])
         ]);
 
+        let loadedRecords: any[] = [];
         if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
           try {
-            const parsed = JSON.parse(settingsRes[0].value);
-            setAttendanceRecords(parsed);
-            (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
+            loadedRecords = typeof settingsRes[0].value === 'string' ? JSON.parse(settingsRes[0].value) : settingsRes[0].value;
           } catch (err) {
             console.error('Failed parsing student attendance setting JSON', err);
           }
         } else {
           const local = localStorage.getItem('kts_student_attendance_records');
-          if (local) setAttendanceRecords(JSON.parse(local));
+          if (local) {
+            try {
+              loadedRecords = JSON.parse(local);
+            } catch {
+              loadedRecords = [];
+            }
+          }
         }
+        const reconciled = await syncAndReconcileAttendanceRecords(loadedRecords);
+        setAttendanceRecords(reconciled);
 
         if (Array.isArray(hwRes)) setHomeworkList(hwRes);
         if (Array.isArray(diaryRes)) setDiariesList(diaryRes);
@@ -103,7 +111,9 @@ export function TeacherDashboard() {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'kts_student_attendance_records' && e.newValue) {
         try {
-          setAttendanceRecords(JSON.parse(e.newValue));
+          const parsed = JSON.parse(e.newValue);
+          const { records: reconciled } = reconcileStudentAttendance(parsed);
+          setAttendanceRecords(reconciled);
         } catch (err) {
           console.debug('Failed to parse attendance storage value:', err);
         }

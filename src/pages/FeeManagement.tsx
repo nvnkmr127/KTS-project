@@ -13,6 +13,7 @@ import { useDialog } from '../context/DialogContext';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { formatDate, formatDateTimeParts, formatTimeAgo } from '../utils/date';
+import { syncAndReconcileAttendanceRecords, isRecordAutoAllotted } from '../utils/studentAttendanceUtils';
 
 interface StudentFeeDisplay {
   id: string;
@@ -195,28 +196,31 @@ export function FeeManagement() {
     if (activeDetailStudent) {
       setLoadingAttendance(true);
       api.getResources('settings', { key: 'kts_student_attendance_records' })
-        .then(res => {
+        .then(async res => {
+          let loaded: any[] = [];
           if (Array.isArray(res) && res.length > 0 && res[0].value) {
             try {
-              const parsed = JSON.parse(res[0].value);
-              setAttendanceRecords(parsed);
-              (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
+              loaded = typeof res[0].value === 'string' ? JSON.parse(res[0].value) : res[0].value;
             } catch (e) {
               console.error('Error parsing kts_student_attendance_records:', e);
-              const local = localStorage.getItem('kts_student_attendance_records');
-              if (local) setAttendanceRecords(JSON.parse(local));
             }
           } else {
             const local = localStorage.getItem('kts_student_attendance_records');
             if (local) {
-              setAttendanceRecords(JSON.parse(local));
+              try {
+                loaded = JSON.parse(local);
+              } catch {
+                loaded = [];
+              }
             }
           }
+          const reconciled = await syncAndReconcileAttendanceRecords(loaded);
+          setAttendanceRecords(reconciled);
         })
-        .catch(err => {
+        .catch(async err => {
           console.error('Error loading attendance settings:', err);
-          const local = localStorage.getItem('kts_student_attendance_records');
-          if (local) setAttendanceRecords(JSON.parse(local));
+          const reconciled = await syncAndReconcileAttendanceRecords();
+          setAttendanceRecords(reconciled);
         })
         .finally(() => {
           setLoadingAttendance(false);
@@ -1853,7 +1857,7 @@ export function FeeManagement() {
                   const att = getDayAttendanceInfo(dateStr);
 
                   const tooltipText = att
-                    ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
+                    ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}${isRecordAutoAllotted(r) ? ' (Auto)' : ''}`).join('\n')}`
                     : `${dayNum} ${monthNames[month]}: No attendance marked`;
 
                   return (

@@ -14,6 +14,7 @@ import { Badge } from '../components/Badge';
 import { Avatar, ProgressBar, getInitials } from '../components/ui';
 import { api, clearApiCache } from '../services/api';
 import { useDialog } from '../context/DialogContext';
+import { syncAndReconcileAttendanceRecords, reconcileStudentAttendance, isRecordAutoAllotted } from '../utils/studentAttendanceUtils';
 
 const monthlyData = [
   { month: 'Jan', pct: 90 },
@@ -522,39 +523,35 @@ export function Attendance() {
     }
   };
 
-  // Fetch kts_student_attendance_records globally to sync KPI cards
+  // Fetch kts_student_attendance_records globally to sync KPI cards with rollover reconciliation
   useEffect(() => {
     setLoadingAttendance(true);
     api.getResources('settings', { key: 'kts_student_attendance_records' })
-      .then((res: any) => {
+      .then(async (res: any) => {
+        let loaded: any[] = [];
         if (Array.isArray(res) && res.length > 0 && res[0].value) {
           try {
-            const parsed = (res[0].value && JSON.parse(res[0].value)) || [];
-            setAttendanceRecords(parsed);
-            (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(parsed));
+            loaded = typeof res[0].value === 'string' ? JSON.parse(res[0].value) : res[0].value;
           } catch (e) {
             console.error('Error parsing kts_student_attendance_records:', e);
-            const local = localStorage.getItem('kts_student_attendance_records');
-            if (local) {
-              const parsedLocal = JSON.parse(local);
-              if (parsedLocal) setAttendanceRecords(parsedLocal);
-            }
           }
         } else {
           const local = localStorage.getItem('kts_student_attendance_records');
           if (local) {
-            const parsedLocal = local && JSON.parse(local);
-            if (parsedLocal) setAttendanceRecords(parsedLocal);
+            try {
+              loaded = JSON.parse(local);
+            } catch {
+              loaded = [];
+            }
           }
         }
+        const reconciled = await syncAndReconcileAttendanceRecords(loaded);
+        setAttendanceRecords(reconciled);
       })
-      .catch((err: any) => {
+      .catch(async (err: any) => {
         console.error('Error loading attendance settings:', err);
-        const local = localStorage.getItem('kts_student_attendance_records');
-        if (local) {
-          const parsedLocal = JSON.parse(local);
-          if (parsedLocal) setAttendanceRecords(parsedLocal);
-        }
+        const reconciled = await syncAndReconcileAttendanceRecords();
+        setAttendanceRecords(reconciled);
       })
       .finally(() => {
         setLoadingAttendance(false);
@@ -567,7 +564,8 @@ export function Attendance() {
       if (e.key === 'kts_student_attendance_records' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          setAttendanceRecords(parsed);
+          const { records: reconciled } = reconcileStudentAttendance(parsed);
+          setAttendanceRecords(reconciled);
 
           // If we are currently viewing class details, reload percentages
           if (view === 'class-details' && selectedBatch) {
@@ -1142,7 +1140,7 @@ export function Attendance() {
                   const att = getDayAttendanceInfo(dateStr);
 
                   const tooltipText = att
-                    ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}`).join('\n')}`
+                    ? `${dayNum} ${monthNames[month]}: ${att.label}\n${dayRecords.map(r => `${r.session === 'first_period' ? 'Morning' : 'Afternoon'}: ${r.status}${isRecordAutoAllotted(r) ? ' (Auto)' : ''}`).join('\n')}`
                     : `${dayNum} ${monthNames[month]}: No attendance marked`;
 
                   const isSelectedDate = dateStr === selectedDate;

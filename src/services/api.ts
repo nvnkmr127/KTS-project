@@ -177,13 +177,46 @@ async function request(path: string, options: RequestInit & { silent?: boolean; 
 }
 
 
+import { reconcileStudentAttendance } from '../utils/studentAttendanceUtils';
+
 // Proactively pull the latest attendance-records setting from the DB into
-// localStorage so admin views stay in sync with teacher updates.
+// localStorage so admin views stay in sync with teacher updates and apply rollover.
 async function syncLocalAttendanceRecords() {
   try {
     const settingsRes = await request('/resources/settings?key=kts_student_attendance_records');
     if (Array.isArray(settingsRes) && settingsRes.length > 0 && settingsRes[0].value) {
-      (localStorage as any).originalSetItem('kts_student_attendance_records', settingsRes[0].value);
+      let parsed: any[] = [];
+      try {
+        parsed = typeof settingsRes[0].value === 'string' ? JSON.parse(settingsRes[0].value) : settingsRes[0].value;
+      } catch {
+        parsed = [];
+      }
+      const { records: reconciled, hasChanges } = reconcileStudentAttendance(parsed);
+      const jsonStr = JSON.stringify(reconciled);
+      (localStorage as any).originalSetItem('kts_student_attendance_records', jsonStr);
+      if (hasChanges && settingsRes[0].id) {
+        request(`/resources/settings/${settingsRes[0].id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            key: 'kts_student_attendance_records',
+            value: jsonStr,
+            group: 'attendance',
+            type: 'json',
+            is_public: true,
+          }),
+        }).catch(() => {});
+      }
+    } else {
+      const local = localStorage.getItem('kts_student_attendance_records');
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          const { records: reconciled } = reconcileStudentAttendance(parsed);
+          (localStorage as any).originalSetItem('kts_student_attendance_records', JSON.stringify(reconciled));
+        } catch {
+          /* ignore */
+        }
+      }
     }
   } catch (err) {
     console.error('Failed to sync kts_student_attendance_records setting:', err);
@@ -310,6 +343,7 @@ export const api = {
         const classRecords = records.filter(r => r.className.toLowerCase() === batchName.toLowerCase());
 
         if (original && original.success && original.data && Array.isArray(original.data.students)) {
+          const todayStr = new Date().toISOString().split('T')[0];
           original.data.students = original.data.students.map((student: any) => {
             const studentRecords = classRecords.filter(r => String(r.studentId) === String(student.id));
 
@@ -320,7 +354,16 @@ export const api = {
 
             dates.forEach(d => {
               const firstRecord = studentRecords.find(r => r.date === d && r.session === 'first_period');
-              const lunchRecord = studentRecords.find(r => r.date === d && r.session === 'lunch_period');
+              let lunchRecord = studentRecords.find(r => r.date === d && r.session === 'lunch_period');
+
+              // If past date and afternoon attendance was not marked, consider morning attendance for afternoon
+              if (!lunchRecord && firstRecord && d < todayStr) {
+                lunchRecord = {
+                  ...firstRecord,
+                  session: 'lunch_period',
+                  markedBy: 'Auto-Allotted (Morning Rollover)',
+                };
+              }
 
               if (firstRecord || lunchRecord) {
                 customTotal += 2; // Two sessions per day
@@ -357,9 +400,25 @@ export const api = {
       if (localRecords) {
         const records = localRecords as any[];
 
-        const studentRecords = records.filter(
+        let studentRecords = records.filter(
           r => String(r.studentId) === String(studentId) && r.date === date
         );
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const hasFirst = studentRecords.some(r => r.session === 'first_period');
+        const hasLunch = studentRecords.some(r => r.session === 'lunch_period');
+        if (hasFirst && !hasLunch && date < todayStr) {
+          const firstRec = studentRecords.find(r => r.session === 'first_period')!;
+          studentRecords = [
+            ...studentRecords,
+            {
+              ...firstRec,
+              session: 'lunch_period',
+              markedBy: 'Auto-Allotted (Morning Rollover)',
+              autoAllotted: true,
+            }
+          ];
+        }
 
         if (studentRecords.length > 0 && original && original.success && original.data) {
           const list = original.data.attendances || [];
@@ -377,12 +436,10 @@ export const api = {
                 check_in_time: isFirst ? '08:00:00' : '14:00:00',
                 subject: {
                   name: isFirst ? 'Morning Attendance (1st Period)' : 'Afternoon Attendance (After Lunch)',
-
                 },
                 time_slot: {
                   name: isFirst ? 'Period 1' : 'Period 6',
                   start_time: isFirst ? '08:00 AM' : '02:00 PM',
-
                   end_time: isFirst ? '09:00 AM' : '03:00 PM',
                 },
                 faculty: {
@@ -391,7 +448,6 @@ export const api = {
               });
             }
           });
-
 
           // Sort by check-in time
           list.sort((a: any, b: any) => (a.check_in_time || '').localeCompare(b.check_in_time || ''));
