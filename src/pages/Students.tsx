@@ -62,6 +62,64 @@ const INITIALS_COLORS: Record<string, { bg: string; color: string }> = {
   F: { bg: 'var(--pink-bg)', color: 'var(--pink-tx)' },
 };
 
+export const getClassWeight = (className: string): number => {
+  const str = String(className || '').toUpperCase().trim();
+  const weights: Record<string, number> = {
+    'PLAYGROUP': 0.1,
+    'PLAY GROUP': 0.1,
+    'PRE-KG': 0.5,
+    'PREKG': 0.5,
+    'NURSERY': 1,
+    'PP1': 2,
+    'PP2': 3,
+    'LKG': 4,
+    'UKG': 5,
+  };
+  if (weights[str] !== undefined) return weights[str];
+  const num = parseInt(str, 10);
+  if (!isNaN(num)) return num + 10;
+  return 999;
+};
+
+// Derive classes and sections from batches (mirrors Classes.tsx logic)
+export const getClassesFromBatches = (batches: any[]): string[] => {
+  // Priority: Union of default classes (Nursery, LKG, UKG, 1-10) and any custom classes from database batches
+  const classSet = new Set<string>(['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+
+  if (batches && Array.isArray(batches)) {
+    batches.forEach((b: any) => {
+      const batchName = b.name || '';
+      const match = batchName.match(/^(.+?)\s*([A-Z])$/i);
+      if (match && match[1]) {
+        classSet.add(match[1].trim());
+      }
+    });
+  }
+  return Array.from(classSet).sort((a, b) => {
+    const weightA = getClassWeight(a);
+    const weightB = getClassWeight(b);
+    if (weightA !== weightB) return weightA - weightB;
+    return a.localeCompare(b);
+  });
+};
+
+export const getSectionsForClass = (batches: any[], classId: string): string[] => {
+  if (!batches || batches.length === 0) {
+    // Fallback safety sections if fail to load
+    return ['A', 'B', 'C'];
+  }
+  const sectionSet = new Set<string>();
+  batches.forEach((b: any) => {
+    const match = b.name?.match(/^(.+?)\s*([A-Z])$/i);
+    if (match && match[1]?.trim().toLowerCase() === classId.trim().toLowerCase()) {
+      sectionSet.add(match[2].toUpperCase());
+    }
+  });
+  const sorted = Array.from(sectionSet).sort();
+  // If we have batches loaded but none for this class, fall back to Class tab's mock sections ['A', 'B']
+  return sorted.length > 0 ? sorted : ['A', 'B'];
+};
+
 type ModalType = 'add' | 'view' | 'edit' | null;
 
 export function Students() {
@@ -226,45 +284,6 @@ export function Students() {
     }
   }, [modal, activeDetailStudent]);
 
-
-  // Derive classes and sections from batches (mirrors Classes.tsx logic)
-  const getClassesFromBatches = (batches: any[]): string[] => {
-    if (!batches || batches.length === 0) {
-      // Fallback safety classes if fail to load
-      return ['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-    }
-    // Priority: Union of default classes (1-10) and any custom classes from database batches
-    const classSet = new Set<string>(['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
-
-    batches.forEach((b: any) => {
-      const match = b.name?.match(/^(.+?)([A-Z])$/);
-      if (match) classSet.add(match[1]);
-    });
-    return Array.from(classSet).sort((a, b) => {
-      const nA = Number(a), nB = Number(b);
-      if (!isNaN(nA) && !isNaN(nB)) return nA - nB;
-      if (!isNaN(nA)) return -1;
-      if (!isNaN(nB)) return 1;
-      return a.localeCompare(b);
-
-    });
-  };
-
-  const getSectionsForClass = (batches: any[], classId: string): string[] => {
-    if (!batches || batches.length === 0) {
-
-      // Fallback safety sections if fail to load
-      return ['A', 'B', 'C'];
-    }
-    const sectionSet = new Set<string>();
-    batches.forEach((b: any) => {
-      const match = b.name?.match(/^(.+?)([A-Z])$/);
-      if (match && match[1] === classId) sectionSet.add(match[2]);
-    });
-    const sorted = Array.from(sectionSet).sort();
-    // If we have batches loaded but none for this class, fall back to Class tab's mock sections ['A', 'B']
-    return sorted.length > 0 ? sorted : ['A', 'B'];
-  };
 
   const availableClasses = getClassesFromBatches(batchesList);
   const availableSections = getSectionsForClass(batchesList, modalSelectedClass);
@@ -1806,14 +1825,9 @@ export function Students() {
       ...students.map((s) => `${s.class || ''}${s.section || ''}`).filter(Boolean)
     ])
   ).sort((a: string, b: string) => {
-    const numA = parseInt(a);
-    const numB = parseInt(b);
-    if (!isNaN(numA) && !isNaN(numB)) {
-      if (numA !== numB) return numA - numB;
-      return a.localeCompare(b);
-    }
-    if (!isNaN(numA)) return -1;
-    if (!isNaN(numB)) return 1;
+    const weightA = getClassWeight(a);
+    const weightB = getClassWeight(b);
+    if (weightA !== weightB) return weightA - weightB;
     return a.localeCompare(b);
   });
 
@@ -2560,6 +2574,8 @@ export function Students() {
             // Reload fresh data from DB so enrollment numbers and IDs are real
             loadStudents();
           }}
+          availableClasses={availableClasses}
+          batchesList={batchesList}
         />
       )}
 
@@ -2983,6 +2999,8 @@ export function Students() {
 interface ImportModalProps {
   onClose: () => void;
   onImportSuccess: () => void;
+  availableClasses?: string[];
+  batchesList?: any[];
 }
 
 const SYNONYMS: Record<string, string[]> = {
@@ -3140,18 +3158,37 @@ const cleanDate = (val: any): string => {
 };
 
 
-const cleanClass = (val: any): string => {
-  if (!val) return '8';
-  let str = String(val).trim().toUpperCase();
-  // Remove "CLASS" prefix if present
-  str = str.replace(/^CLASS\s*/i, '');
-  return str || '8';
+export const cleanClass = (val: any, classOptions?: string[]): string => {
+  if (!val && val !== 0) return 'Nursery';
+  let str = String(val).trim();
+  // Remove "CLASS" prefix if present (e.g., "Class Nursery" -> "Nursery", "Class 8" -> "8")
+  str = str.replace(/^CLASS\s*/i, '').trim();
+  if (!str) return 'Nursery';
+
+  // Check case-insensitive match in provided classOptions (from Classes tab)
+  if (classOptions && classOptions.length > 0) {
+    const found = classOptions.find(c => c.toLowerCase().trim() === str.toLowerCase().trim());
+    if (found) return found;
+  }
+
+  // Standard aliases normalization
+  const lower = str.toLowerCase();
+  if (lower === 'nursery' || lower === 'nur') return 'Nursery';
+  if (lower === 'lkg' || lower === 'l.k.g' || lower === 'l.k.g.') return 'LKG';
+  if (lower === 'ukg' || lower === 'u.k.g' || lower === 'u.k.g.') return 'UKG';
+  if (lower === 'pp1' || lower === 'pp-1') return 'PP1';
+  if (lower === 'pp2' || lower === 'pp-2') return 'PP2';
+  if (lower === 'playgroup' || lower === 'play group') return 'Playgroup';
+  if (lower === 'prekg' || lower === 'pre-kg') return 'Pre-KG';
+
+  return str;
 };
 
 
-const cleanSection = (val: any): string => {
-  if (!val) return 'A';
-  const match = String(val).match(/[A-Za-z]/);
+export const cleanSection = (val: any): string => {
+  if (!val && val !== 0) return 'A';
+  let str = String(val).trim().replace(/^SEC(TION)?\s*/i, '').trim();
+  const match = str.match(/[A-Za-z0-9]/);
   return match ? match[0].toUpperCase() : 'A';
 };
 
@@ -3221,14 +3258,31 @@ const validateStudent = (s: MappedStudent) => {
   return errors;
 };
 
-export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
+export function ImportModal({ onClose, onImportSuccess, availableClasses: propClasses, batchesList = [] }: ImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [mappedStudents, setMappedStudents] = useState<MappedStudent[]>([]);
+  const [classesList, setClassesList] = useState<string[]>(() => {
+    if (propClasses && propClasses.length > 0) return propClasses;
+    return ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+  });
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [successCount, setSuccessCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (propClasses && propClasses.length > 0) {
+      setClassesList(propClasses);
+    } else {
+      api.getResources('batches').then((batches: any[]) => {
+        if (Array.isArray(batches) && batches.length > 0) {
+          const derived = getClassesFromBatches(batches);
+          setClassesList(derived);
+        }
+      }).catch(() => { });
+    }
+  }, [propClasses]);
 
   const parseExcel = async (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
@@ -3448,7 +3502,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             id: Math.random().toString(36).substr(2, 9),
             firstName: firstName || 'N/A',
             lastName: lastName || 'N/A',
-            class: cleanClass(rawClass),
+            class: cleanClass(rawClass, classesList),
             section: cleanSection(rawSection),
             gender: cleanGender(rawGender),
             dob: cleanDate(rawDob),
@@ -3520,7 +3574,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
       id: Math.random().toString(36).substr(2, 9),
       firstName: '',
       lastName: '',
-      class: '8',
+      class: classesList[0] || 'Nursery',
       section: 'A',
       gender: 'Male',
       dob: '',
@@ -3544,33 +3598,46 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
       return;
     }
 
-    const backendRecords = mappedStudents.map(s => ({
-      name: `${s.firstName} ${s.lastName}`,
-      gender: s.gender,
-      dob: formatToYYYYMMDD(s.dob),
-      admission_date: formatToYYYYMMDD(s.admissionDate),
-      father_name: s.parent,
-      student_mobile: s.phone,
-      village: s.address,
-      class: s.class,
-      section: s.section,
-      status: 'active',
-      aadhar_number: s.aadhar_number || null,
-      enrollment_number: s.enrollment_number || null,
-      student_pen_no: s.student_pen_no || null,
-      father_mobile: s.father_mobile || null,
-      father_occupation: s.father_occupation || null,
-      mother_name: s.mother_name || null,
-      mother_mobile: s.mother_mobile || null,
-      mother_occupation: s.mother_occupation || null,
-      mother_tongue: s.mother_tongue || null,
-      nationality: s.nationality || null,
-      state: s.state || null,
-      religion: s.religion || null,
-      caste: s.caste || null,
-      sub_caste: s.sub_caste || null,
-      tc_no: s.tc_no || null,
-    }));
+    const backendRecords = mappedStudents.map(s => {
+      let batchId = null;
+      if (s.class && s.section && batchesList.length > 0) {
+        const batchName = `${s.class}${s.section}`;
+        const foundBatch = batchesList.find((b: any) =>
+          (b.name || '').replace(/\s+/g, '').toLowerCase() === batchName.toLowerCase() ||
+          (b.name || '').replace(/section/i, '').replace(/\s+/g, '').toLowerCase() === batchName.toLowerCase()
+        );
+        if (foundBatch) batchId = Number(foundBatch.id);
+      }
+
+      return {
+        name: `${s.firstName} ${s.lastName}`,
+        gender: s.gender,
+        dob: formatToYYYYMMDD(s.dob),
+        admission_date: formatToYYYYMMDD(s.admissionDate),
+        father_name: s.parent,
+        student_mobile: s.phone,
+        village: s.address,
+        class: s.class,
+        section: s.section,
+        batch_id: batchId,
+        status: 'active',
+        aadhar_number: s.aadhar_number || null,
+        enrollment_number: s.enrollment_number || null,
+        student_pen_no: s.student_pen_no || null,
+        father_mobile: s.father_mobile || null,
+        father_occupation: s.father_occupation || null,
+        mother_name: s.mother_name || null,
+        mother_mobile: s.mother_mobile || null,
+        mother_occupation: s.mother_occupation || null,
+        mother_tongue: s.mother_tongue || null,
+        nationality: s.nationality || null,
+        state: s.state || null,
+        religion: s.religion || null,
+        caste: s.caste || null,
+        sub_caste: s.sub_caste || null,
+        tc_no: s.tc_no || null,
+      };
+    });
 
     try {
       await api.bulkCreateResource('students', backendRecords);
@@ -3593,6 +3660,7 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
     'Religion', 'Caste', 'Sub Caste', 'TC Number'
   ];
   const SAMPLE_ROWS = [
+    ['Anvika', 'Avula', 'Nursery', 'A', 'Female', '15-05-2022', 'UV-2026-100', '01-06-2026', '36 1204 1002 044', '123456789011', 'Nageswara Rao', '9876543210', 'Farmer', 'Laxmi', '9876543211', 'Homemaker', 'Nizamabad Main Street', 'Telugu', 'Indian', 'Andhra Pradesh', 'Hindu', 'BC-B', 'Yadav', 'TC-9987'],
     ['Ravi', 'Teja', '9', 'B', 'Male', '15-05-2012', 'UV-2026-101', '01-06-2026', '36 1204 1002 045', '123456789012', 'Nageswara Rao', '9876543210', 'Farmer', 'Laxmi', '9876543211', 'Homemaker', 'Nizamabad Main Street', 'Telugu', 'Indian', 'Andhra Pradesh', 'Hindu', 'BC-B', 'Yadav', 'TC-9988'],
     ['Anjali', 'Devi', '10', 'A', 'Female', '22-09-2011', 'UV-2026-102', '01-06-2026', '36 1204 1002 046', '234567890123', 'Srinivas', '9848022338', 'Teacher', 'Rani', '9848022340', 'Government Employee', 'Housing Board Colony', 'Telugu', 'Indian', 'Andhra Pradesh', 'Hindu', 'OC', 'Reddy', 'TC-9989'],
     ['Arun', 'Kumar', '8', 'C', 'Male', '10-03-2013', 'UV-2026-103', '01-06-2026', '36 1204 1002 047', '345678901234', 'Ramesh', '9700123456', 'Business', 'Latha', '9700123458', 'Homemaker', 'Old Town, Nizamabad', 'Telugu', 'Indian', 'Telangana', 'Hindu', 'BC-D', 'Goud', 'TC-9990'],
@@ -3792,339 +3860,360 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
             </div>
           )}
 
-          {file && mappedStudents.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-[12.5px] font-bold text-[var(--tx)]">
-                  Parsed Records Preview ({mappedStudents.length} rows)
+          {file && mappedStudents.length > 0 && (() => {
+            const allClassOptions = Array.from(
+              new Set([
+                ...classesList,
+                ...mappedStudents.map(s => s.class)
+              ].filter(Boolean))
+            ).sort((a, b) => {
+              const weightA = getClassWeight(a);
+              const weightB = getClassWeight(b);
+              if (weightA !== weightB) return weightA - weightB;
+              return a.localeCompare(b);
+            });
+
+            const allSectionOptions = Array.from(
+              new Set([
+                'A', 'B', 'C', 'D',
+                ...mappedStudents.map(s => s.section)
+              ].filter(Boolean))
+            ).sort();
+
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[12.5px] font-bold text-[var(--tx)]">
+                    Parsed Records Preview ({mappedStudents.length} rows)
+                  </div>
+                  <button
+                    onClick={addStudentRow}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--surf2)] hover:bg-[var(--surf3)] text-[var(--tx)] border border-[var(--b)] rounded-lg text-[11.5px] font-medium transition-colors cursor-pointer"
+                  >
+                    <Plus size={12} /> Add Student Row
+                  </button>
                 </div>
-                <button
-                  onClick={addStudentRow}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[var(--surf2)] hover:bg-[var(--surf3)] text-[var(--tx)] border border-[var(--b)] rounded-lg text-[11.5px] font-medium transition-colors cursor-pointer"
-                >
-                  <Plus size={12} /> Add Student Row
-                </button>
+
+                {/* Responsive table for inline editing */}
+                <div className="overflow-x-auto border border-[var(--b)] rounded-xl max-h-[400px]">
+                  <table className="w-full border-collapse text-[11.5px] min-w-[2800px]">
+                    <thead>
+                      <tr className="bg-[var(--surf2)] border-b border-[var(--b)] sticky top-0 z-10 text-[var(--tx3)]">
+                        <th className="px-3 py-2 text-left font-medium w-[50px]">Status</th>
+                        <th className="px-2 py-2 text-left font-medium w-[120px]">First Name *</th>
+                        <th className="px-2 py-2 text-left font-medium w-[120px]">Last Name *</th>
+                        <th className="px-2 py-2 text-left font-medium w-[90px]">Class *</th>
+                        <th className="px-2 py-2 text-left font-medium w-[90px]">Section *</th>
+                        <th className="px-2 py-2 text-left font-medium w-[100px]">Gender *</th>
+                        <th className="px-2 py-2 text-left font-medium w-[130px]">DOB</th>
+                        <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Number</th>
+                        <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Date</th>
+                        <th className="px-2 py-2 text-left font-medium w-[140px]">Student PEN</th>
+                        <th className="px-2 py-2 text-left font-medium w-[140px]">Aadhar</th>
+                        <th className="px-2 py-2 text-left font-medium w-[140px]">Father Name</th>
+                        <th className="px-2 py-2 text-left font-medium w-[120px]">Father Mobile</th>
+                        <th className="px-2 py-2 text-left font-medium w-[130px]">Father Occ</th>
+                        <th className="px-2 py-2 text-left font-medium w-[140px]">Mother Name</th>
+                        <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Mobile</th>
+                        <th className="px-2 py-2 text-left font-medium w-[130px]">Mother Occ</th>
+                        <th className="px-2 py-2 text-left font-medium w-[180px]">Address</th>
+                        <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Tongue</th>
+                        <th className="px-2 py-2 text-left font-medium w-[120px]">Nationality</th>
+                        <th className="px-2 py-2 text-left font-medium w-[120px]">State</th>
+                        <th className="px-2 py-2 text-left font-medium w-[120px]">Religion</th>
+                        <th className="px-2 py-2 text-left font-medium w-[100px]">Caste</th>
+                        <th className="px-2 py-2 text-left font-medium w-[100px]">Sub Caste</th>
+                        <th className="px-2 py-2 text-left font-medium w-[100px]">TC Number</th>
+                        <th className="px-2 py-2 text-center font-medium w-[50px]">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-[var(--surf)] divide-y divide-[var(--b)]">
+                      {mappedStudents.map((s) => {
+                        const rowErrors = validateStudent(s);
+                        const isValid = rowErrors.length === 0;
+
+                        const isFieldInvalid = (field: string): boolean => {
+                          switch (field) {
+                            case 'firstName': return !s.firstName?.trim() || s.firstName === 'N/A';
+                            case 'lastName': return !s.lastName?.trim() || s.lastName === 'N/A';
+                            case 'class': return !s.class;
+                            case 'section': return !s.section;
+                            case 'gender': return !s.gender || (s.gender !== 'Male' && s.gender !== 'Female');
+
+                            case 'dob':
+                              return !s.dob?.trim() || !isValidDateDDMMYYYY(s.dob);
+                            case 'admissionDate':
+                              return !s.admissionDate?.trim() || !isValidDateDDMMYYYY(s.admissionDate);
+                            case 'student_pen_no':
+                              return !s.student_pen_no?.trim() || !/^\d{11,14}$/.test(s.student_pen_no.replace(/\s+/g, ''));
+                            case 'aadhar_number':
+                              return !s.aadhar_number?.trim() || s.aadhar_number.replace(/\D/g, '').length !== 12;
+                            case 'enrollment_number':
+                              return !s.enrollment_number?.trim();
+                            case 'parent':
+                              return !s.parent?.trim() || s.parent === 'N/A';
+                            case 'father_mobile':
+                              return !s.father_mobile?.trim();
+                            case 'father_occupation':
+                              return !s.father_occupation?.trim();
+                            case 'mother_name':
+                              return !s.mother_name?.trim();
+                            case 'mother_mobile':
+                              return !s.mother_mobile?.trim();
+                            case 'mother_occupation':
+                              return !s.mother_occupation?.trim();
+                            case 'address':
+                              return !s.address?.trim();
+                            case 'mother_tongue':
+                              return !s.mother_tongue?.trim();
+                            case 'nationality':
+                              return !s.nationality?.trim();
+                            case 'state':
+                              return !s.state?.trim();
+                            case 'religion':
+                              return !s.religion?.trim();
+                            case 'caste':
+                              return !s.caste?.trim();
+                            case 'sub_caste':
+                              return !s.sub_caste?.trim();
+
+                            default: return false;
+                          }
+                        };
+
+                        const getCellClassName = (field: string, isSelect: boolean = false) => {
+                          const invalid = isFieldInvalid(field);
+                          if (invalid) {
+                            return `${isSelect ? 'px-1.5 py-1' : 'px-2 py-1'} w-full bg-[var(--red-bg)] border-2 border-[var(--red)] text-[var(--red-tx)] focus:border-[var(--red)] rounded text-[11.5px] outline-none font-medium shadow-[0_0_0_1px_rgba(239,68,68,0.25)] ${isSelect ? 'cursor-pointer' : ''}`;
+                          }
+                          return `${isSelect ? 'px-1.5 py-1' : 'px-2 py-1'} w-full bg-[var(--surf2)] border border-[var(--b)] focus:border-[var(--blue)] rounded text-[11.5px] outline-none ${isSelect ? 'cursor-pointer' : ''}`;
+                        };
+
+                        return (
+                          <tr key={s.id} className="hover:bg-[var(--surf2)]/40 transition-colors">
+                            <td className="px-3 py-2 text-center">
+                              {isValid ? (
+                                <div className="inline-flex text-[var(--green)]" title="Valid Row">
+                                  <CheckCircle2 size={15} />
+                                </div>
+                              ) : (
+                                <div className="inline-flex text-[var(--red)] cursor-help" title={rowErrors.join('\n')}>
+                                  <AlertCircle size={15} />
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.firstName}
+                                onChange={(e) => updateStudentField(s.id, 'firstName', e.target.value)}
+                                className={getCellClassName('firstName')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.lastName}
+                                onChange={(e) => updateStudentField(s.id, 'lastName', e.target.value)}
+                                className={getCellClassName('lastName')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <select
+                                value={s.class}
+                                onChange={(e) => updateStudentField(s.id, 'class', e.target.value)}
+                                className={getCellClassName('class', true)}
+                              >
+                                {allClassOptions.map(c => (
+                                  <option key={c} value={c}>Class {c}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <select
+                                value={s.section}
+                                onChange={(e) => updateStudentField(s.id, 'section', e.target.value)}
+                                className={getCellClassName('section', true)}
+                              >
+                                {allSectionOptions.map(sec => (
+                                  <option key={sec} value={sec}>Sec {sec}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <select
+                                value={s.gender}
+                                onChange={(e) => updateStudentField(s.id, 'gender', e.target.value)}
+                                className={getCellClassName('gender', true)}
+                              >
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                              </select>
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                type="text"
+                                placeholder="DD-MM-YYYY"
+                                value={s.dob}
+                                onChange={(e) => updateStudentField(s.id, 'dob', e.target.value)}
+                                className={getCellClassName('dob')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.enrollment_number || ''}
+                                onChange={(e) => updateStudentField(s.id, 'enrollment_number', e.target.value)}
+                                className={getCellClassName('enrollment_number')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                type="text"
+                                placeholder="DD-MM-YYYY"
+                                value={s.admissionDate}
+                                onChange={(e) => updateStudentField(s.id, 'admissionDate', e.target.value)}
+                                className={getCellClassName('admissionDate')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.student_pen_no || ''}
+                                onChange={(e) => updateStudentField(s.id, 'student_pen_no', e.target.value)}
+                                className={getCellClassName('student_pen_no')}
+                                placeholder="11-14 digits"
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.aadhar_number || ''}
+                                onChange={(e) => updateStudentField(s.id, 'aadhar_number', e.target.value)}
+                                className={getCellClassName('aadhar_number')}
+                                placeholder="12-digit"
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.parent || ''}
+                                onChange={(e) => updateStudentField(s.id, 'parent', e.target.value)}
+                                className={getCellClassName('parent')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.father_mobile || ''}
+                                onChange={(e) => updateStudentField(s.id, 'father_mobile', e.target.value)}
+                                className={getCellClassName('father_mobile')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.father_occupation || ''}
+                                onChange={(e) => updateStudentField(s.id, 'father_occupation', e.target.value)}
+                                className={getCellClassName('father_occupation')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.mother_name || ''}
+                                onChange={(e) => updateStudentField(s.id, 'mother_name', e.target.value)}
+                                className={getCellClassName('mother_name')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.mother_mobile || ''}
+                                onChange={(e) => updateStudentField(s.id, 'mother_mobile', e.target.value)}
+                                className={getCellClassName('mother_mobile')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.mother_occupation || ''}
+                                onChange={(e) => updateStudentField(s.id, 'mother_occupation', e.target.value)}
+                                className={getCellClassName('mother_occupation')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.address || ''}
+                                onChange={(e) => updateStudentField(s.id, 'address', e.target.value)}
+                                className={getCellClassName('address')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.mother_tongue || ''}
+                                onChange={(e) => updateStudentField(s.id, 'mother_tongue', e.target.value)}
+                                className={getCellClassName('mother_tongue')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.nationality || ''}
+                                onChange={(e) => updateStudentField(s.id, 'nationality', e.target.value)}
+                                className={getCellClassName('nationality')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.state || ''}
+                                onChange={(e) => updateStudentField(s.id, 'state', e.target.value)}
+                                className={getCellClassName('state')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.religion || ''}
+                                onChange={(e) => updateStudentField(s.id, 'religion', e.target.value)}
+                                className={getCellClassName('religion')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.caste || ''}
+                                onChange={(e) => updateStudentField(s.id, 'caste', e.target.value)}
+                                className={getCellClassName('caste')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.sub_caste || ''}
+                                onChange={(e) => updateStudentField(s.id, 'sub_caste', e.target.value)}
+                                className={getCellClassName('sub_caste')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5">
+                              <input
+                                value={s.tc_no || ''}
+                                onChange={(e) => updateStudentField(s.id, 'tc_no', e.target.value)}
+                                className={getCellClassName('tc_no')}
+                              />
+                            </td>
+                            <td className="px-1 py-1.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeStudent(s.id)}
+                                className="p-1 rounded text-[var(--tx3)] hover:text-[var(--red)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-[var(--tx3)] mt-1.5">
+                  <span>
+                    * Red highlighted cells represent missing or incorrect data fields.
+                  </span>
+                  <span className="font-medium text-[var(--tx2)]">
+                    Total parsed rows: {mappedStudents.length}
+                  </span>
+                </div>
               </div>
-
-              {/* Responsive table for inline editing */}
-              <div className="overflow-x-auto border border-[var(--b)] rounded-xl max-h-[400px]">
-                <table className="w-full border-collapse text-[11.5px] min-w-[2800px]">
-                  <thead>
-                    <tr className="bg-[var(--surf2)] border-b border-[var(--b)] sticky top-0 z-10 text-[var(--tx3)]">
-                      <th className="px-3 py-2 text-left font-medium w-[50px]">Status</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">First Name *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Last Name *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[90px]">Class *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[90px]">Section *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[100px]">Gender *</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">DOB</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Number</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Adm Date</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Student PEN</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Aadhar</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Father Name</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Father Mobile</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Father Occ</th>
-                      <th className="px-2 py-2 text-left font-medium w-[140px]">Mother Name</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Mobile</th>
-                      <th className="px-2 py-2 text-left font-medium w-[130px]">Mother Occ</th>
-                      <th className="px-2 py-2 text-left font-medium w-[180px]">Address</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Mother Tongue</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Nationality</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">State</th>
-                      <th className="px-2 py-2 text-left font-medium w-[120px]">Religion</th>
-                      <th className="px-2 py-2 text-left font-medium w-[100px]">Caste</th>
-                      <th className="px-2 py-2 text-left font-medium w-[100px]">Sub Caste</th>
-                      <th className="px-2 py-2 text-left font-medium w-[100px]">TC Number</th>
-                      <th className="px-2 py-2 text-center font-medium w-[50px]">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-[var(--surf)] divide-y divide-[var(--b)]">
-                    {mappedStudents.map((s) => {
-                      const rowErrors = validateStudent(s);
-                      const isValid = rowErrors.length === 0;
-
-                      const isFieldInvalid = (field: string): boolean => {
-                        switch (field) {
-                          case 'firstName': return !s.firstName?.trim() || s.firstName === 'N/A';
-                          case 'lastName': return !s.lastName?.trim() || s.lastName === 'N/A';
-                          case 'class': return !s.class;
-                          case 'section': return !s.section;
-                          case 'gender': return !s.gender || (s.gender !== 'Male' && s.gender !== 'Female');
-
-                          case 'dob':
-                            return !s.dob?.trim() || !isValidDateDDMMYYYY(s.dob);
-                          case 'admissionDate':
-                            return !s.admissionDate?.trim() || !isValidDateDDMMYYYY(s.admissionDate);
-                          case 'student_pen_no':
-                            return !s.student_pen_no?.trim() || !/^\d{11,14}$/.test(s.student_pen_no.replace(/\s+/g, ''));
-                          case 'aadhar_number':
-                            return !s.aadhar_number?.trim() || s.aadhar_number.replace(/\D/g, '').length !== 12;
-                          case 'enrollment_number':
-                            return !s.enrollment_number?.trim();
-                          case 'parent':
-                            return !s.parent?.trim() || s.parent === 'N/A';
-                          case 'father_mobile':
-                            return !s.father_mobile?.trim();
-                          case 'father_occupation':
-                            return !s.father_occupation?.trim();
-                          case 'mother_name':
-                            return !s.mother_name?.trim();
-                          case 'mother_mobile':
-                            return !s.mother_mobile?.trim();
-                          case 'mother_occupation':
-                            return !s.mother_occupation?.trim();
-                          case 'address':
-                            return !s.address?.trim();
-                          case 'mother_tongue':
-                            return !s.mother_tongue?.trim();
-                          case 'nationality':
-                            return !s.nationality?.trim();
-                          case 'state':
-                            return !s.state?.trim();
-                          case 'religion':
-                            return !s.religion?.trim();
-                          case 'caste':
-                            return !s.caste?.trim();
-                          case 'sub_caste':
-                            return !s.sub_caste?.trim();
-
-                          default: return false;
-                        }
-                      };
-
-                      const getCellClassName = (field: string, isSelect: boolean = false) => {
-                        const invalid = isFieldInvalid(field);
-                        if (invalid) {
-                          return `${isSelect ? 'px-1.5 py-1' : 'px-2 py-1'} w-full bg-[var(--red-bg)] border-2 border-[var(--red)] text-[var(--red-tx)] focus:border-[var(--red)] rounded text-[11.5px] outline-none font-medium shadow-[0_0_0_1px_rgba(239,68,68,0.25)] ${isSelect ? 'cursor-pointer' : ''}`;
-                        }
-                        return `${isSelect ? 'px-1.5 py-1' : 'px-2 py-1'} w-full bg-[var(--surf2)] border border-[var(--b)] focus:border-[var(--blue)] rounded text-[11.5px] outline-none ${isSelect ? 'cursor-pointer' : ''}`;
-                      };
-
-                      return (
-                        <tr key={s.id} className="hover:bg-[var(--surf2)]/40 transition-colors">
-                          <td className="px-3 py-2 text-center">
-                            {isValid ? (
-                              <div className="inline-flex text-[var(--green)]" title="Valid Row">
-                                <CheckCircle2 size={15} />
-                              </div>
-                            ) : (
-                              <div className="inline-flex text-[var(--red)] cursor-help" title={rowErrors.join('\n')}>
-                                <AlertCircle size={15} />
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.firstName}
-                              onChange={(e) => updateStudentField(s.id, 'firstName', e.target.value)}
-                              className={getCellClassName('firstName')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.lastName}
-                              onChange={(e) => updateStudentField(s.id, 'lastName', e.target.value)}
-                              className={getCellClassName('lastName')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <select
-                              value={s.class}
-                              onChange={(e) => updateStudentField(s.id, 'class', e.target.value)}
-                              className={getCellClassName('class', true)}
-                            >
-                              {['LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map(c => (
-                                <option key={c} value={c}>Class {c}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <select
-                              value={s.section}
-                              onChange={(e) => updateStudentField(s.id, 'section', e.target.value)}
-                              className={getCellClassName('section', true)}
-                            >
-                              {['A', 'B', 'C'].map(sec => (
-                                <option key={sec} value={sec}>Sec {sec}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <select
-                              value={s.gender}
-                              onChange={(e) => updateStudentField(s.id, 'gender', e.target.value)}
-                              className={getCellClassName('gender', true)}
-                            >
-                              <option value="Male">Male</option>
-                              <option value="Female">Female</option>
-                            </select>
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              type="text"
-                              placeholder="DD-MM-YYYY"
-                              value={s.dob}
-                              onChange={(e) => updateStudentField(s.id, 'dob', e.target.value)}
-                              className={getCellClassName('dob')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.enrollment_number || ''}
-                              onChange={(e) => updateStudentField(s.id, 'enrollment_number', e.target.value)}
-                              className={getCellClassName('enrollment_number')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              type="text"
-                              placeholder="DD-MM-YYYY"
-                              value={s.admissionDate}
-                              onChange={(e) => updateStudentField(s.id, 'admissionDate', e.target.value)}
-                              className={getCellClassName('admissionDate')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.student_pen_no || ''}
-                              onChange={(e) => updateStudentField(s.id, 'student_pen_no', e.target.value)}
-                              className={getCellClassName('student_pen_no')}
-                              placeholder="11-14 digits"
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.aadhar_number || ''}
-                              onChange={(e) => updateStudentField(s.id, 'aadhar_number', e.target.value)}
-                              className={getCellClassName('aadhar_number')}
-                              placeholder="12-digit"
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.parent || ''}
-                              onChange={(e) => updateStudentField(s.id, 'parent', e.target.value)}
-                              className={getCellClassName('parent')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.father_mobile || ''}
-                              onChange={(e) => updateStudentField(s.id, 'father_mobile', e.target.value)}
-                              className={getCellClassName('father_mobile')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.father_occupation || ''}
-                              onChange={(e) => updateStudentField(s.id, 'father_occupation', e.target.value)}
-                              className={getCellClassName('father_occupation')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.mother_name || ''}
-                              onChange={(e) => updateStudentField(s.id, 'mother_name', e.target.value)}
-                              className={getCellClassName('mother_name')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.mother_mobile || ''}
-                              onChange={(e) => updateStudentField(s.id, 'mother_mobile', e.target.value)}
-                              className={getCellClassName('mother_mobile')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.mother_occupation || ''}
-                              onChange={(e) => updateStudentField(s.id, 'mother_occupation', e.target.value)}
-                              className={getCellClassName('mother_occupation')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.address || ''}
-                              onChange={(e) => updateStudentField(s.id, 'address', e.target.value)}
-                              className={getCellClassName('address')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.mother_tongue || ''}
-                              onChange={(e) => updateStudentField(s.id, 'mother_tongue', e.target.value)}
-                              className={getCellClassName('mother_tongue')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.nationality || ''}
-                              onChange={(e) => updateStudentField(s.id, 'nationality', e.target.value)}
-                              className={getCellClassName('nationality')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.state || ''}
-                              onChange={(e) => updateStudentField(s.id, 'state', e.target.value)}
-                              className={getCellClassName('state')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.religion || ''}
-                              onChange={(e) => updateStudentField(s.id, 'religion', e.target.value)}
-                              className={getCellClassName('religion')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.caste || ''}
-                              onChange={(e) => updateStudentField(s.id, 'caste', e.target.value)}
-                              className={getCellClassName('caste')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.sub_caste || ''}
-                              onChange={(e) => updateStudentField(s.id, 'sub_caste', e.target.value)}
-                              className={getCellClassName('sub_caste')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5">
-                            <input
-                              value={s.tc_no || ''}
-                              onChange={(e) => updateStudentField(s.id, 'tc_no', e.target.value)}
-                              className={getCellClassName('tc_no')}
-                            />
-                          </td>
-                          <td className="px-1 py-1.5 text-center">
-                            <button
-                              type="button"
-                              onClick={() => removeStudent(s.id)}
-                              className="p-1 rounded text-[var(--tx3)] hover:text-[var(--red)] hover:bg-[var(--red-bg)] transition-colors cursor-pointer"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-[var(--tx3)] mt-1.5">
-                <span>
-                  * Red highlighted cells represent missing or incorrect data fields.
-                </span>
-                <span className="font-medium text-[var(--tx2)]">
-                  Total parsed rows: {mappedStudents.length}
-                </span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Footer */}
@@ -4187,3 +4276,4 @@ export function ImportModal({ onClose, onImportSuccess }: ImportModalProps) {
     </div>
   );
 }
+

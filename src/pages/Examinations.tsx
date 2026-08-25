@@ -14,6 +14,7 @@ import { StaffMember, STAFF } from './StaffManagement';
 import { useDialog } from '../context/DialogContext';
 import * as XLSX from 'xlsx-js-style';
 import { downloadSheet } from '../utils/excel';
+import { getClassWeight } from './Students';
 
 
 export interface Invigilation {
@@ -982,12 +983,12 @@ export function Examinations() {
     const loadClasses = async () => {
       try {
         const batchesData = await api.getResources('batches');
-        const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+        const defaultClasses = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
         const foundClasses = new Set<string>();
 
         batchesData.forEach((b: any) => {
           const batchName = b.name;
-          const match = batchName.match(/^(.+?)([A-Z])$/);
+          const match = batchName.match(/^(.+?)\s*([A-Z])$/i);
           if (match) {
             foundClasses.add(batchName);
           } else if (batchName === 'Default Batch') {
@@ -1003,12 +1004,9 @@ export function Examinations() {
         });
 
         const sorted = Array.from(foundClasses).sort((a, b) => {
-          const numA = parseInt(a, 10);
-          const numB = parseInt(b, 10);
-          if (!isNaN(numA) && !isNaN(numB)) {
-            if (numA !== numB) return numA - numB;
-            return a.localeCompare(b);
-          }
+          const weightA = getClassWeight(a);
+          const weightB = getClassWeight(b);
+          if (weightA !== weightB) return weightA - weightB;
           return a.localeCompare(b);
         });
 

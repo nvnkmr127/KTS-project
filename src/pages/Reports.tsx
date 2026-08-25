@@ -175,7 +175,7 @@ export function Reports() {
 
         // 2. Term-wise Collection Calculations
         if (hasFees && hasStudents) {
-          const classGroups = ['Class LKG', 'Class UKG', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'];
+          const classGroups = ['Class Nursery', 'Class LKG', 'Class UKG', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'];
           const calculatedTerms = classGroups.map(clsName => {
             const clsStudents = students.filter((s: { class: any; section: any; }) => {
               const fullCls = `${s.class || ''}${s.section || ''}`.toLowerCase();

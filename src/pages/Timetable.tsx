@@ -7,6 +7,7 @@ import type { TimetablePeriod, PeriodTiming } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { STAFF } from './StaffManagement';
+import { getClassWeight } from './Students';
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'Library', 'Break'];
 
@@ -175,22 +176,22 @@ export function Timetable() {
         const allBatches = allBatchesRaw.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
         
         const classGroups: Record<string, string[]> = {};
-        const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+        const defaultClasses = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
         const teachersMap: Record<string, string> = {};
 
         allBatches.forEach((b: any) => {
-          const batchName = b.name;
+          const batchName = b.name || '';
           let classId = '8';
           let sectionLetter = 'A';
 
-          const match = batchName.match(/^(.+?)([A-Z])$/);
+          const match = batchName.match(/^(.+?)\s*([A-Z])$/i);
           if (match) {
-            classId = match[1];
-            sectionLetter = match[2];
+            classId = match[1].trim();
+            sectionLetter = match[2].toUpperCase();
           } else {
             if (batchName === 'Default Batch') { classId = '8'; sectionLetter = 'A'; }
             else {
-               classId = batchName;
+               classId = batchName.trim();
                sectionLetter = '';
             }
           }
@@ -214,14 +215,9 @@ export function Timetable() {
 
         const names: string[] = [];
         Object.keys(classGroups).sort((a, b) => {
-          const numA = parseInt(a);
-          const numB = parseInt(b);
-          if (!isNaN(numA) && !isNaN(numB)) {
-            if (numA !== numB) return numA - numB;
-            return a.localeCompare(b);
-          }
-          if (!isNaN(numA)) return -1;
-          if (!isNaN(numB)) return 1;
+          const weightA = getClassWeight(a);
+          const weightB = getClassWeight(b);
+          if (weightA !== weightB) return weightA - weightB;
           return a.localeCompare(b);
         }).forEach(cId => {
           if (classGroups[cId].length === 0) {

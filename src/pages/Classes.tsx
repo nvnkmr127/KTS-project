@@ -6,6 +6,7 @@ import { Badge } from '../components/Badge';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
 import { STAFF } from './StaffManagement';
+import { getClassWeight } from './Students';
 
 interface ClassData {
   id: string;
@@ -212,20 +213,20 @@ export function Classes() {
       const batchesData = allBatches.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
 
       const classGroups: Record<string, SectionData[]> = {};
-      const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+      const defaultClasses = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
       batchesData.forEach((b: any) => {
-        const batchName = b.name;
+        const batchName = b.name || '';
         let classId = '8';
-         
         let sectionLetter = 'A';
 
-        const match = batchName.match(/^(.+?)([A-Z])$/);
+        const match = batchName.match(/^(.+?)\s*([A-Z])$/i);
         if (match) {
-          classId = match[1];
-          sectionLetter = match[2];
+          classId = match[1].trim();
+          sectionLetter = match[2].toUpperCase();
         } else {
           if (batchName === 'Default Batch') { classId = '8'; sectionLetter = 'A'; }
+          else if (batchName) { classId = batchName.trim(); sectionLetter = 'A'; }
         }
 
         const studentsInBatch = studentsData.filter((s: any) => String(s.batch_id) === String(b.id)).length;
@@ -261,11 +262,9 @@ export function Classes() {
         name: cId,
         sections: classGroups[cId].sort((a, b) => a.name.localeCompare(b.name)),
       })).sort((a, b) => {
-        const numA = Number(a.id), numB = Number(b.id);
-        const isNumA = !isNaN(numA), isNumB = !isNaN(numB);
-        if (isNumA && isNumB) return numA - numB;
-        if (isNumA) return -1;
-        if (isNumB) return 1;
+        const weightA = getClassWeight(a.id);
+        const weightB = getClassWeight(b.id);
+        if (weightA !== weightB) return weightA - weightB;
         return a.id.localeCompare(b.id);
       });
 

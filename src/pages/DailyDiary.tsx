@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { formatDate } from '../utils/date';
 import { useApp } from '../context/AppContext';
+import { getClassWeight } from './Students';
 
 interface DiaryEntry {
   id?: string;
@@ -20,6 +21,7 @@ interface DiaryEntry {
 }
 
 const DEFAULT_CLASSES = [
+  'NurseryA', 'NurseryB', 'LKGA', 'LKGB', 'UKGA', 'UKGB',
   '1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B',
   '6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'
 ];
@@ -45,19 +47,20 @@ function AdminDiaryView() {
       const filteredBatches = batchesData.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId));
 
       const classGroups: Record<string, string[]> = {};
-      const defaultClasses = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+      const defaultClasses = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
       filteredBatches.forEach((b: any) => {
-        const batchName = b.name;
+        const batchName = b.name || '';
         let classId = '8';
         let sectionLetter = 'A';
 
-        const match = batchName.match(/^(.+?)([A-Z])$/);
+        const match = batchName.match(/^(.+?)\s*([A-Z])$/i);
         if (match) {
-          classId = match[1];
-          sectionLetter = match[2];
+          classId = match[1].trim();
+          sectionLetter = match[2].toUpperCase();
         } else {
           if (batchName === 'Default Batch') { classId = '8'; sectionLetter = 'A'; }
+          else if (batchName) { classId = batchName.trim(); sectionLetter = 'A'; }
         }
 
         if (!classGroups[classId]) classGroups[classId] = [];
@@ -76,14 +79,9 @@ function AdminDiaryView() {
       });
 
       names.sort((a: string, b: string) => {
-        const numA = parseInt(a);
-        const numB = parseInt(b);
-        if (!isNaN(numA) && !isNaN(numB)) {
-          if (numA !== numB) return numA - numB;
-          return a.localeCompare(b);
-        }
-        if (!isNaN(numA)) return -1;
-        if (!isNaN(numB)) return 1;
+        const weightA = getClassWeight(a);
+        const weightB = getClassWeight(b);
+        if (weightA !== weightB) return weightA - weightB;
         return a.localeCompare(b);
       });
       setClassList(names);
