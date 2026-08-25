@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Search, Plus, Upload, UserCheck, GraduationCap,
   Phone, Edit2, Trash2, Eye, X, Loader2, AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText,
@@ -81,6 +81,39 @@ export const getClassWeight = (className: string): number => {
   return 999;
 };
 
+export const cleanClass = (val: any, classOptions?: string[]): string => {
+  if (!val && val !== 0) return 'Nursery';
+  let str = String(val).trim();
+  // Remove "CLASS" prefix if present (e.g., "Class Nursery" -> "Nursery", "Class 8" -> "8")
+  str = str.replace(/^CLASS\s*/i, '').trim();
+  if (!str) return 'Nursery';
+
+  // Check case-insensitive match in provided classOptions (from Classes tab)
+  if (classOptions && classOptions.length > 0) {
+    const found = classOptions.find(c => c.toLowerCase().trim() === str.toLowerCase().trim());
+    if (found) return found;
+  }
+
+  // Standard aliases normalization
+  const lower = str.toLowerCase();
+  if (lower === 'nursery' || lower === 'nur') return 'Nursery';
+  if (lower === 'lkg' || lower === 'l.k.g' || lower === 'l.k.g.') return 'LKG';
+  if (lower === 'ukg' || lower === 'u.k.g' || lower === 'u.k.g.') return 'UKG';
+  if (lower === 'pp1' || lower === 'pp-1') return 'PP1';
+  if (lower === 'pp2' || lower === 'pp-2') return 'PP2';
+  if (lower === 'playgroup' || lower === 'play group') return 'Playgroup';
+  if (lower === 'prekg' || lower === 'pre-kg') return 'Pre-KG';
+
+  return str;
+};
+
+export const cleanSection = (val: any): string => {
+  if (!val && val !== 0) return 'A';
+  let str = String(val).trim().replace(/^SEC(TION)?\s*/i, '').trim();
+  const match = str.match(/[A-Za-z0-9]/);
+  return match ? match[0].toUpperCase() : 'A';
+};
+
 // Derive classes and sections from batches (mirrors Classes.tsx logic)
 export const getClassesFromBatches = (batches: any[]): string[] => {
   // Priority: Union of default classes (Nursery, LKG, UKG, 1-10) and any custom classes from database batches
@@ -89,9 +122,9 @@ export const getClassesFromBatches = (batches: any[]): string[] => {
   if (batches && Array.isArray(batches)) {
     batches.forEach((b: any) => {
       const batchName = b.name || '';
-      const match = batchName.match(/^(.+?)\s*([A-Z])$/i);
+      const match = batchName.match(/^(.+?)\s*([A-Za-z0-9])$/i);
       if (match && match[1]) {
-        classSet.add(match[1].trim());
+        classSet.add(cleanClass(match[1].trim()));
       }
     });
   }
@@ -106,18 +139,77 @@ export const getClassesFromBatches = (batches: any[]): string[] => {
 export const getSectionsForClass = (batches: any[], classId: string): string[] => {
   if (!batches || batches.length === 0) {
     // Fallback safety sections if fail to load
-    return ['A', 'B', 'C'];
+    return ['A', 'B'];
   }
   const sectionSet = new Set<string>();
   batches.forEach((b: any) => {
-    const match = b.name?.match(/^(.+?)\s*([A-Z])$/i);
-    if (match && match[1]?.trim().toLowerCase() === classId.trim().toLowerCase()) {
+    const match = b.name?.match(/^(.+?)\s*([A-Za-z0-9])$/i);
+    if (match && cleanClass(match[1]?.trim()).toLowerCase() === classId.trim().toLowerCase()) {
       sectionSet.add(match[2].toUpperCase());
     }
   });
   const sorted = Array.from(sectionSet).sort();
   // If we have batches loaded but none for this class, fall back to Class tab's mock sections ['A', 'B']
   return sorted.length > 0 ? sorted : ['A', 'B'];
+};
+
+export const getBatchesFromClassesTab = (batches: any[]): string[] => {
+  const defaultClasses = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+  const classGroups: Record<string, Set<string>> = {};
+
+  if (Array.isArray(batches) && batches.length > 0) {
+    batches.forEach((b: any) => {
+      const batchName = b.name || '';
+      if (!batchName || batchName === 'Default Batch') return;
+      const match = batchName.match(/^(.+?)\s*([A-Za-z0-9])$/i);
+      if (match) {
+        const rawClass = match[1].trim();
+        const normalizedClass = cleanClass(rawClass, defaultClasses);
+        const sectionLetter = match[2].toUpperCase();
+        if (!classGroups[normalizedClass]) {
+          classGroups[normalizedClass] = new Set<string>();
+        }
+        classGroups[normalizedClass].add(sectionLetter);
+      } else {
+        const normalizedClass = cleanClass(batchName, defaultClasses);
+        if (!classGroups[normalizedClass]) {
+          classGroups[normalizedClass] = new Set<string>();
+        }
+        classGroups[normalizedClass].add('A');
+      }
+    });
+  }
+
+  // If no batches exist in DB at all, populate all fallback default classes with sections A & B
+  if (Object.keys(classGroups).length === 0) {
+    defaultClasses.forEach(cId => {
+      classGroups[cId] = new Set(['A', 'B']);
+    });
+  } else {
+    // If some default classes don't have batches in DB, mirror Classes tab by adding fallback mock sections A & B
+    defaultClasses.forEach(cId => {
+      if (!classGroups[cId] || classGroups[cId].size === 0) {
+        classGroups[cId] = new Set(['A', 'B']);
+      }
+    });
+  }
+
+  const batchList: string[] = [];
+  const sortedClasses = Object.keys(classGroups).sort((a, b) => {
+    const weightA = getClassWeight(a);
+    const weightB = getClassWeight(b);
+    if (weightA !== weightB) return weightA - weightB;
+    return a.localeCompare(b);
+  });
+
+  sortedClasses.forEach(cls => {
+    const sortedSections = Array.from(classGroups[cls]).sort();
+    sortedSections.forEach(sec => {
+      batchList.push(`${cls}${sec}`);
+    });
+  });
+
+  return batchList;
 };
 
 type ModalType = 'add' | 'view' | 'edit' | null;
@@ -950,8 +1042,12 @@ export function Students() {
       (s.name || '').toLowerCase().includes(search.toLowerCase()) ||
       (s.roll || '').toLowerCase().includes(search.toLowerCase()) ||
       (s.parent || '').toLowerCase().includes(search.toLowerCase());
-    const studentFullClass = `${s.class || ''}${s.section || ''}`;
-    const matchClass = classFilter === 'All' || studentFullClass === classFilter || s.class === classFilter;
+    const studentFullClass = `${s.class || ''}${s.section || ''}`.replace(/\s+/g, '').toLowerCase();
+    const targetFilter = classFilter.replace(/\s+/g, '').toLowerCase();
+    const matchClass = classFilter === 'All' ||
+      studentFullClass === targetFilter ||
+      (s.class || '').toLowerCase() === targetFilter ||
+      `${cleanClass(s.class)}${cleanSection(s.section)}`.toLowerCase() === targetFilter;
     const matchStatus = statusFilter === 'All' || s.status === statusFilter;
     const matchAy = ayFilter === 'All' || String(s.academicYearId) === ayFilter;
     return matchSearch && matchClass && matchStatus && matchAy;
@@ -1818,18 +1914,14 @@ export function Students() {
     );
   };
 
-  // Dynamically extract and sort all classes and sections (batch names) from batches list and student records
-  const dynamicClassList = Array.from(
-    new Set([
-      ...batchesList.map((b: any) => b.name),
-      ...students.map((s) => `${s.class || ''}${s.section || ''}`).filter(Boolean)
-    ])
-  ).sort((a: string, b: string) => {
-    const weightA = getClassWeight(a);
-    const weightB = getClassWeight(b);
-    if (weightA !== weightB) return weightA - weightB;
-    return a.localeCompare(b);
-  });
+  // Dynamically extract and sort all classes and sections (batch names) mirroring the Classes tab
+  const dynamicClassList = useMemo(() => {
+    const filteredBatches = selectedAcademicYearId && selectedAcademicYearId !== 'All'
+      ? batchesList.filter((b: any) => !b.academic_year_id || String(b.academic_year_id) === String(selectedAcademicYearId))
+      : batchesList;
+
+    return getBatchesFromClassesTab(filteredBatches);
+  }, [batchesList, selectedAcademicYearId]);
 
   return (
     <div className="flex-1 overflow-y-auto p-3.5 bg-[var(--bg)] relative">
@@ -3157,40 +3249,6 @@ const cleanDate = (val: any): string => {
   return str;
 };
 
-
-export const cleanClass = (val: any, classOptions?: string[]): string => {
-  if (!val && val !== 0) return 'Nursery';
-  let str = String(val).trim();
-  // Remove "CLASS" prefix if present (e.g., "Class Nursery" -> "Nursery", "Class 8" -> "8")
-  str = str.replace(/^CLASS\s*/i, '').trim();
-  if (!str) return 'Nursery';
-
-  // Check case-insensitive match in provided classOptions (from Classes tab)
-  if (classOptions && classOptions.length > 0) {
-    const found = classOptions.find(c => c.toLowerCase().trim() === str.toLowerCase().trim());
-    if (found) return found;
-  }
-
-  // Standard aliases normalization
-  const lower = str.toLowerCase();
-  if (lower === 'nursery' || lower === 'nur') return 'Nursery';
-  if (lower === 'lkg' || lower === 'l.k.g' || lower === 'l.k.g.') return 'LKG';
-  if (lower === 'ukg' || lower === 'u.k.g' || lower === 'u.k.g.') return 'UKG';
-  if (lower === 'pp1' || lower === 'pp-1') return 'PP1';
-  if (lower === 'pp2' || lower === 'pp-2') return 'PP2';
-  if (lower === 'playgroup' || lower === 'play group') return 'Playgroup';
-  if (lower === 'prekg' || lower === 'pre-kg') return 'Pre-KG';
-
-  return str;
-};
-
-
-export const cleanSection = (val: any): string => {
-  if (!val && val !== 0) return 'A';
-  let str = String(val).trim().replace(/^SEC(TION)?\s*/i, '').trim();
-  const match = str.match(/[A-Za-z0-9]/);
-  return match ? match[0].toUpperCase() : 'A';
-};
 
 const cleanGender = (val: any): 'Male' | 'Female' => {
   if (!val) return 'Male';
