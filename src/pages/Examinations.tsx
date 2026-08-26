@@ -183,14 +183,51 @@ function ExamScheduleDesigner({
   setSchedules: React.Dispatch<React.SetStateAction<Record<string, Record<string, ClassExamSchedule>>>>;
   onBack: () => void;
 }) {
-  const [year, setYear] = useState(2026);
-  const [month, setMonth] = useState(5);
+  const getInitialYearMonth = () => {
+    if (exam.date) {
+      const d = new Date(exam.date + 'T00:00:00');
+      if (!isNaN(d.getTime())) {
+        return { year: d.getFullYear(), month: d.getMonth() };
+      }
+    }
+    const today = new Date();
+    return { year: today.getFullYear(), month: today.getMonth() };
+  };
+
+  const [year, setYear] = useState(() => getInitialYearMonth().year);
+  const [month, setMonth] = useState(() => getInitialYearMonth().month);
   const [addModal, setAddModal] = useState<AddExamModal | null>(null);
   const [newSubject, setNewSubject] = useState('Mathematics');
   const [newTime, setNewTime] = useState('10:00 AM');
   const [newDuration, setNewDuration] = useState('2 hrs');
   const [newMarks, setNewMarks] = useState(50);
   const [savedMsg, setSavedMsg] = useState(false);
+
+  useEffect(() => {
+    if (exam.date) {
+      const d = new Date(exam.date + 'T00:00:00');
+      if (!isNaN(d.getTime())) {
+        setYear(d.getFullYear());
+        setMonth(d.getMonth());
+      }
+    }
+  }, [exam.id, exam.date]);
+
+  const isDateBeforeExam = (dateStr: string) => {
+    if (!exam.date) return false;
+    return dateStr < exam.date;
+  };
+
+  const canGoPrevMonth = () => {
+    if (!exam.date) return true;
+    const d = new Date(exam.date + 'T00:00:00');
+    if (isNaN(d.getTime())) return true;
+    const examYear = d.getFullYear();
+    const examMonth = d.getMonth();
+    if (year > examYear) return true;
+    if (year === examYear && month > examMonth) return true;
+    return false;
+  };
 
   const [isEditing, setIsEditing] = useState(() => {
     const examSchedules = schedules[exam.id] ?? {};
@@ -263,6 +300,7 @@ function ExamScheduleDesigner({
 
   const addExamEntry = () => {
     if (!addModal) return;
+    if (isDateBeforeExam(addModal.dateStr)) return;
     const selectedSub = classSubjects.includes(newSubject) ? newSubject : (classSubjects[0] || newSubject);
     const entry: ExamScheduleEntry = { subject: selectedSub, time: newTime, duration: newDuration, maxMarks: newMarks };
     setSchedules((prev) => {
@@ -321,6 +359,11 @@ function ExamScheduleDesigner({
           </button>
           <div className="text-[12.5px] font-semibold text-[var(--tx)]">
             {isAdmin ? 'Exam Schedule Designer' : 'Exam Schedule Preview'} — <span className="text-[var(--blue-tx)] font-bold">{exam.name}</span>
+            {exam.date && (
+              <span className="text-[11px] text-[var(--tx3)] font-normal ml-2">
+                (Start Date: <span className="font-semibold text-[var(--tx2)]">{formatDate(exam.date)}</span>)
+              </span>
+            )}
           </div>
           <div className="flex gap-1 flex-wrap ml-2">
             {examClasses.map((cls) => (
@@ -370,7 +413,21 @@ function ExamScheduleDesigner({
         {/* Calendar */}
         <Card>
           <div className="flex items-center justify-between mb-3">
-            <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); }} className="p-1 rounded-lg hover:bg-[var(--surf2)] cursor-pointer">
+            <button
+              type="button"
+              disabled={!canGoPrevMonth()}
+              onClick={() => {
+                if (!canGoPrevMonth()) return;
+                if (month === 0) {
+                  setMonth(11);
+                  setYear(y => y - 1);
+                } else {
+                  setMonth(m => m - 1);
+                }
+              }}
+              className={`p-1 rounded-lg transition-colors ${!canGoPrevMonth() ? 'opacity-30 cursor-not-allowed text-[var(--tx3)]' : 'hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx)]'}`}
+              title={!canGoPrevMonth() ? 'Cannot navigate before exam start month' : 'Previous Month'}
+            >
               <ChevronLeft size={14} />
             </button>
             <div className="text-[12px] font-semibold text-[var(--tx)]">{MONTH_NAMES[month]} {year}</div>
@@ -388,13 +445,17 @@ function ExamScheduleDesigner({
             {calendarDays.map((day, i) => {
               if (!day) return <div key={i} />;
               const dateStr = getCalendarDateStr(day);
+              const isBeforeExam = isDateBeforeExam(dateStr);
               const hasExams = classSchedule[dateStr] && classSchedule[dateStr].length > 0;
+              const isClickable = isWritable && !isBeforeExam;
+
               return (
                 <button
                   key={i}
-                  disabled={!isWritable}
+                  type="button"
+                  disabled={!isClickable}
                   onClick={() => {
-                    if (!isWritable) return;
+                    if (!isClickable) return;
                     const subs = getSubjectsForClass(selectedClass);
                     setAddModal({ dateStr });
                     setNewSubject(subs[0] || 'Maths');
@@ -402,10 +463,26 @@ function ExamScheduleDesigner({
                     setNewDuration('2 hrs');
                     setNewMarks(50);
                   }}
-                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10.5px] transition-all relative ${hasExams
-                    ? 'bg-[var(--blue)] text-white font-bold'
-                    : 'text-[var(--tx)]'
-                    } ${isWritable ? 'cursor-pointer hover:bg-[var(--surf2)]' : 'cursor-default'}`}
+                  title={
+                    isBeforeExam
+                      ? `Dates prior to exam start date (${formatDate(exam.date)}) cannot be selected`
+                      : isWritable
+                        ? 'Click to schedule exam session'
+                        : undefined
+                  }
+                  className={`aspect-square flex flex-col items-center justify-center rounded-lg text-[10.5px] transition-all relative ${
+                    hasExams
+                      ? 'bg-[var(--blue)] text-white font-bold'
+                      : isBeforeExam
+                        ? 'text-[var(--tx3)] opacity-35 cursor-not-allowed bg-transparent'
+                        : 'text-[var(--tx)]'
+                  } ${
+                    isClickable
+                      ? 'cursor-pointer hover:bg-[var(--surf2)]'
+                      : !hasExams
+                        ? 'cursor-default'
+                        : ''
+                  }`}
                 >
                   {day}
                   {hasExams && (
