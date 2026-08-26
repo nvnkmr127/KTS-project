@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -926,28 +926,136 @@ export function Examinations() {
   }, []);
 
 
+  // Helper: check if an exam is related to a particular class (from exam.class or schedules)
+  const isExamRelatedToClass = (
+    exam: Exam,
+    targetClass: string,
+    allSchedules?: Record<string, Record<string, ClassExamSchedule>>
+  ): boolean => {
+    if (!exam || !targetClass) return false;
+
+    const cleanTarget = targetClass.replace(/^Class\s*/i, '').trim().toUpperCase();
+    const examClassStr = (exam.class || '').trim();
+
+    // 1. "All Classes" or empty means all classes are included
+    if (
+      !examClassStr ||
+      examClassStr.toLowerCase() === 'all classes' ||
+      examClassStr.toLowerCase() === 'all'
+    ) {
+      return true;
+    }
+
+    // 2. Comma-separated list in exam.class
+    const examClasses = examClassStr
+      .split(',')
+      .map((c) => c.replace(/^Class\s*/i, '').trim().toUpperCase())
+      .filter(Boolean);
+
+    if (examClasses.includes(cleanTarget)) {
+      return true;
+    }
+
+    // Handle grade matching if section is missing or different (e.g. target="8A", exam="8" or vice versa)
+    const targetMatch = cleanTarget.match(/^(\d+)([A-Z]*)$/);
+    for (const ec of examClasses) {
+      if (ec === cleanTarget) return true;
+      const ecMatch = ec.match(/^(\d+)([A-Z]*)$/);
+      if (targetMatch && ecMatch) {
+        const [, targetNum, targetSec] = targetMatch;
+        const [, ecNum, ecSec] = ecMatch;
+        if (targetNum === ecNum) {
+          if (!targetSec || !ecSec || targetSec === ecSec) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // 3. Check if schedule entries exist for this class in allSchedules
+    if (allSchedules && allSchedules[exam.id]) {
+      const schedClasses = Object.keys(allSchedules[exam.id]);
+      for (const sc of schedClasses) {
+        const cleanSc = sc.replace(/^Class\s*/i, '').trim().toUpperCase();
+        if (cleanSc === cleanTarget) {
+          const entriesCount = Object.values(allSchedules[exam.id][sc] || {}).reduce(
+            (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
+            0
+          );
+          if (entriesCount > 0) return true;
+        }
+        const scMatch = cleanSc.match(/^(\d+)([A-Z]*)$/);
+        if (targetMatch && scMatch) {
+          const [, targetNum, targetSec] = targetMatch;
+          const [, scNum, scSec] = scMatch;
+          if (targetNum === scNum && (!targetSec || !scSec || targetSec === scSec)) {
+            const entriesCount = Object.values(allSchedules[exam.id][sc] || {}).reduce(
+              (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
+              0
+            );
+            if (entriesCount > 0) return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  };
+
+  const isExamCompleted = (e: Exam, classSchedule?: ClassExamSchedule): boolean => {
+    if (e.status === 'Completed' || e.status === 'Results Published') return true;
+    if (e.date) {
+      const examDate = new Date(e.date + 'T23:59:59');
+      const today = new Date();
+      if (!isNaN(examDate.getTime()) && examDate <= today) {
+        return true;
+      }
+    }
+    if (classSchedule && Object.keys(classSchedule).length > 0) {
+      const dates = Object.keys(classSchedule);
+      const today = new Date();
+      const allPast = dates.every((d) => {
+        const entryDate = new Date(d + 'T23:59:59');
+        return !isNaN(entryDate.getTime()) && entryDate <= today;
+      });
+      if (allPast && dates.length > 0) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const marksExams = useMemo(() => {
+    return exams.filter((e) => {
+      const classSched = schedules[e.id]?.[selectedMarksClass];
+      return isExamRelatedToClass(e, selectedMarksClass, schedules) && isExamCompleted(e, classSched);
+    });
+  }, [exams, selectedMarksClass, schedules]);
+
+  const resultsExams = useMemo(() => {
+    return exams.filter((e) => isExamRelatedToClass(e, selectedClass, schedules));
+  }, [exams, selectedClass, schedules]);
+
   // Initialize and validate filter selections
   useEffect(() => {
-    const availableExams = exams;
-    if (availableExams.length > 0) {
-      if (!selectedMarksExamId || !availableExams.some(e => e.id === selectedMarksExamId)) {
-        setSelectedMarksExamId(availableExams[0].id);
+    if (marksExams.length > 0) {
+      if (!selectedMarksExamId || !marksExams.some((e) => e.id === selectedMarksExamId)) {
+        setSelectedMarksExamId(marksExams[0].id);
       }
     } else {
       setSelectedMarksExamId('');
     }
-  }, [exams, selectedMarksExamId]);
+  }, [marksExams, selectedMarksExamId]);
 
   useEffect(() => {
-    const availableExams = exams;
-    if (availableExams.length > 0) {
-      if (!selectedResultsExamId || !availableExams.some(e => e.id === selectedResultsExamId)) {
-        setSelectedResultsExamId(availableExams[0].id);
+    if (resultsExams.length > 0) {
+      if (!selectedResultsExamId || !resultsExams.some((e) => e.id === selectedResultsExamId)) {
+        setSelectedResultsExamId(resultsExams[0].id);
       }
     } else {
       setSelectedResultsExamId('');
     }
-  }, [exams, selectedResultsExamId]);
+  }, [resultsExams, selectedResultsExamId]);
 
   useEffect(() => {
     if (!isAdmin && user) {
@@ -1124,17 +1232,6 @@ export function Examinations() {
     setSelectedClass(targetClass);
     setSelectedExamId(exam.id);
     setActiveTab('designer');
-
-  };
-
-  const isExamCompleted = (e: Exam): boolean => {
-    if (e.status === 'Completed' || e.status === 'Results Published') return true;
-    if (e.date) {
-      const examDate = new Date(e.date + 'T23:59:59');
-      const today = new Date();
-      return examDate <= today;
-    }
-    return false;
   };
 
   const isTeacherAssignedToClass = (className: string): boolean => {
@@ -1202,8 +1299,6 @@ export function Examinations() {
 
   const activeClassList = classList.length > 0 ? classList : CLASSES;
   const filteredClassList = activeClassList;
-
-  const marksExams = exams;
 
   const getMaxMarksForSubject = (examId: string, className: string, subjectName: string, fallbackMax: number = 100): number => {
     if (!examId || !className || !subjectName) return fallbackMax;
@@ -1721,10 +1816,19 @@ export function Examinations() {
                     <option key={c} value={c}>Class {c}</option>
                   ))}
                 </select>
-                <select value={selectedResultsExamId} onChange={(e) => setSelectedResultsExamId(e.target.value)} className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)] font-semibold">
-                  {exams.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))}
+                <select
+                  value={selectedResultsExamId}
+                  onChange={(e) => setSelectedResultsExamId(e.target.value)}
+                  disabled={resultsExams.length === 0}
+                  className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-2.5 py-1.5 text-[11.5px] cursor-pointer outline-none text-[var(--tx)] font-semibold disabled:opacity-50"
+                >
+                  {resultsExams.length === 0 ? (
+                    <option value="">No exams available</option>
+                  ) : (
+                    resultsExams.map((e) => (
+                      <option key={e.id} value={e.id}>{e.name}</option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
@@ -1849,11 +1953,16 @@ export function Examinations() {
               <select
                 value={selectedMarksExamId}
                 onChange={(e) => setSelectedMarksExamId(e.target.value)}
-                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium"
+                disabled={marksExams.length === 0}
+                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium disabled:opacity-50"
               >
-                {marksExams.map((e) => (
-                  <option key={e.id} value={e.id}>{e.name}</option>
-                ))}
+                {marksExams.length === 0 ? (
+                  <option value="">No completed exams</option>
+                ) : (
+                  marksExams.map((e) => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))
+                )}
               </select>
             </div>
           </div>
@@ -1861,7 +1970,7 @@ export function Examinations() {
           <div className="overflow-x-auto">
             {marksExams.length === 0 ? (
               <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
-                No completed exams available for marks entry.
+                No completed exams available for Class {selectedMarksClass}.
               </div>
             ) : studentsToShow.length === 0 ? (
               <div className="text-center py-8 text-[12px] text-[var(--tx3)]">
@@ -2022,7 +2131,7 @@ export function Examinations() {
               </table>
             )}
           </div>
-          {studentsToShow.length > 0 && (
+          {studentsToShow.length > 0 && marksExams.length > 0 && (
             <div className="mt-4 pt-3 border-t border-[var(--b)] flex flex-wrap items-center justify-between gap-3">
               <div className="text-[11.5px] text-[var(--tx3)] font-medium">
                 {!isAdmin
@@ -2035,7 +2144,7 @@ export function Examinations() {
                 <button
                   type="button"
                   onClick={handleSaveMarks}
-                  disabled={savingMarks || (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass))}
+                  disabled={savingMarks || !selectedMarksExamId || (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass))}
                   className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                 >
                   {savingMarks ? (
