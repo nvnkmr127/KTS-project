@@ -88,29 +88,30 @@ const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Socia
 
 function getSubjectsForClass(clsName: string): string[] {
   if (!clsName) return ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'];
-  const cleanClass = clsName.replace(/^Class\s*/i, '').trim();
+  const cleanClass = clsName.replace(/^(Class|Grade)\s*/i, '').trim();
   const match = cleanClass.match(/^(\d+)/);
-  const classId = match ? match[1] : cleanClass;
+  const classNum = match ? match[1] : cleanClass;
 
-  const savedExact = localStorage.getItem(`batch_subjects_${cleanClass}`);
-  if (savedExact) {
-    try {
-      const parsed = JSON.parse(savedExact);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    } catch { /* empty */ }
-  }
+  const candidateKeys = [
+    `batch_subjects_${cleanClass}`,
+    `batch_subjects_${clsName}`,
+    `batch_subjects_Class ${cleanClass}`,
+    `batch_subjects_${classNum}A`,
+    `batch_subjects_${classNum}`,
+  ];
 
-  if (match && cleanClass === classId) {
-    const savedSecA = localStorage.getItem(`batch_subjects_${classId}A`);
-    if (savedSecA) {
+  for (const k of candidateKeys) {
+    const saved = localStorage.getItem(k);
+    if (saved) {
       try {
-        const parsed = JSON.parse(savedSecA);
+        const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch { /* empty */ }
     }
   }
 
-  if (classId === '8') {
+  // Fallback defaults matching Classes tab
+  if (classNum === '8') {
     return ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social'];
   }
   return ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS'];
@@ -1220,12 +1221,14 @@ export function Examinations() {
     if (!exam) return false;
     if (!targetClass) return true;
 
-    // If marks are saved for this exam ID in studentMarks, always include it
-    if (studentMarks && (studentMarks[exam.id] || studentMarks[String(exam.id)])) {
-      return true;
-    }
+    const normalizeCls = (str: string) =>
+      String(str || '')
+        .replace(/^(Class|Grade)\s*/i, '')
+        .replace(/(\d+)(st|nd|rd|th)/i, '$1')
+        .replace(/[\s\-_]/g, '')
+        .toUpperCase();
 
-    const cleanTarget = targetClass.replace(/^Class\s*/i, '').trim().toUpperCase();
+    const cleanTarget = normalizeCls(targetClass);
     const examClassStr = (exam.class || '').trim();
 
     // 1. "All Classes" or empty means all classes are included
@@ -1237,55 +1240,26 @@ export function Examinations() {
       return true;
     }
 
-    // 2. Comma-separated list in exam.class
+    // 2. Comma-separated list in exam.class (e.g. "10A, 9A, 8A, 7A, 6A" or "1B, 1A, 2B, 3A, 3B, 4A, 4B, 5A")
     const examClasses = examClassStr
       .split(',')
-      .map((c) => c.replace(/^Class\s*/i, '').trim().toUpperCase())
+      .map((c) => normalizeCls(c))
       .filter(Boolean);
 
     if (examClasses.includes(cleanTarget)) {
       return true;
     }
 
-    // Handle grade matching if section is missing or different (e.g. target="8A", exam="8" or vice versa)
-    const targetMatch = cleanTarget.match(/^(\d+)([A-Z]*)$/);
-    for (const ec of examClasses) {
-      if (ec === cleanTarget) return true;
-      const ecMatch = ec.match(/^(\d+)([A-Z]*)$/);
-      if (targetMatch && ecMatch) {
-        const [, targetNum, targetSec] = targetMatch;
-        const [, ecNum, ecSec] = ecMatch;
-        if (targetNum === ecNum) {
-          if (!targetSec || !ecSec || targetSec === ecSec) {
-            return true;
-          }
-        }
-      }
-    }
-
     // 3. Check if schedule entries exist for this class in allSchedules
     if (allSchedules && allSchedules[exam.id]) {
       const schedClasses = Object.keys(allSchedules[exam.id]);
       for (const sc of schedClasses) {
-        const cleanSc = sc.replace(/^Class\s*/i, '').trim().toUpperCase();
-        if (cleanSc === cleanTarget) {
+        if (normalizeCls(sc) === cleanTarget) {
           const entriesCount = Object.values(allSchedules[exam.id][sc] || {}).reduce(
             (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
             0
           );
           if (entriesCount > 0) return true;
-        }
-        const scMatch = cleanSc.match(/^(\d+)([A-Z]*)$/);
-        if (targetMatch && scMatch) {
-          const [, targetNum, targetSec] = targetMatch;
-          const [, scNum, scSec] = scMatch;
-          if (targetNum === scNum && (!targetSec || !scSec || targetSec === scSec)) {
-            const entriesCount = Object.values(allSchedules[exam.id][sc] || {}).reduce(
-              (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
-              0
-            );
-            if (entriesCount > 0) return true;
-          }
         }
       }
     }
@@ -1376,21 +1350,30 @@ export function Examinations() {
 
 
   useEffect(() => {
-    const loadClasses = async () => {
+    const loadBatchesAndStudents = async () => {
       try {
-        const batchesData = await api.getResources('batches');
+        const [batchesRes, studentsRes] = await Promise.all([
+          api.getResources('batches').catch(() => []),
+          api.getResources('students', { limit: '1000' }).catch(() => []),
+        ]);
+
+        const batchesList = extractItems(batchesRes);
+        const studentsList = extractItems(studentsRes);
+
+        setRawBatches(batchesList);
+        setStudents(studentsList);
+
         const defaultClasses = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
         const foundClasses = new Set<string>();
 
-        batchesData.forEach((b: any) => {
+        batchesList.forEach((b: any) => {
           const batchName = b.name;
-          const match = batchName.match(/^(.+?)\s*([A-Z])$/i);
-          if (match) {
-            foundClasses.add(batchName);
-          } else if (batchName === 'Default Batch') {
-            foundClasses.add('8A');
-          } else {
-            foundClasses.add(batchName);
+          if (batchName) {
+            if (batchName === 'Default Batch') {
+              foundClasses.add('8A');
+            } else {
+              foundClasses.add(batchName.replace(/^Class\s*/i, ''));
+            }
           }
         });
 
@@ -1408,11 +1391,11 @@ export function Examinations() {
 
         setClassList(sorted);
       } catch (err) {
-        console.error('Error fetching classes:', err);
+        console.error('Error fetching batches and students:', err);
         setClassList(['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
       }
     };
-    loadClasses();
+    loadBatchesAndStudents();
   }, []);
 
   const handleCreateExam = () => {
@@ -1691,13 +1674,16 @@ export function Examinations() {
       return undefined;
     };
 
-    // 1. Match specific exam ID
+    // 1. Match specific exam ID or Exam Name
     let examObj = marksRecord[examId] ?? marksRecord[String(examId)];
     if (!examObj) {
+      const currentExamObj = Array.isArray(exams) ? exams.find((e) => e.id === examId) : undefined;
+      const examName = currentExamObj?.name ? currentExamObj.name.toLowerCase().trim() : '';
       const cleanExamId = String(examId).replace(/^(exam|ex)[-_]/i, '').trim().toLowerCase();
       const matchExamKey = Object.keys(marksRecord).find((k) => {
         const kStr = String(k).trim().toLowerCase();
         if (kStr === String(examId).trim().toLowerCase()) return true;
+        if (examName && kStr === examName) return true;
         const cleanK = kStr.replace(/^(exam|ex)[-_]/i, '');
         if (cleanK === cleanExamId && cleanK !== '') return true;
         return false;
@@ -1726,32 +1712,8 @@ export function Examinations() {
   };
 
   const classSubjectsForMarks = useMemo(() => {
-    const defaultSubs = getSubjectsForClass(selectedMarksClass);
-    const set = new Set<string>(defaultSubs);
-    const effectiveExamId = selectedMarksExamId || (marksExams[0]?.id ?? '');
-    if (effectiveExamId && schedules[effectiveExamId]?.[selectedMarksClass]) {
-      const clsSched = schedules[effectiveExamId][selectedMarksClass];
-      Object.values(clsSched).forEach((entries) => {
-        if (Array.isArray(entries)) {
-          entries.forEach((e) => {
-            if (e.subject && e.subject !== 'All Subjects') {
-              set.add(e.subject);
-            }
-          });
-        }
-      });
-    }
-    if (studentMarks) {
-      Object.values(studentMarks).forEach((exMap) => {
-        if (exMap && typeof exMap === 'object') {
-          Object.keys(exMap).forEach((s) => {
-            if (s && s !== 'All Subjects') set.add(s);
-          });
-        }
-      });
-    }
-    return Array.from(set);
-  }, [selectedMarksClass, selectedMarksExamId, marksExams, schedules, studentMarks]);
+    return getSubjectsForClass(selectedMarksClass);
+  }, [selectedMarksClass]);
 
   const handleClearStudentMarks = async (student: any) => {
     if (await confirm(`Are you sure you want to clear all subject marks for ${student.name}? This will put them in a cleared state, which you can save.`, 'Clear Marks')) {
@@ -1782,6 +1744,10 @@ export function Examinations() {
     if (s.batch && s.batch.name) return String(s.batch.name).trim();
     if (s.batch_name) return String(s.batch_name).trim();
     if (s.className) return String(s.className).trim();
+    if (s.batch_id && Array.isArray(rawBatches) && rawBatches.length > 0) {
+      const b = rawBatches.find((b: any) => String(b.id) === String(s.batch_id));
+      if (b && b.name) return String(b.name).trim();
+    }
     if (s.class) {
       const clsStr = String(s.class).trim();
       if (s.section) {
@@ -1796,6 +1762,8 @@ export function Examinations() {
   };
 
   const getFilteredStudentsForClass = (className: string) => {
+    if (!className) return [];
+
     const normalizeCls = (str: string) =>
       String(str || '')
         .replace(/^(Class|Grade)\s*/i, '')
@@ -1805,38 +1773,20 @@ export function Examinations() {
 
     const targetClassClean = normalizeCls(className);
 
-    let dbFiltered: any[] = [];
-    if (Array.isArray(students) && students.length > 0) {
-      dbFiltered = students.filter((s: any) => {
-        const stClass = getStudentClass(s);
-        if (!stClass) return false;
-        const stClassClean = normalizeCls(stClass);
+    const dbFiltered = (Array.isArray(students) ? students : []).filter((s: any) => {
+      const stClass = getStudentClass(s);
+      if (!stClass) return false;
+      const stClassClean = normalizeCls(stClass);
+      return stClassClean === targetClassClean;
+    });
 
-        if (stClassClean === targetClassClean) return true;
-
-        const targetMatch = targetClassClean.match(/^(\d+)([A-Z]*)$/);
-        const stMatch = stClassClean.match(/^(\d+)([A-Z]*)$/);
-
-        if (targetMatch && stMatch) {
-          const [, targetNum, targetSec] = targetMatch;
-          const [, stNum, stSec] = stMatch;
-          if (targetNum === stNum) {
-            if (!targetSec || !stSec || targetSec === stSec) {
-              return true;
-            }
-          }
-        }
-        return false;
-      });
-    }
-
-    const resultList: any[] = dbFiltered.map((s: any, idx: number) => {
+    return dbFiltered.map((s: any, idx: number) => {
       const fullName = s.name || (s.first_name ? `${s.first_name} ${s.last_name || ''}`.trim() : `Student ${idx + 1}`);
       const nameParts = fullName.trim().split(/\s+/);
       const initials = nameParts.length > 1
         ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
         : fullName.slice(0, 2).toUpperCase();
-      const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${targetClassClean || 'ST'}-${String(idx + 1).padStart(3, '0')}`;
+      const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${targetClassClean}-${String(idx + 1).padStart(3, '0')}`;
       return {
         id: String(s.id || idx),
         name: fullName,
@@ -1845,78 +1795,6 @@ export function Examinations() {
         idx,
       };
     });
-
-    // Also include any students with marks present in studentMarks
-    const allKnownMarksKeys = new Set<string>();
-    Object.values(studentMarks).forEach((examMap) => {
-      if (examMap && typeof examMap === 'object') {
-        Object.values(examMap).forEach((subMap) => {
-          if (subMap && typeof subMap === 'object') {
-            Object.keys(subMap).forEach((k) => {
-              if (k && k !== 'undefined' && k !== 'null') allKnownMarksKeys.add(k);
-            });
-          }
-        });
-      }
-    });
-
-    allKnownMarksKeys.forEach((key) => {
-      const cleanKey = key.replace(/^[0-9]+[A-Z]+-?/i, '');
-      const alreadyExists = resultList.some(
-        (r) =>
-          r.roll === key ||
-          r.id === key ||
-          r.roll.replace(/^[0-9]+[A-Z]+-?/i, '') === cleanKey ||
-          r.name.toLowerCase().trim() === key.toLowerCase().trim()
-      );
-
-      if (!alreadyExists) {
-        const matchedStudent = Array.isArray(students)
-          ? students.find(
-              (s: any) =>
-                String(s.id) === key ||
-                String(s.enrollment_number) === key ||
-                String(s.roll) === key ||
-                String(s.name).toLowerCase().trim() === key.toLowerCase().trim()
-            )
-          : null;
-
-        const name = matchedStudent?.name || (isNaN(Number(key)) ? key : `Student ${key}`);
-        const nameParts = name.trim().split(/\s+/);
-        const initials = nameParts.length > 1
-          ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
-          : name.slice(0, 2).toUpperCase();
-
-        resultList.push({
-          id: matchedStudent ? String(matchedStudent.id) : key,
-          name: name,
-          roll: matchedStudent?.enrollment_number || matchedStudent?.roll || key,
-          init: initials || 'ST',
-          idx: resultList.length,
-        });
-      }
-    });
-
-    // Fallback: If still empty but students exist in the DB, return all students
-    if (resultList.length === 0 && Array.isArray(students) && students.length > 0) {
-      return students.map((s: any, idx: number) => {
-        const fullName = s.name || (s.first_name ? `${s.first_name} ${s.last_name || ''}`.trim() : `Student ${idx + 1}`);
-        const nameParts = fullName.trim().split(/\s+/);
-        const initials = nameParts.length > 1
-          ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
-          : fullName.slice(0, 2).toUpperCase();
-        const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${String(idx + 1).padStart(3, '0')}`;
-        return {
-          id: String(s.id || idx),
-          name: fullName,
-          roll: String(roll),
-          init: initials || 'ST',
-          idx,
-        };
-      });
-    }
-
-    return resultList;
   };
 
   const getFilteredStudentsForMarks = () => {
