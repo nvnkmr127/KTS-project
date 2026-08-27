@@ -671,7 +671,14 @@ export function Examinations() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const deletedSaved = localStorage.getItem('kts_deleted_exam_ids');
+          const deletedIds: string[] = deletedSaved ? JSON.parse(deletedSaved) : [];
+          const cleaned = parsed.filter(
+            (e: any) => e && e.id && !deletedIds.includes(String(e.id)) && !/^Examination\s+\d+$/i.test(String(e.name || ''))
+          );
+          if (cleaned.length > 0) return cleaned;
+        }
       } catch { /* empty */ }
     }
     return EXAMS;
@@ -764,13 +771,44 @@ export function Examinations() {
   const handleBulkExamDelete = async () => {
     if (selectedExamIds.length === 0) return;
     if (await confirm(`Are you sure you want to delete the ${selectedExamIds.length} selected exams?`, 'Delete Exams', true)) {
-      setExams(prev => {
-        const next = prev.filter(e => !selectedExamIds.includes(e.id));
-        localStorage.setItem('examinations_exams', JSON.stringify(next));
-        saveSettingToDb('examinations_exams', next);
-        return next;
-      });
+      const idsToDelete = [...selectedExamIds];
+      const next = exams.filter(e => !idsToDelete.includes(e.id));
+      setExams(next);
       setSelectedExamIds([]);
+
+      // Track deleted exam IDs
+      const deletedSaved = localStorage.getItem('kts_deleted_exam_ids');
+      const deletedIds: string[] = deletedSaved ? JSON.parse(deletedSaved) : [];
+      idsToDelete.forEach(id => {
+        if (!deletedIds.includes(String(id))) deletedIds.push(String(id));
+      });
+      localStorage.setItem('kts_deleted_exam_ids', JSON.stringify(deletedIds));
+      saveSettingToDb('kts_deleted_exam_ids', deletedIds);
+
+      localStorage.setItem('examinations_exams', JSON.stringify(next));
+      saveSettingToDb('examinations_exams', next);
+
+      // Delete from SQL exams table
+      idsToDelete.forEach(id => {
+        api.deleteResource('exams', id).catch(() => {});
+      });
+
+      // Clean up schedules and marks
+      setSchedules(prev => {
+        const updated = { ...prev };
+        idsToDelete.forEach(id => delete updated[id]);
+        localStorage.setItem('examinations_schedules', JSON.stringify(updated));
+        saveSettingToDb('examinations_schedules', updated);
+        return updated;
+      });
+
+      setStudentMarks(prev => {
+        const updated = { ...prev };
+        idsToDelete.forEach(id => delete updated[id]);
+        localStorage.setItem('kts_student_marks', JSON.stringify(updated));
+        saveSettingToDb('kts_student_marks', updated);
+        return updated;
+      });
     }
   };
 
@@ -905,13 +943,36 @@ export function Examinations() {
         let currentSchedules = schedules;
         let currentInvigilations = invigilations;
 
+        // 0. Load deleted exam IDs
+        const deletedIdsRes = await api.getResources('settings', { key: 'kts_deleted_exam_ids' }).catch(() => []);
+        const deletedIdsList = extractItems(deletedIdsRes);
+        let deletedExamIds: string[] = [];
+        if (deletedIdsList.length > 0 && deletedIdsList[0].value) {
+          try {
+            const raw = deletedIdsList[0].value;
+            deletedExamIds = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          } catch { /* empty */ }
+        }
+        const localDeleted = localStorage.getItem('kts_deleted_exam_ids');
+        if (localDeleted) {
+          try {
+            const p = JSON.parse(localDeleted);
+            if (Array.isArray(p)) {
+              deletedExamIds = Array.from(new Set([...deletedExamIds, ...p.map(String)]));
+            }
+          } catch { /* empty */ }
+        }
+
         // 1. Sync exams from settings and exams table
         const examsRes = await api.getResources('settings', { key: 'examinations_exams' }).catch(() => []);
         const examsList = extractItems(examsRes);
         if (examsList.length > 0 && examsList[0].value) {
           try {
             const rawVal = examsList[0].value;
-            currentExams = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
+            const parsed = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              currentExams = parsed;
+            }
           } catch (e) {
             console.error('Error parsing examinations_exams setting:', e);
           }
@@ -943,8 +1004,28 @@ export function Examinations() {
           console.error('Error fetching direct exams table:', e);
         }
 
+        // Clean currentExams:
+        // - Remove dummy auto-generated exams matching /^Examination\s+\d+$/i
+        // - Remove deleted exams
+        // - Deduplicate by ID
+        const seenExamIds = new Set<string>();
+        currentExams = currentExams.filter((e) => {
+          if (!e || !e.id) return false;
+          const idStr = String(e.id);
+          if (deletedExamIds.includes(idStr)) return false;
+          if (/^Examination\s+\d+$/i.test(String(e.name || ''))) return false;
+          if (seenExamIds.has(idStr)) return false;
+          seenExamIds.add(idStr);
+          return true;
+        });
+
+        if (currentExams.length === 0) {
+          currentExams = DEFAULT_EXAMS;
+        }
+
         setExams(currentExams);
         (localStorage as any).originalSetItem('examinations_exams', JSON.stringify(currentExams));
+        saveSettingToDb('examinations_exams', currentExams);
 
         // 2. Sync schedules
         const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' }).catch(() => []);
@@ -1035,22 +1116,6 @@ export function Examinations() {
         } catch (e) {
           console.error('Error fetching marks table:', e);
         }
-
-        // Dynamically ensure every exam ID present in marks is in currentExams
-        Object.keys(loadedMarks).forEach((exId) => {
-          if (!currentExams.some((e) => String(e.id) === String(exId))) {
-            currentExams.push({
-              id: String(exId),
-              name: `Examination ${exId}`,
-              subject: 'All Subjects',
-              class: 'All Classes',
-              date: new Date().toISOString().slice(0, 10),
-              maxMarks: 100,
-              status: 'Upcoming',
-            });
-          }
-        });
-        setExams([...currentExams]);
 
         if (Object.keys(loadedMarks).length > 0) {
           setStudentMarks(loadedMarks);
@@ -1375,11 +1440,51 @@ export function Examinations() {
     setCreateMaxMarks(100);
   };
 
-  const handleDeleteExam = (id: string) => {
+  const handleDeleteExam = async (id: string) => {
+    const examToDelete = exams.find((e) => e.id === id);
+    const examName = examToDelete?.name || 'this exam';
+    if (!(await confirm(`Are you sure you want to delete "${examName}"?`, 'Delete Exam', true))) {
+      return;
+    }
+
     const updatedExams = exams.filter((e) => e.id !== id);
     setExams(updatedExams);
+
+    // Track deleted exam ID
+    const deletedSaved = localStorage.getItem('kts_deleted_exam_ids');
+    const deletedIds: string[] = deletedSaved ? JSON.parse(deletedSaved) : [];
+    if (!deletedIds.includes(String(id))) {
+      deletedIds.push(String(id));
+      localStorage.setItem('kts_deleted_exam_ids', JSON.stringify(deletedIds));
+      saveSettingToDb('kts_deleted_exam_ids', deletedIds);
+    }
+
     localStorage.setItem('examinations_exams', JSON.stringify(updatedExams));
     saveSettingToDb('examinations_exams', updatedExams);
+
+    // Delete from SQL exams table
+    try {
+      await api.deleteResource('exams', id).catch(() => {});
+    } catch { /* ignore */ }
+
+    // Clean up schedules and marks
+    setSchedules((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      localStorage.setItem('examinations_schedules', JSON.stringify(next));
+      saveSettingToDb('examinations_schedules', next);
+      return next;
+    });
+
+    setStudentMarks((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      localStorage.setItem('kts_student_marks', JSON.stringify(next));
+      saveSettingToDb('kts_student_marks', next);
+      return next;
+    });
+
+    await alert(`Exam "${examName}" has been deleted.`, 'Exam Deleted');
   };
 
   const handleAddInvigilation = async () => {
@@ -2183,13 +2288,12 @@ export function Examinations() {
                   )}
                   {isAdmin && (
                     <button
-                      disabled={exam.status !== 'Upcoming'}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteExam(exam.id);
                       }}
-                      className="p-1.5 rounded-lg text-[var(--tx3)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent enabled:hover:bg-[var(--red-bg)] enabled:hover:text-[var(--red-tx)] enabled:cursor-pointer"
-                      title={exam.status === 'Upcoming' ? "Delete Exam" : "Cannot delete completed or published exam"}
+                      className="p-1.5 rounded-lg text-[var(--tx3)] transition-colors hover:bg-[var(--red-bg)] hover:text-[var(--red-tx)] cursor-pointer"
+                      title="Delete Exam"
                     >
                       <Trash2 size={14} />
                     </button>
