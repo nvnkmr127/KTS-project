@@ -73,11 +73,13 @@ export function Performance() {
           Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.id ? [res] : []));
 
         // Load Students
-        const studentsData = await api.getResources('students', { limit: '1000' }).catch(() => []);
+        const studentsRes = await api.getResources('students', { limit: '1000' }).catch(() => []);
+        const studentsData = extractList(studentsRes);
         setStudents(studentsData || []);
 
         // Load Batches
-        const batchesData = await api.getResources('batches').catch(() => []);
+        const batchesRes = await api.getResources('batches').catch(() => []);
+        const batchesData = extractList(batchesRes);
         if (batchesData && batchesData.length > 0) {
           const names = batchesData.map((b: any) => b.name).sort((a: string, b: string) => {
             const numA = parseInt(a);
@@ -92,16 +94,44 @@ export function Performance() {
         }
 
         // Load Exams
+        let loadedExams: any[] = [];
         const examsRes = await api.getResources('settings', { key: 'examinations_exams' }).catch(() => []);
         const examsList = extractList(examsRes);
         if (examsList.length > 0 && examsList[0].value) {
           try {
             const v = examsList[0].value;
-            setExams(typeof v === 'string' ? JSON.parse(v) : v);
+            loadedExams = typeof v === 'string' ? JSON.parse(v) : v;
           } catch (e) {
             console.error('Error parsing examinations_exams:', e);
           }
         }
+
+        try {
+          const directExamsRes = await api.getResources('exams', { limit: '1000' }).catch(() => []);
+          const directExamsList = extractList(directExamsRes);
+          if (directExamsList.length > 0) {
+            const directMapped = directExamsList.map((e: any) => ({
+              id: String(e.id),
+              name: e.name || 'Examination',
+              subject: e.subject || 'All Subjects',
+              class: e.class || 'All Classes',
+              date: e.exam_date || e.date || new Date().toISOString().slice(0, 10),
+              maxMarks: Number(e.max_marks || e.maxMarks || 100),
+              status: e.status || 'Upcoming',
+            }));
+            const examMap = new Map<string, any>();
+            loadedExams.forEach((ex) => examMap.set(String(ex.id), ex));
+            directMapped.forEach((ex: any) => {
+              if (!examMap.has(String(ex.id))) {
+                examMap.set(String(ex.id), ex);
+              }
+            });
+            loadedExams = Array.from(examMap.values());
+          }
+        } catch (e) {
+          console.error('Error fetching direct exams table:', e);
+        }
+        setExams(loadedExams);
 
         // Load Schedules
         const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' }).catch(() => []);
@@ -116,16 +146,61 @@ export function Performance() {
         }
 
         // Load Student Marks
+        let loadedMarks: Record<string, Record<string, Record<string, any>>> = {};
         const marksRes = await api.getResources('settings', { key: 'kts_student_marks' }).catch(() => []);
         const marksList = extractList(marksRes);
         if (marksList.length > 0 && marksList[0].value) {
           try {
             const v = marksList[0].value;
-            setStudentMarks(typeof v === 'string' ? JSON.parse(v) : v);
+            const parsed = typeof v === 'string' ? JSON.parse(v) : v;
+            if (parsed && typeof parsed === 'object') {
+              loadedMarks = { ...parsed };
+            }
           } catch (e) {
             console.error('Error parsing kts_student_marks:', e);
           }
         }
+
+        try {
+          const directMarksRes = await api.getResources('marks', { limit: '5000' }).catch(() => []);
+          const directMarksList = extractList(directMarksRes);
+          if (directMarksList.length > 0) {
+            directMarksList.forEach((m: any) => {
+              const exId = String(m.exam_id || '1');
+              if (!loadedMarks[exId]) loadedMarks[exId] = {};
+
+              const studentKeys = [
+                m.roll ? String(m.roll) : undefined,
+                m.roll ? String(m.roll).replace(/^[0-9]+[A-Z]+-?/i, '') : undefined,
+                m.student_id ? String(m.student_id) : undefined,
+                m.id ? String(m.id) : undefined,
+              ].filter(Boolean) as string[];
+
+              const subjectScores: [string[], any][] = [
+                [['Mathematics', 'Maths', 'Math'], m.maths],
+                [['Science', 'General Science'], m.science],
+                [['English'], m.english],
+                [['Telugu'], m.telugu],
+                [['Social Studies', 'Social'], m.social],
+              ];
+
+              subjectScores.forEach(([aliases, score]) => {
+                if (score !== undefined && score !== null && score !== '') {
+                  aliases.forEach((alias) => {
+                    if (!loadedMarks[exId][alias]) loadedMarks[exId][alias] = {};
+                    studentKeys.forEach((k) => {
+                      loadedMarks[exId][alias][k] = Number(score);
+                    });
+                  });
+                }
+              });
+            });
+          }
+        } catch (e) {
+          console.error('Error loading marks table:', e);
+        }
+
+        setStudentMarks(loadedMarks);
       } catch (err) {
         console.error('Error loading performance page data:', err);
       } finally {

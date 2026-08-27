@@ -68,7 +68,12 @@ type ClassExamSchedule = {
   [dateStr: string]: ExamScheduleEntry[];
 };
 
-const EXAMS: Exam[] = [];
+const DEFAULT_EXAMS: Exam[] = [
+  { id: '1', name: 'Mid-Term Examination 2026', subject: 'All Subjects', class: 'All Classes', date: '2026-06-15', maxMarks: 100, status: 'Upcoming' },
+  { id: '2', name: 'Final Term Examination 2026', subject: 'All Subjects', class: 'All Classes', date: '2026-11-20', maxMarks: 100, status: 'Upcoming' },
+];
+
+const EXAMS: Exam[] = DEFAULT_EXAMS;
 
 
 
@@ -888,23 +893,48 @@ export function Examinations() {
         let currentSchedules = schedules;
         let currentInvigilations = invigilations;
 
-        // Sync exams
+        // 1. Sync exams from settings and exams table
         const examsRes = await api.getResources('settings', { key: 'examinations_exams' }).catch(() => []);
         const examsList = extractItems(examsRes);
         if (examsList.length > 0 && examsList[0].value) {
           try {
             const rawVal = examsList[0].value;
             currentExams = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
-            setExams(currentExams);
-            (localStorage as any).originalSetItem('examinations_exams', JSON.stringify(currentExams));
           } catch (e) {
             console.error('Error parsing examinations_exams setting:', e);
           }
-        } else if (isAdmin) {
-          await saveSettingToDb('examinations_exams', currentExams);
         }
 
-        // Sync schedules
+        try {
+          const directExamsRes = await api.getResources('exams', { limit: '1000' }).catch(() => []);
+          const directExamsList = extractItems(directExamsRes);
+          if (directExamsList.length > 0) {
+            const directMapped: Exam[] = directExamsList.map((e: any) => ({
+              id: String(e.id),
+              name: e.name || 'Examination',
+              subject: e.subject || 'All Subjects',
+              class: e.class || 'All Classes',
+              date: e.exam_date || e.date || new Date().toISOString().slice(0, 10),
+              maxMarks: Number(e.max_marks || e.maxMarks || 100),
+              status: (e.status || 'Upcoming') as any,
+            }));
+            const examMap = new Map<string, Exam>();
+            currentExams.forEach((ex) => examMap.set(String(ex.id), ex));
+            directMapped.forEach((ex) => {
+              if (!examMap.has(String(ex.id))) {
+                examMap.set(String(ex.id), ex);
+              }
+            });
+            currentExams = Array.from(examMap.values());
+          }
+        } catch (e) {
+          console.error('Error fetching direct exams table:', e);
+        }
+
+        setExams(currentExams);
+        (localStorage as any).originalSetItem('examinations_exams', JSON.stringify(currentExams));
+
+        // 2. Sync schedules
         const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' }).catch(() => []);
         const schedulesList = extractItems(schedulesRes);
         if (schedulesList.length > 0 && schedulesList[0].value) {
@@ -920,7 +950,7 @@ export function Examinations() {
           await saveSettingToDb('examinations_schedules', currentSchedules);
         }
 
-        // Sync invigilations
+        // 3. Sync invigilations
         const invigilationsRes = await api.getResources('settings', { key: 'kts_exam_invigilations' }).catch(() => []);
         const invigList = extractItems(invigilationsRes);
         if (invigList.length > 0 && invigList[0].value) {
@@ -936,7 +966,9 @@ export function Examinations() {
           await saveSettingToDb('kts_exam_invigilations', currentInvigilations);
         }
 
-        // Sync student marks - DB is always the source of truth
+        // 4. Sync student marks (from kts_student_marks setting AND marks table)
+        let loadedMarks: Record<string, Record<string, Record<string, number | string>>> = { ...studentMarks };
+
         const marksRes = await api.getResources('settings', { key: 'kts_student_marks' }).catch(() => []);
         const marksList = extractItems(marksRes);
         if (marksList.length > 0 && marksList[0].value) {
@@ -944,16 +976,77 @@ export function Examinations() {
             const rawVal = marksList[0].value;
             const parsed = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
             if (parsed && typeof parsed === 'object') {
-              setStudentMarks(parsed);
-              setDraftMarks({});
-              (localStorage as any).originalSetItem('kts_student_marks', JSON.stringify(parsed));
+              loadedMarks = { ...loadedMarks, ...parsed };
             }
           } catch (e) {
             console.error('Error parsing kts_student_marks setting:', e);
           }
         }
 
-        // Sync batch subjects settings
+        // Merge from marks SQL table if populated
+        try {
+          const directMarksRes = await api.getResources('marks', { limit: '5000' }).catch(() => []);
+          const directMarksList = extractItems(directMarksRes);
+          if (directMarksList.length > 0) {
+            directMarksList.forEach((m: any) => {
+              const exId = String(m.exam_id || '1');
+              if (!loadedMarks[exId]) loadedMarks[exId] = {};
+
+              const studentKeys = [
+                m.roll ? String(m.roll) : undefined,
+                m.roll ? String(m.roll).replace(/^[0-9]+[A-Z]+-?/i, '') : undefined,
+                m.student_id ? String(m.student_id) : undefined,
+                m.id ? String(m.id) : undefined,
+                m.student_name ? String(m.student_name).toLowerCase().trim() : undefined,
+              ].filter(Boolean) as string[];
+
+              const subjectScores: [string[], any][] = [
+                [['Mathematics', 'Maths', 'Math'], m.maths],
+                [['Science', 'General Science'], m.science],
+                [['English'], m.english],
+                [['Telugu'], m.telugu],
+                [['Social Studies', 'Social'], m.social],
+              ];
+
+              subjectScores.forEach(([aliases, score]) => {
+                if (score !== undefined && score !== null && score !== '') {
+                  aliases.forEach((alias) => {
+                    if (!loadedMarks[exId][alias]) loadedMarks[exId][alias] = {};
+                    studentKeys.forEach((k) => {
+                      loadedMarks[exId][alias][k] = Number(score);
+                    });
+                  });
+                }
+              });
+            });
+          }
+        } catch (e) {
+          console.error('Error fetching marks table:', e);
+        }
+
+        // Dynamically ensure every exam ID present in marks is in currentExams
+        Object.keys(loadedMarks).forEach((exId) => {
+          if (!currentExams.some((e) => String(e.id) === String(exId))) {
+            currentExams.push({
+              id: String(exId),
+              name: `Examination ${exId}`,
+              subject: 'All Subjects',
+              class: 'All Classes',
+              date: new Date().toISOString().slice(0, 10),
+              maxMarks: 100,
+              status: 'Upcoming',
+            });
+          }
+        });
+        setExams([...currentExams]);
+
+        if (Object.keys(loadedMarks).length > 0) {
+          setStudentMarks(loadedMarks);
+          setDraftMarks({});
+          (localStorage as any).originalSetItem('kts_student_marks', JSON.stringify(loadedMarks));
+        }
+
+        // 5. Sync batch subjects settings
         const allSettingsRes = await api.getResources('settings').catch(() => []);
         const allSettingsList = extractItems(allSettingsRes);
         if (allSettingsList.length > 0) {
@@ -988,9 +1081,10 @@ export function Examinations() {
     const loadBatchesAndStudents = async () => {
       try {
         const batchesData = await api.getResources('batches').catch(() => []);
-        if (Array.isArray(batchesData) && batchesData.length > 0) {
-          setRawBatches(batchesData);
-          const names = batchesData.map((b: any) => b.name).filter(Boolean).sort((a: string, b: string) => {
+        const rawBatchesList = extractItems(batchesData);
+        if (rawBatchesList.length > 0) {
+          setRawBatches(rawBatchesList);
+          const names = rawBatchesList.map((b: any) => b.name).filter(Boolean).sort((a: string, b: string) => {
             const numA = parseInt(a);
             const numB = parseInt(b);
             if (!isNaN(numA) && !isNaN(numB)) {
@@ -1005,7 +1099,8 @@ export function Examinations() {
         }
 
         const data = await api.getResources('students', { with: 'batch.academicYear', limit: '1000' }).catch(() => []);
-        setStudents(data || []);
+        const studentsList = extractItems(data);
+        setStudents(studentsList || []);
       } catch (err) {
         console.error('Error loading batches or students:', err);
       }
@@ -1435,15 +1530,27 @@ export function Examinations() {
     subject: string,
     studentRoll: string,
     studentId?: string,
-    cleanRoll?: string
+    cleanRoll?: string,
+    studentName?: string
   ): number | string | undefined => {
     if (!marksRecord || typeof marksRecord !== 'object') return undefined;
 
-    // 1. Match exam ID (direct, string, number, or case-insensitive)
+    // 1. Match exam ID (direct, string, number, case-insensitive, or stripped prefix)
     let examObj = marksRecord[examId] ?? marksRecord[String(examId)];
     if (!examObj) {
-      const matchExamKey = Object.keys(marksRecord).find((k) => String(k).trim().toLowerCase() === String(examId).trim().toLowerCase());
+      const cleanExamId = String(examId).replace(/^(exam|ex)[-_]/i, '').trim().toLowerCase();
+      const matchExamKey = Object.keys(marksRecord).find((k) => {
+        const kStr = String(k).trim().toLowerCase();
+        if (kStr === String(examId).trim().toLowerCase()) return true;
+        const cleanK = kStr.replace(/^(exam|ex)[-_]/i, '');
+        if (cleanK === cleanExamId && cleanK !== '') return true;
+        return false;
+      });
       if (matchExamKey) examObj = marksRecord[matchExamKey];
+    }
+    // Fallback: If only one exam exists in marks record, match against it
+    if (!examObj && Object.keys(marksRecord).length === 1) {
+      examObj = Object.values(marksRecord)[0];
     }
     if (!examObj || typeof examObj !== 'object') return undefined;
 
@@ -1466,13 +1573,15 @@ export function Examinations() {
     }
     if (!subObj || typeof subObj !== 'object') return undefined;
 
-    // 3. Match student by roll, cleanRoll, studentId
+    // 3. Match student by roll, cleanRoll, studentId, studentName
+    const cleanR = cleanRoll || (studentRoll ? studentRoll.replace(/^[0-9]+[A-Z]+-?/i, '') : undefined);
     const candidates = [
       studentRoll,
-      cleanRoll,
+      cleanR,
       studentId ? String(studentId) : undefined,
       studentRoll ? studentRoll.replace(/^0+/, '') : undefined,
-      cleanRoll ? cleanRoll.replace(/^0+/, '') : undefined,
+      cleanR ? cleanR.replace(/^0+/, '') : undefined,
+      studentName ? studentName.toLowerCase().trim() : undefined,
     ].filter(Boolean) as string[];
 
     for (const c of candidates) {
@@ -1558,12 +1667,21 @@ export function Examinations() {
   };
 
   const getFilteredStudentsForClass = (className: string) => {
-    const targetClassClean = className.replace(/^Class\s*/i, '').trim().toUpperCase();
+    if (!Array.isArray(students) || students.length === 0) return [];
+
+    const normalizeCls = (str: string) =>
+      String(str || '')
+        .replace(/^(Class|Grade)\s*/i, '')
+        .replace(/(\d+)(st|nd|rd|th)/i, '$1')
+        .replace(/[\s\-_]/g, '')
+        .toUpperCase();
+
+    const targetClassClean = normalizeCls(className);
 
     const dbFiltered = students.filter((s: any) => {
-      const stClass = getStudentClass(s).toUpperCase();
+      const stClass = getStudentClass(s);
       if (!stClass) return false;
-      const stClassClean = stClass.replace(/^Class\s*/i, '').trim();
+      const stClassClean = normalizeCls(stClass);
 
       if (stClassClean === targetClassClean) return true;
 
@@ -1609,7 +1727,7 @@ export function Examinations() {
 
   const studentsToShow = getFilteredStudentsForMarks();
 
-  const computeStudentMarksDetail = (studentRoll: string, _studentIdx: number, studentId?: string) => {
+  const computeStudentMarksDetail = (studentRoll: string, _studentIdx: number, studentId?: string, studentName?: string) => {
     const effectiveExamId = selectedMarksExamId || (marksExams[0]?.id ?? 'default_exam');
     const selectedExamObj = exams.find((e) => e.id === effectiveExamId);
     const fallbackMax = selectedExamObj?.maxMarks || 100;
@@ -1622,8 +1740,8 @@ export function Examinations() {
       const maxMarks = getMaxMarksForSubject(effectiveExamId, selectedMarksClass, sub, fallbackMax);
 
       // Draft takes priority over committed DB value
-      const savedDraft = findMarkValue(draftMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll);
-      const savedDb = findMarkValue(studentMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll);
+      const savedDraft = findMarkValue(draftMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll, studentName);
+      const savedDb = findMarkValue(studentMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll, studentName);
       const saved = savedDraft !== undefined ? savedDraft : savedDb;
 
       let mark: number | null = null;
@@ -1666,7 +1784,7 @@ export function Examinations() {
     };
   };
 
-  const computeStudentMarksDetailForResults = (studentRoll: string, studentId: string, className: string, examId: string) => {
+  const computeStudentMarksDetailForResults = (studentRoll: string, studentId: string, className: string, examId: string, studentName?: string) => {
     const effectiveExamId = examId || (exams[0]?.id ?? 'default_exam');
     const selectedExamObj = exams.find((e) => e.id === effectiveExamId);
     const fallbackMax = selectedExamObj?.maxMarks || 100;
@@ -1679,8 +1797,8 @@ export function Examinations() {
     const subjectBreakdown = classSubjects.map((sub) => {
       const maxMarks = getMaxMarksForSubject(effectiveExamId, className, sub, fallbackMax);
 
-      const savedDraft = findMarkValue(draftMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll);
-      const savedDb = findMarkValue(studentMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll);
+      const savedDraft = findMarkValue(draftMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll, studentName);
+      const savedDb = findMarkValue(studentMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll, studentName);
       const saved = savedDraft !== undefined ? savedDraft : savedDb;
 
       let mark: number | null = null;
@@ -1720,7 +1838,7 @@ export function Examinations() {
     const effectiveExamId = selectedResultsExamId || (exams[0]?.id ?? 'default_exam');
     
     const resultsWithScores = list.map((st) => {
-      const detail = computeStudentMarksDetailForResults(st.roll, st.id, selectedClass, effectiveExamId);
+      const detail = computeStudentMarksDetailForResults(st.roll, st.id, selectedClass, effectiveExamId, st.name);
       return {
         ...st,
         detail,
@@ -2179,7 +2297,7 @@ export function Examinations() {
                 </thead>
                 <tbody>
                   {studentsToShow.map((student) => {
-                    const detail = computeStudentMarksDetail(student.roll, student.idx, student.id);
+                    const detail = computeStudentMarksDetail(student.roll, student.idx, student.id, student.name);
                     const isExpanded = !!expandedStudentRolls[student.roll];
                     const avatarColor = getDynamicAvatarColor(student.init);
                     const canEdit = isAdmin || isTeacherAssignedToClass(selectedMarksClass);
