@@ -49,11 +49,50 @@ class DashboardStatsController extends Controller
         $newAdmissions = Student::where('admission_date', '>=', $now->copy()->subMonths(3))->count();
 
         // 2. Attendance Stats
-        // Calculate average attendance for the selected range
-        $attendances = Attendance::whereBetween('attendance_date', [$startDate, $endDate])->get();
-        $totalAttendanceRecords = $attendances->count();
-        $presentCount = $attendances->whereIn('status', ['present', 'late'])->count();
-        $absentCount = $attendances->where('status', 'absent')->count();
+        $allAttendanceRecords = collect();
+
+        // Load from Attendance SQL model
+        try {
+            $sqlAttendances = Attendance::all();
+            foreach ($sqlAttendances as $a) {
+                $allAttendanceRecords->push([
+                    'date' => $a->attendance_date ? Carbon::parse($a->attendance_date)->toDateString() : '',
+                    'status' => strtolower($a->status ?? 'present'),
+                ]);
+            }
+        } catch (\Exception $e) {
+            // ignore if table not accessible
+        }
+
+        // Load from Setting table ('kts_student_attendance_records')
+        try {
+            $setting = \App\Models\Setting::where('key', 'kts_student_attendance_records')->first();
+            if ($setting && !empty($setting->value)) {
+                $decoded = json_decode($setting->value, true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $rec) {
+                        if (isset($rec['date'])) {
+                            $allAttendanceRecords->push([
+                                'date' => Carbon::parse($rec['date'])->toDateString(),
+                                'status' => strtolower($rec['status'] ?? 'present'),
+                            ]);
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        $rangeStartStr = $startDate->toDateString();
+        $rangeEndStr = $endDate->toDateString();
+        $rangeAtts = $allAttendanceRecords->filter(function ($item) use ($rangeStartStr, $rangeEndStr) {
+            return !empty($item['date']) && $item['date'] >= $rangeStartStr && $item['date'] <= $rangeEndStr;
+        });
+
+        $totalAttendanceRecords = $rangeAtts->count();
+        $presentCount = $rangeAtts->whereIn('status', ['present', 'late'])->count();
+        $absentCount = $rangeAtts->where('status', 'absent')->count();
         $attendancePercentage = $totalAttendanceRecords > 0 ? round(($presentCount / $totalAttendanceRecords) * 100, 1) : 0;
 
         // 3. Fee Stats
@@ -73,18 +112,69 @@ class DashboardStatsController extends Controller
             return '₹' . $num;
         };
 
-        // 4. Weekly Attendance (Last 5 days)
+        // 4. Weekly Attendance (Last 6 working days, excluding Sundays and Holidays)
+        $holidayDates = [];
+
+        try {
+            $sqlHolidays = \App\Models\Holiday::all();
+            foreach ($sqlHolidays as $h) {
+                if (!empty($h->date)) {
+                    $holidayDates[] = Carbon::parse($h->date)->toDateString();
+                } elseif (!empty($h->holiday_date)) {
+                    $holidayDates[] = Carbon::parse($h->holiday_date)->toDateString();
+                }
+            }
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        try {
+            $holidaySetting = \App\Models\Setting::where('key', 'kts_holidays')->first();
+            if ($holidaySetting && !empty($holidaySetting->value)) {
+                $decoded = json_decode($holidaySetting->value, true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as $h) {
+                        if (isset($h['date'])) {
+                            $holidayDates[] = Carbon::parse($h['date'])->toDateString();
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        $holidayDates = array_unique($holidayDates);
+
         $weeklyAttendance = [];
-        for ($i = 4; $i >= 0; $i--) {
-            $day = $now->copy()->subDays($i);
-            $dayStart = $day->copy()->startOfDay();
-            $dayEnd = $day->copy()->endOfDay();
-            $dayAtts = Attendance::whereBetween('attendance_date', [$dayStart, $dayEnd])->get();
+        $days = [];
+        $cursor = $now->copy();
+        $safetyLimit = 0;
+
+        while (count($days) < 6 && $safetyLimit < 60) {
+            $safetyLimit++;
+            $dateStr = $cursor->toDateString();
+            $isSunday = ($cursor->dayOfWeek === Carbon::SUNDAY);
+            $isHoliday = in_array($dateStr, $holidayDates);
+
+            if (!$isSunday && !$isHoliday) {
+                $days[] = $cursor->copy();
+            }
+            $cursor->subDay();
+        }
+        $days = array_reverse($days);
+
+        foreach ($days as $day) {
+            $dayStr = $day->toDateString();
+            $dayAtts = $allAttendanceRecords->filter(function ($item) use ($dayStr) {
+                return $item['date'] === $dayStr;
+            });
             $dayTotal = $dayAtts->count();
             $dayPresent = $dayAtts->whereIn('status', ['present', 'late'])->count();
             
             $weeklyAttendance[] = [
                 'day' => $day->format('D'),
+                'date' => $dayStr,
                 'pct' => $dayTotal > 0 ? round(($dayPresent / $dayTotal) * 100) : 0
             ];
         }
