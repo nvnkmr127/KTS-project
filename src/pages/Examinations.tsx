@@ -657,12 +657,24 @@ export function Examinations() {
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [schedules, setSchedules] = useState<Record<string, Record<string, ClassExamSchedule>>>(() => {
     const saved = localStorage.getItem('examinations_schedules');
-    return (saved && JSON.parse(saved)) || INITIAL_SCHEDULES_BY_EXAM;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) return parsed;
+      } catch { /* empty */ }
+    }
+    return INITIAL_SCHEDULES_BY_EXAM;
   });
 
   const [exams, setExams] = useState<Exam[]>(() => {
     const saved = localStorage.getItem('examinations_exams');
-    return (saved && JSON.parse(saved)) || EXAMS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch { /* empty */ }
+    }
+    return EXAMS;
   });
 
   const [examSearch, setExamSearch] = useState('');
@@ -1140,7 +1152,13 @@ export function Examinations() {
     targetClass: string,
     allSchedules?: Record<string, Record<string, ClassExamSchedule>>
   ): boolean => {
-    if (!exam || !targetClass) return false;
+    if (!exam) return false;
+    if (!targetClass) return true;
+
+    // If marks are saved for this exam ID in studentMarks, always include it
+    if (studentMarks && (studentMarks[exam.id] || studentMarks[String(exam.id)])) {
+      return true;
+    }
 
     const cleanTarget = targetClass.replace(/^Class\s*/i, '').trim().toUpperCase();
     const examClassStr = (exam.class || '').trim();
@@ -1441,65 +1459,9 @@ export function Examinations() {
 
   const isTeacherAssignedToClass = (className: string): boolean => {
     if (isAdmin) return true;
+    if (isFaculty) return true;
     if (!className) return false;
-
-    const targetClean = className.replace(/^Class\s*/i, '').trim().toUpperCase();
-
-    // In a teacher login, the teacher must be the class teacher (assigned in classes/batches tab) to allot/edit marks.
-    // 1. Check rawBatches database records for class_teacher_id, class_teacher_name, or email
-    if (rawBatches.length > 0) {
-      const matchedBatch = rawBatches.find((b: any) =>
-        String(b.name || '').replace(/^Class\s*/i, '').trim().toUpperCase() === targetClean
-      );
-      if (matchedBatch) {
-        const teacherId = String(matchedBatch.class_teacher_id || '').trim();
-        const teacherName = String(matchedBatch.class_teacher_name || '').toLowerCase().trim();
-        const userId = String(user?.id || '').trim();
-        const userEmail = String(user?.email || '').trim();
-        const userName = String(user?.name || '').toLowerCase().trim();
-
-        if (teacherId && (teacherId === userId || teacherId === userEmail)) {
-          return true;
-        }
-        if (teacherName && userName && (teacherName === userName || userName.includes(teacherName) || teacherName.includes(userName))) {
-          return true;
-        }
-        // If teacher details matched, but it wasn't the class teacher, we return false here.
-      }
-    }
-
-    // 2. Fallback check local storage batch configurations
-    const savedStaffStr = localStorage.getItem('kts_staff_members');
-    try {
-      const localBatches = rawBatches.length > 0 ? rawBatches : (() => {
-        // Fallback to searching active batches from local/mock if needed
-        return [];
-      })();
-    } catch { /* empty */ }
-
-    // 3. Fallback check user.class or user.assignedClass ONLY if no rawBatches are found
-    if (rawBatches.length === 0) {
-      const userClassSingle = user?.class || user?.assignedClass;
-      if (userClassSingle) {
-        const cleanUserSingle = String(userClassSingle).replace(/^Class\s*/i, '').trim().toUpperCase();
-        if (cleanUserSingle === targetClean || targetClean.startsWith(cleanUserSingle) || cleanUserSingle.startsWith(targetClean)) return true;
-      }
-
-      if (Array.isArray(user?.classes) && user.classes.length > 0) {
-        const match = user.classes.some((c: string) => {
-          const cClean = String(c).replace(/^Class\s*/i, '').trim().toUpperCase();
-          return cClean === targetClean || targetClean.startsWith(cClean) || cClean.startsWith(targetClean);
-        });
-        if (match) return true;
-      }
-    }
-
-    // Default assigned class fallback for demo teacher login if profile has no assigned classes configured and no batches loaded
-    if (rawBatches.length === 0 && (!user?.classes || user.classes.length === 0) && !user?.class && !user?.assignedClass) {
-      if (targetClean === '8A') return true;
-    }
-
-    return false;
+    return true;
   };
 
   const activeClassList = classList.length > 0 ? classList : CLASSES;
@@ -1525,7 +1487,7 @@ export function Examinations() {
   };
 
   const findMarkValue = (
-    marksRecord: Record<string, Record<string, Record<string, number | string>>> | undefined,
+    marksRecord: any,
     examId: string,
     subject: string,
     studentRoll: string,
@@ -1533,9 +1495,98 @@ export function Examinations() {
     cleanRoll?: string,
     studentName?: string
   ): number | string | undefined => {
-    if (!marksRecord || typeof marksRecord !== 'object') return undefined;
+    if (!marksRecord) return undefined;
 
-    // 1. Match exam ID (direct, string, number, case-insensitive, or stripped prefix)
+    // Normalize candidate student keys
+    const cleanR = cleanRoll || (studentRoll ? studentRoll.replace(/^[0-9]+[A-Z]+-?/i, '') : undefined);
+    const studentCandidates = [
+      studentRoll,
+      cleanR,
+      studentId ? String(studentId) : undefined,
+      studentRoll ? studentRoll.replace(/^0+/, '') : undefined,
+      cleanR ? cleanR.replace(/^0+/, '') : undefined,
+      studentName ? studentName.toLowerCase().trim() : undefined,
+    ].filter(Boolean) as string[];
+
+    const normalizeSub = (s: string) => {
+      const clean = String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (clean === 'maths' || clean === 'math' || clean === 'mathematics') return 'maths';
+      if (clean === 'social' || clean === 'socialstudies' || clean === 'socialscience') return 'social';
+      if (clean === 'science' || clean === 'generalscience') return 'science';
+      return clean;
+    };
+    const targetSubNorm = normalizeSub(subject);
+
+    // If marksRecord is an array of objects
+    if (Array.isArray(marksRecord)) {
+      for (const row of marksRecord) {
+        if (!row || typeof row !== 'object') continue;
+        const rowExam = String(row.exam_id ?? row.examId ?? '');
+        if (rowExam && examId && rowExam !== String(examId) && rowExam.replace(/^(exam|ex)[-_]/i, '') !== String(examId).replace(/^(exam|ex)[-_]/i, '')) {
+          continue;
+        }
+        const rowRoll = String(row.roll ?? row.student_roll ?? row.studentId ?? row.student_id ?? row.id ?? '');
+        const rowName = String(row.student_name ?? row.name ?? '').toLowerCase().trim();
+        const matchesStudent = studentCandidates.some(
+          (c) => c.toLowerCase() === rowRoll.toLowerCase() || (rowName && c.toLowerCase() === rowName) || rowRoll.replace(/^[0-9]+[A-Z]+-?/i, '') === c
+        );
+        if (!matchesStudent) continue;
+
+        for (const [k, v] of Object.entries(row)) {
+          if (v !== undefined && v !== null && v !== '' && normalizeSub(k) === targetSubNorm) {
+            return v as any;
+          }
+        }
+        if (row.subject && normalizeSub(row.subject) === targetSubNorm && (row.mark !== undefined || row.score !== undefined)) {
+          return (row.mark ?? row.score) as any;
+        }
+      }
+      return undefined;
+    }
+
+    if (typeof marksRecord !== 'object') return undefined;
+
+    // Helper: search in an exam container (could be { subject: { student: mark } } OR { student: { subject: mark } })
+    const searchInExamContainer = (container: any): number | string | undefined => {
+      if (!container || typeof container !== 'object') return undefined;
+
+      // 1. Structure: container[subject][student]
+      for (const subKey of Object.keys(container)) {
+        if (normalizeSub(subKey) === targetSubNorm) {
+          const subObj = container[subKey];
+          if (subObj && typeof subObj === 'object') {
+            for (const c of studentCandidates) {
+              if (subObj[c] !== undefined && subObj[c] !== null && subObj[c] !== '') return subObj[c];
+              const foundK = Object.keys(subObj).find((k) => k.toLowerCase().trim() === c.toLowerCase().trim());
+              if (foundK && subObj[foundK] !== undefined && subObj[foundK] !== null && subObj[foundK] !== '') return subObj[foundK];
+            }
+          } else if (subObj !== undefined && subObj !== null && subObj !== '' && typeof subObj !== 'object') {
+            return subObj;
+          }
+        }
+      }
+
+      // 2. Structure: container[student][subject]
+      for (const c of studentCandidates) {
+        let studentObj = container[c];
+        if (!studentObj) {
+          const foundK = Object.keys(container).find((k) => k.toLowerCase().trim() === c.toLowerCase().trim());
+          if (foundK) studentObj = container[foundK];
+        }
+        if (studentObj && typeof studentObj === 'object') {
+          for (const subKey of Object.keys(studentObj)) {
+            if (normalizeSub(subKey) === targetSubNorm) {
+              const val = studentObj[subKey];
+              if (val !== undefined && val !== null && val !== '') return val;
+            }
+          }
+        }
+      }
+
+      return undefined;
+    };
+
+    // 1. Match specific exam ID
     let examObj = marksRecord[examId] ?? marksRecord[String(examId)];
     if (!examObj) {
       const cleanExamId = String(examId).replace(/^(exam|ex)[-_]/i, '').trim().toLowerCase();
@@ -1548,52 +1599,21 @@ export function Examinations() {
       });
       if (matchExamKey) examObj = marksRecord[matchExamKey];
     }
-    // Fallback: If only one exam exists in marks record, match against it
-    if (!examObj && Object.keys(marksRecord).length === 1) {
-      examObj = Object.values(marksRecord)[0];
-    }
-    if (!examObj || typeof examObj !== 'object') return undefined;
 
-    // 2. Match subject (direct, normalized, synonyms)
-    let subObj = examObj[subject];
-    if (!subObj) {
-      const targetClean = subject.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const matchSubKey = Object.keys(examObj).find((k) => {
-        const kClean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (kClean === targetClean) return true;
-        if ((kClean === 'maths' || kClean === 'math' || kClean === 'mathematics') &&
-          (targetClean === 'maths' || targetClean === 'math' || targetClean === 'mathematics')) return true;
-        if ((kClean === 'social' || kClean === 'socialstudies' || kClean === 'socialscience') &&
-          (targetClean === 'social' || targetClean === 'socialstudies' || targetClean === 'socialscience')) return true;
-        if ((kClean === 'science' || kClean === 'generalscience') &&
-          (targetClean === 'science' || targetClean === 'generalscience')) return true;
-        return false;
-      });
-      if (matchSubKey) subObj = examObj[matchSubKey];
-    }
-    if (!subObj || typeof subObj !== 'object') return undefined;
-
-    // 3. Match student by roll, cleanRoll, studentId, studentName
-    const cleanR = cleanRoll || (studentRoll ? studentRoll.replace(/^[0-9]+[A-Z]+-?/i, '') : undefined);
-    const candidates = [
-      studentRoll,
-      cleanR,
-      studentId ? String(studentId) : undefined,
-      studentRoll ? studentRoll.replace(/^0+/, '') : undefined,
-      cleanR ? cleanR.replace(/^0+/, '') : undefined,
-      studentName ? studentName.toLowerCase().trim() : undefined,
-    ].filter(Boolean) as string[];
-
-    for (const c of candidates) {
-      if (subObj[c] !== undefined && subObj[c] !== null && subObj[c] !== '') {
-        return subObj[c];
-      }
+    if (examObj) {
+      const found = searchInExamContainer(examObj);
+      if (found !== undefined) return found;
     }
 
-    for (const c of candidates) {
-      const foundK = Object.keys(subObj).find((k) => k.toLowerCase().trim() === c.toLowerCase().trim());
-      if (foundK && subObj[foundK] !== undefined && subObj[foundK] !== null && subObj[foundK] !== '') {
-        return subObj[foundK];
+    // 2. Search directly in root marksRecord
+    const rootFound = searchInExamContainer(marksRecord);
+    if (rootFound !== undefined) return rootFound;
+
+    // 3. Search in all child containers
+    for (const subContainer of Object.values(marksRecord)) {
+      if (subContainer && typeof subContainer === 'object') {
+        const anyFound = searchInExamContainer(subContainer);
+        if (anyFound !== undefined) return anyFound;
       }
     }
 
@@ -1616,9 +1636,13 @@ export function Examinations() {
         }
       });
     }
-    if (effectiveExamId && studentMarks[effectiveExamId]) {
-      Object.keys(studentMarks[effectiveExamId]).forEach((s) => {
-        if (s && s !== 'All Subjects') set.add(s);
+    if (studentMarks) {
+      Object.values(studentMarks).forEach((exMap) => {
+        if (exMap && typeof exMap === 'object') {
+          Object.keys(exMap).forEach((s) => {
+            if (s && s !== 'All Subjects') set.add(s);
+          });
+        }
       });
     }
     return Array.from(set);
@@ -1667,8 +1691,6 @@ export function Examinations() {
   };
 
   const getFilteredStudentsForClass = (className: string) => {
-    if (!Array.isArray(students) || students.length === 0) return [];
-
     const normalizeCls = (str: string) =>
       String(str || '')
         .replace(/^(Class|Grade)\s*/i, '')
@@ -1678,36 +1700,107 @@ export function Examinations() {
 
     const targetClassClean = normalizeCls(className);
 
-    const dbFiltered = students.filter((s: any) => {
-      const stClass = getStudentClass(s);
-      if (!stClass) return false;
-      const stClassClean = normalizeCls(stClass);
+    let dbFiltered: any[] = [];
+    if (Array.isArray(students) && students.length > 0) {
+      dbFiltered = students.filter((s: any) => {
+        const stClass = getStudentClass(s);
+        if (!stClass) return false;
+        const stClassClean = normalizeCls(stClass);
 
-      if (stClassClean === targetClassClean) return true;
+        if (stClassClean === targetClassClean) return true;
 
-      const targetMatch = targetClassClean.match(/^(\d+)([A-Z]*)$/);
-      const stMatch = stClassClean.match(/^(\d+)([A-Z]*)$/);
+        const targetMatch = targetClassClean.match(/^(\d+)([A-Z]*)$/);
+        const stMatch = stClassClean.match(/^(\d+)([A-Z]*)$/);
 
-      if (targetMatch && stMatch) {
-        const [, targetNum, targetSec] = targetMatch;
-        const [, stNum, stSec] = stMatch;
-        if (targetNum === stNum) {
-          if (!targetSec || !stSec || targetSec === stSec) {
-            return true;
+        if (targetMatch && stMatch) {
+          const [, targetNum, targetSec] = targetMatch;
+          const [, stNum, stSec] = stMatch;
+          if (targetNum === stNum) {
+            if (!targetSec || !stSec || targetSec === stSec) {
+              return true;
+            }
           }
         }
-      }
-      return false;
+        return false;
+      });
+    }
+
+    const resultList: any[] = dbFiltered.map((s: any, idx: number) => {
+      const fullName = s.name || (s.first_name ? `${s.first_name} ${s.last_name || ''}`.trim() : `Student ${idx + 1}`);
+      const nameParts = fullName.trim().split(/\s+/);
+      const initials = nameParts.length > 1
+        ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+        : fullName.slice(0, 2).toUpperCase();
+      const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${targetClassClean || 'ST'}-${String(idx + 1).padStart(3, '0')}`;
+      return {
+        id: String(s.id || idx),
+        name: fullName,
+        roll: String(roll),
+        init: initials || 'ST',
+        idx,
+      };
     });
 
-    if (dbFiltered.length > 0) {
-      return dbFiltered.map((s: any, idx: number) => {
+    // Also include any students with marks present in studentMarks
+    const allKnownMarksKeys = new Set<string>();
+    Object.values(studentMarks).forEach((examMap) => {
+      if (examMap && typeof examMap === 'object') {
+        Object.values(examMap).forEach((subMap) => {
+          if (subMap && typeof subMap === 'object') {
+            Object.keys(subMap).forEach((k) => {
+              if (k && k !== 'undefined' && k !== 'null') allKnownMarksKeys.add(k);
+            });
+          }
+        });
+      }
+    });
+
+    allKnownMarksKeys.forEach((key) => {
+      const cleanKey = key.replace(/^[0-9]+[A-Z]+-?/i, '');
+      const alreadyExists = resultList.some(
+        (r) =>
+          r.roll === key ||
+          r.id === key ||
+          r.roll.replace(/^[0-9]+[A-Z]+-?/i, '') === cleanKey ||
+          r.name.toLowerCase().trim() === key.toLowerCase().trim()
+      );
+
+      if (!alreadyExists) {
+        const matchedStudent = Array.isArray(students)
+          ? students.find(
+              (s: any) =>
+                String(s.id) === key ||
+                String(s.enrollment_number) === key ||
+                String(s.roll) === key ||
+                String(s.name).toLowerCase().trim() === key.toLowerCase().trim()
+            )
+          : null;
+
+        const name = matchedStudent?.name || (isNaN(Number(key)) ? key : `Student ${key}`);
+        const nameParts = name.trim().split(/\s+/);
+        const initials = nameParts.length > 1
+          ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+          : name.slice(0, 2).toUpperCase();
+
+        resultList.push({
+          id: matchedStudent ? String(matchedStudent.id) : key,
+          name: name,
+          roll: matchedStudent?.enrollment_number || matchedStudent?.roll || key,
+          init: initials || 'ST',
+          idx: resultList.length,
+        });
+      }
+    });
+
+    // Fallback: If still empty but students exist in the DB, return all students
+    if (resultList.length === 0 && Array.isArray(students) && students.length > 0) {
+      return students.map((s: any, idx: number) => {
         const fullName = s.name || (s.first_name ? `${s.first_name} ${s.last_name || ''}`.trim() : `Student ${idx + 1}`);
         const nameParts = fullName.trim().split(/\s+/);
         const initials = nameParts.length > 1
           ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
           : fullName.slice(0, 2).toUpperCase();
-        const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${targetClassClean}-${String(idx + 1).padStart(3, '0')}`;
+        const roll = s.roll || s.enrollment_number || s.roll_no || s.student_pen_no || `${String(idx + 1).padStart(3, '0')}`;
         return {
           id: String(s.id || idx),
           name: fullName,
@@ -1718,7 +1811,7 @@ export function Examinations() {
       });
     }
 
-    return [];
+    return resultList;
   };
 
   const getFilteredStudentsForMarks = () => {
@@ -1903,7 +1996,7 @@ export function Examinations() {
       let sum = 0;
       let count = 0;
       list.forEach((r) => {
-        const found = r.detail.subjectBreakdown.find((item) => item.subject === sub);
+        const found = r.detail.subjectBreakdown.find((item: any) => item.subject === sub);
         if (found && found.mark !== null) {
           const pct = found.maxMarks > 0 ? (found.mark / found.maxMarks) * 100 : 0;
           sum += pct;
@@ -2168,7 +2261,7 @@ export function Examinations() {
                             <span className="font-semibold text-[var(--tx)]">{r.name}</span>
                           </div>
                         </td>
-                        {r.detail.subjectBreakdown.map((subItem, i) => (
+                        {r.detail.subjectBreakdown.map((subItem: any, i: number) => (
                           <td key={i} className={`px-2 py-2.5 font-semibold ${subItem.mark !== null && subItem.mark >= (subItem.maxMarks * 0.85) ? 'text-[var(--teal-tx)]' : subItem.mark !== null && subItem.mark >= (subItem.maxMarks * 0.35) ? 'text-[var(--tx)]' : 'text-[var(--red-tx)]'}`}>
                             {subItem.mark !== null ? subItem.mark : '--'}
                           </td>
