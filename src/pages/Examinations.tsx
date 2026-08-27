@@ -1363,7 +1363,6 @@ export function Examinations() {
         setRawBatches(batchesList);
         setStudents(studentsList);
 
-        const defaultClasses = ['Nursery', 'LKG', 'UKG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
         const foundClasses = new Set<string>();
 
         batchesList.forEach((b: any) => {
@@ -1372,15 +1371,16 @@ export function Examinations() {
             if (batchName === 'Default Batch') {
               foundClasses.add('8A');
             } else {
-              foundClasses.add(batchName.replace(/^Class\s*/i, ''));
+              const clean = String(batchName).replace(/^Class\s*/i, '').trim();
+              if (clean) foundClasses.add(clean);
             }
           }
         });
 
-        defaultClasses.forEach((cId) => {
-          foundClasses.add(`${cId}A`);
-          foundClasses.add(`${cId}B`);
-        });
+        if (foundClasses.size === 0) {
+          const defaultClasses = ['6A', '7A', '8A', '9A', '10A'];
+          defaultClasses.forEach((cId) => foundClasses.add(cId));
+        }
 
         const sorted = Array.from(foundClasses).sort((a, b) => {
           const weightA = getClassWeight(a);
@@ -1390,6 +1390,10 @@ export function Examinations() {
         });
 
         setClassList(sorted);
+        if (sorted.length > 0) {
+          setSelectedMarksClass((prev) => (sorted.includes(prev) ? prev : sorted[0]));
+          setSelectedClass((prev) => (sorted.includes(prev) ? prev : sorted[0]));
+        }
       } catch (err) {
         console.error('Error fetching batches and students:', err);
         setClassList(['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B']);
@@ -1552,8 +1556,8 @@ export function Examinations() {
     return true;
   };
 
-  const activeClassList = classList.length > 0 ? classList : CLASSES;
-  const filteredClassList = activeClassList;
+  const activeClassList = classList;
+  const filteredClassList = classList;
 
   const getMaxMarksForSubject = (examId: string, className: string, subjectName: string, fallbackMax: number = 100): number => {
     if (!examId || !className || !subjectName) return fallbackMax;
