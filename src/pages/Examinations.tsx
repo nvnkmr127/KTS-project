@@ -598,13 +598,29 @@ function ExamScheduleDesigner({
 }
 
 
+function extractItems(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  if (data?.data && Array.isArray(data.data)) return data.data;
+  if (data?.data?.data && Array.isArray(data.data.data)) return data.data.data;
+  if (data && typeof data === 'object' && data.id) return [data];
+  if (data?.data && typeof data.data === 'object' && data.data.id) return [data.data];
+  return [];
+}
+
 async function saveSettingToDb(key: string, value: any) {
   try {
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
     const existing = await api.getResources('settings', { key }).catch(() => []);
-    if (Array.isArray(existing) && existing.length > 0) {
-      const settingId = existing[0].id;
-      await api.updateResource('settings', String(settingId), { value: valueStr }).catch(() => { });
+    const items = extractItems(existing);
+    if (items.length > 0 && items[0]?.id) {
+      const settingId = items[0].id;
+      await api.updateResource('settings', String(settingId), {
+        key,
+        value: valueStr,
+        group: 'exam',
+        type: 'json',
+        is_public: true,
+      }).catch(() => { });
     } else {
       await api.createResource('settings', {
         key,
@@ -772,7 +788,16 @@ export function Examinations() {
   const [selectedMarksExamId, setSelectedMarksExamId] = useState<string>('');
   const [selectedResultsExamId, setSelectedResultsExamId] = useState<string>('');
   const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>('Mathematics');
-  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number | string>>>>({});
+  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, number | string>>>>(() => {
+    const saved = localStorage.getItem('kts_student_marks');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      } catch { /* empty */ }
+    }
+    return {};
+  });
   // draftMarks holds unsaved edits only in React state — never written to DB until Save is clicked
   const [draftMarks, setDraftMarks] = useState<Record<string, Record<string, Record<string, number | string>>>>({});
   const [savingMarks, setSavingMarks] = useState(false);
@@ -865,9 +890,11 @@ export function Examinations() {
 
         // Sync exams
         const examsRes = await api.getResources('settings', { key: 'examinations_exams' }).catch(() => []);
-        if (Array.isArray(examsRes) && examsRes.length > 0 && examsRes[0].value) {
+        const examsList = extractItems(examsRes);
+        if (examsList.length > 0 && examsList[0].value) {
           try {
-            currentExams = JSON.parse(examsRes[0].value);
+            const rawVal = examsList[0].value;
+            currentExams = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
             setExams(currentExams);
             (localStorage as any).originalSetItem('examinations_exams', JSON.stringify(currentExams));
           } catch (e) {
@@ -879,9 +906,11 @@ export function Examinations() {
 
         // Sync schedules
         const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' }).catch(() => []);
-        if (Array.isArray(schedulesRes) && schedulesRes.length > 0 && schedulesRes[0].value) {
+        const schedulesList = extractItems(schedulesRes);
+        if (schedulesList.length > 0 && schedulesList[0].value) {
           try {
-            currentSchedules = JSON.parse(schedulesRes[0].value);
+            const rawVal = schedulesList[0].value;
+            currentSchedules = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
             setSchedules(currentSchedules);
             (localStorage as any).originalSetItem('examinations_schedules', JSON.stringify(currentSchedules));
           } catch (e) {
@@ -893,9 +922,11 @@ export function Examinations() {
 
         // Sync invigilations
         const invigilationsRes = await api.getResources('settings', { key: 'kts_exam_invigilations' }).catch(() => []);
-        if (Array.isArray(invigilationsRes) && invigilationsRes.length > 0 && invigilationsRes[0].value) {
+        const invigList = extractItems(invigilationsRes);
+        if (invigList.length > 0 && invigList[0].value) {
           try {
-            currentInvigilations = JSON.parse(invigilationsRes[0].value);
+            const rawVal = invigList[0].value;
+            currentInvigilations = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
             setInvigilations(currentInvigilations);
             (localStorage as any).originalSetItem('kts_exam_invigilations', JSON.stringify(currentInvigilations));
           } catch (e) {
@@ -907,12 +938,16 @@ export function Examinations() {
 
         // Sync student marks - DB is always the source of truth
         const marksRes = await api.getResources('settings', { key: 'kts_student_marks' }).catch(() => []);
-        if (Array.isArray(marksRes) && marksRes.length > 0 && marksRes[0].value) {
+        const marksList = extractItems(marksRes);
+        if (marksList.length > 0 && marksList[0].value) {
           try {
-            const parsed = JSON.parse(marksRes[0].value);
-            setStudentMarks(parsed);
-            setDraftMarks({});
-            (localStorage as any).originalSetItem('kts_student_marks', JSON.stringify(parsed));
+            const rawVal = marksList[0].value;
+            const parsed = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
+            if (parsed && typeof parsed === 'object') {
+              setStudentMarks(parsed);
+              setDraftMarks({});
+              (localStorage as any).originalSetItem('kts_student_marks', JSON.stringify(parsed));
+            }
           } catch (e) {
             console.error('Error parsing kts_student_marks setting:', e);
           }
@@ -920,8 +955,9 @@ export function Examinations() {
 
         // Sync batch subjects settings
         const allSettingsRes = await api.getResources('settings').catch(() => []);
-        if (Array.isArray(allSettingsRes)) {
-          allSettingsRes.forEach((s: any) => {
+        const allSettingsList = extractItems(allSettingsRes);
+        if (allSettingsList.length > 0) {
+          allSettingsList.forEach((s: any) => {
             if (s.key && s.key.startsWith('batch_subjects_') && s.value) {
               try {
                 localStorage.setItem(s.key, typeof s.value === 'string' ? s.value : JSON.stringify(s.value));
@@ -1103,10 +1139,7 @@ export function Examinations() {
   };
 
   const marksExams = useMemo(() => {
-    return exams.filter((e) => {
-      const classSched = schedules[e.id]?.[selectedMarksClass];
-      return isExamRelatedToClass(e, selectedMarksClass, schedules) && isExamCompleted(e, classSched);
-    });
+    return exams.filter((e) => isExamRelatedToClass(e, selectedMarksClass, schedules));
   }, [exams, selectedMarksClass, schedules]);
 
   const resultsExams = useMemo(() => {
@@ -1396,7 +1429,91 @@ export function Examinations() {
     return fallbackMax;
   };
 
-  const classSubjectsForMarks = getSubjectsForClass(selectedMarksClass);
+  const findMarkValue = (
+    marksRecord: Record<string, Record<string, Record<string, number | string>>> | undefined,
+    examId: string,
+    subject: string,
+    studentRoll: string,
+    studentId?: string,
+    cleanRoll?: string
+  ): number | string | undefined => {
+    if (!marksRecord || typeof marksRecord !== 'object') return undefined;
+
+    // 1. Match exam ID (direct, string, number, or case-insensitive)
+    let examObj = marksRecord[examId] ?? marksRecord[String(examId)];
+    if (!examObj) {
+      const matchExamKey = Object.keys(marksRecord).find((k) => String(k).trim().toLowerCase() === String(examId).trim().toLowerCase());
+      if (matchExamKey) examObj = marksRecord[matchExamKey];
+    }
+    if (!examObj || typeof examObj !== 'object') return undefined;
+
+    // 2. Match subject (direct, normalized, synonyms)
+    let subObj = examObj[subject];
+    if (!subObj) {
+      const targetClean = subject.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const matchSubKey = Object.keys(examObj).find((k) => {
+        const kClean = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (kClean === targetClean) return true;
+        if ((kClean === 'maths' || kClean === 'math' || kClean === 'mathematics') &&
+          (targetClean === 'maths' || targetClean === 'math' || targetClean === 'mathematics')) return true;
+        if ((kClean === 'social' || kClean === 'socialstudies' || kClean === 'socialscience') &&
+          (targetClean === 'social' || targetClean === 'socialstudies' || targetClean === 'socialscience')) return true;
+        if ((kClean === 'science' || kClean === 'generalscience') &&
+          (targetClean === 'science' || targetClean === 'generalscience')) return true;
+        return false;
+      });
+      if (matchSubKey) subObj = examObj[matchSubKey];
+    }
+    if (!subObj || typeof subObj !== 'object') return undefined;
+
+    // 3. Match student by roll, cleanRoll, studentId
+    const candidates = [
+      studentRoll,
+      cleanRoll,
+      studentId ? String(studentId) : undefined,
+      studentRoll ? studentRoll.replace(/^0+/, '') : undefined,
+      cleanRoll ? cleanRoll.replace(/^0+/, '') : undefined,
+    ].filter(Boolean) as string[];
+
+    for (const c of candidates) {
+      if (subObj[c] !== undefined && subObj[c] !== null && subObj[c] !== '') {
+        return subObj[c];
+      }
+    }
+
+    for (const c of candidates) {
+      const foundK = Object.keys(subObj).find((k) => k.toLowerCase().trim() === c.toLowerCase().trim());
+      if (foundK && subObj[foundK] !== undefined && subObj[foundK] !== null && subObj[foundK] !== '') {
+        return subObj[foundK];
+      }
+    }
+
+    return undefined;
+  };
+
+  const classSubjectsForMarks = useMemo(() => {
+    const defaultSubs = getSubjectsForClass(selectedMarksClass);
+    const set = new Set<string>(defaultSubs);
+    const effectiveExamId = selectedMarksExamId || (marksExams[0]?.id ?? '');
+    if (effectiveExamId && schedules[effectiveExamId]?.[selectedMarksClass]) {
+      const clsSched = schedules[effectiveExamId][selectedMarksClass];
+      Object.values(clsSched).forEach((entries) => {
+        if (Array.isArray(entries)) {
+          entries.forEach((e) => {
+            if (e.subject && e.subject !== 'All Subjects') {
+              set.add(e.subject);
+            }
+          });
+        }
+      });
+    }
+    if (effectiveExamId && studentMarks[effectiveExamId]) {
+      Object.keys(studentMarks[effectiveExamId]).forEach((s) => {
+        if (s && s !== 'All Subjects') set.add(s);
+      });
+    }
+    return Array.from(set);
+  }, [selectedMarksClass, selectedMarksExamId, marksExams, schedules, studentMarks]);
 
   const handleClearStudentMarks = async (student: any) => {
     if (await confirm(`Are you sure you want to clear all subject marks for ${student.name}? This will put them in a cleared state, which you can save.`, 'Clear Marks')) {
@@ -1505,12 +1622,9 @@ export function Examinations() {
       const maxMarks = getMaxMarksForSubject(effectiveExamId, selectedMarksClass, sub, fallbackMax);
 
       // Draft takes priority over committed DB value
-      const saved = draftMarks[effectiveExamId]?.[sub]?.[studentRoll]
-        ?? (studentId ? draftMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
-        ?? draftMarks[effectiveExamId]?.[sub]?.[cleanRoll]
-        ?? studentMarks[effectiveExamId]?.[sub]?.[studentRoll]
-        ?? (studentId ? studentMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
-        ?? studentMarks[effectiveExamId]?.[sub]?.[cleanRoll];
+      const savedDraft = findMarkValue(draftMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll);
+      const savedDb = findMarkValue(studentMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll);
+      const saved = savedDraft !== undefined ? savedDraft : savedDb;
 
       let mark: number | null = null;
 
@@ -1565,12 +1679,9 @@ export function Examinations() {
     const subjectBreakdown = classSubjects.map((sub) => {
       const maxMarks = getMaxMarksForSubject(effectiveExamId, className, sub, fallbackMax);
 
-      const saved = draftMarks[effectiveExamId]?.[sub]?.[studentRoll]
-        ?? (studentId ? draftMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
-        ?? draftMarks[effectiveExamId]?.[sub]?.[cleanRoll]
-        ?? studentMarks[effectiveExamId]?.[sub]?.[studentRoll]
-        ?? (studentId ? studentMarks[effectiveExamId]?.[sub]?.[studentId] : undefined)
-        ?? studentMarks[effectiveExamId]?.[sub]?.[cleanRoll];
+      const savedDraft = findMarkValue(draftMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll);
+      const savedDb = findMarkValue(studentMarks, effectiveExamId, sub, studentRoll, studentId, cleanRoll);
+      const saved = savedDraft !== undefined ? savedDraft : savedDb;
 
       let mark: number | null = null;
 

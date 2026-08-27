@@ -230,18 +230,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Fetch all database settings to restore to localStorage on app boot
         try {
           const allSettings = await api.getResources('settings');
-          if (Array.isArray(allSettings)) {
-            updateSettingsCache(allSettings);
+          const settingsList = Array.isArray(allSettings)
+            ? allSettings
+            : (allSettings && (allSettings as any).data && Array.isArray((allSettings as any).data) ? (allSettings as any).data : []);
+
+          if (settingsList.length > 0) {
+            updateSettingsCache(settingsList);
             const keysToExclude = ['token', 'user'];
-            allSettings.forEach((setting: any) => {
+            settingsList.forEach((setting: any) => {
               if (setting.key && !keysToExclude.includes(setting.key) && setting.value !== undefined) {
+                const valStr = typeof setting.value === 'string' ? setting.value : JSON.stringify(setting.value);
                 // Write directly using localStorage.originalSetItem to bypass monkey-patch background writes
-                (localStorage as any).originalSetItem(setting.key, setting.value);
+                (localStorage as any).originalSetItem(setting.key, valStr);
 
                 // Explicitly load period timings state if present
                 if (setting.key === 'timetable_period_timings') {
                   try {
-                    const parsed = JSON.parse(setting.value);
+                    const parsed = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
                     if (Array.isArray(parsed) && parsed.length > 0) {
                       setPeriodTimings(parsed);
                     }
@@ -251,7 +256,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
                 if (setting.key === 'kts_school_timetable') {
                   try {
-                    const parsed = JSON.parse(setting.value);
+                    const parsed = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
                     if (parsed && typeof parsed === 'object') {
                       setTimetable(prev => ({ ...prev, ...parsed }));
                     }
@@ -369,19 +374,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         // Sync settings
         const allSettings = await api.getResources('settings');
-        if (Array.isArray(allSettings)) {
-          updateSettingsCache(allSettings);
+        const settingsList = Array.isArray(allSettings)
+          ? allSettings
+          : (allSettings && (allSettings as any).data && Array.isArray((allSettings as any).data) ? (allSettings as any).data : []);
+
+        if (settingsList.length > 0) {
+          updateSettingsCache(settingsList);
           const keysToExclude = ['token', 'user'];
-          allSettings.forEach((setting: any) => {
+          settingsList.forEach((setting: any) => {
             if (setting.key && !keysToExclude.includes(setting.key) && setting.value !== undefined) {
+              const valStr = typeof setting.value === 'string' ? setting.value : JSON.stringify(setting.value);
               const localVal = localStorage.getItem(setting.key);
-              if (localVal !== setting.value) {
+              if (localVal !== valStr) {
                 // Write directly to local storage to bypass the monkey-patch save call
-                (localStorage as any).originalSetItem(setting.key, setting.value);
+                (localStorage as any).originalSetItem(setting.key, valStr);
                 // Dispatch a StorageEvent in the current window so local page listeners update state immediately
                 const event = new StorageEvent('storage', {
                   key: setting.key,
-                  newValue: setting.value,
+                  newValue: valStr,
                   storageArea: localStorage,
                 });
                 window.dispatchEvent(event);
@@ -389,7 +399,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 // If timetable period timings change, update state directly
                 if (setting.key === 'timetable_period_timings') {
                   try {
-                    const parsed = JSON.parse(setting.value);
+                    const parsed = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
                     setPeriodTimings(prev => {
                       const hasChanged = JSON.stringify(prev) !== JSON.stringify(parsed);
                       return hasChanged ? parsed : prev;
@@ -400,7 +410,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 }
                 if (setting.key === 'kts_school_timetable') {
                   try {
-                    const parsed = JSON.parse(setting.value);
+                    const parsed = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
                     if (parsed && typeof parsed === 'object') {
                       setTimetable(prev => ({ ...prev, ...parsed }));
                     }

@@ -50,9 +50,18 @@ export function Performance() {
 
   // Loaded DB data
   const [students, setStudents] = useState<any[]>([]);
-  const [exams, setExams] = useState<any[]>([]);
-  const [schedules, setSchedules] = useState<Record<string, any>>({});
-  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, any>>>>({});
+  const [exams, setExams] = useState<any[]>(() => {
+    const saved = localStorage.getItem('examinations_exams');
+    return (saved && JSON.parse(saved)) || [];
+  });
+  const [schedules, setSchedules] = useState<Record<string, any>>(() => {
+    const saved = localStorage.getItem('examinations_schedules');
+    return (saved && JSON.parse(saved)) || {};
+  });
+  const [studentMarks, setStudentMarks] = useState<Record<string, Record<string, Record<string, any>>>>(() => {
+    const saved = localStorage.getItem('kts_student_marks');
+    return (saved && JSON.parse(saved)) || {};
+  });
   const [classList, setClassList] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,12 +69,15 @@ export function Performance() {
     async function loadData() {
       setLoading(true);
       try {
+        const extractList = (res: any) =>
+          Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : (res?.id ? [res] : []));
+
         // Load Students
-        const studentsData = await api.getResources('students', { limit: '1000' });
+        const studentsData = await api.getResources('students', { limit: '1000' }).catch(() => []);
         setStudents(studentsData || []);
 
         // Load Batches
-        const batchesData = await api.getResources('batches');
+        const batchesData = await api.getResources('batches').catch(() => []);
         if (batchesData && batchesData.length > 0) {
           const names = batchesData.map((b: any) => b.name).sort((a: string, b: string) => {
             const numA = parseInt(a);
@@ -80,30 +92,36 @@ export function Performance() {
         }
 
         // Load Exams
-        const examsRes = await api.getResources('settings', { key: 'examinations_exams' });
-        if (Array.isArray(examsRes) && examsRes.length > 0 && examsRes[0].value) {
+        const examsRes = await api.getResources('settings', { key: 'examinations_exams' }).catch(() => []);
+        const examsList = extractList(examsRes);
+        if (examsList.length > 0 && examsList[0].value) {
           try {
-            setExams(JSON.parse(examsRes[0].value));
+            const v = examsList[0].value;
+            setExams(typeof v === 'string' ? JSON.parse(v) : v);
           } catch (e) {
             console.error('Error parsing examinations_exams:', e);
           }
         }
 
         // Load Schedules
-        const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' });
-        if (Array.isArray(schedulesRes) && schedulesRes.length > 0 && schedulesRes[0].value) {
+        const schedulesRes = await api.getResources('settings', { key: 'examinations_schedules' }).catch(() => []);
+        const schedulesList = extractList(schedulesRes);
+        if (schedulesList.length > 0 && schedulesList[0].value) {
           try {
-            setSchedules(JSON.parse(schedulesRes[0].value));
+            const v = schedulesList[0].value;
+            setSchedules(typeof v === 'string' ? JSON.parse(v) : v);
           } catch (e) {
             console.error('Error parsing examinations_schedules:', e);
           }
         }
 
         // Load Student Marks
-        const marksRes = await api.getResources('settings', { key: 'kts_student_marks' });
-        if (Array.isArray(marksRes) && marksRes.length > 0 && marksRes[0].value) {
+        const marksRes = await api.getResources('settings', { key: 'kts_student_marks' }).catch(() => []);
+        const marksList = extractList(marksRes);
+        if (marksList.length > 0 && marksList[0].value) {
           try {
-            setStudentMarks(JSON.parse(marksRes[0].value));
+            const v = marksList[0].value;
+            setStudentMarks(typeof v === 'string' ? JSON.parse(v) : v);
           } catch (e) {
             console.error('Error parsing kts_student_marks:', e);
           }
