@@ -18,20 +18,29 @@ const settingsCache: Record<string, string> = {};
 /**
  * Populates the local settings DB ID cache
  */
-export function updateSettingsCache(settings: any[]) {
-  if (Array.isArray(settings)) {
-    settings.forEach(s => {
-      if (s.key && s.id) {
-        settingsCache[s.key] = String(s.id);
-      }
-    });
-  }
+export function updateSettingsCache(settings: any) {
+  const list = Array.isArray(settings)
+    ? settings
+    : (settings && (settings as any).data && Array.isArray((settings as any).data) ? (settings as any).data : []);
+
+  list.forEach((s: any) => {
+    if (s && s.key && s.id) {
+      settingsCache[s.key] = String(s.id);
+    }
+  });
 }
 
 function handleUnauthorized() {
   originalRemoveItem.call(localStorage, 'token');
   originalRemoveItem.call(localStorage, 'user');
   window.dispatchEvent(new Event('kts:unauthorized'));
+}
+
+function extractItems(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  if (data?.data && Array.isArray(data.data)) return data.data;
+  if (data?.data?.data && Array.isArray(data.data.data)) return data.data.data;
+  return [];
 }
 
 /**
@@ -58,8 +67,9 @@ async function syncSettingToDb(key: string, value: string) {
       }
       if (getRes.ok) {
         const data = await getRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          settingId = String(data[0].id);
+        const items = extractItems(data);
+        if (items.length > 0 && items[0]?.id) {
+          settingId = String(items[0].id);
           settingsCache[key] = settingId;
         }
       }
@@ -73,7 +83,14 @@ async function syncSettingToDb(key: string, value: string) {
           'Accept': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ key, value })
+        body: JSON.stringify({
+          key,
+          value,
+          group: 'general',
+          type: 'json',
+          is_public: true,
+          is_encrypted: false
+        })
       });
 
       if (putRes.status === 401) {
@@ -105,7 +122,7 @@ async function syncSettingToDb(key: string, value: string) {
           value,
           group: 'general',
           type: 'json',
-          is_public: false,
+          is_public: true,
           is_encrypted: false
         })
       });
@@ -115,8 +132,9 @@ async function syncSettingToDb(key: string, value: string) {
       }
       if (createRes.ok) {
         const data = await createRes.json();
-        if (data && data.id) {
-          settingsCache[key] = String(data.id);
+        const createdItem = data?.data || data;
+        if (createdItem && createdItem.id) {
+          settingsCache[key] = String(createdItem.id);
         }
       }
     }
@@ -148,8 +166,9 @@ async function deleteSettingFromDb(key: string) {
       }
       if (getRes.ok) {
         const data = await getRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          settingId = String(data[0].id);
+        const items = extractItems(data);
+        if (items.length > 0 && items[0]?.id) {
+          settingId = String(items[0].id);
           settingsCache[key] = settingId;
         }
       }
@@ -203,8 +222,8 @@ Storage.prototype.setItem = function (key: string, value: string): void {
     } catch { /* empty */ }
   }
 
-  // kts_student_marks is shared between admin and faculty — allow all authenticated users to sync it
-  const allowedForAllUsers = key === 'kts_student_marks';
+  // Allowed keys for all authenticated users (e.g. teachers entering marks or attendance)
+  const allowedForAllUsers = key === 'kts_student_marks' || key === 'kts_student_attendance_records';
 
   if (!isAdmin && !allowedForAllUsers) {
     return;
