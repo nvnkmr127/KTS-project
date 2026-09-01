@@ -14,7 +14,7 @@ import {
 
 export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
-  const { isSmallPhone } = useResponsive();
+  const { isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -197,7 +197,8 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: keyboardPadding > 0 ? keyboardPadding + 20 : 30 }
+            containerStyle,
+            { paddingBottom: keyboardPadding > 0 ? keyboardPadding + 20 : scrollBottomPadding + 24 }
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"

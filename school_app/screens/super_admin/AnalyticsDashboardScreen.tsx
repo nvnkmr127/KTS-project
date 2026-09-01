@@ -10,8 +10,7 @@ import { useResponsive } from '../../utils/responsive';
 
 export const AnalyticsDashboardScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { isSmallPhone, headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
   const [activeFilter, setActiveFilter] = useState<'week' | 'month' | 'term' | 'year'>('week');
 
   const kpis = [
@@ -84,7 +83,8 @@ export const AnalyticsDashboardScreen: React.FC = () => {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 40 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
       >

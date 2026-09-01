@@ -1,4 +1,4 @@
-import { useWindowDimensions, Platform, PixelRatio } from 'react-native';
+import { useWindowDimensions, Platform, PixelRatio, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface ResponsiveValues {
@@ -31,6 +31,15 @@ export interface ResponsiveValues {
   tabBarBottomPadding: number;
   scrollBottomPadding: number;
 
+  // System navigation bar / control button detection
+  hasControlButtons: boolean;
+  hasHomeIndicator: boolean;
+  bottomControlBarHeight: number;
+
+  // Layout container constraints for consistent multi-device rendering
+  containerMaxWidth?: number;
+  containerStyle: ViewStyle;
+
   // Sizing helpers
   scale: (size: number, factor?: number) => number;
   fontScale: (size: number) => number;
@@ -56,18 +65,37 @@ export function useResponsive(): ResponsiveValues {
   const cardPadding = isSmallPhone ? 12 : 16;
   const gap = isSmallPhone ? 8 : 12;
 
-  // Header top padding accounts for status bar / Dynamic Island without double padding
-  const headerPaddingTop = Math.max(insets.top, Platform.OS === 'android' ? 12 : 16) + (Platform.OS === 'android' ? 8 : 4);
+  // Header top padding accounts for status bar / Dynamic Island / camera notches without collision
+  const headerPaddingTop = Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24) + (Platform.OS === 'android' ? 6 : 4);
 
-  // Bottom padding for content scrolls so nothing is hidden behind floating or docked tab bars
-  const tabBarBottomPadding = Math.max(insets.bottom, Platform.OS === 'ios' ? 12 : 10);
-  const scrollBottomPadding = insets.bottom + (isSmallPhone ? 85 : 95);
+  // System navigation bar / control buttons detection:
+  // - On iOS: Any insets.bottom > 0 is the gesture Home Indicator (iPhone X through 16).
+  // - On Android: Gesture navigation pill has insets.bottom <= 24 (typically 16-20).
+  // - On Android: 3-button navigation (Back, Home, Recents control buttons) has insets.bottom > 24 (typically 48dp).
+  const isAndroid = Platform.OS === 'android';
+  const isIOS = Platform.OS === 'ios';
+  const hasControlButtons = isAndroid && insets.bottom > 24;
+  const hasHomeIndicator = (isIOS && insets.bottom > 0) || (isAndroid && insets.bottom > 0 && insets.bottom <= 24);
+  const bottomControlBarHeight = hasControlButtons ? insets.bottom : 0;
+
+  // Bottom padding for content scrolls so nothing is hidden behind floating tab bar or system navigation
+  const tabBarBottomPadding = hasControlButtons
+    ? insets.bottom + 8
+    : Math.max(insets.bottom, Platform.OS === 'ios' ? 12 : 10);
+  const scrollBottomPadding = insets.bottom + (isSmallPhone ? 88 : 98);
+
+  // Layout container constraint for tablets & wide screens
+  const containerMaxWidth = isTablet ? 720 : undefined;
+  const containerStyle: ViewStyle = {
+    maxWidth: containerMaxWidth,
+    alignSelf: isTablet ? 'center' : undefined,
+    width: '100%',
+  };
 
   // Scale dimension with moderation factor to prevent excessive shrinking or tablet bloat
   const scale = (size: number, factor = 0.5): number => {
     const scaleFactor = width / BASE_WIDTH;
     const newSize = size + (scaleFactor * size - size) * factor;
-    // Clamping to sane range
     return Math.round(PixelRatio.roundToNearestPixel(Math.max(size * 0.85, Math.min(newSize, size * 1.35))));
   };
 
@@ -102,6 +130,11 @@ export function useResponsive(): ResponsiveValues {
     headerPaddingTop,
     tabBarBottomPadding,
     scrollBottomPadding,
+    hasControlButtons,
+    hasHomeIndicator,
+    bottomControlBarHeight,
+    containerMaxWidth,
+    containerStyle,
     scale,
     fontScale,
     wp,

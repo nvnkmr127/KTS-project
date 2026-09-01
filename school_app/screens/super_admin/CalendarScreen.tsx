@@ -5,7 +5,7 @@ import { ArrowLeft, Calendar, Info } from 'lucide-react-native';
 import { useResponsive } from '../../utils/responsive';
 
 export const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { isSmallPhone, insets, headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
   const events = [
     { id: "e1", title: "Term 2 Mid-Term Exams", date: "June 15 - June 22", category: "Academic" },
     { id: "e2", title: "Parent-Teacher Conference (PTC)", date: "June 27, 09:00 AM", category: "Meeting" },
@@ -18,7 +18,8 @@ export const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
       style={styles.scrollView} 
       contentContainerStyle={[
         styles.contentContainer,
-        { paddingTop: headerPaddingTop, paddingBottom: insets.bottom + 40 }
+        containerStyle,
+        { paddingTop: headerPaddingTop, paddingBottom: scrollBottomPadding + 24 }
       ]}
       showsVerticalScrollIndicator={false}
     >

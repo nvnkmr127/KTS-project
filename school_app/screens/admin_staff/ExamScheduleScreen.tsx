@@ -32,7 +32,7 @@ const MOCK_EXAM_SCHEDULES: ExamScheduleItem[] = [
 
 export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
@@ -222,7 +222,10 @@ export const ExamScheduleScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* Navigation Tabs (Schedules, Invigilation, Results) */}
         <View className="px-5 mb-4">
@@ -595,7 +598,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

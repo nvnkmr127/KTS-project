@@ -139,7 +139,7 @@ export const SuperAdminActivityLogScreen: React.FC<any> = ({ navigation: propNav
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
   const { user } = useAuthStore();
-  const { isSmallPhone, headerPaddingTop, scrollBottomPadding } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   const [logs, setLogs] = useState<SuperAdminAuditLogItem[]>(SUPER_ADMIN_MOCK_LOGS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -233,7 +233,7 @@ export const SuperAdminActivityLogScreen: React.FC<any> = ({ navigation: propNav
       </View>
 
       <ScrollView 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding + 30 }]}
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 30 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* KPI Metric Summary Cards */}

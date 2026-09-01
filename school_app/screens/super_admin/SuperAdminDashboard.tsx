@@ -35,7 +35,7 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 export const SuperAdminDashboard: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { isSmallPhone, headerPaddingTop, scrollBottomPadding } = useResponsive();
+  const { isSmallPhone, isTablet, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
   const { user, logout } = useAuthStore();
 
   const [showSidebarModal, setShowSidebarModal] = useState(false);
@@ -191,7 +191,8 @@ export const SuperAdminDashboard: React.FC = () => {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: scrollBottomPadding + 20 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
       >
@@ -426,7 +427,7 @@ export const SuperAdminDashboard: React.FC = () => {
         </View>
       </ScrollView>
 
-      {/* NOTIFICATION CARD POPOVER MODAL (Top-Right Popover Below Bell Icon) */}
+      {/* NOTIFICATION CARD MODAL (Top-Right Popover Below Bell Icon) */}
       {showNotificationModal && (
         <Modal 
           visible={showNotificationModal} 
@@ -436,26 +437,20 @@ export const SuperAdminDashboard: React.FC = () => {
         >
           <Pressable 
             onPress={() => setShowNotificationModal(false)}
-            className="flex-1 bg-black/60 pt-20 px-4 items-end"
+            style={{ paddingTop: headerPaddingTop + 4 }}
+            className="flex-1 bg-black/60 px-4 items-end"
           >
             <Pressable 
               onPress={(e) => e.stopPropagation()} 
-              className="w-[94%] max-w-sm p-4 border border-[#f0c110]/40 rounded-3xl shadow-2xl" 
-              style={{ 
-                backgroundColor: '#16191b', 
-                marginTop: 8,
-                shadowColor: '#f0c110',
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.3,
-                shadowRadius: 20,
-                elevation: 10,
-              }}
+              className="w-[92%] max-w-sm p-4 border border-[#f0c110]/40 rounded-3xl shadow-2xl" 
+              style={{ backgroundColor: '#101415', marginTop: 8 }}
             >
+              
               {/* Header Bar */}
               <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
                 <View className="flex-row items-center">
-                  <View className="w-8 h-8 rounded-xl items-center justify-center mr-2.5 bg-[#f0c110]/20 border border-[#f0c110]/40">
-                    <Bell size={16} color="#ffe5a0" />
+                  <View className="w-8 h-8 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center mr-2.5">
+                    <Bell size={16} color="#f0c110" />
                   </View>
                   <View>
                     <Text className="text-white font-extrabold text-base">Notification Center</Text>
@@ -553,11 +548,15 @@ export const SuperAdminDashboard: React.FC = () => {
           <View className="flex-1 bg-black/80 flex-row">
             <View 
               className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-[#f0c110]/30" 
-              style={{ backgroundColor: '#101415' }}
+              style={{ 
+                backgroundColor: '#101415',
+                paddingTop: Math.max(insets.top, 20) + 8,
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+              }}
             >
               {/* Sidebar Header & Close */}
               <View>
-                <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5 pt-4">
+                <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5">
                   <View className="flex-row items-center">
                     <View className="w-9 h-9 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center mr-2.5">
                       <School size={20} color="#f0c110" />

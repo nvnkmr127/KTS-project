@@ -10,8 +10,7 @@ import { useResponsive } from '../../utils/responsive';
 
 export const LeaveApprovalsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { isSmallPhone, headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [customAlert, setCustomAlert] = useState({
     visible: false,
@@ -110,7 +109,8 @@ export const LeaveApprovalsScreen: React.FC = () => {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 40 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
       >

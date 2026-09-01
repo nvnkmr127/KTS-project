@@ -107,6 +107,7 @@ const getInitialFeesForStudent = (student?: any): FeeItem[] => {
 export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) => {
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const selectedStudent = route?.params?.student;
   const openProfileParam = route?.params?.openProfile;
   const studentName = selectedStudent?.name || route?.params?.studentName || 'Julian Sterling';
@@ -387,7 +388,10 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* TOP PROFILE CARD SUMMARY */}
         <View className="px-5 mb-4">
@@ -1157,7 +1161,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

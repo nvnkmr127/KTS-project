@@ -21,8 +21,7 @@ import { useResponsive } from '../../utils/responsive';
 
 export const AssignFeeStructureScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { isSmallPhone, headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   // Load from global Zustand store
   const { categories, feeData, updateClassFee, addCategory, removeCategory } = useFeeStore();
@@ -182,7 +181,8 @@ export const AssignFeeStructureScreen: React.FC = () => {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 40 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
       >

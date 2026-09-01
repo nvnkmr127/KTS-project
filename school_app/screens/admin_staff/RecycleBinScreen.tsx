@@ -32,7 +32,7 @@ const MOCK_DELETED_LOGS: DeletedEntityItem[] = [
 ];
 
 export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const [activeTab, setActiveTab] = useState<'students' | 'staff' | 'logs'>('students');
   const [deletedStudents, setDeletedStudents] = useState<DeletedEntityItem[]>(MOCK_DELETED_STUDENTS);
   const [deletedStaff, setDeletedStaff] = useState<DeletedEntityItem[]>(MOCK_DELETED_STAFF);
@@ -100,7 +100,10 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Top 3 KPI Summary Cards */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
@@ -300,7 +303,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

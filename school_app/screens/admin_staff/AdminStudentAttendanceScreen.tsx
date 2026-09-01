@@ -70,6 +70,7 @@ const MOCK_CLASS_STUDENTS: StudentAttendanceRecord[] = [
 export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   // Navigation level: 1 = Class Directory, 2 = Class Student List, 3 = Student Monthly Grid
   const [viewLevel, setViewLevel] = useState<1 | 2 | 3>(1);
   const [selectedClass, setSelectedClass] = useState<ClassItemSummary | null>(null);
@@ -241,7 +242,10 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* TOP LEVEL OVERVIEW SUMMARY CARDS */}
         {viewLevel === 1 && (
@@ -638,7 +642,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

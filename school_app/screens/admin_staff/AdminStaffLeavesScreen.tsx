@@ -11,7 +11,7 @@ import { useResponsive } from '../../utils/responsive';
 
 export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [customAlert, setCustomAlert] = useState({
@@ -151,7 +151,10 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Intro */}
         <View className="px-5 mb-5">
           <Text className="text-white text-xl font-extrabold">Faculty & Staff Absences</Text>
@@ -343,7 +346,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

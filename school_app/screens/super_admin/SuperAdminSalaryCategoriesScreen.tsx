@@ -177,8 +177,7 @@ const INITIAL_STAFF_SALARIES: StaffSalaryProfile[] = [
 
 export const SuperAdminSalaryCategoriesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   const [activeTab, setActiveTab] = useState<'components' | 'assignment'>('components');
   const [components, setComponents] = useState<SalaryComponent[]>(DEFAULT_COMPONENTS);
@@ -466,7 +465,7 @@ export const SuperAdminSalaryCategoriesScreen: React.FC = () => {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Navigation Tabs (Components vs Assignment) */}

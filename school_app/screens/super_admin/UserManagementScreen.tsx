@@ -10,8 +10,7 @@ import { useResponsive } from '../../utils/responsive';
 
 export const UserManagementScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { isSmallPhone, headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -123,7 +122,8 @@ export const UserManagementScreen: React.FC = () => {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 40 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
       >

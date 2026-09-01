@@ -195,7 +195,7 @@ const ALL_USERS_MOCK_LOGS: UserActivityLog[] = [
 
 export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { isSmallPhone, headerPaddingTop, scrollBottomPadding } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   const [logs, setLogs] = useState<UserActivityLog[]>(ALL_USERS_MOCK_LOGS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -286,7 +286,7 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
       </View>
 
       <ScrollView 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding + 30 }]}
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 30 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* KPI Metrics */}

@@ -247,7 +247,7 @@ export const StudentDirectoryScreen: React.FC = () => {
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
   const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
   const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
-  const { insets, isSmallPhone, scrollBottomPadding } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
   const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
 
@@ -645,7 +645,10 @@ export const StudentDirectoryScreen: React.FC = () => {
         rightAction={null}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* Top Header & Actions */}
         <View className="flex-row justify-between items-center mb-5 px-5 flex-wrap" style={{ gap: 10 }}>
@@ -887,8 +890,6 @@ export const StudentDirectoryScreen: React.FC = () => {
             </View>
           </View>
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* FILTER OVERLAY CARD MODAL */}
@@ -1278,7 +1279,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

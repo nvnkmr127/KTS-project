@@ -41,7 +41,7 @@ const MOCK_FREE_TEACHERS: AvailableTeacherItem[] = [
 
 export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [absentTeachers, setAbsentTeachers] = useState<AbsentTeacherItem[]>(MOCK_ABSENT_TEACHERS);
   const [availableTeachers] = useState<AvailableTeacherItem[]>(MOCK_FREE_TEACHERS);
@@ -133,7 +133,10 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* KPI Cards */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
@@ -315,7 +318,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

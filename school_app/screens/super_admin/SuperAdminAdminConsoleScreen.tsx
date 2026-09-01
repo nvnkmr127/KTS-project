@@ -55,8 +55,7 @@ const ADMIN_OPTIONS: AdminOption[] = [
 
 export const SuperAdminAdminConsoleScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { isSmallPhone, headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Students' | 'Academics' | 'Finance' | 'Operations'>('All');
 
@@ -111,7 +110,8 @@ export const SuperAdminAdminConsoleScreen: React.FC = () => {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 40 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
       >

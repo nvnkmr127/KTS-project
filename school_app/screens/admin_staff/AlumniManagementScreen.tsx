@@ -79,6 +79,7 @@ const MOCK_ALUMNI: AlumniMember[] = [
 export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const [alumniList, setAlumniList] = useState<AlumniMember[]>(MOCK_ALUMNI);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYearFilter, setSelectedYearFilter] = useState('All');
@@ -242,7 +243,10 @@ export const AlumniManagementScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Top Summary KPI Cards */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
@@ -623,7 +627,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

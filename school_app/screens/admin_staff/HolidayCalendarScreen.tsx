@@ -41,7 +41,7 @@ const HIGHLIGHT_COLORS = ['#ef4444', '#3b82f6', '#00f1a1', '#a855f7', '#f59e0b']
 export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const navigation = useNavigation<any>() || propNavigation;
   const { user } = useAuthStore();
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [holidays, setHolidays] = useState<HolidayItem[]>(MOCK_HOLIDAYS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -305,7 +305,10 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Search Bar & Action Buttons */}
         <View className="px-5 mb-4">
@@ -753,7 +756,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

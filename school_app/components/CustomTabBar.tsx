@@ -19,7 +19,7 @@ export const CustomTabBar = ({
 }: BottomTabBarProps) => {
   const { user } = useAuthStore();
   const insets = useSafeAreaInsets();
-  const { isSmallPhone, isTablet } = useResponsive();
+  const { isSmallPhone, isTablet, hasControlButtons, tabBarBottomPadding } = useResponsive();
   const role = user?.role || "guest";
   const isFloating =
     role === "super_admin" ||
@@ -35,7 +35,7 @@ export const CustomTabBar = ({
     return ["#1c2222", "#101415"] as const;
   };
 
-  const bottomPosition = Math.max(insets.bottom, Platform.OS === "ios" ? 12 : 10);
+  const bottomPosition = tabBarBottomPadding;
   const containerHeight = isSmallPhone ? 66 : 72;
 
   return (

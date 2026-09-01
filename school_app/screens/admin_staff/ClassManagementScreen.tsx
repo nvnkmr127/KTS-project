@@ -178,6 +178,7 @@ const MOCK_CLASSES: ClassItem[] = [
 export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const [classList, setClassList] = useState<ClassItem[]>(MOCK_CLASSES);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('2026-2027');
@@ -405,7 +406,10 @@ export const ClassManagementScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         {/* Academic Year Header & Summary Metrics */}
         <View className="px-5 mb-5 flex-row justify-between items-center">
           <View>
@@ -945,7 +949,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

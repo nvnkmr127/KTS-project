@@ -91,7 +91,7 @@ const SUBJECT_COLORS: Record<string, { bg: string; border: string; text: string 
 
 export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [selectedClass, setSelectedClass] = useState('10A');
   const [activeDay, setActiveDay] = useState('Monday');
@@ -504,7 +504,10 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Class Selection Ribbon */}
         <View className="px-5 mb-4">
@@ -1021,7 +1024,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

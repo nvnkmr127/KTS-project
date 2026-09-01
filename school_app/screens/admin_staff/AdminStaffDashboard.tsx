@@ -47,7 +47,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
   const { user, logout } = useAuthStore();
-  const { isSmallPhone, scrollBottomPadding } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   const [refreshing, setRefreshing] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -246,7 +246,8 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: scrollBottomPadding + 20 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -353,11 +354,18 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
       {showSidebarModal && (
         <Modal visible={showSidebarModal} transparent animationType="fade" onRequestClose={() => setShowSidebarModal(false)}>
           <View className="flex-1 bg-black/80 flex-row">
-            <View className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-white/15" style={{ backgroundColor: '#101415' }}>
+            <View 
+              className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-white/15" 
+              style={{ 
+                backgroundColor: '#101415',
+                paddingTop: Math.max(insets.top, 20) + 8,
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+              }}
+            >
               
               {/* Sidebar Header & Close */}
               <View>
-                <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5 pt-4">
+                <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5">
                   <View className="flex-row items-center">
                     <View className={`w-9 h-9 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
                       <ShieldCheck size={20} color={primaryColor} />
@@ -463,7 +471,8 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
         <Modal visible={showNotificationModal} transparent animationType="fade" onRequestClose={() => setShowNotificationModal(false)}>
           <Pressable 
             onPress={() => setShowNotificationModal(false)}
-            className="flex-1 bg-black/60 pt-20 px-4 items-end"
+            style={{ paddingTop: headerPaddingTop + 4 }}
+            className="flex-1 bg-black/60 px-4 items-end"
           >
             <Pressable 
               onPress={(e) => e.stopPropagation()} 

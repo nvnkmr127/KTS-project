@@ -68,6 +68,7 @@ const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const diaryEntries = useDiaryStore((state) => state.diaryEntries);
   const [selectedAcademicYear] = useState('2026-2027 (Current)');
   const [selectedDate, setSelectedDate] = useState('04-08-2026');
@@ -183,7 +184,10 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* LEVEL 1: ALL CLASSES OVERVIEW */}
         {!selectedClassDetail ? (
@@ -491,7 +495,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

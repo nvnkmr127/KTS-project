@@ -33,7 +33,7 @@ const INITIAL_ALERT_LOGS: AlertLogItem[] = [
 export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -170,7 +170,10 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* SECTION 1: AUTOMATED PARENT FEE ALERT SETTINGS */}
         <View className="px-5 mb-5">
@@ -438,7 +441,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

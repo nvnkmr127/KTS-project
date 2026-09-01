@@ -86,7 +86,7 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
   const navigation = useNavigation<any>() || propNavigation;
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
   const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
@@ -402,7 +402,10 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
 
         {/* Header Action Ribbon: Import, Export, Assign Fee */}
         <View className="px-5 mb-5 flex-row justify-between items-center" style={{ gap: 8 }}>
@@ -1029,7 +1032,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

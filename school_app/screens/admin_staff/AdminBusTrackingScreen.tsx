@@ -15,7 +15,7 @@ const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const { user } = useAuthStore();
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -259,7 +259,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
       {/* Parent ScrollView with dynamic scroll lock */}
       <ScrollView 
         scrollEnabled={isScrollEnabled} 
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
         showsVerticalScrollIndicator={false}
       >
         
@@ -432,8 +432,6 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
             </View>
           </GlassCard>
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -446,7 +444,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

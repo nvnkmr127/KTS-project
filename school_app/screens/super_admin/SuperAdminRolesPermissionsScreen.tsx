@@ -231,8 +231,7 @@ const INITIAL_ROLES: Role[] = [
 
 export const SuperAdminRolesPermissionsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   const [roles, setRoles] = useState<Role[]>(INITIAL_ROLES);
   const [selectedRole, setSelectedRole] = useState<Role>(INITIAL_ROLES[0]);
@@ -497,7 +496,7 @@ export const SuperAdminRolesPermissionsScreen: React.FC = () => {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 60 }]}
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Role Selector Carousel */}

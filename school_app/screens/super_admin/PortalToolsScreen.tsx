@@ -11,8 +11,7 @@ import { useResponsive } from '../../utils/responsive';
 
 export const PortalToolsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { isSmallPhone, headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
   const logout = useAuthStore((state) => state.logout);
   const [backingUp, setBackingUp] = useState(false);
   const [customAlert, setCustomAlert] = useState({
@@ -77,7 +76,8 @@ export const PortalToolsScreen: React.FC = () => {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 40 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
       >

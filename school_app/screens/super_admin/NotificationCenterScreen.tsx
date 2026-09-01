@@ -11,8 +11,7 @@ import { useResponsive } from '../../utils/responsive';
 
 export const NotificationCenterScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { isSmallPhone, headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'academic' | 'finance' | 'emergency'>('academic');
   const [notifications, setNotifications] = useState(mockNotifications);
@@ -109,7 +108,8 @@ export const NotificationCenterScreen: React.FC = () => {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 40 }
+          containerStyle,
+          { paddingBottom: scrollBottomPadding + 24 }
         ]} 
         showsVerticalScrollIndicator={false}
       >

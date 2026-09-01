@@ -99,6 +99,7 @@ const MOCK_ACTIVITY_LOGS: ActivityLogItem[] = [
 export const AdminActivityLogScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
 
   const [logs, setLogs] = useState<ActivityLogItem[]>(MOCK_ACTIVITY_LOGS);
   const [searchQuery, setSearchQuery] = useState('');
@@ -166,7 +167,10 @@ export const AdminActivityLogScreen: React.FC<any> = ({ navigation: propNavigati
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* KPI Audit Summary Cards */}
         <View className="px-5 mb-4 flex-row justify-between" style={{ gap: 8 }}>
@@ -301,7 +305,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

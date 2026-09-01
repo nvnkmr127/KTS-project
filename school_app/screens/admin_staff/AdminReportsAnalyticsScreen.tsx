@@ -8,7 +8,7 @@ import { GlassCard } from '../../components/GlassCard';
 import { useResponsive } from '../../utils/responsive';
 
 export const AdminReportsAnalyticsScreen: React.FC<any> = ({ navigation }) => {
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const [activeFilter, setActiveFilter] = useState<'week' | 'month' | 'term' | 'year'>('week');
 
   // Handle Hardware Back Button & System Back Gesture
@@ -62,7 +62,10 @@ export const AdminReportsAnalyticsScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Filters & Export Bar */}
         <View className="px-5 mb-5 flex-row justify-between items-center">
@@ -164,8 +167,6 @@ export const AdminReportsAnalyticsScreen: React.FC<any> = ({ navigation }) => {
             </View>
           </GlassCard>
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -178,7 +179,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

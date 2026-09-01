@@ -89,7 +89,7 @@ const INITIAL_STAFF_MEMBERS: StaffAttendanceItem[] = [
 
 export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [selectedDate, setSelectedDate] = useState('2026-08-05');
   const [searchQuery, setSearchQuery] = useState('');
@@ -204,7 +204,10 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* View Only Mode Notification Ribbon */}
         <View className="px-5 mb-4">
@@ -349,8 +352,6 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
             ))
           )}
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </View>
   );
@@ -363,7 +364,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

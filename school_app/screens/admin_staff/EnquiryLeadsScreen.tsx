@@ -19,7 +19,7 @@ const leadsData = [
 
 export const EnquiryLeadsScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [activeTab, setActiveTab] = useState('All Leads');
   const tabs = ['All Leads', 'New', 'Contacted', 'Follow-up'];
@@ -55,7 +55,10 @@ export const EnquiryLeadsScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Pipeline Stats */}
         <GlassCard intensity="low" className={`p-5 mb-6 bg-[#101415]/80 border ${primaryBorderClass} shadow-lg`} glowColor={isSuperAdmin ? 'rgba(240, 193, 16, 0.1)' : 'rgba(0, 241, 161, 0.1)'}>
@@ -118,11 +121,13 @@ export const EnquiryLeadsScreen: React.FC<any> = ({ navigation }) => {
           </GlassCard>
         ))}
 
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* FAB */}
-      <Pressable style={styles.fab} className={`${primaryBtnClass} shadow-lg`}>
+      <Pressable 
+        style={[styles.fab, { bottom: insets.bottom + 85 }]} 
+        className={`${primaryBtnClass} shadow-lg`}
+      >
         <UserPlus size={24} color="#101415" />
       </Pressable>
     </View>
@@ -144,11 +149,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 40,
   },
   fab: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 100 : 80,
     right: 20,
     width: 60,
     height: 60,

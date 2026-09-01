@@ -29,7 +29,7 @@ const MOCK_FEE_CATEGORIES: FeeCategoryItem[] = [
 
 export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
   const [categories, setCategories] = useState<FeeCategoryItem[]>(MOCK_FEE_CATEGORIES);
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,7 +143,10 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Header Ribbon & Add Button */}
         <View className="px-5 mb-5 flex-row justify-between items-center">
@@ -365,7 +368,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

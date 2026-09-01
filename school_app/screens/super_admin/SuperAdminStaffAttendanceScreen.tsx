@@ -129,8 +129,7 @@ const INITIAL_STAFF_ATTENDANCE: StaffAttendanceRecord[] = [
 
 export const SuperAdminStaffAttendanceScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   // Selected Date Management
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -420,7 +419,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 60 }]}
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Date Selector Navigation Bar */}

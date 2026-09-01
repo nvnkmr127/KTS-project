@@ -65,14 +65,38 @@ class ApiClient {
 
   // Auth Endpoints
   async login(credentials: { email: string; password?: string }) {
-    const res = await this.request('/v1/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials)
-    });
-    if (res && res.token) {
-      this.setToken(res.token);
+    const baseUrl = getApiBaseUrl();
+    const fullUrl = `${baseUrl}/v1/login`;
+
+    try {
+      const response = await fetch(fullUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        let errorMsg = 'Invalid credentials. Please check your email and password.';
+        if (data?.error) errorMsg = data.error;
+        if (data?.message) errorMsg = data.message;
+        return { ok: false, error: errorMsg, status: response.status };
+      }
+
+      if (data && data.token) {
+        this.setToken(data.token);
+        return { ok: true, token: data.token, user: data.user };
+      }
+
+      return { ok: false, error: 'Malformed response from server.' };
+    } catch (err: any) {
+      console.log(`Login API request ${fullUrl} error (using development fallback):`, err?.message || err);
+      return { ok: false, isOffline: true, error: 'Server unreachable. Switching to offline preview.' };
     }
-    return res;
   }
 
   async getMe() {

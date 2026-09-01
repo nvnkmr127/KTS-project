@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Bell } from 'lucide-react-native';
 import { useAuthStore } from '../store/useAuthStore';
+import { useResponsive } from '../utils/responsive';
 
 interface AdminStaffHeaderProps {
   onBackPress?: () => void;
@@ -25,45 +25,81 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
   icon,
   rightAction,
   onNotificationPress,
-  unreadCount = 3
+  unreadCount = 0
 }) => {
-  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const { headerPaddingTop, isSmallPhone, isTablet, horizontalPadding } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
 
   const accentColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
   const primaryColor = isSuperAdmin ? '#f0c110' : '#00f1a1';
-  const glowColors: [string, string] = isSuperAdmin ? ['rgba(245, 197, 24, 0.15)', 'transparent'] : ['rgba(0, 241, 161, 0.15)', 'transparent'];
-  
-  const topPadding = Math.max(insets.top, Platform.OS === 'android' ? 12 : 16) + (Platform.OS === 'android' ? 8 : 4);
+  const glowColors: [string, string] = isSuperAdmin 
+    ? ['rgba(245, 197, 24, 0.18)', 'transparent'] 
+    : ['rgba(0, 241, 161, 0.18)', 'transparent'];
 
   return (
     <View style={{ zIndex: 50 }}>
       {/* Top App Bar */}
-      <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: topPadding }]}>
-        <View className="flex-row items-center gap-2.5 flex-1 mr-2">
+      <BlurView 
+        intensity={35} 
+        tint="dark" 
+        style={[
+          styles.header, 
+          { 
+            paddingTop: headerPaddingTop,
+            paddingHorizontal: horizontalPadding,
+            maxWidth: isTablet ? 720 : undefined,
+            alignSelf: isTablet ? 'center' : undefined,
+            width: '100%',
+          }
+        ]}
+      >
+        <View className="flex-row items-center gap-2 flex-1 min-w-0 mr-2">
           {onBackPress && (
             <Pressable 
               onPress={onBackPress} 
-              className="mr-0.5 active:opacity-60"
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              className="w-10 h-10 -ml-1.5 items-center justify-center rounded-full active:bg-white/10 active:opacity-70"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <ChevronLeft size={24} color={accentColor} />
+              <ChevronLeft size={isSmallPhone ? 22 : 24} color={accentColor} />
             </Pressable>
           )}
 
           {onIconPress ? (
-            <Pressable onPress={onIconPress} className="active:opacity-70">
+            <Pressable 
+              onPress={onIconPress} 
+              accessibilityRole="button"
+              className="active:opacity-70 justify-center items-center"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               {icon}
             </Pressable>
           ) : (
-            icon
+            <View className="justify-center items-center">
+              {icon}
+            </View>
           )}
 
-          <View className="flex-1">
-            <Text numberOfLines={1} adjustsFontSizeToFit className={`font-bold text-white ${subtitle ? 'text-base md:text-lg' : 'text-sm md:text-base tracking-tight'}`}>{title}</Text>
+          <View className="flex-1 min-w-0 justify-center">
+            <Text 
+              numberOfLines={1} 
+              adjustsFontSizeToFit 
+              minimumFontScale={0.85}
+              className={`font-bold text-white ${
+                isSmallPhone ? 'text-sm' : subtitle ? 'text-base md:text-lg' : 'text-sm md:text-base'
+              } tracking-tight`}
+            >
+              {title}
+            </Text>
             {subtitle && (
-              <Text numberOfLines={1} className={`text-[8.5px] md:text-[9px] uppercase tracking-[0.12em] font-bold ${isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]'}`}>
+              <Text 
+                numberOfLines={1} 
+                className={`text-[8.5px] md:text-[9.5px] uppercase tracking-[0.12em] font-bold ${
+                  isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]'
+                }`}
+              >
                 {subtitle}
               </Text>
             )}
@@ -71,12 +107,16 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
         </View>
 
         {rightAction ? (
-          rightAction
+          <View className="flex-shrink-0 justify-center items-center">
+            {rightAction}
+          </View>
         ) : onNotificationPress ? (
           <Pressable 
             onPress={onNotificationPress}
-            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative active:bg-white/10 shadow-[0_0_10px_rgba(0,241,161,0.1)]"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
+            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative active:bg-white/15"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Bell size={18} color={primaryColor} />
             {unreadCount > 0 && (
@@ -89,7 +129,7 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
       {/* The glowing shadow below the line */}
       <LinearGradient 
         colors={glowColors} 
-        style={{ position: 'absolute', bottom: -15, left: 0, right: 0, height: 15 }}
+        style={{ position: 'absolute', bottom: -14, left: 0, right: 0, height: 14 }}
         pointerEvents="none"
       />
     </View>
@@ -98,8 +138,7 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    paddingBottom: 14,
-    paddingHorizontal: 16,
+    paddingBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -109,4 +148,3 @@ const styles = StyleSheet.create({
 });
 
 export default AdminStaffHeader;
-

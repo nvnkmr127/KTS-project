@@ -16,7 +16,7 @@ import { useResponsive } from '../../utils/responsive';
 export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
-  const { insets, isSmallPhone } = useResponsive();
+  const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const { user } = useAuthStore();
 
   // Settings Toggles State
@@ -107,7 +107,10 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
         }
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+        showsVerticalScrollIndicator={false}
+      >
         
         {/* Profile Card Summary */}
         <View className="px-5 mb-5">
@@ -406,7 +409,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 16,
-    paddingBottom: 100,
   },
 });
 

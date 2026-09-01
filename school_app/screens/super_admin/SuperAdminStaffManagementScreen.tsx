@@ -181,8 +181,7 @@ const INITIAL_STAFF: StaffMember[] = [
 
 export const SuperAdminStaffManagementScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
-  const { headerPaddingTop } = useResponsive();
+  const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF);
   const [loading, setLoading] = useState(false);
@@ -489,7 +488,7 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* KPI Stat Cards (4 columns) */}
