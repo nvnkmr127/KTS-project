@@ -40,10 +40,16 @@ class ApiClient {
         ...(options.headers as Record<string, string> || {})
       };
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500);
+
       const response = await fetch(fullUrl, {
         ...options,
         headers,
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();

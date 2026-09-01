@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Image, TextInput, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,95 +7,19 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
-import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
-
-export interface StaffAttendanceItem {
-  id: string;
-  name: string;
-  role: string;
-  department: 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support';
-  empCode: string;
-  avatar: string;
-  status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
-  inTime: string;
-  outTime: string;
-  biometricSynced: boolean;
-}
-
-const INITIAL_STAFF_MEMBERS: StaffAttendanceItem[] = [
-  {
-    id: 'st_1',
-    name: 'Dr. Julian Vance',
-    role: 'Senior Physics Faculty',
-    department: 'Teaching',
-    empCode: 'EMP-101',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
-    status: 'Present',
-    inTime: '08:24 AM',
-    outTime: '04:30 PM',
-    biometricSynced: true,
-  },
-  {
-    id: 'st_2',
-    name: 'Mrs. Sarah Jenkins',
-    role: 'Admin Operations Head',
-    department: 'Admin',
-    empCode: 'EMP-102',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150',
-    status: 'Present',
-    inTime: '08:15 AM',
-    outTime: '05:00 PM',
-    biometricSynced: true,
-  },
-  {
-    id: 'st_3',
-    name: 'Prof. Michael Chen',
-    role: 'HOD Mathematics',
-    department: 'Teaching',
-    empCode: 'EMP-103',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150',
-    status: 'Leave',
-    inTime: '--:--',
-    outTime: '--:--',
-    biometricSynced: false,
-  },
-  {
-    id: 'st_4',
-    name: 'Rajesh Sharma',
-    role: 'Senior Accountant',
-    department: 'Non-Teaching',
-    empCode: 'EMP-104',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150',
-    status: 'Half Day',
-    inTime: '08:30 AM',
-    outTime: '01:00 PM',
-    biometricSynced: true,
-  },
-  {
-    id: 'st_5',
-    name: 'Priya Nambiar',
-    role: 'English Teacher',
-    department: 'Teaching',
-    empCode: 'EMP-105',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150',
-    status: 'Absent',
-    inTime: '--:--',
-    outTime: '--:--',
-    biometricSynced: false,
-  },
-];
+import { useStaffStore, StaffMember, INITIAL_STAFF_MEMBERS } from '../../store/staffStore';
 
 export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
   const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const isSuperAdmin = user?.role === 'super_admin';
-  const [selectedDate, setSelectedDate] = useState('2026-08-05');
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<'All' | 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support'>('All');
-  const [staffMembers, setStaffMembers] = useState<StaffAttendanceItem[]>(INITIAL_STAFF_MEMBERS);
-  const [isSyncing, setIsSyncing] = useState(false);
+
+  const { staffList, loading, fetchStaff } = useStaffStore();
 
   // Handle Hardware Back Button
   useFocusEffect(
@@ -113,69 +37,46 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
     }, [navigation])
   );
 
-  // Fetch Faculty List & Attendance Records from Laravel DB API
-  const fetchFacultyAttendanceFromApi = async () => {
-    setIsSyncing(true);
-    try {
-      // 1. Fetch Faculty list from DB
-      const facultyList = await api.getResources('faculty');
-      if (Array.isArray(facultyList) && facultyList.length > 0) {
-        const mappedStaff: StaffAttendanceItem[] = facultyList.map((f: any, index: number) => ({
-          id: String(f.id || `faculty_${index}`),
-          name: f.name || `${f.first_name || ''} ${f.last_name || ''}`.trim() || 'Staff Member',
-          role: f.designation || f.department || 'Faculty Member',
-          department: (f.department_category || f.department || 'Teaching') as any,
-          empCode: f.employee_code || f.emp_code || `EMP-${100 + index}`,
-          avatar: f.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
-          status: 'Present',
-          inTime: f.in_time || '08:30 AM',
-          outTime: f.out_time || '04:30 PM',
-          biometricSynced: !!f.biometric_code,
-        }));
-        setStaffMembers(mappedStaff);
-      }
-
-      // 2. Fetch existing attendance overrides from DB
-      const attendanceLogs = await api.getResources('staff-attendance', { date: selectedDate });
-      if (Array.isArray(attendanceLogs) && attendanceLogs.length > 0) {
-        setStaffMembers(prev => prev.map(s => {
-          const log = attendanceLogs.find((l: any) => String(l.staff_id || l.faculty_id) === s.id);
-          if (log) {
-            return {
-              ...s,
-              status: (log.status || s.status) as any,
-              inTime: log.in_time || s.inTime,
-              outTime: log.out_time || s.outTime,
-            };
-          }
-          return s;
-        }));
-      }
-    } catch (e) {
-      console.log('Using initial staff attendance offline fallback:', e);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   useEffect(() => {
-    fetchFacultyAttendanceFromApi();
-  }, [selectedDate]);
+    fetchStaff();
+  }, [fetchStaff]);
 
-  // Filtered staff list
-  const filteredStaff = staffMembers.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          s.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          s.empCode.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDept = selectedDeptFilter === 'All' || s.department === selectedDeptFilter;
-    return matchesSearch && matchesDept;
-  });
+  // Robust Filtered staff list
+  const filteredStaff = useMemo(() => {
+    const list = staffList && staffList.length > 0 ? staffList : INITIAL_STAFF_MEMBERS;
+    return list.filter(s => {
+      const q = (searchQuery || '').toLowerCase().trim();
+      const name = (s.name || '').toLowerCase();
+      const desig = (s.designation || s.department || '').toLowerCase();
+      const bio = (s.biometric_employee_code || '').toLowerCase();
+      const matchesSearch = !q || name.includes(q) || desig.includes(q) || bio.includes(q);
+
+      const sCat = (s.category || 'Teaching').toLowerCase();
+      const sDept = (s.department || '').toLowerCase();
+      const filterDept = selectedDeptFilter.toLowerCase();
+
+      const matchesDept =
+        selectedDeptFilter === 'All' ||
+        sCat === filterDept ||
+        sDept === filterDept ||
+        (filterDept === 'teaching' && (sCat === 'teaching' || sDept === 'physics' || sDept === 'mathematics' || sDept === 'languages' || sDept === 'science')) ||
+        (filterDept === 'admin' && (sCat === 'admin' || sDept.includes('admin') || sDept.includes('administration'))) ||
+        (filterDept === 'non-teaching' && (sCat === 'non-teaching' || sDept.includes('account') || sDept.includes('finance') || sCat === 'support')) ||
+        (filterDept === 'support' && (sCat === 'support' || sDept.includes('logistics') || sDept.includes('fleet') || sDept.includes('transport')));
+
+      return matchesSearch && matchesDept;
+    });
+  }, [staffList, searchQuery, selectedDeptFilter]);
 
   // KPI Metrics Calculations
-  const totalStaffCount = staffMembers.length;
-  const presentCount = staffMembers.filter(s => s.status === 'Present').length;
-  const absentCount = staffMembers.filter(s => s.status === 'Absent' || s.status === 'Leave').length;
-  const halfDayCount = staffMembers.filter(s => s.status === 'Half Day').length;
+  const listForKPI = staffList && staffList.length > 0 ? staffList : INITIAL_STAFF_MEMBERS;
+  const totalStaffCount = listForKPI.length;
+  const presentCount = listForKPI.filter(s => (s.attendanceStatus || (s.status === 'On Leave' ? 'Leave' : 'Present')) === 'Present').length;
+  const absentCount = listForKPI.filter(s => {
+    const st = s.attendanceStatus || (s.status === 'On Leave' ? 'Leave' : 'Present');
+    return st === 'Absent' || st === 'Leave';
+  }).length;
+  const halfDayCount = listForKPI.filter(s => (s.attendanceStatus || (s.status === 'On Leave' ? 'Leave' : 'Present')) === 'Half Day').length;
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
   const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
@@ -301,55 +202,62 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
               <Text className="text-white/40 text-xs font-bold">No staff members found matching filter.</Text>
             </GlassCard>
           ) : (
-            filteredStaff.map(staff => (
-              <GlassCard key={staff.id} intensity="low" className="p-4 mb-3 border-white/10 bg-[#101415]/90">
-                
-                {/* Profile Header Row */}
-                <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-white/10">
-                  <View className="flex-row items-center flex-1 mr-2">
-                    <Image
-                      source={{ uri: staff.avatar }}
-                      className="w-12 h-12 rounded-2xl border border-white/10 mr-3"
-                    />
-                    <View className="flex-1">
-                      <Text className="text-white font-extrabold text-sm">{staff.name}</Text>
-                      <Text className={`${primaryTextClass} text-[10px] font-extrabold uppercase mt-0.5`}>{staff.role} • {staff.empCode}</Text>
+            filteredStaff.map(staff => {
+              const currentStatus = staff.attendanceStatus || (staff.status === 'On Leave' ? 'Leave' : 'Present');
+              return (
+                <GlassCard key={staff.id} intensity="low" className="p-4 mb-3 border-white/10 bg-[#101415]/90">
+                  
+                  {/* Profile Header Row */}
+                  <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-white/10">
+                    <View className="flex-row items-center flex-1 mr-2">
+                      <Image
+                        source={{ uri: staff.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150' }}
+                        className="w-12 h-12 rounded-2xl border border-white/10 mr-3"
+                      />
+                      <View className="flex-1">
+                        <Text className="text-white font-extrabold text-sm">{staff.name}</Text>
+                        <Text className={`${primaryTextClass} text-[10px] font-extrabold uppercase mt-0.5`}>
+                          {staff.designation || staff.department} • {staff.biometric_employee_code || `BIO-${staff.id}`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className={`px-2.5 py-1 rounded-full border ${
+                      currentStatus === 'Present' ? primaryBadgeClass :
+                      currentStatus === 'Absent' ? 'bg-rose-500/20 border-rose-500/40' :
+                      currentStatus === 'Half Day' ? 'bg-amber-500/20 border-amber-500/40' :
+                      'bg-sky-500/20 border-sky-500/40'
+                    }`}>
+                      <Text className={`text-[10px] font-extrabold uppercase ${
+                        currentStatus === 'Present' ? primaryTextClass :
+                        currentStatus === 'Absent' ? 'text-rose-400' :
+                        currentStatus === 'Half Day' ? 'text-amber-400' : 'text-sky-400'
+                      }`}>
+                        {currentStatus}
+                      </Text>
                     </View>
                   </View>
 
-                  <View className={`px-2.5 py-1 rounded-full border ${
-                    staff.status === 'Present' ? primaryBadgeClass :
-                    staff.status === 'Absent' ? 'bg-rose-500/20 border-rose-500/40' :
-                    staff.status === 'Half Day' ? 'bg-amber-500/20 border-amber-500/40' :
-                    'bg-sky-500/20 border-sky-500/40'
-                  }`}>
-                    <Text className={`text-[10px] font-extrabold uppercase ${
-                      staff.status === 'Present' ? primaryTextClass :
-                      staff.status === 'Absent' ? 'text-rose-400' :
-                      staff.status === 'Half Day' ? 'text-amber-400' : 'text-sky-400'
-                    }`}>
-                      {staff.status}
-                    </Text>
-                  </View>
-                </View>
+                  {/* Timing Info & Biometric Sync Tag */}
+                  <View className="flex-row justify-between items-center flex-wrap bg-black/40 p-2.5 rounded-xl border border-white/5" style={{ gap: 6 }}>
+                    <View className="flex-row items-center flex-shrink-0">
+                      <Clock size={13} color={primaryColor} style={{ marginRight: 4 }} />
+                      <Text className="text-white/70 text-xs font-bold">
+                        IN: {staff.inTime || '08:30 AM'}  |  OUT: {staff.outTime || '04:30 PM'}
+                      </Text>
+                    </View>
 
-                {/* Timing Info & Biometric Sync Tag */}
-                <View className="flex-row justify-between items-center flex-wrap bg-black/40 p-2.5 rounded-xl border border-white/5" style={{ gap: 6 }}>
-                  <View className="flex-row items-center flex-shrink-0">
-                    <Clock size={13} color={primaryColor} style={{ marginRight: 4 }} />
-                    <Text className="text-white/70 text-xs font-bold">IN: {staff.inTime}  |  OUT: {staff.outTime}</Text>
+                    <View className="flex-row items-center flex-shrink-0">
+                      <Fingerprint size={12} color={staff.biometricSynced !== false ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 3 }} />
+                      <Text className={`text-[9px] font-bold ${staff.biometricSynced !== false ? primaryTextClass : 'text-white/40'}`}>
+                        {staff.biometricSynced !== false ? 'e-TimeOffice Live' : 'Recorded'}
+                      </Text>
+                    </View>
                   </View>
 
-                  <View className="flex-row items-center flex-shrink-0">
-                    <Fingerprint size={12} color={staff.biometricSynced ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 3 }} />
-                    <Text className={`text-[9px] font-bold ${staff.biometricSynced ? primaryTextClass : 'text-white/40'}`}>
-                      {staff.biometricSynced ? 'e-TimeOffice Live' : 'Recorded'}
-                    </Text>
-                  </View>
-                </View>
-
-              </GlassCard>
-            ))
+                </GlassCard>
+              );
+            })
           )}
         </View>
       </ScrollView>

@@ -49,142 +49,13 @@ import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useResponsive } from '../../utils/responsive';
 
-export interface StaffMember {
-  id: string;
-  name: string;
-  designation: string;
-  department: string;
-  category: 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support';
-  subject?: string;
-  phone: string;
-  email: string;
-  join_date: string;
-  attendance_percentage: number;
-  status: 'Active' | 'On Leave' | 'Resigned';
-  salary: number;
-  qualifications: string;
-  documents?: string[];
-  biometric_employee_code?: string;
-  avatar?: string;
-}
-
-const INITIAL_STAFF: StaffMember[] = [
-  {
-    id: 'st_1',
-    name: 'Dr. Julian Vance',
-    designation: 'Senior Faculty Head',
-    department: 'Physics',
-    category: 'Teaching',
-    subject: 'Senior Physics',
-    phone: '+91 98450 12345',
-    email: 'julian.vance@krishnaveni.edu',
-    join_date: '2021-06-15',
-    attendance_percentage: 98.4,
-    status: 'Active',
-    salary: 65000,
-    qualifications: 'Ph.D. in Physics, M.Sc.',
-    documents: ['Aadhaar Card', 'Degree Certificate', 'Experience Letter'],
-    biometric_employee_code: 'BIO-101',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
-  },
-  {
-    id: 'st_2',
-    name: 'Mrs. Sarah Jenkins',
-    designation: 'Admin Operations Head',
-    department: 'Administration',
-    category: 'Admin',
-    subject: 'Management',
-    phone: '+91 98450 23456',
-    email: 'sarah.jenkins@krishnaveni.edu',
-    join_date: '2020-03-10',
-    attendance_percentage: 96.2,
-    status: 'Active',
-    salary: 58000,
-    qualifications: 'MBA in Operations, B.Com',
-    documents: ['Aadhaar Card', 'Degree Certificate', 'Contract Agreement'],
-    biometric_employee_code: 'BIO-102',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150',
-  },
-  {
-    id: 'st_3',
-    name: 'Prof. Michael Chen',
-    designation: 'HOD Mathematics',
-    department: 'Mathematics',
-    category: 'Teaching',
-    subject: 'Higher Calculus',
-    phone: '+91 98450 34567',
-    email: 'michael.chen@krishnaveni.edu',
-    join_date: '2019-08-01',
-    attendance_percentage: 92.0,
-    status: 'On Leave',
-    salary: 72000,
-    qualifications: 'M.Sc. Mathematics, B.Ed',
-    documents: ['Aadhaar Card', 'Degree Certificate'],
-    biometric_employee_code: 'BIO-103',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150',
-  },
-  {
-    id: 'st_4',
-    name: 'Rajesh Sharma',
-    designation: 'Senior Accountant',
-    department: 'Accounts & Finance',
-    category: 'Non-Teaching',
-    subject: 'Finance',
-    phone: '+91 98450 45678',
-    email: 'rajesh.sharma@krishnaveni.edu',
-    join_date: '2022-01-20',
-    attendance_percentage: 95.5,
-    status: 'Active',
-    salary: 45000,
-    qualifications: 'M.Com, Chartered Inter',
-    documents: ['Aadhaar Card', 'Police Clearance', 'Degree Certificate'],
-    biometric_employee_code: 'BIO-104',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150',
-  },
-  {
-    id: 'st_5',
-    name: 'Priya Nambiar',
-    designation: 'Senior English Faculty',
-    department: 'Languages',
-    category: 'Teaching',
-    subject: 'English Literature',
-    phone: '+91 98450 56789',
-    email: 'priya.nambiar@krishnaveni.edu',
-    join_date: '2023-04-12',
-    attendance_percentage: 97.1,
-    status: 'Active',
-    salary: 48000,
-    qualifications: 'M.A. English, B.Ed',
-    documents: ['Aadhaar Card', 'Degree Certificate'],
-    biometric_employee_code: 'BIO-105',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150',
-  },
-  {
-    id: 'st_6',
-    name: 'Ramesh Goud',
-    designation: 'Transport & Fleet Supervisor',
-    department: 'Logistics',
-    category: 'Support',
-    subject: 'Fleet',
-    phone: '+91 98450 67890',
-    email: 'ramesh.goud@krishnaveni.edu',
-    join_date: '2021-11-05',
-    attendance_percentage: 94.0,
-    status: 'Active',
-    salary: 32000,
-    qualifications: 'Diploma in Automobile Mechanics',
-    documents: ['Aadhaar Card', 'Driving License', 'Police Clearance'],
-    biometric_employee_code: 'BIO-106',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=150',
-  },
-];
+import { useStaffStore, StaffMember, INITIAL_STAFF_MEMBERS } from '../../store/staffStore';
 
 export const SuperAdminStaffManagementScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { isSmallPhone, isTablet, insets, headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
-  const [staffList, setStaffList] = useState<StaffMember[]>(INITIAL_STAFF);
-  const [loading, setLoading] = useState(false);
+  const { staffList, loading, fetchStaff, addStaff, updateStaff, deleteStaff } = useStaffStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'All' | 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support'>('All');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'On Leave' | 'Resigned'>('All');
@@ -233,78 +104,61 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
     setCustomAlert({ visible: true, title, message, type, onConfirm });
   };
 
-  // Sync staff from backend API on mount
+  // Sync staff on mount
   useEffect(() => {
-    const fetchStaffFromDb = async () => {
-      setLoading(true);
-      try {
-        const staffData = await api.getResources('faculty');
-        const extractArray = (res: any) =>
-          Array.isArray(res)
-            ? res
-            : res?.data && Array.isArray(res.data)
-            ? res.data
-            : res?.data?.data && Array.isArray(res.data.data)
-            ? res.data.data
-            : [];
-        const staffArr = extractArray(staffData);
+    fetchStaff();
+  }, [fetchStaff]);
 
-        if (staffArr.length > 0) {
-          const normalizedStaff: StaffMember[] = staffArr.map((s: any, idx: number) => ({
-            id: String(s.id || `faculty_${idx}`),
-            name: s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Staff Member',
-            designation: s.designation || s.role || 'Faculty',
-            department: s.department || 'General',
-            category: (s.category || s.department_category || 'Teaching') as any,
-            subject: s.subject || s.specialization || '',
-            phone: s.phone || s.contact_number || '+91 98450 00000',
-            email: s.email || 'staff@krishnaveni.edu',
-            join_date: (s.join_date || s.created_at || '2023-01-01').split('T')[0],
-            attendance_percentage: s.attendance_percentage || 95.0,
-            status: s.status ? (s.status.charAt(0).toUpperCase() + s.status.slice(1)) as any : 'Active',
-            salary: typeof s.salary === 'string' ? parseFloat(s.salary) : (s.salary || 45000),
-            qualifications: s.qualifications || 'B.Ed, Graduate',
-            documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || ['Aadhaar Card', 'Degree Certificate']),
-            biometric_employee_code: s.biometric_employee_code || s.employee_code || `BIO-${100 + idx}`,
-            avatar: s.avatar || INITIAL_STAFF[idx % INITIAL_STAFF.length]?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
-          }));
-          setStaffList(normalizedStaff);
-        }
-      } catch (err) {
-        console.log('Using offline initial staff records:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStaffFromDb();
-  }, []);
-
-  // Filtered staff records
+  // Robust Filtered staff records (case-insensitive & category-aware)
   const filteredStaff = useMemo(() => {
-    return staffList.filter((s) => {
-      const q = searchQuery.toLowerCase().trim();
+    const list = staffList && staffList.length > 0 ? staffList : INITIAL_STAFF_MEMBERS;
+    return list.filter((s) => {
+      const q = (searchQuery || '').toLowerCase().trim();
+      const name = (s.name || '').toLowerCase();
+      const desig = (s.designation || '').toLowerCase();
+      const dept = (s.department || '').toLowerCase();
+      const bio = (s.biometric_employee_code || '').toLowerCase();
+      const phone = s.phone || '';
+      const email = (s.email || '').toLowerCase();
+
       const matchesQuery =
         !q ||
-        s.name.toLowerCase().includes(q) ||
-        s.designation.toLowerCase().includes(q) ||
-        s.department.toLowerCase().includes(q) ||
-        (s.biometric_employee_code && s.biometric_employee_code.toLowerCase().includes(q)) ||
-        s.phone.includes(q) ||
-        s.email.toLowerCase().includes(q);
+        name.includes(q) ||
+        desig.includes(q) ||
+        dept.includes(q) ||
+        bio.includes(q) ||
+        phone.includes(q) ||
+        email.includes(q);
 
-      const matchesCat = categoryFilter === 'All' || s.category === categoryFilter;
-      const matchesStatus = statusFilter === 'All' || s.status === statusFilter;
+      const sCat = (s.category || 'Teaching').toLowerCase();
+      const filterCat = categoryFilter.toLowerCase();
+      const matchesCat =
+        categoryFilter === 'All' ||
+        sCat === filterCat ||
+        (filterCat === 'teaching' && sCat === 'teaching') ||
+        (filterCat === 'admin' && sCat === 'admin') ||
+        (filterCat === 'support' && (sCat === 'support' || sCat.includes('fleet') || sCat.includes('logistics'))) ||
+        (filterCat === 'non-teaching' && (sCat === 'non-teaching' || sCat === 'support' || sCat.includes('account') || sCat.includes('finance')));
+
+      const sStatus = (s.status || 'Active').toLowerCase();
+      const filterStatus = statusFilter.toLowerCase();
+      const matchesStatus =
+        statusFilter === 'All' ||
+        sStatus === filterStatus ||
+        (filterStatus === 'active' && sStatus === 'active') ||
+        (filterStatus === 'on leave' && (sStatus.includes('leave') || sStatus === 'on leave' || sStatus === 'on_leave')) ||
+        (filterStatus === 'resigned' && (sStatus.includes('resign') || sStatus.includes('inactive')));
 
       return matchesQuery && matchesCat && matchesStatus;
     });
   }, [staffList, searchQuery, categoryFilter, statusFilter]);
 
   // KPI calculations
-  const totalStaffCount = staffList.length;
-  const teachingCount = staffList.filter((s) => s.category === 'Teaching').length;
-  const nonTeachingCount = staffList.filter((s) => s.category !== 'Teaching').length;
-  const onLeaveCount = staffList.filter((s) => s.status === 'On Leave').length;
+  const listForKPI = staffList && staffList.length > 0 ? staffList : INITIAL_STAFF_MEMBERS;
+  const totalStaffCount = listForKPI.length;
+  const teachingCount = listForKPI.filter((s) => (s.category || '').toLowerCase() === 'teaching').length;
+  const nonTeachingCount = listForKPI.filter((s) => (s.category || '').toLowerCase() !== 'teaching').length;
+  const onLeaveCount = listForKPI.filter((s) => (s.status || '').toLowerCase().includes('leave')).length;
 
   // Open Add Modal
   const handleOpenAddModal = () => {
@@ -376,7 +230,7 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
         status: formStatus,
       };
 
-      setStaffList((prev) => prev.map((s) => (s.id === editingStaff.id ? updatedMember : s)));
+      updateStaff(updatedMember);
       if (selectedStaff?.id === editingStaff.id) {
         setSelectedStaff(updatedMember);
       }
@@ -408,7 +262,7 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
       };
 
-      setStaffList((prev) => [newMember, ...prev]);
+      addStaff(newMember);
 
       try {
         api.createResource('faculty', newMember).catch(() => {});
@@ -426,7 +280,7 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
       `Are you sure you want to delete ${staff.name} from active staff? They can be restored from the Recycle Bin.`,
       'confirm_delete',
       async () => {
-        setStaffList((prev) => prev.filter((s) => s.id !== staff.id));
+        deleteStaff(staff.id);
         if (selectedStaff?.id === staff.id) {
           setViewModalVisible(false);
           setSelectedStaff(null);
@@ -597,12 +451,7 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
 
         {/* Staff Directory List */}
         <View className="px-5 mb-8">
-          {loading ? (
-            <View className="py-12 items-center justify-center">
-              <ActivityIndicator size="large" color="#f0c110" />
-              <Text className="text-white/50 text-xs mt-3">Loading faculty directory...</Text>
-            </View>
-          ) : filteredStaff.length === 0 ? (
+          {filteredStaff.length === 0 ? (
             <GlassCard className="p-8 items-center justify-center border border-white/10" style={{ backgroundColor: '#1d2122' }}>
               <Users size={32} color="#ffe5a0" style={{ opacity: 0.5, marginBottom: 12 }} />
               <Text className="text-white font-bold text-sm">No Staff Members Found</Text>

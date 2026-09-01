@@ -38,94 +38,7 @@ import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useResponsive } from '../../utils/responsive';
 
-export interface StaffAttendanceRecord {
-  id: string;
-  name: string;
-  role: string;
-  department: 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support';
-  empCode: string;
-  avatar: string;
-  status: 'Present' | 'Absent' | 'Half Day' | 'Leave';
-  inTime: string;
-  outTime: string;
-  biometricSynced: boolean;
-  notes?: string;
-}
-
-const INITIAL_STAFF_ATTENDANCE: StaffAttendanceRecord[] = [
-  {
-    id: 'st_1',
-    name: 'Dr. Julian Vance',
-    role: 'Senior Faculty Head',
-    department: 'Teaching',
-    empCode: 'BIO-101',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
-    status: 'Present',
-    inTime: '08:24 AM',
-    outTime: '04:30 PM',
-    biometricSynced: true,
-  },
-  {
-    id: 'st_2',
-    name: 'Mrs. Sarah Jenkins',
-    role: 'Admin Operations Head',
-    department: 'Admin',
-    empCode: 'BIO-102',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=150',
-    status: 'Present',
-    inTime: '08:15 AM',
-    outTime: '05:00 PM',
-    biometricSynced: true,
-  },
-  {
-    id: 'st_3',
-    name: 'Prof. Michael Chen',
-    role: 'HOD Mathematics',
-    department: 'Teaching',
-    empCode: 'BIO-103',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150',
-    status: 'Leave',
-    inTime: '--:--',
-    outTime: '--:--',
-    biometricSynced: false,
-  },
-  {
-    id: 'st_4',
-    name: 'Rajesh Sharma',
-    role: 'Senior Accountant',
-    department: 'Non-Teaching',
-    empCode: 'BIO-104',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150',
-    status: 'Half Day',
-    inTime: '08:30 AM',
-    outTime: '01:00 PM',
-    biometricSynced: true,
-  },
-  {
-    id: 'st_5',
-    name: 'Priya Nambiar',
-    role: 'Senior English Faculty',
-    department: 'Teaching',
-    empCode: 'BIO-105',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150',
-    status: 'Present',
-    inTime: '08:28 AM',
-    outTime: '04:30 PM',
-    biometricSynced: true,
-  },
-  {
-    id: 'st_6',
-    name: 'Ramesh Goud',
-    role: 'Transport & Fleet Supervisor',
-    department: 'Support',
-    empCode: 'BIO-106',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=150',
-    status: 'Present',
-    inTime: '07:45 AM',
-    outTime: '04:00 PM',
-    biometricSynced: true,
-  },
-];
+import { useStaffStore, StaffMember, INITIAL_STAFF_MEMBERS } from '../../store/staffStore';
 
 export const SuperAdminStaffAttendanceScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -137,8 +50,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
     return today.toISOString().split('T')[0];
   });
 
-  const [staffList, setStaffList] = useState<StaffAttendanceRecord[]>(INITIAL_STAFF_ATTENDANCE);
-  const [loading, setLoading] = useState(false);
+  const { staffList, loading, fetchStaff, updateAttendanceStatus, markAllPresent } = useStaffStore();
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<'All' | 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support'>('All');
@@ -207,129 +119,38 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
     setSelectedDate(new Date().toISOString().split('T')[0]);
   };
 
-  // Fetch Faculty List & Attendance Records from API
+  // Fetch staff records on mount
   useEffect(() => {
-    const fetchAttendanceData = async () => {
-      setLoading(true);
-      try {
-        // Fetch Faculty list
-        const facultyList = await api.getResources('faculty');
-        const extractArray = (res: any) =>
-          Array.isArray(res)
-            ? res
-            : res?.data && Array.isArray(res.data)
-            ? res.data
-            : res?.data?.data && Array.isArray(res.data.data)
-            ? res.data.data
-            : [];
-        const staffArr = extractArray(facultyList);
-
-        if (staffArr.length > 0) {
-          const mappedStaff: StaffAttendanceRecord[] = staffArr.map((f: any, index: number) => ({
-            id: String(f.id || `faculty_${index}`),
-            name: f.name || `${f.first_name || ''} ${f.last_name || ''}`.trim() || 'Staff Member',
-            role: f.designation || f.department || 'Faculty Member',
-            department: (f.department_category || f.category || 'Teaching') as any,
-            empCode: f.biometric_employee_code || f.employee_code || `BIO-${100 + index}`,
-            avatar: f.avatar || INITIAL_STAFF_ATTENDANCE[index % INITIAL_STAFF_ATTENDANCE.length]?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150',
-            status: 'Present',
-            inTime: '08:30 AM',
-            outTime: '04:30 PM',
-            biometricSynced: true,
-          }));
-
-          // Fetch attendance logs for selected date
-          try {
-            const logs = await api.getResources('staff-attendance', { date: selectedDate });
-            const logArr = extractArray(logs);
-            if (logArr.length > 0) {
-              const updatedStaff = mappedStaff.map((s) => {
-                const log = logArr.find((l: any) => String(l.staff_id || l.faculty_id) === s.id);
-                if (log) {
-                  return {
-                    ...s,
-                    status: (log.status || s.status) as any,
-                    inTime: log.in_time || s.inTime,
-                    outTime: log.out_time || s.outTime,
-                    biometricSynced: log.biometric_synced !== false,
-                  };
-                }
-                return s;
-              });
-              setStaffList(updatedStaff);
-              setLoading(false);
-              return;
-            }
-          } catch (_) {}
-
-          setStaffList(mappedStaff);
-        }
-      } catch (e) {
-        console.log('Using offline initial staff attendance:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAttendanceData();
-  }, [selectedDate]);
+    fetchStaff();
+  }, [fetchStaff]);
 
   // Update Status for a Staff Member
   const handleUpdateStatus = (staffId: string, newStatus: 'Present' | 'Absent' | 'Half Day' | 'Leave') => {
-    setStaffList((prev) =>
-      prev.map((s) => {
-        if (s.id === staffId) {
-          let newIn = s.inTime;
-          let newOut = s.outTime;
-          if (newStatus === 'Absent' || newStatus === 'Leave') {
-            newIn = '--:--';
-            newOut = '--:--';
-          } else if (newStatus === 'Half Day') {
-            newIn = '08:30 AM';
-            newOut = '01:00 PM';
-          } else if (newStatus === 'Present') {
-            newIn = '08:30 AM';
-            newOut = '04:30 PM';
-          }
-          return {
-            ...s,
-            status: newStatus,
-            inTime: newIn,
-            outTime: newOut,
-          };
-        }
-        return s;
-      })
-    );
+    updateAttendanceStatus(staffId, newStatus);
   };
 
   // Mark All Present Action
   const handleMarkAllPresent = () => {
-    setStaffList((prev) =>
-      prev.map((s) => ({
-        ...s,
-        status: 'Present',
-        inTime: s.inTime === '--:--' ? '08:30 AM' : s.inTime,
-        outTime: s.outTime === '--:--' ? '04:30 PM' : s.outTime,
-      }))
-    );
-    showCustomAlert('Mark All Present', `All ${staffList.length} staff members marked as Present.`, 'success');
+    markAllPresent();
+    const count = (staffList && staffList.length > 0 ? staffList : INITIAL_STAFF_MEMBERS).length;
+    showCustomAlert('Mark All Present', `All ${count} staff members marked as Present.`, 'success');
   };
 
   // Save Attendance to Backend API
   const handleSaveAttendance = async () => {
     setSaving(true);
+    const list = staffList && staffList.length > 0 ? staffList : INITIAL_STAFF_MEMBERS;
     try {
       // Persist to backend API
-      const recordsToSave = staffList.map((s) => ({
+      const recordsToSave = list.map((s) => ({
         faculty_id: s.id,
         staff_id: s.id,
         name: s.name,
         date: selectedDate,
-        status: s.status,
-        in_time: s.inTime,
-        out_time: s.outTime,
-        biometric_synced: s.biometricSynced,
+        status: s.attendanceStatus || (s.status === 'On Leave' ? 'Leave' : 'Present'),
+        in_time: s.inTime || '08:30 AM',
+        out_time: s.outTime || '04:30 PM',
+        biometric_synced: s.biometricSynced !== false,
       }));
 
       await api.createResource('staff-attendance', {
@@ -351,23 +172,40 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
 
   // Filtered staff list
   const filteredStaff = useMemo(() => {
-    return staffList.filter((s) => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
-        s.name.toLowerCase().includes(q) ||
-        s.role.toLowerCase().includes(q) ||
-        s.empCode.toLowerCase().includes(q);
-      const matchesDept = selectedDeptFilter === 'All' || s.department === selectedDeptFilter;
+    const list = staffList && staffList.length > 0 ? staffList : INITIAL_STAFF_MEMBERS;
+    return list.filter((s) => {
+      const q = (searchQuery || '').toLowerCase().trim();
+      const name = (s.name || '').toLowerCase();
+      const role = (s.designation || s.department || '').toLowerCase();
+      const bio = (s.biometric_employee_code || '').toLowerCase();
+      const matchesSearch = !q || name.includes(q) || role.includes(q) || bio.includes(q);
+
+      const sCat = (s.category || 'Teaching').toLowerCase();
+      const sDept = (s.department || '').toLowerCase();
+      const filterDept = selectedDeptFilter.toLowerCase();
+
+      const matchesDept =
+        selectedDeptFilter === 'All' ||
+        sCat === filterDept ||
+        sDept === filterDept ||
+        (filterDept === 'teaching' && (sCat === 'teaching' || sDept === 'physics' || sDept === 'mathematics' || sDept === 'languages' || sDept === 'science')) ||
+        (filterDept === 'admin' && (sCat === 'admin' || sDept.includes('admin') || sDept.includes('administration'))) ||
+        (filterDept === 'non-teaching' && (sCat === 'non-teaching' || sDept.includes('account') || sDept.includes('finance') || sCat === 'support')) ||
+        (filterDept === 'support' && (sCat === 'support' || sDept.includes('logistics') || sDept.includes('fleet') || sDept.includes('transport')));
+
       return matchesSearch && matchesDept;
     });
   }, [staffList, searchQuery, selectedDeptFilter]);
 
   // KPI Calculations
-  const totalStaffCount = staffList.length;
-  const presentCount = staffList.filter((s) => s.status === 'Present').length;
-  const absentCount = staffList.filter((s) => s.status === 'Absent' || s.status === 'Leave').length;
-  const halfDayCount = staffList.filter((s) => s.status === 'Half Day').length;
+  const listForKPI = staffList && staffList.length > 0 ? staffList : INITIAL_STAFF_MEMBERS;
+  const totalStaffCount = listForKPI.length;
+  const presentCount = listForKPI.filter((s) => (s.attendanceStatus || (s.status === 'On Leave' ? 'Leave' : 'Present')) === 'Present').length;
+  const absentCount = listForKPI.filter((s) => {
+    const st = s.attendanceStatus || (s.status === 'On Leave' ? 'Leave' : 'Present');
+    return st === 'Absent' || st === 'Leave';
+  }).length;
+  const halfDayCount = listForKPI.filter((s) => (s.attendanceStatus || (s.status === 'On Leave' ? 'Leave' : 'Present')) === 'Half Day').length;
   const attendanceRate = totalStaffCount > 0 ? Math.round(((presentCount + halfDayCount * 0.5) / totalStaffCount) * 100) : 0;
 
   return (
@@ -556,12 +394,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
 
         {/* Staff Attendance Roster List */}
         <View className="px-5 mb-8">
-          {loading ? (
-            <View className="py-12 items-center justify-center">
-              <ActivityIndicator size="large" color="#f0c110" />
-              <Text className="text-white/50 text-xs mt-3">Loading daily roster...</Text>
-            </View>
-          ) : filteredStaff.length === 0 ? (
+          {filteredStaff.length === 0 ? (
             <GlassCard className="p-8 items-center justify-center border border-white/10" style={{ backgroundColor: '#1d2122' }}>
               <Users size={32} color="#ffe5a0" style={{ opacity: 0.5, marginBottom: 12 }} />
               <Text className="text-white font-bold text-sm">No Faculty Found</Text>
@@ -595,15 +428,15 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
                         {staff.name}
                       </Text>
                       <Text className="text-[#ffe5a0] text-[11px] font-bold mt-0.5" numberOfLines={1}>
-                        {staff.role} • {staff.empCode}
+                        {staff.designation || staff.department} • {staff.biometric_employee_code || `BIO-${staff.id}`}
                       </Text>
                     </View>
                   </View>
 
                   <View className="flex-row items-center">
-                    <Fingerprint size={13} color={staff.biometricSynced ? '#41eec2' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
-                    <Text className={`text-[10px] font-bold ${staff.biometricSynced ? 'text-[#41eec2]' : 'text-white/40'}`}>
-                      {staff.biometricSynced ? 'Synced' : 'Manual'}
+                    <Fingerprint size={13} color={staff.biometricSynced !== false ? '#41eec2' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
+                    <Text className={`text-[10px] font-bold ${staff.biometricSynced !== false ? 'text-[#41eec2]' : 'text-white/40'}`}>
+                      {staff.biometricSynced !== false ? 'Synced' : 'Manual'}
                     </Text>
                   </View>
                 </View>
@@ -613,11 +446,11 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
                   <View className="flex-row items-center">
                     <Clock size={13} color="#ffe5a0" style={{ marginRight: 5 }} />
                     <Text className="text-white/80 text-xs font-semibold">
-                      IN: <Text className="text-white font-bold">{staff.inTime}</Text>  |  OUT: <Text className="text-white font-bold">{staff.outTime}</Text>
+                      IN: <Text className="text-white font-bold">{staff.inTime || '08:30 AM'}</Text>  |  OUT: <Text className="text-white font-bold">{staff.outTime || '04:30 PM'}</Text>
                     </Text>
                   </View>
 
-                  <Text className="text-white/40 text-[10px] font-mono uppercase">{staff.department}</Text>
+                  <Text className="text-white/40 text-[10px] font-mono uppercase">{staff.category || staff.department}</Text>
                 </View>
 
                 {/* Interactive Status Toggle Buttons (Super Admin Override) */}
@@ -630,7 +463,8 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
                       { key: 'Leave', label: 'On Leave', color: '#38bdf8', bg: 'bg-sky-500' },
                     ] as const
                   ).map((st) => {
-                    const isSelected = staff.status === st.key;
+                    const currentStatus = staff.attendanceStatus || (staff.status === 'On Leave' ? 'Leave' : 'Present');
+                    const isSelected = currentStatus === st.key;
                     return (
                       <Pressable
                         key={st.key}
@@ -658,7 +492,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
         </View>
 
         {/* Save Floating Action Bar */}
-        <View className="px-5 mb-8">
+        <View className="px-5 mb-4">
           <Pressable
             onPress={handleSaveAttendance}
             disabled={saving}
@@ -674,8 +508,6 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
             </Text>
           </Pressable>
         </View>
-
-        <View style={{ height: 60 }} />
       </ScrollView>
 
       {/* ================= CUSTOM ALERT MODAL ================= */}
