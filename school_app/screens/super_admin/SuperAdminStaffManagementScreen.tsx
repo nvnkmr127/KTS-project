@@ -63,9 +63,6 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
   // Modals state
   const [addEditModalVisible, setAddEditModalVisible] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
-  const [viewModalVisible, setViewModalVisible] = useState(false);
-  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [activeViewTab, setActiveViewTab] = useState<'info' | 'attendance' | 'salary' | 'leaves'>('info');
 
   // Form State for Add / Edit
   const [formName, setFormName] = useState('');
@@ -196,11 +193,9 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
     setAddEditModalVisible(true);
   };
 
-  // Open View Details Modal
-  const handleOpenViewModal = (staff: StaffMember) => {
-    setSelectedStaff(staff);
-    setActiveViewTab('info');
-    setViewModalVisible(true);
+  // Navigate to Full Screen Staff Dossier & Profile
+  const handleOpenStaffDetails = (staff: StaffMember) => {
+    navigation.navigate('SuperAdminStaffDetails', { staffId: staff.id, staff });
   };
 
   // Save Staff (Add or Edit)
@@ -231,9 +226,6 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
       };
 
       updateStaff(updatedMember);
-      if (selectedStaff?.id === editingStaff.id) {
-        setSelectedStaff(updatedMember);
-      }
 
       try {
         api.updateResource('faculty', editingStaff.id, updatedMember).catch(() => {});
@@ -281,10 +273,6 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
       'confirm_delete',
       async () => {
         deleteStaff(staff.id);
-        if (selectedStaff?.id === staff.id) {
-          setViewModalVisible(false);
-          setSelectedStaff(null);
-        }
         try {
           api.deleteResource('faculty', staff.id).catch(() => {});
         } catch (_) {}
@@ -476,7 +464,7 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
                 {/* Top Row: Avatar + Info + Status Pill */}
                 <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-white/10">
                   <Pressable
-                    onPress={() => handleOpenViewModal(staff)}
+                    onPress={() => handleOpenStaffDetails(staff)}
                     className="flex-row items-center flex-1 mr-2 active:opacity-80"
                   >
                     <Image
@@ -557,7 +545,7 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
                   <View className="flex-row items-center gap-1.5">
                     {/* View Details Button */}
                     <Pressable
-                      onPress={() => handleOpenViewModal(staff)}
+                      onPress={() => handleOpenStaffDetails(staff)}
                       className="px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 flex-row items-center active:bg-white/20"
                     >
                       <Eye size={12} color="#ffe5a0" style={{ marginRight: 4 }} />
@@ -758,16 +746,28 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
                   </View>
                 </View>
 
-                {/* Qualifications */}
-                <View className="mb-3">
-                  <Text className="text-white/70 text-xs font-bold mb-1.5">Qualifications & Degrees</Text>
-                  <TextInput
-                    value={formQualifications}
-                    onChangeText={setFormQualifications}
-                    placeholder="e.g. M.Sc. Physics, B.Ed"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    className="bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-xs font-semibold"
-                  />
+                {/* Joining Date & Qualifications */}
+                <View className="flex-row gap-2.5 mb-3">
+                  <View className="flex-1">
+                    <Text className="text-white/70 text-xs font-bold mb-1.5">Joining Date (DD-MM-YYYY)</Text>
+                    <TextInput
+                      value={formJoinDate}
+                      onChangeText={setFormJoinDate}
+                      placeholder="15-06-2021"
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      className="bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-xs font-semibold"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white/70 text-xs font-bold mb-1.5">Qualifications & Degrees</Text>
+                    <TextInput
+                      value={formQualifications}
+                      onChangeText={setFormQualifications}
+                      placeholder="e.g. M.Sc., B.Ed"
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      className="bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-white text-xs font-semibold"
+                    />
+                  </View>
                 </View>
 
                 {/* Status Selector */}
@@ -803,276 +803,6 @@ export const SuperAdminStaffManagementScreen: React.FC = () => {
             </GlassCard>
           </View>
         </KeyboardAvoidingView>
-      </Modal>
-
-      {/* ================= VIEW STAFF DETAILS MODAL ================= */}
-      <Modal
-        visible={viewModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setViewModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCardContainer}>
-            <GlassCard
-              className="p-6 border border-white/15 max-h-[88vh]"
-              style={{
-                backgroundColor: '#16191b',
-                borderRadius: 28,
-                shadowColor: '#f0c110',
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.3,
-                shadowRadius: 20,
-              }}
-            >
-              {selectedStaff && (
-                <>
-                  {/* Top Profile Summary */}
-                  <View className="flex-row items-center justify-between pb-4 border-b border-white/10 mb-4">
-                    <View className="flex-row items-center gap-3 flex-1 mr-2">
-                      <Image
-                        source={{ uri: selectedStaff.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150' }}
-                        className="w-14 h-14 rounded-2xl border border-white/20"
-                      />
-                      <View className="flex-1">
-                        <Text className="text-white font-bold text-base" numberOfLines={1}>
-                          {selectedStaff.name}
-                        </Text>
-                        <Text className="text-[#ffe5a0] text-xs font-semibold" numberOfLines={1}>
-                          {selectedStaff.designation}
-                        </Text>
-                        <View className="flex-row items-center gap-2 mt-1">
-                          <View className="px-2 py-0.5 rounded bg-[#f0c110]/15 border border-[#f0c110]/30">
-                            <Text className="text-[#ffe5a0] text-[9px] font-bold uppercase">{selectedStaff.category}</Text>
-                          </View>
-                          <Text className="text-white/40 text-[10px] font-mono">
-                            {selectedStaff.biometric_employee_code || selectedStaff.id}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <Pressable
-                      onPress={() => setViewModalVisible(false)}
-                      className="w-8 h-8 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
-                    >
-                      <X size={16} color="#FFF" />
-                    </Pressable>
-                  </View>
-
-                  {/* Navigation Tabs */}
-                  <View className="flex-row justify-between mb-4 border-b border-white/10 pb-2">
-                    {[
-                      { key: 'info', label: 'Info & Docs' },
-                      { key: 'attendance', label: 'Attendance' },
-                      { key: 'salary', label: 'Salary' },
-                      { key: 'leaves', label: 'Leaves' },
-                    ].map((tab) => {
-                      const isSel = activeViewTab === tab.key;
-                      return (
-                        <Pressable
-                          key={tab.key}
-                          onPress={() => setActiveViewTab(tab.key as any)}
-                          className={`pb-1 px-2 border-b-2 ${
-                            isSel ? 'border-[#f0c110]' : 'border-transparent'
-                          }`}
-                        >
-                          <Text className={`text-xs font-bold ${isSel ? 'text-[#ffe5a0]' : 'text-white/50'}`}>
-                            {tab.label}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-
-                  {/* Tab Content */}
-                  <ScrollView showsVerticalScrollIndicator={false} className="pr-1">
-                    {activeViewTab === 'info' && (
-                      <View className="gap-3">
-                        <View className="bg-black/40 p-3 rounded-2xl border border-white/5">
-                          <Text className="text-white/40 text-[9px] font-bold uppercase tracking-wider mb-2">
-                            BIOGRAPHICAL DETAILS
-                          </Text>
-                          <View className="gap-2">
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">Department</Text>
-                              <Text className="text-white font-bold text-xs">{selectedStaff.department}</Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">Subject</Text>
-                              <Text className="text-white font-bold text-xs">{selectedStaff.subject || 'N/A'}</Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">Join Date</Text>
-                              <Text className="text-white font-bold text-xs">{selectedStaff.join_date}</Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">Qualifications</Text>
-                              <Text className="text-white font-bold text-xs">{selectedStaff.qualifications}</Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">Phone</Text>
-                              <Text className="text-[#ffe5a0] font-bold text-xs">{selectedStaff.phone}</Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">Email</Text>
-                              <Text className="text-[#ffe5a0] font-bold text-xs">{selectedStaff.email}</Text>
-                            </View>
-                          </View>
-                        </View>
-
-                        {/* Uploaded Documents List */}
-                        <View className="bg-black/40 p-3 rounded-2xl border border-white/5">
-                          <Text className="text-white/40 text-[9px] font-bold uppercase tracking-wider mb-2">
-                            VERIFIED DOCUMENTS ({selectedStaff.documents?.length || 0})
-                          </Text>
-                          <View className="gap-2">
-                            {(selectedStaff.documents || ['Aadhaar Card', 'Degree Certificate']).map((doc, idx) => (
-                              <View
-                                key={idx}
-                                className="flex-row items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10"
-                              >
-                                <View className="flex-row items-center gap-2">
-                                  <FileText size={14} color="#ffe5a0" />
-                                  <Text className="text-white text-xs font-semibold">{doc}</Text>
-                                </View>
-                                <View className="flex-row items-center gap-1.5">
-                                  <CheckCircle size={13} color="#41eec2" />
-                                  <Text className="text-[#41eec2] text-[10px] font-bold">Verified</Text>
-                                </View>
-                              </View>
-                            ))}
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {activeViewTab === 'attendance' && (
-                      <View className="gap-3">
-                        <View className="bg-black/40 p-4 rounded-2xl border border-white/5 items-center">
-                          <Text className="text-white/40 text-[10px] font-bold uppercase">Overall Attendance Rate</Text>
-                          <Text className="text-[#41eec2] text-3xl font-extrabold mt-1">
-                            {selectedStaff.attendance_percentage}%
-                          </Text>
-                          <Text className="text-white/60 text-xs mt-1">
-                            Synced via Biometric ID: {selectedStaff.biometric_employee_code || 'BIO-N/A'}
-                          </Text>
-                        </View>
-
-                        <View className="bg-black/40 p-3 rounded-2xl border border-white/5">
-                          <Text className="text-white/40 text-[9px] font-bold uppercase tracking-wider mb-2">
-                            RECENT LOGS OVERVIEW
-                          </Text>
-                          <View className="gap-2">
-                            <View className="flex-row justify-between p-2 rounded-xl bg-white/5">
-                              <Text className="text-white/70 text-xs">Today Status</Text>
-                              <Text className="text-[#41eec2] font-bold text-xs">Present (08:24 AM - 04:30 PM)</Text>
-                            </View>
-                            <View className="flex-row justify-between p-2 rounded-xl bg-white/5">
-                              <Text className="text-white/70 text-xs">Working Days in Month</Text>
-                              <Text className="text-white font-bold text-xs">24 Days</Text>
-                            </View>
-                            <View className="flex-row justify-between p-2 rounded-xl bg-white/5">
-                              <Text className="text-white/70 text-xs">Leaves Taken</Text>
-                              <Text className="text-amber-400 font-bold text-xs">1 Day</Text>
-                            </View>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {activeViewTab === 'salary' && (
-                      <View className="gap-3">
-                        <View className="bg-black/40 p-4 rounded-2xl border border-white/5">
-                          <Text className="text-white/40 text-[10px] font-bold uppercase">Monthly CTC Base</Text>
-                          <Text className="text-[#f0c110] text-2xl font-extrabold mt-1">
-                            ₹{(selectedStaff.salary || 0).toLocaleString('en-IN')}
-                          </Text>
-                        </View>
-
-                        <View className="bg-black/40 p-3 rounded-2xl border border-white/5">
-                          <Text className="text-white/40 text-[9px] font-bold uppercase tracking-wider mb-2">
-                            SALARY STRUCTURE BREAKDOWN
-                          </Text>
-                          <View className="gap-2">
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">Basic Pay (60%)</Text>
-                              <Text className="text-white font-bold text-xs">
-                                ₹{Math.round((selectedStaff.salary || 0) * 0.6).toLocaleString('en-IN')}
-                              </Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">HRA (20%)</Text>
-                              <Text className="text-white font-bold text-xs">
-                                ₹{Math.round((selectedStaff.salary || 0) * 0.2).toLocaleString('en-IN')}
-                              </Text>
-                            </View>
-                            <View className="flex-row justify-between">
-                              <Text className="text-white/60 text-xs">Allowances (20%)</Text>
-                              <Text className="text-white font-bold text-xs">
-                                ₹{Math.round((selectedStaff.salary || 0) * 0.2).toLocaleString('en-IN')}
-                              </Text>
-                            </View>
-                            <View className="flex-row justify-between pt-2 border-t border-white/10">
-                              <Text className="text-white/80 font-bold text-xs">Est. Net Take-Home</Text>
-                              <Text className="text-[#41eec2] font-extrabold text-sm">
-                                ₹{(selectedStaff.salary || 0).toLocaleString('en-IN')}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {activeViewTab === 'leaves' && (
-                      <View className="gap-3">
-                        <View className="bg-black/40 p-3 rounded-2xl border border-white/5">
-                          <Text className="text-white/40 text-[9px] font-bold uppercase tracking-wider mb-2">
-                            LEAVE BALANCES
-                          </Text>
-                          <View className="flex-row justify-between">
-                            <View className="items-center bg-white/5 p-2.5 rounded-xl w-[30%]">
-                              <Text className="text-white/50 text-[9px] font-bold uppercase">Casual</Text>
-                              <Text className="text-[#ffe5a0] text-base font-bold mt-0.5">8 / 12</Text>
-                            </View>
-                            <View className="items-center bg-white/5 p-2.5 rounded-xl w-[30%]">
-                              <Text className="text-white/50 text-[9px] font-bold uppercase">Medical</Text>
-                              <Text className="text-[#41eec2] text-base font-bold mt-0.5">10 / 10</Text>
-                            </View>
-                            <View className="items-center bg-white/5 p-2.5 rounded-xl w-[30%]">
-                              <Text className="text-white/50 text-[9px] font-bold uppercase">Earned</Text>
-                              <Text className="text-amber-400 text-base font-bold mt-0.5">5 / 7</Text>
-                            </View>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-                  </ScrollView>
-
-                  {/* Modal Footer Actions */}
-                  <View className="flex-row gap-2 mt-4 pt-3 border-t border-white/10">
-                    <Pressable
-                      onPress={() => {
-                        setViewModalVisible(false);
-                        handleOpenEditModal(selectedStaff);
-                      }}
-                      className="flex-1 py-3 rounded-xl bg-[#f0c110] items-center justify-center active:scale-95"
-                    >
-                      <Text className="text-[#101415] text-xs font-bold uppercase">Edit Profile</Text>
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() => setViewModalVisible(false)}
-                      className="px-5 py-3 rounded-xl bg-white/10 border border-white/15 items-center justify-center active:scale-95"
-                    >
-                      <Text className="text-white text-xs font-bold uppercase">Close</Text>
-                    </Pressable>
-                  </View>
-                </>
-              )}
-            </GlassCard>
-          </View>
-        </View>
       </Modal>
 
       {/* ================= CUSTOM ALERT DIALOG MODAL ================= */}

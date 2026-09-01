@@ -32,6 +32,7 @@ import AssignFeeStructureScreen from '../screens/super_admin/AssignFeeStructureS
 import SuperAdminAdminConsoleScreen from '../screens/super_admin/SuperAdminAdminConsoleScreen';
 import SuperAdminStaffManagementScreen from '../screens/super_admin/SuperAdminStaffManagementScreen';
 import SuperAdminStaffAttendanceScreen from '../screens/super_admin/SuperAdminStaffAttendanceScreen';
+import SuperAdminStaffDetailsScreen from '../screens/super_admin/SuperAdminStaffDetailsScreen';
 import SuperAdminSalaryCategoriesScreen from '../screens/super_admin/SuperAdminSalaryCategoriesScreen';
 import SuperAdminRolesPermissionsScreen from '../screens/super_admin/SuperAdminRolesPermissionsScreen';
 import SuperAdminActivityLogScreen from '../screens/super_admin/SuperAdminActivityLogScreen';
@@ -244,6 +245,8 @@ const RoleStackComponent = () => {
       />
       <AppStack.Screen name="StaffManagement" component={SuperAdminStaffManagementScreen} />
       <AppStack.Screen name="SuperAdminStaffManagement" component={SuperAdminStaffManagementScreen} />
+      <AppStack.Screen name="StaffDetails" component={SuperAdminStaffDetailsScreen} />
+      <AppStack.Screen name="SuperAdminStaffDetails" component={SuperAdminStaffDetailsScreen} />
       <AppStack.Screen name="SuperAdminStaffAttendance" component={SuperAdminStaffAttendanceScreen} />
       <AppStack.Screen name="SalaryCategories" component={SuperAdminSalaryCategoriesScreen} />
       <AppStack.Screen name="SuperAdminSalaryCategories" component={SuperAdminSalaryCategoriesScreen} />
