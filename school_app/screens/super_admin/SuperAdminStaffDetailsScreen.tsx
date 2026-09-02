@@ -39,7 +39,6 @@ import {
   Edit3,
   Trash2,
   Printer,
-  Sparkles,
   Building2,
   MapPin,
   BadgePercent,
@@ -1480,8 +1479,7 @@ export const SuperAdminStaffDetailsScreen: React.FC = () => {
                           <Text className="text-white/30 text-[8px] font-mono">||| | |||| | ||||| || ||||</Text>
                           <Text className="text-white/40 text-[8px] font-mono">DOC-984210</Text>
                         </View>
-                        <View className="px-2 py-1 rounded bg-[#f0c110]/15 border border-[#f0c110]/30 flex-row items-center">
-                          <Sparkles size={11} color="#f0c110" style={{ marginRight: 4 }} />
+                        <View className="px-2 py-1 rounded bg-[#f0c110]/15 border border-[#f0c110]/30 items-center justify-center">
                           <Text className="text-[#f0c110] text-[9px] font-bold">Holographic Verified</Text>
                         </View>
                       </View>

@@ -27,7 +27,6 @@ import {
   Check,
   ShieldCheck,
   RotateCcw,
-  Sparkles,
   AlertTriangle,
   Users,
   CheckCircle,
@@ -243,7 +242,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
             onPress={handleMarkAllPresent}
             className="px-3 py-2 rounded-xl bg-[#f0c110]/15 border border-[#f0c110]/30 flex-row items-center active:scale-95"
           >
-            <Sparkles size={14} color="#f0c110" style={{ marginRight: 4 }} />
+            <UserCheck size={14} color="#f0c110" style={{ marginRight: 4 }} />
             <Text className="text-[#f0c110] text-[10px] font-bold uppercase">Mark All Present</Text>
           </Pressable>
         </BlurView>

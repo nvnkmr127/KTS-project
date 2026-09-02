@@ -28,7 +28,6 @@ import {
   Shield, 
   Compass, 
   AlertTriangle,
-  Sparkles,
   KeyRound,
   ChevronRight
 } from 'lucide-react-native';
@@ -257,8 +256,7 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               Select Portal Profile
             </Text>
             <View className="flex-row items-center bg-white/10 px-2.5 py-1 rounded-full border border-white/10">
-              <Sparkles size={12} color={currentRoleConfig.activeColor} />
-              <Text className="text-white/80 text-[10px] font-bold ml-1.5 uppercase tracking-wider">
+              <Text className="text-white/80 text-[10px] font-bold uppercase tracking-wider">
                 {currentRoleConfig.label}
               </Text>
             </View>

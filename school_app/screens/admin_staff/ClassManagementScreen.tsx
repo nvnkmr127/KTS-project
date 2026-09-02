@@ -5,7 +5,7 @@ import {
   School, Users, UserCheck, Search, Plus,
   Pencil, Calendar, Trash2, ArrowLeft, CheckCircle2,
   AlertCircle, X, ChevronRight, BookOpen, Layers,
-  ChevronDown, UserPlus, FileText, Award, Building2, Sparkles, Filter, Phone, Check
+  ChevronDown, UserPlus, FileText, Award, Building2, Filter, Phone, Check
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';

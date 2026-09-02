@@ -13,7 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   History,
-  Sparkles,
+  Award,
   X,
   ArrowRight,
   ShieldAlert,
@@ -268,7 +268,7 @@ export const FeePaymentScreen: React.FC = () => {
 
           <View style={styles.glassCard} className="flex-1 p-4 rounded-2xl border border-white/10 items-center gap-1.5">
             <View className="w-11 h-11 rounded-full bg-[#10B981]/15 flex items-center justify-center">
-              <Sparkles size={20} color="#34D399" />
+              <Award size={20} color="#34D399" />
             </View>
             <Text className="text-white/50 text-[10px] font-bold uppercase tracking-wider">Scholarship</Text>
             <Text className="text-white font-bold text-sm">15% Off</Text>

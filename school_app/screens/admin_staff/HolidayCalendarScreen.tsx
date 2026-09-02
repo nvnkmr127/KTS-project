@@ -4,7 +4,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   Calendar, Plus, Trash2, Pencil, CheckCircle2, 
-  AlertCircle, X, Clock, PartyPopper, Flag, School, Search, ChevronLeft, ChevronRight, Check, Sparkles
+  AlertCircle, X, Clock, PartyPopper, Flag, School, Search, ChevronLeft, ChevronRight, Check
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
@@ -367,7 +367,7 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
               <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-white/10">
                 <View className="flex-1 mr-2">
                   <View className="flex-row items-center">
-                    <Sparkles size={16} color={primaryColor} style={{ marginRight: 6 }} />
+                    <Calendar size={16} color={primaryColor} style={{ marginRight: 6 }} />
                     <Text className="text-white font-extrabold text-base">School Holidays Designer</Text>
                   </View>
                   <Text className="text-white/50 text-[10px] mt-0.5">Tap on any date to configure custom holidays, or view Sundays.</Text>
