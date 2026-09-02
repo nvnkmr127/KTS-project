@@ -221,6 +221,71 @@ class ApiClient {
   async getNotifications() {
     return await this.request('/notifications');
   }
+
+  // Biometric Integration Endpoints
+  async biometricStatus() {
+    return await this.request('/biometric/status');
+  }
+
+  async biometricTestConnection() {
+    return await this.request('/biometric/test-connection', { method: 'POST' });
+  }
+
+  async biometricResetCursor() {
+    return await this.request('/biometric/reset-cursor', { method: 'POST' });
+  }
+
+  // Database & Cache Maintenance Endpoints
+  async seedMockData() {
+    return await this.request('/maintenance/seed-mock-data', { method: 'POST' });
+  }
+
+  async clearMockData() {
+    return await this.request('/maintenance/clear-mock-data', { method: 'POST' });
+  }
+
+  // Webhooks Management Endpoints
+  async getWebhooks() {
+    return await this.request('/webhooks');
+  }
+
+  async getWebhookStats(date?: string) {
+    return await this.request(date ? `/webhooks/stats?date=${date}` : '/webhooks/stats');
+  }
+
+  async testWebhook(id: string) {
+    return await this.request(`/webhooks/${id}/test`, { method: 'POST' });
+  }
+
+  async toggleWebhook(id: string) {
+    return await this.request(`/webhooks/${id}/toggle`, { method: 'POST' });
+  }
+
+  async regenerateWebhookSecret(id: string) {
+    return await this.request(`/webhooks/${id}/regenerate-secret`, { method: 'POST' });
+  }
+
+  async replayWebhookCall(callId: string) {
+    return await this.request(`/webhooks/calls/${callId}/replay`, { method: 'POST' });
+  }
+
+  async testDailySummary(date?: string) {
+    return await this.request('/webhooks/daily-summary/test', {
+      method: 'POST',
+      body: JSON.stringify({ date }),
+    });
+  }
+
+  async sendDailySummary(date?: string) {
+    return await this.request('/webhooks/daily-summary/send', {
+      method: 'POST',
+      body: JSON.stringify({ date }),
+    });
+  }
+
+  async getWebhookLogs(id?: string) {
+    return await this.request(id ? `/webhooks/${id}/logs` : '/webhooks/logs');
+  }
 }
 
 export const api = new ApiClient();

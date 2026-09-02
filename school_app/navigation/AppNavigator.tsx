@@ -37,6 +37,11 @@ import SuperAdminSalaryCategoriesScreen from '../screens/super_admin/SuperAdminS
 import SuperAdminRolesPermissionsScreen from '../screens/super_admin/SuperAdminRolesPermissionsScreen';
 import SuperAdminActivityLogScreen from '../screens/super_admin/SuperAdminActivityLogScreen';
 import SuperAdminAllUsersActivityLogsScreen from '../screens/super_admin/SuperAdminAllUsersActivityLogsScreen';
+import SuperAdminAcademicYearsScreen from '../screens/super_admin/settings/SuperAdminAcademicYearsScreen';
+import SuperAdminSchoolProfileScreen from '../screens/super_admin/settings/SuperAdminSchoolProfileScreen';
+import SuperAdminWebhookManagementScreen from '../screens/super_admin/settings/SuperAdminWebhookManagementScreen';
+import SuperAdminSystemMaintenanceScreen from '../screens/super_admin/settings/SuperAdminSystemMaintenanceScreen';
+import SuperAdminBiometricIntegrationScreen from '../screens/super_admin/settings/SuperAdminBiometricIntegrationScreen';
 
 // Admin Staff Screens
 import AdminStaffDashboard from '../screens/admin_staff/AdminStaffDashboard';
@@ -255,6 +260,16 @@ const RoleStackComponent = () => {
       <AppStack.Screen name="SuperAdminAdminConsole" component={SuperAdminAdminConsoleScreen} />
       <AppStack.Screen name="AllUsersActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
       <AppStack.Screen name="ActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
+      <AppStack.Screen name="SuperAdminAcademicYears" component={SuperAdminAcademicYearsScreen} />
+      <AppStack.Screen name="AcademicYears" component={SuperAdminAcademicYearsScreen} />
+      <AppStack.Screen name="SuperAdminSchoolProfile" component={SuperAdminSchoolProfileScreen} />
+      <AppStack.Screen name="SchoolProfile" component={SuperAdminSchoolProfileScreen} />
+      <AppStack.Screen name="SuperAdminWebhookManagement" component={SuperAdminWebhookManagementScreen} />
+      <AppStack.Screen name="WebhookManagement" component={SuperAdminWebhookManagementScreen} />
+      <AppStack.Screen name="SuperAdminSystemMaintenance" component={SuperAdminSystemMaintenanceScreen} />
+      <AppStack.Screen name="SystemMaintenance" component={SuperAdminSystemMaintenanceScreen} />
+      <AppStack.Screen name="SuperAdminBiometricIntegration" component={SuperAdminBiometricIntegrationScreen} />
+      <AppStack.Screen name="BiometricIntegration" component={SuperAdminBiometricIntegrationScreen} />
     </AppStack.Navigator>
   );
 };
