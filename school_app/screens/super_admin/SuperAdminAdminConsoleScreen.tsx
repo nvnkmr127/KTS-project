@@ -9,7 +9,7 @@ import {
   ArrowLeft, Search, ShieldCheck, UserSquare2, UserPlus, 
   School, UserCheck, BookOpen, TrendingUp, GraduationCap, 
   Wallet, Tag, CalendarDays, CalendarOff, CalendarRange, 
-  FileEdit, ArrowLeftRight, Megaphone, UserSearch, Bus
+  FileEdit, ArrowLeftRight, Megaphone, UserSearch, Bus, Sliders
 } from 'lucide-react-native';
 import { useResponsive } from '../../utils/responsive';
 
@@ -51,6 +51,7 @@ const ADMIN_OPTIONS: AdminOption[] = [
   { id: '19', title: 'Circulars & Alerts', subtitle: 'Parent & staff broadcasts', icon: <Megaphone size={24} color="#ffe5a0" />, route: 'AdminAlertConfiguration', category: 'Operations' },
   { id: '20', title: 'Enquiry Leads', subtitle: 'Admission CRM & inquiries', icon: <UserSearch size={24} color="#ffe5a0" />, route: 'EnquiryLeads', category: 'Operations' },
   { id: '21', title: 'Bus GPS Tracking', subtitle: 'Route movement monitor', icon: <Bus size={24} color="#ffe5a0" />, route: 'AdminBusTracking', category: 'Operations' },
+  { id: '22', title: 'Configuration', subtitle: 'Alert rules & auto-broadcast settings', icon: <Sliders size={24} color="#ffe5a0" />, route: 'AdminAlertConfiguration', category: 'Operations' },
 ];
 
 export const SuperAdminAdminConsoleScreen: React.FC = () => {

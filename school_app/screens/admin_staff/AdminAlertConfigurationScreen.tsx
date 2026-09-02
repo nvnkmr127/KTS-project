@@ -334,11 +334,11 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
                 <Pressable
                   onPress={() => setSendWhatsApp(!sendWhatsApp)}
                   className={`flex-1 p-2.5 rounded-xl border flex-row items-center justify-center ${
-                    sendWhatsApp ? 'bg-emerald-500/20 border-emerald-400' : 'bg-white/5 border-white/10'
+                    sendWhatsApp ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : 'bg-white/5 border-white/10'
                   }`}
                 >
-                  <Volume2 size={14} color={sendWhatsApp ? '#34d399' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 6 }} />
-                  <Text className={`text-xs font-bold ${sendWhatsApp ? 'text-emerald-400' : 'text-white/60'}`}>WhatsApp</Text>
+                  <MessageSquare size={14} color={sendWhatsApp ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 6 }} />
+                  <Text className={`text-xs font-bold ${sendWhatsApp ? primaryTextClass : 'text-white/60'}`}>WhatsApp</Text>
                 </Pressable>
               </View>
             </View>
