@@ -69,19 +69,19 @@ export function useResponsive(): ResponsiveValues {
   const headerPaddingTop = Math.max(insets.top, Platform.OS === 'ios' ? 44 : 24) + (Platform.OS === 'android' ? 6 : 4);
 
   // System navigation bar / control buttons detection:
-  // - On iOS: Any insets.bottom > 0 is the gesture Home Indicator (iPhone X through 16).
-  // - On Android: Gesture navigation pill has insets.bottom <= 24 (typically 16-20).
-  // - On Android: 3-button navigation (Back, Home, Recents control buttons) has insets.bottom > 24 (typically 48dp).
+  // - On iOS: All iPhones / iPads (gesture bar or physical home button) -> NO white bg.
+  // - On Android: Gesture navigation pill has insets.bottom < 36 (typically 12-24dp) -> NO white bg.
+  // - On Android: 3-button navigation (Back, Home, Recents buttons) has insets.bottom >= 36 (typically 48dp) -> White bg for navigation buttons.
   const isAndroid = Platform.OS === 'android';
   const isIOS = Platform.OS === 'ios';
-  const hasControlButtons = isAndroid && insets.bottom > 24;
-  const hasHomeIndicator = (isIOS && insets.bottom > 0) || (isAndroid && insets.bottom > 0 && insets.bottom <= 24);
+  const hasControlButtons = isAndroid && insets.bottom >= 36;
+  const hasHomeIndicator = (isIOS && insets.bottom > 0) || (isAndroid && insets.bottom > 0 && insets.bottom < 36);
   const bottomControlBarHeight = hasControlButtons ? insets.bottom : 0;
 
   // Bottom padding for content scrolls so nothing is hidden behind floating tab bar or system navigation
   const tabBarBottomPadding = hasControlButtons
     ? insets.bottom + 8
-    : Math.max(insets.bottom, Platform.OS === 'ios' ? 12 : 10);
+    : Math.max(insets.bottom, Platform.OS === 'ios' ? 12 : 12);
   const scrollBottomPadding = insets.bottom + (isSmallPhone ? 88 : 98);
 
   // Layout container constraint for tablets & wide screens

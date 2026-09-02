@@ -22,17 +22,17 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean}
 }
 
 /**
- * BottomControlBar provides a solid white background specifically for devices that have
- * on-screen system control buttons (3-button navigation on Android) at the bottom so that
- * the control buttons are clearly visible.
- * Devices with a home indicator (iOS or Android gesture navigation pill) are excluded and
- * retain their seamless full-height dark aesthetic.
+ * BottomControlBar manages the bottom navigation bar styling:
+ * - Mobiles with navigation buttons (3-button navigation on Android, insets.bottom >= 36dp):
+ *   Renders a solid white background specifically behind the 3 navigation buttons for high contrast.
+ * - Mobiles with home button / gesture bar / home indicator (iOS or Android gesture navigation):
+ *   Renders NO white background, seamlessly blending into the app's dark theme (#101415).
  */
 const BottomControlBar: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const hasControlButtons = Platform.OS === 'android' && insets.bottom > 24;
+  const hasNavigationButtons = Platform.OS === 'android' && insets.bottom >= 36;
 
-  if (!hasControlButtons) return null;
+  if (!hasNavigationButtons) return null;
 
   return (
     <View
