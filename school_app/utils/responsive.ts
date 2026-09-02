@@ -78,11 +78,16 @@ export function useResponsive(): ResponsiveValues {
   const hasHomeIndicator = (isIOS && insets.bottom > 0) || (isAndroid && insets.bottom > 0 && insets.bottom < 36);
   const bottomControlBarHeight = hasControlButtons ? insets.bottom : 0;
 
-  // Bottom padding for content scrolls so nothing is hidden behind floating tab bar or system navigation
+  // Bottom padding for floating tab bar (elevated slightly upwards for optimal ergonomic reach and clear spacing):
+  // - Devices with on-screen navigation buttons (insets.bottom >= 36): insets.bottom + 14
+  // - Devices with gesture navigation / home indicator (insets.bottom > 0): insets.bottom + 14
+  // - Devices with physical home button / 0 inset: 20
   const tabBarBottomPadding = hasControlButtons
-    ? insets.bottom + 8
-    : Math.max(insets.bottom, Platform.OS === 'ios' ? 12 : 12);
-  const scrollBottomPadding = insets.bottom + (isSmallPhone ? 88 : 98);
+    ? insets.bottom + 14
+    : insets.bottom > 0
+    ? insets.bottom + 14
+    : 20;
+  const scrollBottomPadding = tabBarBottomPadding + (isSmallPhone ? 72 : 78) + 16;
 
   // Layout container constraint for tablets & wide screens
   const containerMaxWidth = isTablet ? 720 : undefined;
