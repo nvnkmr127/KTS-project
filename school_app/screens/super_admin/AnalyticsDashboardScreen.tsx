@@ -32,6 +32,9 @@ import {
   UserCheck,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  Check,
+  Calendar,
   SlidersHorizontal,
   LayoutDashboard,
   Building2,
@@ -165,10 +168,10 @@ export const AnalyticsDashboardScreen: React.FC = () => {
         Array.isArray(res)
           ? res
           : res?.data && Array.isArray(res.data)
-          ? res.data
-          : res?.data?.data && Array.isArray(res.data.data)
-          ? res.data.data
-          : [];
+            ? res.data
+            : res?.data?.data && Array.isArray(res.data.data)
+              ? res.data.data
+              : [];
 
       const studentsList = extract(rawStudents);
       const feesList = extract(rawFees);
@@ -299,22 +302,242 @@ export const AnalyticsDashboardScreen: React.FC = () => {
   // =========================================================
   const [staffDeptFilter, setStaffDeptFilter] = useState('All');
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
+  const [staffDatePreset, setStaffDatePreset] = useState<'today' | 'month' | 'last30' | 'term'>('today');
+  const [staffViewMode, setStaffViewMode] = useState<'daily' | 'summary'>('daily');
+  const [staffLayoutMode, setStaffLayoutMode] = useState<'cards' | 'table'>('cards');
+  const [selectedStaffDistTier, setSelectedStaffDistTier] = useState<string | null>(null);
+  const [selectedStaffPieIdx, setSelectedStaffPieIdx] = useState<number | null>(null);
+  const [showStaffInsightsModal, setShowStaffInsightsModal] = useState(false);
+
+  // Department Dropdown & Side-by-Side Date Picker (DD-MM-YYYY) States
+  const [staffStartDate, setStaffStartDate] = useState('01-08-2026');
+  const [staffEndDate, setStaffEndDate] = useState('03-09-2026');
+  const [showStaffDeptDropdown, setShowStaffDeptDropdown] = useState(false);
+  const [showStaffCalendarModal, setShowStaffCalendarModal] = useState(false);
+  const [staffTargetDateField, setStaffTargetDateField] = useState<'start' | 'end'>('start');
+  const [staffPickerMonth, setStaffPickerMonth] = useState(new Date().getMonth());
+  const [staffPickerYear, setStaffPickerYear] = useState(new Date().getFullYear());
+
+  const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const DAYS_OF_WEEK = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+  const staffCalendarCells = useMemo(() => {
+    const firstDayIndex = new Date(staffPickerYear, staffPickerMonth, 1).getDay();
+    const daysInMonth = new Date(staffPickerYear, staffPickerMonth + 1, 0).getDate();
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstDayIndex; i++) cells.push(null);
+    for (let day = 1; day <= daysInMonth; day++) cells.push(day);
+    return cells;
+  }, [staffPickerYear, staffPickerMonth]);
+
+  const openStaffCalendarPicker = (field: 'start' | 'end') => {
+    setStaffTargetDateField(field);
+    const currentDateStr = field === 'start' ? staffStartDate : staffEndDate;
+    if (currentDateStr && /^\d{2}-\d{2}-\d{4}$/.test(currentDateStr)) {
+      const parts = currentDateStr.split('-');
+      const y = parseInt(parts[2], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      if (!isNaN(y) && !isNaN(m)) {
+        setStaffPickerYear(y);
+        setStaffPickerMonth(m);
+      }
+    } else {
+      setStaffPickerYear(new Date().getFullYear());
+      setStaffPickerMonth(new Date().getMonth());
+    }
+    setShowStaffCalendarModal(true);
+  };
+
+  const handleSelectStaffCalendarDate = (day: number) => {
+    const dd = String(day).padStart(2, '0');
+    const mm = String(staffPickerMonth + 1).padStart(2, '0');
+    const yyyy = String(staffPickerYear);
+    const dateFormatted = `${dd}-${mm}-${yyyy}`;
+
+    if (staffTargetDateField === 'start') {
+      setStaffStartDate(dateFormatted);
+    } else {
+      setStaffEndDate(dateFormatted);
+    }
+    setShowStaffCalendarModal(false);
+  };
+
+  const formatDateInput = (text: string) => {
+    const cleaned = text.replace(/[^0-9]/g, '');
+    if (cleaned.length <= 2) return cleaned;
+    if (cleaned.length <= 4) return `${cleaned.slice(0, 2)}-${cleaned.slice(2)}`;
+    return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 4)}-${cleaned.slice(4, 8)}`;
+  };
 
   const departmentsList = useMemo(() => {
     const depts = Array.from(new Set(faculty.map((f) => f.department || 'Teaching'))).filter(Boolean);
     return ['All', ...depts];
   }, [faculty]);
 
+  const staffAttendanceDistribution = useMemo(() => {
+    return [
+      { name: 'Excellent (>90%)', count: Math.max(1, Math.round(faculty.length * 0.65)), color: '#10B981', tier: 'Excellent', desc: 'Consistent top attendance record' },
+      { name: 'Good (80-90%)', count: Math.max(1, Math.round(faculty.length * 0.22)), color: '#38BDF8', tier: 'Good', desc: 'Standard compliant attendance' },
+      { name: 'Satisfactory (60-80%)', count: Math.max(0, Math.round(faculty.length * 0.10)), color: '#F0C110', tier: 'Satisfactory', desc: 'Moderate leave & late entries' },
+      { name: 'Improvement (<60%)', count: Math.max(0, faculty.length - Math.round(faculty.length * 0.65) - Math.round(faculty.length * 0.22) - Math.round(faculty.length * 0.10)), color: '#EF4444', tier: 'Improvement', desc: 'Frequent absenteeism' },
+    ];
+  }, [faculty]);
+
+  const staffStatusBreakdown = useMemo(() => {
+    return [
+      { name: 'Present', percentage: 88, color: '#10B981' },
+      { name: 'Late Check-In', percentage: 6, color: '#F0C110' },
+      { name: 'Half Day', percentage: 3, color: '#38BDF8' },
+      { name: 'Absent / Leave', percentage: 3, color: '#EF4444' },
+    ];
+  }, []);
+
+  const staffReportMonths = useMemo(() => {
+    const parts1 = staffStartDate.split('-');
+    const parts2 = staffEndDate.split('-');
+    if (parts1.length !== 3 || parts2.length !== 3) return ['September 2026'];
+
+    const d1 = new Date(parseInt(parts1[2], 10), parseInt(parts1[1], 10) - 1, parseInt(parts1[0], 10));
+    const d2 = new Date(parseInt(parts2[2], 10), parseInt(parts2[1], 10) - 1, parseInt(parts2[0], 10));
+
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return ['September 2026'];
+
+    const months: string[] = [];
+    const current = new Date(d1.getFullYear(), d1.getMonth(), 1);
+    const end = new Date(d2.getFullYear(), d2.getMonth(), 1);
+
+    while (current <= end) {
+      const mName = `${MONTH_NAMES[current.getMonth()]} ${current.getFullYear()}`;
+      if (!months.includes(mName)) months.push(mName);
+      current.setMonth(current.getMonth() + 1);
+    }
+    return months.length > 0 ? months : ['September 2026'];
+  }, [staffStartDate, staffEndDate, MONTH_NAMES]);
+
+  const processedStaffList = useMemo(() => {
+    return faculty.map((f, idx) => {
+      const empId = f.employee_id || f.empId || f.biometric_employee_code || `EMP-2026-0${idx + 1}`;
+      const name = f.name || 'Faculty Member';
+      const role = f.designation || f.role || 'Senior Teacher';
+      const category = f.category || (f.department === 'Teaching' ? 'Teaching Faculty' : 'Non-Teaching');
+      const dept = f.department || 'Teaching';
+
+      const basePct = 90 + ((idx * 7) % 9);
+      const isLate = idx % 5 === 0;
+      const isEarly = idx % 7 === 0;
+      const checkIn = isLate ? '09:18 AM' : '08:48 AM';
+      const checkOut = isEarly ? '04:15 PM' : '04:45 PM';
+      const hours = isEarly ? '06h 57m' : isLate ? '07h 27m' : '07h 57m';
+      const status = idx === 3 ? 'Leave' : idx === 5 ? 'Half Day' : isLate ? 'Late' : 'Present';
+
+      const workDays = 24;
+      const presentDays = Math.max(18, Math.round(workDays * (basePct / 100)));
+      const lateDays = isLate ? 2 : 0;
+      const halfDays = idx === 5 ? 1 : 0;
+      const leaveDays = idx === 3 ? 2 : (idx % 3 === 0 ? 1 : 0);
+      const absentDays = Math.max(0, workDays - presentDays - leaveDays);
+
+      let distTier = 'Excellent';
+      if (basePct < 60) distTier = 'Improvement';
+      else if (basePct < 80) distTier = 'Satisfactory';
+      else if (basePct <= 90) distTier = 'Good';
+
+      const monthlyData: Record<
+        string,
+        { workDays: number; present: number; late: number; half: number; absent: number; leave: number; percentage: string }
+      > = {};
+
+      let sumWork = 0;
+      let sumPres = 0;
+      let sumLate = 0;
+      let sumHalf = 0;
+      let sumAbs = 0;
+      let sumLeave = 0;
+
+      staffReportMonths.forEach((m, mIdx) => {
+        const isAug = m.toLowerCase().includes('august');
+        const isSep = m.toLowerCase().includes('september');
+        const mWork = isAug ? 25 : isSep ? (staffReportMonths.length > 1 ? 3 : 24) : 24;
+        const mPres = Math.max(0, Math.round(mWork * (basePct / 100)) - (idx % 3 === 0 ? 1 : 0));
+        const mLate = (idx + mIdx) % 5 === 0 ? 1 : 0;
+        const mHalf = (idx + mIdx) % 7 === 0 ? 1 : 0;
+        const mLeave = (idx + mIdx) % 4 === 0 ? 1 : 0;
+        const mAbs = Math.max(0, mWork - mPres - mLeave);
+        const mScore = mPres + mLate + mHalf * 0.5;
+        const mPct = mWork > 0 ? `${Math.min(100, Math.round((mScore / mWork) * 100))}%` : '0%';
+
+        monthlyData[m] = {
+          workDays: mWork,
+          present: mPres,
+          late: mLate,
+          half: mHalf,
+          absent: mAbs,
+          leave: mLeave,
+          percentage: mPct,
+        };
+
+        sumWork += mWork;
+        sumPres += mPres;
+        sumLate += mLate;
+        sumHalf += mHalf;
+        sumAbs += mAbs;
+        sumLeave += mLeave;
+      });
+
+      const oScore = sumPres + sumLate + sumHalf * 0.5;
+      const overallPct = sumWork > 0 ? `${Math.min(100, Math.round((oScore / sumWork) * 100))}%` : `${basePct}%`;
+      const overallData = {
+        workDays: sumWork || workDays,
+        present: sumPres || presentDays,
+        late: sumLate || lateDays,
+        half: sumHalf || halfDays,
+        absent: sumAbs || absentDays,
+        leave: sumLeave || leaveDays,
+        percentage: overallPct,
+      };
+
+      return {
+        id: f.id || idx,
+        name,
+        empId,
+        role,
+        category,
+        dept,
+        checkIn,
+        checkOut,
+        hours,
+        status,
+        isLate,
+        isEarly,
+        workDays,
+        presentDays,
+        lateDays,
+        halfDays,
+        absentDays,
+        leaveDays,
+        attendancePct: basePct,
+        distTier,
+        monthlyData,
+        overallData,
+      };
+    });
+  }, [faculty, staffReportMonths]);
+
   const filteredStaffList = useMemo(() => {
-    return faculty.filter((f) => {
-      const matchesDept = staffDeptFilter === 'All' || (f.department || 'Teaching') === staffDeptFilter;
+    return processedStaffList.filter((f) => {
+      const matchesDept = staffDeptFilter === 'All' || f.dept === staffDeptFilter;
       const matchesSearch =
         !staffSearchQuery.trim() ||
-        (f.name || '').toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
-        (f.employee_id || f.empId || '').toLowerCase().includes(staffSearchQuery.toLowerCase());
-      return matchesDept && matchesSearch;
+        f.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
+        f.empId.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
+        f.role.toLowerCase().includes(staffSearchQuery.toLowerCase());
+      const matchesDistTier = !selectedStaffDistTier || f.distTier === selectedStaffDistTier;
+      return matchesDept && matchesSearch && matchesDistTier;
     });
-  }, [faculty, staffDeptFilter, staffSearchQuery]);
+  }, [processedStaffList, staffDeptFilter, staffSearchQuery, selectedStaffDistTier]);
 
   // =========================================================
   // STUDENT DATA REPORT DATA & FILTERS
@@ -655,11 +878,10 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                       justifyContent: 'flex-end',
                                       alignItems: 'center',
                                     }}
-                                    className={`rounded-xl ${
-                                      isSelected
-                                        ? 'bg-white/15 border border-white/30'
-                                        : 'active:bg-white/5'
-                                    }`}
+                                    className={`rounded-xl ${isSelected
+                                      ? 'bg-white/15 border border-white/30'
+                                      : 'active:bg-white/5'
+                                      }`}
                                   >
                                     {/* 3 Grouped Term Bars with Exact Proportional Heights & Top Labels */}
                                     <View className="flex-row items-end justify-center gap-1.5" style={{ height: 180 }}>
@@ -762,9 +984,8 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                 <View key={item.cls} style={{ width: 70, marginHorizontal: 2, alignItems: 'center' }}>
                                   <Text
                                     numberOfLines={1}
-                                    className={`text-[11px] font-extrabold text-center ${
-                                      isSelected ? 'text-[#ffe5a0]' : 'text-white/70'
-                                    }`}
+                                    className={`text-[11px] font-extrabold text-center ${isSelected ? 'text-[#ffe5a0]' : 'text-white/70'
+                                      }`}
                                   >
                                     {item.short}
                                   </Text>
@@ -1402,110 +1623,1225 @@ export const AnalyticsDashboardScreen: React.FC = () => {
               </View>
             )}
 
-            {/* SCREEN 3: STAFF ATTENDANCE ANALYTICS */}
+            {/* SCREEN 3: STAFF ATTENDANCE ANALYTICS (WEB & APP PARITY) */}
             {selectedSection === 'staff' && (
               <View className="gap-5">
-                {/* Staff Attendance KPIs */}
-                <View className="flex-row gap-2.5">
-                  <GlassCard className="flex-1 p-3.5 border border-white/10 items-center rounded-2xl" intensity="low">
-                    <Text className="text-white font-black text-lg md:text-xl">{faculty.length}</Text>
-                    <Text className="text-white/60 text-[10.5px] uppercase font-bold mt-1 text-center">Faculty</Text>
-                  </GlassCard>
-
-                  <GlassCard className="flex-1 p-3.5 border border-white/10 items-center rounded-2xl" intensity="low">
-                    <Text className="text-emerald-400 font-black text-lg md:text-xl">95.6%</Text>
-                    <Text className="text-white/60 text-[10.5px] uppercase font-bold mt-1 text-center">Avg Attendance</Text>
-                  </GlassCard>
-
-                  <GlassCard className="flex-1 p-3.5 border border-white/10 items-center rounded-2xl" intensity="low">
-                    <Text className="text-sky-400 font-black text-lg md:text-xl">23.4</Text>
-                    <Text className="text-white/60 text-[10.5px] uppercase font-bold mt-1 text-center">Present Days</Text>
-                  </GlassCard>
-
-                  <GlassCard className="flex-1 p-3.5 border border-white/10 items-center rounded-2xl" intensity="low">
-                    <Text className="text-red-400 font-black text-lg md:text-xl">1.1</Text>
-                    <Text className="text-white/60 text-[10.5px] uppercase font-bold mt-1 text-center">Absent Days</Text>
-                  </GlassCard>
-                </View>
-
-                {/* Filter & Search Box */}
+                {/* Header & Performance Insights Action */}
                 <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
-                  <View className="gap-3">
-                    <View className="bg-black/50 border border-white/15 rounded-2xl px-4 py-2.5 flex-row items-center gap-3">
-                      <Search size={16} color="rgba(255,255,255,0.4)" />
-                      <TextInput
-                        value={staffSearchQuery}
-                        onChangeText={setStaffSearchQuery}
-                        placeholder="Search faculty by name or Emp ID..."
-                        placeholderTextColor="rgba(255,255,255,0.3)"
-                        className="flex-1 text-white text-xs md:text-sm font-medium p-0"
-                      />
-                      {staffSearchQuery ? (
-                        <Pressable onPress={() => setStaffSearchQuery('')}>
-                          <X size={16} color="#fff" />
-                        </Pressable>
-                      ) : null}
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1 mr-2">
+                      <Text className="text-white font-extrabold text-sm md:text-base">
+                        Faculty Attendance Analysis Report
+                      </Text>
+                      <Text className="text-white/60 text-xs mt-0.5">
+                        Biometric logs, daily check-ins & period-wise faculty analytics
+                      </Text>
                     </View>
-
-                    {/* Department Filter Pills */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                      {departmentsList.map((dept) => (
-                        <Pressable
-                          key={dept}
-                          onPress={() => setStaffDeptFilter(dept)}
-                          className={`px-3.5 py-2 rounded-xl border mr-2 ${
-                            staffDeptFilter === dept ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-white/5 border-white/10'
-                          }`}
-                        >
-                          <Text className={`text-xs font-extrabold ${staffDeptFilter === dept ? 'text-[#101415]' : 'text-white/80'}`}>
-                            {dept}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  </View>
-                </GlassCard>
-
-                {/* Faculty Roster Attendance List */}
-                <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
-                  <View className="flex-row justify-between items-center mb-3">
-                    <Text className="text-[#ffe5a0] text-xs md:text-sm font-extrabold uppercase tracking-wider">
-                      STAFF ATTENDANCE ROSTER ({filteredStaffList.length})
-                    </Text>
                     <Pressable
-                      onPress={() => handleExportReport('staff_att', 'Staff Attendance Sheet')}
-                      className="px-3 py-1.5 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 flex-row items-center gap-1.5"
+                      onPress={() => setShowStaffInsightsModal(!showStaffInsightsModal)}
+                      className={`px-3 py-1.5 rounded-xl border flex-row items-center gap-1.5 ${showStaffInsightsModal ? 'bg-[#41eec2] border-[#41eec2]' : 'bg-[#41eec2]/20 border-[#41eec2]/40'
+                        }`}
                     >
-                      <Download size={13} color="#ffe5a0" />
-                      <Text className="text-[#ffe5a0] text-xs font-bold">Export</Text>
+                      <TrendingUp size={14} color={showStaffInsightsModal ? '#101415' : '#41eec2'} />
+                      <Text className={`text-xs font-black ${showStaffInsightsModal ? 'text-[#101415]' : 'text-[#41eec2]'}`}>
+                        Insights
+                      </Text>
                     </Pressable>
                   </View>
 
-                  <View className="gap-3">
-                    {filteredStaffList.map((s, idx) => {
-                      const attPct = 92 + (idx % 8);
-                      return (
-                        <View key={s.id || idx} className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
-                          <View className="flex-row justify-between items-start mb-2">
-                            <View className="flex-1 mr-2">
-                              <Text className="text-white font-extrabold text-sm">{s.name || 'Faculty Member'}</Text>
-                              <Text className="text-white/50 text-xs mt-0.5">
-                                {s.role || 'Teacher'} • {s.department || 'Teaching'}
+                  {/* Performance Insights Collapsible Banner */}
+                  {showStaffInsightsModal && (
+                    <View className="mt-3.5 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 gap-2">
+                      <View className="flex-row justify-between items-center">
+                        <Text className="text-emerald-300 font-extrabold text-xs">💡 Faculty Attendance Insights</Text>
+                        <Pressable onPress={() => setShowStaffInsightsModal(false)}>
+                          <X size={13} color="#41eec2" />
+                        </Pressable>
+                      </View>
+                      <Text className="text-white/80 text-[11.5px] leading-relaxed">
+                        Overall staff punctual check-in compliance is at <Text className="text-emerald-300 font-bold">94.2%</Text>. Teaching department leads with <Text className="text-white font-bold">96.8%</Text> presence rate. Average checkout duration is <Text className="text-white font-bold">7h 48m</Text>.
+                      </Text>
+                    </View>
+                  )}
+                </GlassCard>
+
+                {/* Top Filter Bar (Department Dropdown & Side-by-Side Date Filters) */}
+                <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
+                  <View className="gap-3.5">
+                    {/* Department Dropdown Selector */}
+                    <View>
+                      <Text className="text-white/50 text-[10.5px] font-bold uppercase tracking-wider mb-1.5">
+                        Department
+                      </Text>
+                      <Pressable
+                        onPress={() => setShowStaffDeptDropdown(true)}
+                        className="flex-row items-center justify-between px-3.5 py-3 rounded-xl bg-black/40 border border-white/15 active:bg-white/10"
+                      >
+                        <View className="flex-row items-center gap-2.5 flex-1 mr-2">
+                          <Building2 size={16} color="#ffe5a0" />
+                          <Text className="text-white font-extrabold text-xs md:text-sm" numberOfLines={1}>
+                            {staffDeptFilter === 'All' ? 'All Departments' : staffDeptFilter}
+                          </Text>
+                        </View>
+                        <View className="flex-row items-center gap-2">
+                          <View className="px-2 py-0.5 rounded-md bg-[#f0c110]/20 border border-[#f0c110]/40">
+                            <Text className="text-[#ffe5a0] text-[10px] font-black">
+                              {staffDeptFilter === 'All'
+                                ? `${faculty.length} Staff`
+                                : `${faculty.filter((f) => (f.department || 'Teaching') === staffDeptFilter).length} Staff`}
+                            </Text>
+                          </View>
+                          <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
+                        </View>
+                      </Pressable>
+                    </View>
+
+                    {/* Side-by-Side Date Range Inputs with Calendar Pickers */}
+                    <View className="flex-row gap-2.5">
+                      {/* Start Date */}
+                      <View className="flex-1">
+                        <Text className="text-white/50 text-[10.5px] font-bold uppercase tracking-wider mb-1.5">
+                          Start Date (DD-MM-YYYY)
+                        </Text>
+                        <View className="flex-row items-center justify-between bg-black/50 border border-white/15 rounded-xl px-3 py-2">
+                          <TextInput
+                            value={staffStartDate}
+                            onChangeText={(t) => setStaffStartDate(formatDateInput(t))}
+                            placeholder="DD-MM-YYYY"
+                            placeholderTextColor="rgba(255,255,255,0.3)"
+                            maxLength={10}
+                            keyboardType="numeric"
+                            className="flex-1 text-white font-mono text-xs font-bold p-0"
+                          />
+                          <Pressable
+                            onPress={() => openStaffCalendarPicker('start')}
+                            className="p-1.5 rounded-lg bg-white/10 active:bg-[#f0c110]/30 ml-1.5"
+                          >
+                            <Calendar size={14} color="#ffe5a0" />
+                          </Pressable>
+                        </View>
+                      </View>
+
+                      {/* End Date */}
+                      <View className="flex-1">
+                        <Text className="text-white/50 text-[10.5px] font-bold uppercase tracking-wider mb-1.5">
+                          End Date (DD-MM-YYYY)
+                        </Text>
+                        <View className="flex-row items-center justify-between bg-black/50 border border-white/15 rounded-xl px-3 py-2">
+                          <TextInput
+                            value={staffEndDate}
+                            onChangeText={(t) => setStaffEndDate(formatDateInput(t))}
+                            placeholder="DD-MM-YYYY"
+                            placeholderTextColor="rgba(255,255,255,0.3)"
+                            maxLength={10}
+                            keyboardType="numeric"
+                            className="flex-1 text-white font-mono text-xs font-bold p-0"
+                          />
+                          <Pressable
+                            onPress={() => openStaffCalendarPicker('end')}
+                            className="p-1.5 rounded-lg bg-white/10 active:bg-[#f0c110]/30 ml-1.5"
+                          >
+                            <Calendar size={14} color="#ffe5a0" />
+                          </Pressable>
+                        </View>
+                      </View>
+                    </View>
+
+                  </View>
+                </GlassCard>
+
+                {/* 4 KPI Summary Cards (With Web Color-Coded Accent Borders) */}
+                <View className="flex-row flex-wrap gap-2.5">
+                  {/* Total Faculty */}
+                  <View
+                    style={{
+                      flex: 1,
+                      minWidth: 140,
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      borderLeftWidth: 4,
+                      borderLeftColor: '#38bdf8',
+                      padding: 12,
+                    }}
+                  >
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="text-white/60 text-[9.5px] uppercase font-extrabold tracking-wider">TOTAL FACULTY</Text>
+                      <Users size={14} color="#38bdf8" />
+                    </View>
+                    <Text className="text-white font-black text-xl font-mono">{filteredStaffList.length}</Text>
+                    <Text className="text-[#38bdf8] text-[10px] font-bold mt-0.5">Active Staff Roster</Text>
+                  </View>
+
+                  {/* Avg Attendance */}
+                  <View
+                    style={{
+                      flex: 1,
+                      minWidth: 140,
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      borderLeftWidth: 4,
+                      borderLeftColor: '#10b981',
+                      padding: 12,
+                    }}
+                  >
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="text-white/60 text-[9.5px] uppercase font-extrabold tracking-wider">AVG. ATTENDANCE</Text>
+                      <TrendingUp size={14} color="#10b981" />
+                    </View>
+                    <Text className="text-emerald-400 font-black text-xl font-mono">95.6%</Text>
+                    <Text className="text-emerald-400 text-[10px] font-bold mt-0.5">+1.8% vs Last Month</Text>
+                  </View>
+
+                  {/* Avg Present Days */}
+                  <View
+                    style={{
+                      flex: 1,
+                      minWidth: 140,
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      borderLeftWidth: 4,
+                      borderLeftColor: '#06b6d4',
+                      padding: 12,
+                    }}
+                  >
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="text-white/60 text-[9.5px] uppercase font-extrabold tracking-wider">AVG. PRESENT</Text>
+                      <CheckCircle2 size={14} color="#06b6d4" />
+                    </View>
+                    <Text className="text-cyan-400 font-black text-xl font-mono">23.4d</Text>
+                    <Text className="text-white/50 text-[10px] font-bold mt-0.5">Out of 24 Work Days</Text>
+                  </View>
+
+                  {/* Avg Absent Days */}
+                  <View
+                    style={{
+                      flex: 1,
+                      minWidth: 140,
+                      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.1)',
+                      borderLeftWidth: 4,
+                      borderLeftColor: '#ef4444',
+                      padding: 12,
+                    }}
+                  >
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="text-white/60 text-[9.5px] uppercase font-extrabold tracking-wider">AVG. ABSENT</Text>
+                      <AlertCircle size={14} color="#ef4444" />
+                    </View>
+                    <Text className="text-red-400 font-black text-xl font-mono">1.1d</Text>
+                    <Text className="text-red-400 text-[10px] font-bold mt-0.5">Includes Leaves</Text>
+                  </View>
+                </View>
+
+                {/* Two Interactive Analytics Charts (Matching Web) */}
+                <View className="gap-5">
+                  {/* Chart 1: Attendance Distribution (Faculty) Vertical Bar Graph */}
+                  <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
+                    <View className="flex-row items-center justify-between mb-1.5">
+                      <View className="flex-row items-center gap-2">
+                        <BarChart2 size={18} color="#38bdf8" />
+                        <Text className="text-white font-extrabold text-sm md:text-base">
+                          Attendance Distribution (Faculty)
+                        </Text>
+                      </View>
+                      {selectedStaffDistTier && (
+                        <Pressable
+                          onPress={() => setSelectedStaffDistTier(null)}
+                          className="px-2 py-0.5 rounded-lg bg-white/10 flex-row items-center gap-1"
+                        >
+                          <Text className="text-white text-[10px] font-bold">Reset</Text>
+                          <X size={11} color="#ffffff" />
+                        </Pressable>
+                      )}
+                    </View>
+                    <Text className="text-white/60 text-xs leading-relaxed mb-3">
+                      Categorization by attendance achievement tiers. Tap a bar to view count and filter roster.
+                    </Text>
+
+                    {/* Interactive Selected Tier Detail Popover Card */}
+                    {selectedStaffDistTier !== null && (
+                      <View className="mb-3.5 p-3.5 bg-white/95 rounded-2xl border border-white/40 shadow-lg flex-row items-center justify-between">
+                        {(() => {
+                          const activeTier = staffAttendanceDistribution.find((t) => t.tier === selectedStaffDistTier);
+                          if (!activeTier) return null;
+                          const totalFacultyCount = faculty.length || 1;
+                          const pctOfTotal = Math.round((activeTier.count / totalFacultyCount) * 100);
+                          return (
+                            <>
+                              <View className="flex-row items-center gap-3 flex-1">
+                                <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: activeTier.color }} />
+                                <View>
+                                  <Text className="text-gray-900 font-black text-sm">{activeTier.name}</Text>
+                                  <Text className="text-gray-600 text-[11px] font-bold mt-0.5">
+                                    <Text style={{ color: activeTier.color }} className="font-black font-mono">{activeTier.count} Faculty</Text> ({pctOfTotal}% of total staff)
+                                  </Text>
+                                </View>
+                              </View>
+                              <Pressable
+                                onPress={() => setSelectedStaffDistTier(null)}
+                                className="p-1.5 rounded-full bg-gray-200 active:bg-gray-300"
+                              >
+                                <X size={13} color="#374151" />
+                              </Pressable>
+                            </>
+                          );
+                        })()}
+                      </View>
+                    )}
+
+                    {/* Vertical Bar Chart Canvas with Y-Axis and Gridlines */}
+                    <View className="flex-row items-stretch my-2">
+                      {/* Fixed Left Y-Axis */}
+                      {(() => {
+                        const maxCount = Math.max(...staffAttendanceDistribution.map((t) => t.count), 10);
+                        const maxY = Math.ceil(maxCount / 5) * 5 || 20;
+                        const yTicks = [maxY, Math.round(maxY * 0.75), Math.round(maxY * 0.5), Math.round(maxY * 0.25), 0];
+
+                        return (
+                          <View className="w-[30px] justify-between items-end pr-1.5 py-1" style={{ height: 160 }}>
+                            {yTicks.map((val, idx) => (
+                              <Text key={idx} className="text-white/40 font-mono text-[9px] font-semibold">
+                                {val}
+                              </Text>
+                            ))}
+                          </View>
+                        );
+                      })()}
+
+                      {/* Main Chart Area */}
+                      <View className="flex-1 relative" style={{ height: 200 }}>
+                        {/* Background Horizontal Grid Lines */}
+                        <View className="absolute inset-0 justify-between py-1 pointer-events-none" style={{ height: 160 }}>
+                          {[0, 1, 2, 3, 4].map((i) => (
+                            <View key={i} className="w-full border-b border-white/10" />
+                          ))}
+                        </View>
+
+                        {/* 4 Vertical Bar Columns */}
+                        <View className="flex-row items-end justify-around h-[160px] w-full px-1">
+                          {(() => {
+                            const maxCount = Math.max(...staffAttendanceDistribution.map((t) => t.count), 10);
+                            const maxY = Math.ceil(maxCount / 5) * 5 || 20;
+
+                            return staffAttendanceDistribution.map((tier) => {
+                              const isSelected = selectedStaffDistTier === tier.tier;
+                              const barHeight = Math.max(8, (tier.count / maxY) * 140);
+
+                              return (
+                                <Pressable
+                                  key={tier.tier}
+                                  onPress={() => setSelectedStaffDistTier(isSelected ? null : tier.tier)}
+                                  className="items-center justify-end h-full relative"
+                                  style={{
+                                    flex: 1,
+                                    maxWidth: 70,
+                                    marginHorizontal: 3,
+                                    backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                                    borderRadius: 10,
+                                    paddingBottom: 0,
+                                  }}
+                                >
+                                  {/* Floating Top Count Badge */}
+                                  {isSelected && (
+                                    <View
+                                      style={{
+                                        position: 'absolute',
+                                        bottom: barHeight + 4,
+                                        alignItems: 'center',
+                                        zIndex: 10,
+                                      }}
+                                    >
+                                      <View
+                                        style={{
+                                          backgroundColor: tier.color,
+                                          paddingHorizontal: 6,
+                                          paddingVertical: 2,
+                                          borderRadius: 6,
+                                          shadowColor: tier.color,
+                                          shadowOffset: { width: 0, height: 2 },
+                                          shadowOpacity: 0.4,
+                                          shadowRadius: 4,
+                                          elevation: 4,
+                                        }}
+                                      >
+                                        <Text
+                                          style={{ color: '#101415', fontSize: 10, fontWeight: '900', fontFamily: 'monospace' }}
+                                        >
+                                          {tier.count}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  )}
+
+                                  {/* Bar Body */}
+                                  <View
+                                    style={{
+                                      height: barHeight,
+                                      width: 28,
+                                      backgroundColor: tier.color,
+                                      borderTopLeftRadius: 6,
+                                      borderTopRightRadius: 6,
+                                      opacity: selectedStaffDistTier !== null && !isSelected ? 0.35 : 1,
+                                    }}
+                                  />
+                                </Pressable>
+                              );
+                            });
+                          })()}
+                        </View>
+
+                        {/* Baseline Divider */}
+                        <View className="w-full border-b border-white/20" />
+
+                        {/* X-Axis Category Labels */}
+                        <View className="flex-row justify-around w-full pt-1.5 px-1">
+                          {staffAttendanceDistribution.map((tier) => {
+                            const isSelected = selectedStaffDistTier === tier.tier;
+                            return (
+                              <Pressable
+                                key={tier.tier}
+                                onPress={() => setSelectedStaffDistTier(isSelected ? null : tier.tier)}
+                                style={{ flex: 1, maxWidth: 70, alignItems: 'center' }}
+                              >
+                                <Text
+                                  numberOfLines={1}
+                                  style={{ color: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.7)' }}
+                                  className={`text-[10px] text-center ${isSelected ? 'font-black' : 'font-semibold'}`}
+                                >
+                                  {tier.tier}
+                                </Text>
+                                <Text
+                                  style={{ color: isSelected ? tier.color : 'rgba(255, 255, 255, 0.4)' }}
+                                  className="text-[8.5px] font-mono text-center font-bold"
+                                >
+                                  {tier.tier === 'Excellent'
+                                    ? '>90%'
+                                    : tier.tier === 'Good'
+                                      ? '80-90%'
+                                      : tier.tier === 'Satisfactory'
+                                        ? '60-80%'
+                                        : '<60%'}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    </View>
+                  </GlassCard>
+
+                  {/* Chart 2: Overall Status Breakdown Donut */}
+                  <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
+                    <View className="flex-row items-center justify-between mb-2">
+                      <View>
+                        <Text className="text-white font-extrabold text-sm md:text-base">
+                          Overall Status Breakdown
+                        </Text>
+                        <Text className="text-white/60 text-xs mt-0.5">
+                          Daily attendance breakdown by present, late & leaves
+                        </Text>
+                      </View>
+                      <View className="px-2 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30">
+                        <Text className="text-emerald-300 text-[10px] font-black">Live Status</Text>
+                      </View>
+                    </View>
+
+                    {/* Circular Donut Graphic */}
+                    <View className="items-center justify-center py-2 relative">
+                      <View className="relative w-[160px] h-[160px] items-center justify-center">
+                        <Svg width={160} height={160} viewBox="0 0 160 160">
+                          {(() => {
+                            const totalSum = staffStatusBreakdown.reduce((acc, cur) => acc + cur.percentage, 0);
+                            const totalGapDegrees = 56; // 14 degrees gap between each of the 4 segments
+                            const availableDegrees = 360 - totalGapDegrees;
+                            let currentAngle = 10;
+
+                            const polarToCartesian = (cx: number, cy: number, r: number, angleInDeg: number) => {
+                              const rad = ((angleInDeg - 90) * Math.PI) / 180.0;
+                              return {
+                                x: cx + r * Math.cos(rad),
+                                y: cy + r * Math.sin(rad),
+                              };
+                            };
+
+                            const describeArc = (cx: number, cy: number, r: number, startA: number, endA: number) => {
+                              const start = polarToCartesian(cx, cy, r, endA);
+                              const end = polarToCartesian(cx, cy, r, startA);
+                              const largeArc = endA - startA <= 180 ? '0' : '1';
+                              return ['M', start.x, start.y, 'A', r, r, 0, largeArc, 0, end.x, end.y].join(' ');
+                            };
+
+                            return staffStatusBreakdown.map((group, idx) => {
+                              const isSelected = selectedStaffPieIdx === idx;
+                              const sliceAngle = (group.percentage / totalSum) * availableDegrees;
+                              const startAngle = currentAngle;
+                              const endAngle = currentAngle + sliceAngle;
+                              currentAngle = endAngle + 14;
+
+                              const pathD = describeArc(80, 80, 54, startAngle, endAngle);
+
+                              return (
+                                <Path
+                                  key={group.name}
+                                  d={pathD}
+                                  stroke={group.color}
+                                  strokeWidth={isSelected ? 16 : 11}
+                                  strokeLinecap="round"
+                                  fill="none"
+                                  opacity={selectedStaffPieIdx !== null && !isSelected ? 0.35 : 1}
+                                  onPress={() => setSelectedStaffPieIdx(isSelected ? null : idx)}
+                                />
+                              );
+                            });
+                          })()}
+                        </Svg>
+
+                        {/* Center Stats Hole */}
+                        <Pressable
+                          onPress={() => setSelectedStaffPieIdx(null)}
+                          style={{
+                            position: 'absolute',
+                            width: 82,
+                            height: 82,
+                            borderRadius: 41,
+                            backgroundColor: '#14181a',
+                            borderWidth: selectedStaffPieIdx !== null ? 2 : 1,
+                            borderColor: selectedStaffPieIdx !== null ? staffStatusBreakdown[selectedStaffPieIdx].color : 'rgba(255, 255, 255, 0.15)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {selectedStaffPieIdx !== null ? (
+                            <>
+                              <Text style={{ color: staffStatusBreakdown[selectedStaffPieIdx].color }} className="text-xl font-black font-mono">
+                                {staffStatusBreakdown[selectedStaffPieIdx].percentage}%
+                              </Text>
+                              <Text numberOfLines={1} style={{ color: staffStatusBreakdown[selectedStaffPieIdx].color }} className="font-extrabold text-[8.5px] text-center px-1 mt-0.5">
+                                {staffStatusBreakdown[selectedStaffPieIdx].name}
+                              </Text>
+                            </>
+                          ) : (
+                            <>
+                              <Text className="text-emerald-400 text-xl font-black font-mono">88%</Text>
+                              <Text className="text-white/60 font-extrabold text-[8.5px] uppercase mt-0.5">Present</Text>
+                            </>
+                          )}
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    {/* Status Legend Pills Below */}
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 10 }}>
+                      {staffStatusBreakdown.map((group, idx) => {
+                        const isSelected = selectedStaffPieIdx === idx;
+                        return (
+                          <Pressable
+                            key={group.name}
+                            onPress={() => setSelectedStaffPieIdx(isSelected ? null : idx)}
+                            style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
+                          >
+                            <View
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 12,
+                                borderWidth: isSelected ? 1.5 : 1,
+                                borderColor: isSelected ? group.color : 'rgba(255, 255, 255, 0.3)',
+                                backgroundColor: isSelected ? `${group.color}25` : 'rgba(255, 255, 255, 0.07)',
+                              }}
+                            >
+                              <View style={{ width: 7, height: 7, borderRadius: 2, backgroundColor: group.color, marginRight: 5 }} />
+                              <Text style={{ color: isSelected ? '#ffffff' : '#f3f4f6', fontSize: 10.5, fontWeight: '700', marginRight: 5 }}>
+                                {group.name}
+                              </Text>
+                              <Text style={{ color: group.color, fontSize: 10.5, fontWeight: '900', fontFamily: 'monospace' }}>
+                                {group.percentage}%
                               </Text>
                             </View>
-                            <View className="px-2.5 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/30">
-                              <Text className="text-emerald-400 text-xs font-extrabold">{attPct}%</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </GlassCard>
+                </View>
+
+                {/* Detailed Attendance Roster & Matrix Section */}
+                <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
+                  {(() => {
+                    const isSingleDate = staffStartDate.trim() === staffEndDate.trim();
+
+                    return (
+                      <>
+                        {/* Section Header (Responsive 2-Row Layout to Prevent UI Breaking) */}
+                        <View className="mb-3.5 gap-2">
+                          <View className="flex-row items-center justify-between">
+                            <View className="flex-row items-center gap-2 flex-1 mr-2">
+                              <Text className="text-[#ffe5a0] text-xs md:text-sm font-extrabold uppercase tracking-wider">
+                                DETAILED ATTENDANCE DATA
+                              </Text>
+                              <View className="px-2 py-0.5 rounded-full bg-[#ffe5a0]/20 border border-[#ffe5a0]/30">
+                                <Text className="text-[#ffe5a0] text-[10px] font-black font-mono">
+                                  {filteredStaffList.length}
+                                </Text>
+                              </View>
+                            </View>
+                            <View
+                              className={`px-2 py-0.5 rounded-md border ${isSingleDate ? 'bg-emerald-500/20 border-emerald-500/40' : 'bg-sky-500/20 border-sky-500/40'
+                                }`}
+                            >
+                              <Text className={`text-[9.5px] font-black ${isSingleDate ? 'text-emerald-300' : 'text-sky-300'}`}>
+                                {isSingleDate ? 'Single Day' : 'Range Summary'}
+                              </Text>
                             </View>
                           </View>
 
-                          <View className="flex-row justify-between items-center pt-2 border-t border-white/5 text-xs font-mono">
-                            <Text className="text-white/50 text-[11px]">Emp ID: <Text className="text-white font-bold">{s.employee_id || s.empId || `EMP-00${idx + 1}`}</Text></Text>
-                            <Text className="text-white/50 text-[11px]">Present: <Text className="text-emerald-400 font-bold">24d</Text> • Leave: <Text className="text-amber-400 font-bold">1d</Text></Text>
+                          <View className="flex-row items-center justify-between pt-1.5 border-t border-white/5">
+                            <Text className="text-white/50 text-[10.5px] font-mono flex-1 mr-2" numberOfLines={1}>
+                              {isSingleDate ? `Date: ${staffStartDate}` : `${staffStartDate} to ${staffEndDate}`}
+                            </Text>
+
+                            <View className="flex-row items-center gap-2">
+                              {/* Layout Switcher */}
+                              <Pressable
+                                onPress={() => setStaffLayoutMode(staffLayoutMode === 'cards' ? 'table' : 'cards')}
+                                className="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/15 flex-row items-center gap-1.5 active:bg-white/20"
+                              >
+                                <SlidersHorizontal size={12} color="#ffffff" />
+                                <Text className="text-white text-xs font-bold">
+                                  {staffLayoutMode === 'cards' ? 'Table' : 'Cards'}
+                                </Text>
+                              </Pressable>
+
+                              {/* Export Button */}
+                              <Pressable
+                                onPress={() => handleExportReport('staff_att', 'Faculty Attendance Analytics Report')}
+                                className="px-3 py-1.5 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 flex-row items-center gap-1.5 active:bg-[#f0c110]/30"
+                              >
+                                <Download size={12} color="#ffe5a0" />
+                                <Text className="text-[#ffe5a0] text-xs font-bold">Export</Text>
+                              </Pressable>
+                            </View>
                           </View>
                         </View>
-                      );
-                    })}
-                  </View>
+
+                        {/* CARDS VIEW */}
+                        {staffLayoutMode === 'cards' && (
+                          <View className="gap-3">
+                            {filteredStaffList.map((s) => (
+                              <View
+                                key={s.id}
+                                className="bg-black/40 p-3.5 rounded-2xl border border-white/10"
+                              >
+                                {isSingleDate ? (
+                                  /* SINGLE DAY CARD FORMAT */
+                                  <>
+                                    {/* Top Row: Avatar, Name, Designation & Status */}
+                                    <View className="flex-row justify-between items-start mb-2.5">
+                                      <View className="flex-row items-center gap-2.5 flex-1 mr-2">
+                                        <View className="w-9 h-9 rounded-xl bg-[#38bdf8]/20 border border-[#38bdf8]/40 items-center justify-center">
+                                          <Text className="text-[#38bdf8] font-black text-xs">
+                                            {s.name.substring(0, 2).toUpperCase()}
+                                          </Text>
+                                        </View>
+                                        <View className="flex-1">
+                                          <Text className="text-white font-extrabold text-sm" numberOfLines={1}>
+                                            {s.name}
+                                          </Text>
+                                          <Text className="text-white/50 text-[10.5px] mt-0.5" numberOfLines={1}>
+                                            {s.role}
+                                          </Text>
+                                        </View>
+                                      </View>
+
+                                      <View
+                                        className={`px-2.5 py-0.5 rounded-lg border ${s.status === 'Present'
+                                          ? 'bg-emerald-500/20 border-emerald-500/30'
+                                          : s.status === 'Late'
+                                            ? 'bg-amber-500/20 border-amber-500/30'
+                                            : s.status === 'Half Day'
+                                              ? 'bg-sky-500/20 border-sky-500/30'
+                                              : 'bg-purple-500/20 border-purple-500/30'
+                                          }`}
+                                      >
+                                        <Text
+                                          className={`text-[11px] font-extrabold ${s.status === 'Present'
+                                            ? 'text-emerald-400'
+                                            : s.status === 'Late'
+                                              ? 'text-amber-400'
+                                              : s.status === 'Half Day'
+                                                ? 'text-sky-300'
+                                                : 'text-purple-300'
+                                            }`}
+                                        >
+                                          {s.status}
+                                        </Text>
+                                      </View>
+                                    </View>
+
+                                    {/* Middle Row: Check-In, Check-Out & Duration */}
+                                    <View className="flex-row items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/5 mb-2.5">
+                                      <View className="flex-1 items-start">
+                                        <Text className="text-white/40 text-[9px] uppercase font-bold">Check-In</Text>
+                                        <View className="flex-row items-center gap-1 mt-0.5">
+                                          <Text className="text-[#41eec2] font-mono font-bold text-xs">{s.checkIn}</Text>
+                                          {s.isLate && (
+                                            <View className="px-1 py-0.2 rounded bg-amber-500/30">
+                                              <Text className="text-amber-300 text-[8px] font-black">Late</Text>
+                                            </View>
+                                          )}
+                                        </View>
+                                      </View>
+
+                                      <View className="flex-1 items-center">
+                                        <Text className="text-white/40 text-[9px] uppercase font-bold">Check-Out</Text>
+                                        <View className="flex-row items-center gap-1 mt-0.5">
+                                          <Text className="text-rose-400 font-mono font-bold text-xs">{s.checkOut}</Text>
+                                          {s.isEarly && (
+                                            <View className="px-1 py-0.2 rounded bg-amber-500/30">
+                                              <Text className="text-amber-300 text-[8px] font-black">Early</Text>
+                                            </View>
+                                          )}
+                                        </View>
+                                      </View>
+
+                                      <View className="flex-1 items-end">
+                                        <Text className="text-white/40 text-[9px] uppercase font-bold">Hours</Text>
+                                        <Text className="text-white font-mono font-extrabold text-xs mt-0.5">{s.hours}</Text>
+                                      </View>
+                                    </View>
+
+                                    {/* Bottom Row: Category & Department + Emp ID */}
+                                    <View className="flex-row justify-between items-center pt-2 border-t border-white/5">
+                                      <Text className="text-white/60 text-[10.5px]" numberOfLines={1}>
+                                        Dept: <Text className="text-white font-bold">{s.dept}</Text>
+                                      </Text>
+                                      <Text className="text-white/60 text-[10.5px] font-mono">
+                                        Emp ID: <Text className="text-white font-bold">{s.empId}</Text>
+                                      </Text>
+                                    </View>
+                                  </>
+                                ) : (
+                                  /* MULTI-DAY RANGE SUMMARY CARD FORMAT */
+                                  <>
+                                    {/* Top Row: Avatar, Name, Designation & % Rate */}
+                                    <View className="flex-row justify-between items-start mb-2.5">
+                                      <View className="flex-row items-center gap-2.5 flex-1 mr-2">
+                                        <View className="w-9 h-9 rounded-xl bg-[#38bdf8]/20 border border-[#38bdf8]/40 items-center justify-center">
+                                          <Text className="text-[#38bdf8] font-black text-xs">
+                                            {s.name.substring(0, 2).toUpperCase()}
+                                          </Text>
+                                        </View>
+                                        <View className="flex-1">
+                                          <Text className="text-white font-extrabold text-sm" numberOfLines={1}>
+                                            {s.name}
+                                          </Text>
+                                          <Text className="text-white/50 text-[10.5px] mt-0.5" numberOfLines={1}>
+                                            {s.role} • {s.dept}
+                                          </Text>
+                                        </View>
+                                      </View>
+
+                                      <View className="items-end">
+                                        <View className="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30">
+                                          <Text className="text-emerald-400 text-xs font-black font-mono">
+                                            {s.attendancePct}%
+                                          </Text>
+                                        </View>
+                                        <Text className="text-white/40 text-[8.5px] font-bold uppercase mt-0.5">
+                                          Attendance
+                                        </Text>
+                                      </View>
+                                    </View>
+
+                                    {/* 2-Row 3-Column Stats Grid (Guaranteed No Overlap) */}
+                                    <View className="p-2.5 rounded-xl bg-white/5 border border-white/5 mb-2.5 gap-2">
+                                      {/* Row 1: Working, Present, Late */}
+                                      <View className="flex-row items-center justify-between">
+                                        <View className="flex-1 items-start">
+                                          <Text className="text-white/40 text-[9px] uppercase font-bold">Working</Text>
+                                          <Text className="text-white font-bold text-xs font-mono mt-0.5">{s.workDays}d</Text>
+                                        </View>
+                                        <View className="flex-1 items-center">
+                                          <Text className="text-white/40 text-[9px] uppercase font-bold">Present</Text>
+                                          <Text className="text-[#41eec2] font-black text-xs font-mono mt-0.5">{s.presentDays}d</Text>
+                                        </View>
+                                        <View className="flex-1 items-end">
+                                          <Text className="text-white/40 text-[9px] uppercase font-bold">Late</Text>
+                                          <Text className="text-amber-400 font-bold text-xs font-mono mt-0.5">{s.lateDays}d</Text>
+                                        </View>
+                                      </View>
+
+                                      {/* Divider */}
+                                      <View className="w-full border-b border-white/5" />
+
+                                      {/* Row 2: Half, Absent, Leave */}
+                                      <View className="flex-row items-center justify-between">
+                                        <View className="flex-1 items-start">
+                                          <Text className="text-white/40 text-[9px] uppercase font-bold">Half Day</Text>
+                                          <Text className="text-sky-300 font-bold text-xs font-mono mt-0.5">{s.halfDays}d</Text>
+                                        </View>
+                                        <View className="flex-1 items-center">
+                                          <Text className="text-white/40 text-[9px] uppercase font-bold">Absent</Text>
+                                          <Text className="text-rose-400 font-bold text-xs font-mono mt-0.5">{s.absentDays}d</Text>
+                                        </View>
+                                        <View className="flex-1 items-end">
+                                          <Text className="text-white/40 text-[9px] uppercase font-bold">Leave</Text>
+                                          <Text className="text-purple-300 font-bold text-xs font-mono mt-0.5">{s.leaveDays}d</Text>
+                                        </View>
+                                      </View>
+                                    </View>
+
+                                    {/* Bottom Row: Emp ID & Achievement Tier */}
+                                    <View className="flex-row justify-between items-center pt-2 border-t border-white/5">
+                                      <Text className="text-white/60 text-[10.5px] font-mono">
+                                        Emp ID: <Text className="text-white font-bold">{s.empId}</Text>
+                                      </Text>
+                                      <Text className="text-white/60 text-[10.5px]">
+                                        Tier: <Text style={{ color: s.distTier === 'Excellent' ? '#10b981' : '#38bdf8' }} className="font-bold">{s.distTier}</Text>
+                                      </Text>
+                                    </View>
+                                  </>
+                                )}
+                              </View>
+                            ))}
+                          </View>
+                        )}
+
+                        {/* MATRIX TABLE VIEW (EXACT WEB PARITY & CRISP SPREADSHEET STRUCTURE) */}
+                        {staffLayoutMode === 'table' && (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={true} className="pb-1">
+                            <View
+                              style={{
+                                minWidth: isSingleDate ? 810 : 280 + staffReportMonths.length * 356 + 362,
+                                borderRadius: 16,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255, 255, 255, 0.15)',
+                                overflow: 'hidden',
+                                backgroundColor: 'rgba(8, 12, 16, 0.85)',
+                              }}
+                            >
+                              {isSingleDate ? (
+                                /* ================= SINGLE DAY TABLE FORMAT ================= */
+                                <View style={{ width: 810 }}>
+                                  {/* Table Header Row */}
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                    <View style={{ width: 200, paddingHorizontal: 12, paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                      <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Staff Member
+                                      </Text>
+                                    </View>
+                                    <View style={{ width: 170, paddingHorizontal: 12, paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                      <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Category & Dept
+                                      </Text>
+                                    </View>
+                                    <View style={{ width: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                      <Text style={{ color: '#5eead4', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Check-In
+                                      </Text>
+                                    </View>
+                                    <View style={{ width: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                      <Text style={{ color: '#fda4af', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Check-Out
+                                      </Text>
+                                    </View>
+                                    <View style={{ width: 105, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                      <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Working Hours
+                                      </Text>
+                                    </View>
+                                    <View style={{ width: 115, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}>
+                                      <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Status
+                                      </Text>
+                                    </View>
+                                  </View>
+
+                                  {/* Table Body Rows */}
+                                  <View>
+                                    {filteredStaffList.map((s, idx) => (
+                                      <View
+                                        key={s.id}
+                                        style={{
+                                          flexDirection: 'row',
+                                          alignItems: 'center',
+                                          borderBottomWidth: idx === filteredStaffList.length - 1 ? 0 : 1,
+                                          borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+                                          backgroundColor: idx % 2 === 1 ? 'rgba(255, 255, 255, 0.025)' : 'transparent',
+                                        }}
+                                      >
+                                        {/* Staff Member (Avatar + Name + Role) */}
+                                        <View style={{ width: 200, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                          <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(56, 189, 248, 0.2)', borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Text style={{ color: '#38bdf8', fontWeight: '900', fontSize: 11 }}>
+                                              {s.name.substring(0, 2).toUpperCase()}
+                                            </Text>
+                                          </View>
+                                          <View style={{ flex: 1 }}>
+                                            <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 12 }} numberOfLines={1}>
+                                              {s.name}
+                                            </Text>
+                                            <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 10, marginTop: 1 }} numberOfLines={1}>
+                                              {s.role}
+                                            </Text>
+                                          </View>
+                                        </View>
+
+                                        {/* Category & Department */}
+                                        <View style={{ width: 170, paddingHorizontal: 12, paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                          <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 11.5 }} numberOfLines={1}>
+                                            {s.category}
+                                          </Text>
+                                          <Text style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: 10, marginTop: 1 }} numberOfLines={1}>
+                                            {s.dept}
+                                          </Text>
+                                        </View>
+
+                                        {/* Check-In */}
+                                        <View style={{ width: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                          <Text style={{ color: '#41eec2', fontFamily: 'monospace', fontWeight: '700', fontSize: 12 }}>
+                                            {s.checkIn}
+                                          </Text>
+                                          {s.isLate && (
+                                            <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(245, 158, 11, 0.3)', marginTop: 2 }}>
+                                              <Text style={{ color: '#fcd34d', fontSize: 8, fontWeight: '900' }}>Late</Text>
+                                            </View>
+                                          )}
+                                        </View>
+
+                                        {/* Check-Out */}
+                                        <View style={{ width: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                          <Text style={{ color: '#fb7185', fontFamily: 'monospace', fontWeight: '700', fontSize: 12 }}>
+                                            {s.checkOut}
+                                          </Text>
+                                          {s.isEarly && (
+                                            <View style={{ paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4, backgroundColor: 'rgba(245, 158, 11, 0.3)', marginTop: 2 }}>
+                                              <Text style={{ color: '#fcd34d', fontSize: 8, fontWeight: '900' }}>Early</Text>
+                                            </View>
+                                          )}
+                                        </View>
+
+                                        {/* Working Hours */}
+                                        <View style={{ width: 105, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                          <Text style={{ color: '#ffffff', fontFamily: 'monospace', fontWeight: '700', fontSize: 12 }}>
+                                            {s.hours}
+                                          </Text>
+                                        </View>
+
+                                        {/* Status */}
+                                        <View style={{ width: 115, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}>
+                                          <View
+                                            style={{
+                                              paddingHorizontal: 10,
+                                              paddingVertical: 3.5,
+                                              borderRadius: 20,
+                                              backgroundColor:
+                                                s.status === 'Present'
+                                                  ? 'rgba(16, 185, 129, 0.2)'
+                                                  : s.status === 'Late'
+                                                    ? 'rgba(245, 158, 11, 0.2)'
+                                                    : s.status === 'Half Day'
+                                                      ? 'rgba(56, 189, 248, 0.2)'
+                                                      : s.status === 'Leave'
+                                                        ? 'rgba(192, 132, 252, 0.2)'
+                                                        : 'rgba(244, 63, 94, 0.2)',
+                                              borderWidth: 1,
+                                              borderColor:
+                                                s.status === 'Present'
+                                                  ? 'rgba(16, 185, 129, 0.35)'
+                                                  : s.status === 'Late'
+                                                    ? 'rgba(245, 158, 11, 0.35)'
+                                                    : s.status === 'Half Day'
+                                                      ? 'rgba(56, 189, 248, 0.35)'
+                                                      : s.status === 'Leave'
+                                                        ? 'rgba(192, 132, 252, 0.35)'
+                                                        : 'rgba(244, 63, 94, 0.35)',
+                                            }}
+                                          >
+                                            <Text
+                                              style={{
+                                                fontSize: 10,
+                                                fontWeight: '800',
+                                                color:
+                                                  s.status === 'Present'
+                                                    ? '#6ee7b7'
+                                                    : s.status === 'Late'
+                                                      ? '#fcd34d'
+                                                      : s.status === 'Half Day'
+                                                        ? '#7dd3fc'
+                                                        : s.status === 'Leave'
+                                                          ? '#d8b4fe'
+                                                          : '#fda4af',
+                                              }}
+                                            >
+                                              {s.status}
+                                            </Text>
+                                          </View>
+                                        </View>
+                                      </View>
+                                    ))}
+                                  </View>
+                                </View>
+                              ) : (
+                                /* ================= MULTI-DAY SUMMARY TABLE FORMAT (EXACT WEB PARITY) ================= */
+                                <View style={{ width: 280 + staffReportMonths.length * 356 + 362 }}>
+                                  {/* Super Header Row 1 (Top Category Row) */}
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.12)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.2)' }}>
+                                    {/* Faculty Info Super Header */}
+                                    <View style={{ width: 280, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.2)' }}>
+                                      <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                        Faculty Info
+                                      </Text>
+                                    </View>
+
+                                    {/* Dynamic Month Super Headers */}
+                                    {staffReportMonths.map((m) => (
+                                      <View
+                                        key={m}
+                                        style={{
+                                          width: 356,
+                                          paddingVertical: 10,
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          borderRightWidth: 1,
+                                          borderRightColor: 'rgba(255, 255, 255, 0.2)',
+                                          backgroundColor: 'rgba(56, 189, 248, 0.08)',
+                                        }}
+                                      >
+                                        <Text style={{ color: '#38bdf8', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.4 }}>
+                                          {m}
+                                        </Text>
+                                      </View>
+                                    ))}
+
+                                    {/* Overall Summary Super Header */}
+                                    <View style={{ width: 362, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 229, 160, 0.08)' }}>
+                                      <Text style={{ color: '#ffe5a0', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.4 }}>
+                                        Overall Summary
+                                      </Text>
+                                    </View>
+                                  </View>
+
+                                  {/* Sub Header Row 2 (Column Headers Row) */}
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.06)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                    {/* Name */}
+                                    <View style={{ width: 180, paddingHorizontal: 12, paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                      <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 10.5, fontWeight: '700' }}>
+                                        Name
+                                      </Text>
+                                    </View>
+
+                                    {/* Bio/Emp ID */}
+                                    <View style={{ width: 100, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                      <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 10.5, fontWeight: '700' }}>
+                                        Bio/Emp ID
+                                      </Text>
+                                    </View>
+
+                                    {/* Month Sub Headers (Work, Present, Late, Half, Absent, Leave, %) */}
+                                    {staffReportMonths.map((m) => (
+                                      <React.Fragment key={m + '_sub'}>
+                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 10, fontWeight: '700' }}>Work</Text>
+                                        </View>
+                                        <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#5eead4', fontSize: 10, fontWeight: '700' }}>Present</Text>
+                                        </View>
+                                        <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#fbbf24', fontSize: 10, fontWeight: '700' }}>Late</Text>
+                                        </View>
+                                        <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700' }}>Half</Text>
+                                        </View>
+                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#fda4af', fontSize: 10, fontWeight: '700' }}>Absent</Text>
+                                        </View>
+                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#c084fc', fontSize: 10, fontWeight: '700' }}>Leave</Text>
+                                        </View>
+                                        <View style={{ width: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                          <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '800' }}>%</Text>
+                                        </View>
+                                      </React.Fragment>
+                                    ))}
+
+                                    {/* Overall Summary Sub Headers (Working, Present, Late, Half, Absent, Leave, %) */}
+                                    <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                      <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 10, fontWeight: '700' }}>Working</Text>
+                                    </View>
+                                    <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                      <Text style={{ color: '#5eead4', fontSize: 10, fontWeight: '700' }}>Present</Text>
+                                    </View>
+                                    <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                      <Text style={{ color: '#fbbf24', fontSize: 10, fontWeight: '700' }}>Late</Text>
+                                    </View>
+                                    <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                      <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700' }}>Half</Text>
+                                    </View>
+                                    <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                      <Text style={{ color: '#fda4af', fontSize: 10, fontWeight: '700' }}>Absent</Text>
+                                    </View>
+                                    <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                      <Text style={{ color: '#c084fc', fontSize: 10, fontWeight: '700' }}>Leave</Text>
+                                    </View>
+                                    <View style={{ width: 58, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 }}>
+                                      <Text style={{ color: '#ffe5a0', fontSize: 10, fontWeight: '900' }}>%</Text>
+                                    </View>
+                                  </View>
+
+                                  {/* Table Body Rows */}
+                                  <View>
+                                    {filteredStaffList.map((s, idx) => (
+                                      <View
+                                        key={s.id}
+                                        style={{
+                                          flexDirection: 'row',
+                                          alignItems: 'center',
+                                          borderBottomWidth: idx === filteredStaffList.length - 1 ? 0 : 1,
+                                          borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+                                          backgroundColor: idx % 2 === 1 ? 'rgba(255, 255, 255, 0.025)' : 'transparent',
+                                        }}
+                                      >
+                                        {/* Name */}
+                                        <View style={{ width: 180, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                          <View style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: 'rgba(56, 189, 248, 0.2)', borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Text style={{ color: '#38bdf8', fontWeight: '900', fontSize: 10.5 }}>
+                                              {s.name.substring(0, 2).toUpperCase()}
+                                            </Text>
+                                          </View>
+                                          <View style={{ flex: 1 }}>
+                                            <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 11.5 }} numberOfLines={1}>
+                                              {s.name}
+                                            </Text>
+                                            <Text style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: 9.5, marginTop: 1 }} numberOfLines={1}>
+                                              {s.role}
+                                            </Text>
+                                          </View>
+                                        </View>
+
+                                        {/* Bio/Emp ID */}
+                                        <View style={{ width: 100, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                          <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontFamily: 'monospace', fontWeight: '700', fontSize: 11 }} numberOfLines={1}>
+                                            {s.empId}
+                                          </Text>
+                                        </View>
+
+                                        {/* Monthly Data Cells */}
+                                        {staffReportMonths.map((m) => {
+                                          const mData = s.monthlyData?.[m] || {
+                                            workDays: 24,
+                                            present: s.presentDays,
+                                            late: s.lateDays,
+                                            half: s.halfDays,
+                                            absent: s.absentDays,
+                                            leave: s.leaveDays,
+                                            percentage: `${s.attendancePct}%`,
+                                          };
+                                          return (
+                                            <React.Fragment key={m + '_' + s.id}>
+                                              <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                                <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace', fontSize: 11.5, fontWeight: '600' }}>
+                                                  {mData.workDays}
+                                                </Text>
+                                              </View>
+                                              <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                                <Text style={{ color: '#41eec2', fontFamily: 'monospace', fontWeight: '800', fontSize: 11.5 }}>
+                                                  {mData.present}
+                                                </Text>
+                                              </View>
+                                              <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                                <Text style={{ color: '#fbbf24', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
+                                                  {mData.late}
+                                                </Text>
+                                              </View>
+                                              <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                                <Text style={{ color: '#38bdf8', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
+                                                  {mData.half}
+                                                </Text>
+                                              </View>
+                                              <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                                <Text style={{ color: '#fb7185', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
+                                                  {mData.absent}
+                                                </Text>
+                                              </View>
+                                              <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                                <Text style={{ color: '#c084fc', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
+                                                  {mData.leave}
+                                                </Text>
+                                              </View>
+                                              <View style={{ width: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                                <Text style={{ color: '#ffffff', fontFamily: 'monospace', fontWeight: '800', fontSize: 11.5 }}>
+                                                  {mData.percentage}
+                                                </Text>
+                                              </View>
+                                            </React.Fragment>
+                                          );
+                                        })}
+
+                                        {/* Overall Summary Cells */}
+                                        <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace', fontSize: 11.5, fontWeight: '600' }}>
+                                            {s.overallData?.workDays || s.workDays}
+                                          </Text>
+                                        </View>
+                                        <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#41eec2', fontFamily: 'monospace', fontWeight: '900', fontSize: 11.5 }}>
+                                            {s.overallData?.present || s.presentDays}
+                                          </Text>
+                                        </View>
+                                        <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#fbbf24', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
+                                            {s.overallData?.late || s.lateDays}
+                                          </Text>
+                                        </View>
+                                        <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#38bdf8', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
+                                            {s.overallData?.half || s.halfDays}
+                                          </Text>
+                                        </View>
+                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#fb7185', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
+                                            {s.overallData?.absent || s.absentDays}
+                                          </Text>
+                                        </View>
+                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                          <Text style={{ color: '#c084fc', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
+                                            {s.overallData?.leave || s.leaveDays}
+                                          </Text>
+                                        </View>
+                                        <View style={{ width: 58, alignItems: 'center', justifyContent: 'center', paddingVertical: 9 }}>
+                                          <Text style={{ color: '#10b981', fontFamily: 'monospace', fontWeight: '900', fontSize: 11.5 }}>
+                                            {s.overallData?.percentage || `${s.attendancePct}%`}
+                                          </Text>
+                                        </View>
+                                      </View>
+                                    ))}
+                                  </View>
+                                </View>
+                              )}
+                            </View>
+                          </ScrollView>
+                        )}
+
+                        {filteredStaffList.length === 0 && (
+                          <View className="py-8 items-center justify-center">
+                            <Users size={32} color="rgba(255,255,255,0.2)" />
+                            <Text className="text-white/60 font-bold text-xs mt-2">No faculty members matched your filter.</Text>
+                          </View>
+                        )}
+                      </>
+                    );
+                  })()}
                 </GlassCard>
               </View>
             )}
@@ -1567,9 +2903,8 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                         <Pressable
                           key={cls}
                           onPress={() => setStudentClassFilter(cls)}
-                          className={`px-3.5 py-1.5 rounded-xl border mr-2 ${
-                            studentClassFilter === cls ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-white/5 border-white/10'
-                          }`}
+                          className={`px-3.5 py-1.5 rounded-xl border mr-2 ${studentClassFilter === cls ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-white/5 border-white/10'
+                            }`}
                         >
                           <Text className={`text-xs font-bold ${studentClassFilter === cls ? 'text-[#101415]' : 'text-white/80'}`}>
                             {cls === 'All' ? 'All Classes' : `Class ${cls}`}
@@ -1586,9 +2921,8 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                           <Pressable
                             key={st}
                             onPress={() => setStudentStatusFilter(st)}
-                            className={`px-3 py-1 rounded-xl border ${
-                              studentStatusFilter === st ? 'bg-[#f0c110]/25 border-[#f0c110]' : 'bg-white/5 border-white/10'
-                            }`}
+                            className={`px-3 py-1 rounded-xl border ${studentStatusFilter === st ? 'bg-[#f0c110]/25 border-[#f0c110]' : 'bg-white/5 border-white/10'
+                              }`}
                           >
                             <Text className={`text-xs font-bold ${studentStatusFilter === st ? 'text-[#ffe5a0]' : 'text-white/60'}`}>
                               {st}
@@ -1626,9 +2960,8 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                             </Text>
                           </View>
                           <View
-                            className={`px-2.5 py-1 rounded-xl ${
-                              st.displayStatus === 'Active' ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'
-                            }`}
+                            className={`px-2.5 py-1 rounded-xl ${st.displayStatus === 'Active' ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'
+                              }`}
                           >
                             <Text className={`text-xs font-bold ${st.displayStatus === 'Active' ? 'text-emerald-400' : 'text-red-400'}`}>
                               {st.displayStatus}
@@ -1762,6 +3095,158 @@ export const AnalyticsDashboardScreen: React.FC = () => {
         )}
       </ScrollView>
 
+      {/* STAFF DEPARTMENT DROPDOWN MODAL */}
+      <Modal visible={showStaffDeptDropdown} transparent animationType="fade" onRequestClose={() => setShowStaffDeptDropdown(false)}>
+        <View style={styles.alertOverlay}>
+          <GlassCard
+            className="w-[90%] max-w-[340px] p-5 border border-[#f0c110]/40"
+            style={{ backgroundColor: '#101415', borderRadius: 28 }}
+          >
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-3">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
+                  <Building2 size={16} color="#ffe5a0" />
+                </View>
+                <Text className="text-white font-bold text-sm">Select Department</Text>
+              </View>
+              <Pressable onPress={() => setShowStaffDeptDropdown(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+            <ScrollView className="max-h-[300px]">
+              {departmentsList.map((dept) => {
+                const isSelected = staffDeptFilter === dept;
+                const count = dept === 'All' ? faculty.length : faculty.filter((f) => (f.department || 'Teaching') === dept).length;
+                return (
+                  <Pressable
+                    key={dept}
+                    onPress={() => {
+                      setStaffDeptFilter(dept);
+                      setShowStaffDeptDropdown(false);
+                    }}
+                    className={`flex-row items-center justify-between p-3 rounded-xl mb-1.5 border ${isSelected ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-white/5 border-white/10 active:bg-white/10'
+                      }`}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <Text className={`text-xs font-extrabold ${isSelected ? 'text-[#ffe5a0]' : 'text-white'}`}>{dept}</Text>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-white/50 text-[11px] font-mono">{count} Staff</Text>
+                      {isSelected && <Check size={14} color="#f0c110" />}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* STAFF CALENDAR DATE PICKER MODAL (DD-MM-YYYY) */}
+      <Modal visible={showStaffCalendarModal} transparent animationType="fade" onRequestClose={() => setShowStaffCalendarModal(false)}>
+        <View style={styles.alertOverlay}>
+          <GlassCard
+            className="w-[90%] max-w-[340px] p-5 border border-[#f0c110]/40"
+            style={{ backgroundColor: '#101415', borderRadius: 28 }}
+          >
+            {/* Calendar Header */}
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-3">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
+                  <Calendar size={16} color="#ffe5a0" />
+                </View>
+                <Text className="text-white font-bold text-sm">
+                  Select {staffTargetDateField === 'start' ? 'Start' : 'End'} Date
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setShowStaffCalendarModal(false)}
+                className="w-7 h-7 rounded-full bg-white/10 items-center justify-center"
+              >
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+
+            {/* Month & Year Navigation Ribbon */}
+            <View className="flex-row justify-between items-center bg-white/5 p-2 rounded-xl mb-3 border border-white/10">
+              <Pressable
+                onPress={() => {
+                  if (staffPickerMonth === 0) {
+                    setStaffPickerMonth(11);
+                    setStaffPickerYear((y) => y - 1);
+                  } else {
+                    setStaffPickerMonth((m) => m - 1);
+                  }
+                }}
+                className="p-1 border border-white/10 rounded-lg bg-white/5 active:bg-white/20"
+              >
+                <ChevronLeft size={16} color="#ffe5a0" />
+              </Pressable>
+              <Text className="text-white font-extrabold text-xs">
+                {MONTH_NAMES[staffPickerMonth]} {staffPickerYear}
+              </Text>
+              <Pressable
+                onPress={() => {
+                  if (staffPickerMonth === 11) {
+                    setStaffPickerMonth(0);
+                    setStaffPickerYear((y) => y + 1);
+                  } else {
+                    setStaffPickerMonth((m) => m + 1);
+                  }
+                }}
+                className="p-1 border border-white/10 rounded-lg bg-white/5 active:bg-white/20"
+              >
+                <ChevronRight size={16} color="#ffe5a0" />
+              </Pressable>
+            </View>
+
+            {/* 7 Days of Week Header */}
+            <View className="flex-row mb-2">
+              {DAYS_OF_WEEK.map((d, i) => (
+                <View key={i} style={{ width: '14.28%', alignItems: 'center' }}>
+                  <Text className="text-white/40 text-[9.5px] font-bold uppercase">{d}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* 7-Column Calendar Days Grid */}
+            <View className="flex-row flex-wrap mb-4">
+              {staffCalendarCells.map((dayNum, idx) => {
+                if (!dayNum) {
+                  return <View key={idx} style={{ width: '14.28%', height: 34 }} />;
+                }
+
+                const currentFormatted = `${String(dayNum).padStart(2, '0')}-${String(staffPickerMonth + 1).padStart(2, '0')}-${staffPickerYear}`;
+                const isSelected = (staffTargetDateField === 'start' ? staffStartDate : staffEndDate) === currentFormatted;
+
+                return (
+                  <View key={idx} style={{ width: '14.28%', height: 34, padding: 1.5 }}>
+                    <Pressable
+                      onPress={() => handleSelectStaffCalendarDate(dayNum)}
+                      className={`w-full h-full rounded-lg items-center justify-center border ${isSelected
+                        ? 'bg-[#f0c110] border-[#f0c110]'
+                        : 'bg-white/5 border-white/10 active:bg-white/20'
+                        }`}
+                    >
+                      <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white'}`}>
+                        {dayNum}
+                      </Text>
+                    </Pressable>
+                  </View>
+                );
+              })}
+            </View>
+
+            <Pressable
+              onPress={() => setShowStaffCalendarModal(false)}
+              className="w-full py-2.5 rounded-xl bg-white/10 items-center active:scale-95"
+            >
+              <Text className="text-white/80 font-bold text-xs">Close Calendar</Text>
+            </Pressable>
+          </GlassCard>
+        </View>
+      </Modal>
+
       {/* CUSTOM DIALOG MODAL */}
       <Modal visible={dialogAlert.visible} transparent animationType="fade" onRequestClose={() => setDialogAlert((prev) => ({ ...prev, visible: false }))}>
         <View style={styles.alertOverlay}>
@@ -1778,11 +3263,10 @@ export const AnalyticsDashboardScreen: React.FC = () => {
             }}
           >
             <View
-              className={`w-12 h-12 rounded-2xl mb-4 items-center justify-center ${
-                dialogAlert.type === 'error'
-                  ? 'bg-red-500/20 border border-red-500/40'
-                  : 'bg-[#f0c110]/20 border border-[#f0c110]/40'
-              }`}
+              className={`w-12 h-12 rounded-2xl mb-4 items-center justify-center ${dialogAlert.type === 'error'
+                ? 'bg-red-500/20 border border-red-500/40'
+                : 'bg-[#f0c110]/20 border border-[#f0c110]/40'
+                }`}
             >
               {dialogAlert.type === 'error' ? (
                 <AlertCircle size={24} color="#ffb4ab" />
