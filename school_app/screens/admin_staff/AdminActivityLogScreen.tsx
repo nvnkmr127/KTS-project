@@ -174,60 +174,60 @@ export const AdminActivityLogScreen: React.FC<any> = ({ navigation: propNavigati
         
         {/* KPI Audit Summary Cards */}
         <View className="px-5 mb-4 flex-row justify-between" style={{ gap: 8 }}>
-          <GlassCard intensity="low" className="flex-1 p-3 border-white/10 bg-[#101415]/90 items-center">
-            <Text className="text-white/50 text-[9px] font-bold uppercase">Total Events</Text>
-            <Text className="text-white font-extrabold text-lg mt-0.5">{logs.length}</Text>
+          <GlassCard intensity="low" className="flex-1 p-3.5 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/60 text-xs font-bold uppercase">Total Events</Text>
+            <Text className="text-white font-black text-xl mt-1">{logs.length}</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="flex-1 p-3 border-white/10 bg-[#101415]/90 items-center">
-            <Text className="text-white/50 text-[9px] font-bold uppercase">Today's Actions</Text>
-            <Text className="text-[#00f1a1] font-extrabold text-lg mt-0.5">4</Text>
+          <GlassCard intensity="low" className="flex-1 p-3.5 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/60 text-xs font-bold uppercase">Today's Actions</Text>
+            <Text className="text-[#00f1a1] font-black text-xl mt-1">4</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="flex-1 p-3 border-white/10 bg-[#101415]/90 items-center">
-            <Text className="text-white/50 text-[9px] font-bold uppercase">Audit Status</Text>
-            <Text className="text-emerald-400 font-extrabold text-xs mt-1">Verified 🟢</Text>
+          <GlassCard intensity="low" className="flex-1 p-3.5 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/60 text-xs font-bold uppercase">Audit Status</Text>
+            <Text className="text-emerald-400 font-extrabold text-sm mt-1">Verified 🟢</Text>
           </GlassCard>
         </View>
 
         {/* Search & Export Bar */}
         <View className="px-5 mb-4">
           <View className="flex-row items-center justify-between mb-3" style={{ gap: 8 }}>
-            <View className="flex-1 bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5">
-              <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+            <View className="flex-1 bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-4 py-3">
+              <Search size={18} color="#00f1a1" style={{ marginRight: 8 }} />
               <TextInput
                 placeholder="Search action, student, teacher, or receipt..."
-                placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                placeholderTextColor="rgba(255, 255, 255, 0.45)"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                className="flex-1 text-white text-xs"
+                className="flex-1 text-white text-sm font-semibold"
                 style={{ paddingVertical: 0 }}
               />
             </View>
 
             <Pressable
               onPress={handleExportLogs}
-              className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3.5 py-2.5 rounded-2xl flex-row items-center active:scale-95 flex-shrink-0"
+              className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-4 py-3 rounded-2xl flex-row items-center active:scale-95 flex-shrink-0"
             >
-              <FileSpreadsheet size={15} color="#00f1a1" style={{ marginRight: 4 }} />
-              <Text className="text-[#00f1a1] text-xs font-bold">Export</Text>
+              <FileSpreadsheet size={16} color="#00f1a1" style={{ marginRight: 6 }} />
+              <Text className="text-[#00f1a1] text-xs md:text-sm font-black uppercase">Export</Text>
             </Pressable>
           </View>
 
           {/* Category Filter Pills */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row" style={{ gap: 6 }}>
+            <View className="flex-row" style={{ gap: 8 }}>
               {(['All', 'Student', 'Fee', 'Teacher', 'Substitute', 'Invigilation', 'System'] as const).map(cat => {
                 const isSel = categoryFilter === cat;
                 return (
                   <Pressable
                     key={cat}
                     onPress={() => setCategoryFilter(cat)}
-                    className={`px-3.5 py-1.5 rounded-xl border ${
+                    className={`px-3.5 py-2 rounded-xl border ${
                       isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/10'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
+                    <Text className={`text-xs md:text-sm font-extrabold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
                       {cat === 'All' ? 'All Logs' : cat}
                     </Text>
                   </Pressable>
@@ -239,41 +239,41 @@ export const AdminActivityLogScreen: React.FC<any> = ({ navigation: propNavigati
 
         {/* Audit Log Items Timeline List */}
         <View className="px-5">
-          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Audit Activity Stream ({filteredLogs.length})</Text>
+          <Text className="text-white/70 text-xs md:text-sm font-extrabold uppercase tracking-wider mb-3">Audit Activity Stream ({filteredLogs.length})</Text>
 
           {filteredLogs.length === 0 ? (
             <GlassCard className="p-8 items-center justify-center border border-white/10 bg-[#101415]/90" intensity="low">
-              <Text className="text-white/40 text-xs font-bold">No activity logs found for this filter.</Text>
+              <Text className="text-white/50 text-sm font-bold">No activity logs found for this filter.</Text>
             </GlassCard>
           ) : (
             filteredLogs.map((item, index) => (
-              <GlassCard key={item.id} intensity="low" className="mb-3.5 p-4 border-white/10 bg-[#101415]/90">
+              <GlassCard key={item.id} intensity="low" className="mb-3.5 p-4 md:p-5 border-white/10 bg-[#101415]/90">
                 <View className="flex-row justify-between items-start pb-2.5 border-b border-white/10 mb-2.5">
                   <View className="flex-row items-center flex-1 mr-2">
-                    <View className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 items-center justify-center mr-2.5">
+                    <View className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 items-center justify-center mr-2.5">
                       {renderIcon(item.iconType)}
                     </View>
                     <View className="flex-1">
-                      <Text className="text-white font-extrabold text-sm">{item.actionTitle}</Text>
-                      <Text className="text-[#00f1a1] text-[10px] font-bold mt-0.5">{item.performedBy}</Text>
+                      <Text className="text-white font-black text-sm md:text-base">{item.actionTitle}</Text>
+                      <Text className="text-[#00f1a1] text-xs font-bold mt-0.5">{item.performedBy}</Text>
                     </View>
                   </View>
 
-                  <View className={`px-2 py-0.5 rounded-lg border ${item.badgeColor}`}>
-                    <Text className="text-[9px] font-black">{item.category}</Text>
+                  <View className={`px-2.5 py-1 rounded-lg border ${item.badgeColor}`}>
+                    <Text className="text-[11px] md:text-xs font-extrabold uppercase">{item.category}</Text>
                   </View>
                 </View>
 
                 {/* Event Details Description */}
-                <Text className="text-white/80 text-xs leading-relaxed mb-2.5">{item.details}</Text>
+                <Text className="text-white/85 text-sm md:text-base leading-relaxed mb-3">{item.details}</Text>
 
                 {/* Event Footer */}
-                <View className="flex-row justify-between items-center pt-2 border-t border-white/5">
+                <View className="flex-row justify-between items-center pt-2.5 border-t border-white/5">
                   <View className="flex-row items-center">
-                    <Clock size={12} color="rgba(255,255,255,0.4)" style={{ marginRight: 4 }} />
-                    <Text className="text-white/40 text-[10px]">{item.timestamp}</Text>
+                    <Clock size={13} color="rgba(255,255,255,0.5)" style={{ marginRight: 6 }} />
+                    <Text className="text-white/60 text-xs">{item.timestamp}</Text>
                   </View>
-                  <Text className="text-white/40 text-[9px] font-mono">ID: {item.id.toUpperCase()}</Text>
+                  <Text className="text-[#00f1a1]/80 text-xs font-mono font-bold">ID: {item.id.toUpperCase()}</Text>
                 </View>
               </GlassCard>
             ))

@@ -222,13 +222,36 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
 
   const getRoleBadgeStyle = (role: UserActivityLog['userRole']) => {
     switch (role) {
-      case 'super_admin': return 'bg-[#f0c110]/20 border-[#f0c110]/40 text-[#ffe5a0]';
-      case 'admin_staff': return 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400';
-      case 'teacher': return 'bg-sky-500/20 border-sky-500/40 text-sky-400';
-      case 'accountant': return 'bg-amber-500/20 border-amber-500/40 text-amber-400';
-      case 'transport': return 'bg-teal-500/20 border-teal-500/40 text-teal-300';
-      case 'parent': return 'bg-purple-500/20 border-purple-500/40 text-purple-300';
-      default: return 'bg-white/10 border-white/20 text-white';
+      case 'super_admin': return { bg: 'rgba(240, 193, 16, 0.15)', border: 'rgba(240, 193, 16, 0.45)', text: '#ffe5a0' };
+      case 'admin_staff': return { bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.45)', text: '#34d399' };
+      case 'teacher': return { bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.45)', text: '#38bdf8' };
+      case 'accountant': return { bg: 'rgba(245, 158, 11, 0.15)', border: 'rgba(245, 158, 11, 0.45)', text: '#fbbf24' };
+      case 'transport': return { bg: 'rgba(20, 184, 166, 0.15)', border: 'rgba(20, 184, 166, 0.45)', text: '#2dd4bf' };
+      case 'parent': return { bg: 'rgba(168, 85, 247, 0.15)', border: 'rgba(168, 85, 247, 0.45)', text: '#c084fc' };
+      default: return { bg: 'rgba(255, 255, 255, 0.1)', border: 'rgba(255, 255, 255, 0.2)', text: '#ffffff' };
+    }
+  };
+
+  const getCategoryBadge = (category: UserActivityLog['category']) => {
+    switch (category) {
+      case 'Admissions':
+        return { bg: 'rgba(16, 185, 129, 0.18)', border: 'rgba(16, 185, 129, 0.45)', text: '#34d399' };
+      case 'Attendance':
+        return { bg: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.45)', text: '#38bdf8' };
+      case 'Fees':
+        return { bg: 'rgba(240, 193, 16, 0.18)', border: 'rgba(240, 193, 16, 0.45)', text: '#ffe5a0' };
+      case 'Academics':
+        return { bg: 'rgba(56, 189, 248, 0.18)', border: 'rgba(56, 189, 248, 0.45)', text: '#38bdf8' };
+      case 'Substitutions':
+        return { bg: 'rgba(192, 132, 252, 0.18)', border: 'rgba(192, 132, 252, 0.45)', text: '#c084fc' };
+      case 'Leaves':
+        return { bg: 'rgba(251, 146, 60, 0.18)', border: 'rgba(251, 146, 60, 0.45)', text: '#fb923c' };
+      case 'Broadcasts':
+        return { bg: 'rgba(244, 63, 94, 0.18)', border: 'rgba(244, 63, 94, 0.45)', text: '#fb7185' };
+      case 'Security':
+        return { bg: 'rgba(240, 193, 16, 0.18)', border: 'rgba(240, 193, 16, 0.45)', text: '#ffe5a0' };
+      default:
+        return { bg: 'rgba(255, 255, 255, 0.1)', border: 'rgba(255, 255, 255, 0.2)', text: '#ffffff' };
     }
   };
 
@@ -259,21 +282,21 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
       <View style={{ zIndex: 50 }}>
         <BlurView intensity={30} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
           <View className="flex-row items-center gap-3">
-            <View className="w-10 h-10 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center shadow-[0_0_12px_rgba(240,193,16,0.3)]">
-              <History size={20} color="#f0c110" />
+            <View className="w-11 h-11 rounded-2xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center shadow-[0_0_12px_rgba(240,193,16,0.3)]">
+              <History size={22} color="#f0c110" />
             </View>
             <View>
-              <Text className="text-white text-lg font-bold">Users Activity Logs</Text>
-              <Text className="text-[#ffe5a0] text-[9px] font-bold tracking-widest uppercase">ALL USERS AUDIT STREAM</Text>
+              <Text className="text-white text-xl font-extrabold">Users Activity Logs</Text>
+              <Text className="text-[#ffe5a0] text-xs font-bold tracking-widest uppercase mt-0.5">ALL USERS AUDIT STREAM</Text>
             </View>
           </View>
 
           <Pressable 
             onPress={handleExport}
-            className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl bg-[#f0c110] active:scale-95 shadow-md shadow-[#f0c110]/30"
+            className="flex-row items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#f0c110] active:scale-95 shadow-md shadow-[#f0c110]/30"
           >
-            <Download size={14} color="#101415" />
-            <Text className="text-[#101415] text-xs font-black uppercase">Export</Text>
+            <Download size={16} color="#101415" />
+            <Text className="text-[#101415] text-xs md:text-sm font-black uppercase">Export</Text>
           </Pressable>
         </BlurView>
 
@@ -289,60 +312,88 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
         contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 30 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* KPI Metrics */}
-        <View className="px-5 mb-4">
-          <View className="flex-row justify-between" style={{ gap: 8 }}>
-            <GlassCard className="flex-1 p-3 border border-white/10 items-center">
-              <Text className="text-[#ffe5a0] text-lg font-black">{logs.length}</Text>
-              <Text className="text-white/50 text-[9px] font-bold uppercase mt-0.5">Total Logs</Text>
+        {/* KPI Metrics with High-Contrast Colors */}
+        <View className="px-4 md:px-5 mb-4">
+          <View className="flex-row justify-between" style={{ gap: 6 }}>
+            <GlassCard className="flex-1 px-1.5 py-3 border border-white/10 items-center justify-center">
+              <Text style={{ color: '#ffe5a0' }} className="text-xl font-black">{logs.length}</Text>
+              <Text 
+                numberOfLines={1} 
+                adjustsFontSizeToFit 
+                style={{ color: 'rgba(255, 255, 255, 0.75)' }} 
+                className="text-[10px] font-bold uppercase mt-1 text-center"
+              >
+                Total Logs
+              </Text>
             </GlassCard>
 
-            <GlassCard className="flex-1 p-3 border border-emerald-500/30 items-center">
-              <Text className="text-emerald-400 text-lg font-black">
+            <GlassCard className="flex-1 px-1.5 py-3 border border-emerald-500/30 items-center justify-center">
+              <Text style={{ color: '#34d399' }} className="text-xl font-black">
                 {logs.filter(l => l.userRole === 'admin_staff').length}
               </Text>
-              <Text className="text-emerald-400/70 text-[9px] font-bold uppercase mt-0.5">Admin Staff</Text>
+              <Text 
+                numberOfLines={1} 
+                adjustsFontSizeToFit 
+                style={{ color: '#34d399' }} 
+                className="text-[10px] font-bold uppercase mt-1 text-center"
+              >
+                Admin Staff
+              </Text>
             </GlassCard>
 
-            <GlassCard className="flex-1 p-3 border border-sky-500/30 items-center">
-              <Text className="text-sky-400 text-lg font-black">
+            <GlassCard className="flex-1 px-1.5 py-3 border border-sky-500/30 items-center justify-center">
+              <Text style={{ color: '#38bdf8' }} className="text-xl font-black">
                 {logs.filter(l => l.userRole === 'teacher').length}
               </Text>
-              <Text className="text-sky-400/70 text-[9px] font-bold uppercase mt-0.5">Teachers</Text>
+              <Text 
+                numberOfLines={1} 
+                adjustsFontSizeToFit 
+                style={{ color: '#38bdf8' }} 
+                className="text-[10px] font-bold uppercase mt-1 text-center"
+              >
+                Teachers
+              </Text>
             </GlassCard>
 
-            <GlassCard className="flex-1 p-3 border border-amber-500/30 items-center">
-              <Text className="text-amber-400 text-lg font-black">
+            <GlassCard className="flex-1 px-1.5 py-3 border border-amber-500/30 items-center justify-center">
+              <Text style={{ color: '#fbbf24' }} className="text-xl font-black">
                 {logs.filter(l => l.userRole === 'accountant' || l.category === 'Fees').length}
               </Text>
-              <Text className="text-amber-400/70 text-[9px] font-bold uppercase mt-0.5">Finance</Text>
+              <Text 
+                numberOfLines={1} 
+                adjustsFontSizeToFit 
+                style={{ color: '#fbbf24' }} 
+                className="text-[10px] font-bold uppercase mt-1 text-center"
+              >
+                Finance
+              </Text>
             </GlassCard>
           </View>
         </View>
 
         {/* Search Bar */}
         <View className="px-5 mb-3.5">
-          <GlassCard className="flex-row items-center px-3.5 py-2.5 border border-white/10">
-            <Search size={18} color="#ffe5a0" style={{ marginRight: 10 }} />
+          <GlassCard className="flex-row items-center px-4 py-3 border border-white/10">
+            <Search size={20} color="#ffe5a0" style={{ marginRight: 10 }} />
             <TextInput
               placeholder="Search user, role, action, student, receipt..."
-              placeholderTextColor="rgba(255, 255, 255, 0.4)"
+              placeholderTextColor="rgba(255, 255, 255, 0.45)"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 text-white text-xs font-semibold"
+              className="flex-1 text-white text-sm font-semibold"
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')} className="p-1">
-                <Text className="text-white/50 text-xs">Clear</Text>
+                <Text className="text-white/60 text-sm font-bold">Clear</Text>
               </Pressable>
             )}
           </GlassCard>
         </View>
 
         {/* Role Filters Carousel */}
-        <View className="mb-2.5">
-          <Text className="text-white/50 text-[10px] font-bold uppercase tracking-wider px-5 mb-1.5">Filter by User Role</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6 }}>
+        <View className="mb-3">
+          <Text className="text-white/70 text-xs font-extrabold uppercase tracking-wider px-5 mb-2">Filter by User Role</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
             {[
               { id: 'All', label: 'All Roles' },
               { id: 'admin_staff', label: 'Admin Staff' },
@@ -357,11 +408,11 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
                 <Pressable
                   key={roleItem.id}
                   onPress={() => setSelectedRole(roleItem.id as any)}
-                  className={`px-3 py-1.5 rounded-xl border ${
+                  className={`px-3.5 py-2 rounded-xl border ${
                     isSelected ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-white/5 border-white/10'
                   }`}
                 >
-                  <Text className={`text-xs font-extrabold ${isSelected ? 'text-[#101415]' : 'text-white/70'}`}>
+                  <Text className={`text-xs md:text-sm font-extrabold ${isSelected ? 'text-[#101415]' : 'text-white/80'}`}>
                     {roleItem.label}
                   </Text>
                 </Pressable>
@@ -372,19 +423,19 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
 
         {/* Category Filters Carousel */}
         <View className="mb-4">
-          <Text className="text-white/50 text-[10px] font-bold uppercase tracking-wider px-5 mb-1.5">Filter by Category</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 6 }}>
+          <Text className="text-white/70 text-xs font-extrabold uppercase tracking-wider px-5 mb-2">Filter by Category</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
             {(['All', 'Attendance', 'Fees', 'Admissions', 'Academics', 'Substitutions', 'Leaves', 'Broadcasts', 'Security'] as const).map(cat => {
               const isSelected = selectedCategory === cat;
               return (
                 <Pressable
                   key={cat}
                   onPress={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-xl border ${
+                  className={`px-3.5 py-2 rounded-xl border ${
                     isSelected ? 'bg-[#ffe5a0] border-[#ffe5a0]' : 'bg-white/5 border-white/10'
                   }`}
                 >
-                  <Text className={`text-[11px] font-bold ${isSelected ? 'text-[#101415]' : 'text-white/60'}`}>
+                  <Text className={`text-xs md:text-sm font-extrabold ${isSelected ? 'text-[#101415]' : 'text-white/70'}`}>
                     {cat}
                   </Text>
                 </Pressable>
@@ -395,74 +446,112 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
 
         {/* Activity Logs Stream */}
         <View className="px-5">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-white text-sm font-extrabold">All User Logs ({filteredLogs.length})</Text>
-            <Text className="text-[#ffe5a0] text-[10px] font-bold uppercase">Real-Time Sync</Text>
+          <View className="flex-row items-center justify-between mb-3.5">
+            <Text className="text-white text-base md:text-lg font-extrabold">All User Logs ({filteredLogs.length})</Text>
+            <Text className="text-[#ffe5a0] text-xs font-extrabold uppercase">Real-Time Sync</Text>
           </View>
 
           {filteredLogs.length === 0 ? (
             <GlassCard className="p-8 items-center justify-center border border-white/10">
-              <History size={36} color="rgba(255,255,255,0.2)" style={{ marginBottom: 12 }} />
-              <Text className="text-white font-bold text-sm text-center">No Activity Logs Found</Text>
-              <Text className="text-white/40 text-xs text-center mt-1">No events match the selected role or filter filters.</Text>
+              <History size={40} color="rgba(255,255,255,0.2)" style={{ marginBottom: 12 }} />
+              <Text className="text-white font-bold text-base text-center">No Activity Logs Found</Text>
+              <Text className="text-white/50 text-sm text-center mt-1">No events match the selected role or category filters.</Text>
             </GlassCard>
           ) : (
-            filteredLogs.map(log => (
-              <Pressable
-                key={log.id}
-                onPress={() => setSelectedLog(log)}
-                className="active:opacity-90"
-              >
-                <GlassCard 
-                  className="p-4 mb-3 border border-white/10"
-                  style={{ backgroundColor: 'rgba(22, 25, 27, 0.75)' }}
-                >
-                  {/* Top Row: User Avatar + Name + Role Badge */}
-                  <View className="flex-row items-center justify-between mb-2.5 pb-2.5 border-b border-white/5">
-                    <View className="flex-row items-center flex-1 mr-2">
-                      <View className={`w-9 h-9 rounded-full items-center justify-center mr-2.5 border ${getRoleBadgeStyle(log.userRole)}`}>
-                        <Text className="text-white font-black text-xs">{log.avatarInitials}</Text>
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-white font-extrabold text-xs" numberOfLines={1}>
-                          {log.userName}
-                        </Text>
-                        <Text className="text-white/50 text-[10px] font-semibold">{log.roleTitle}</Text>
-                      </View>
-                    </View>
+            filteredLogs.map(log => {
+              const roleStyle = getRoleBadgeStyle(log.userRole);
+              const catBadge = getCategoryBadge(log.category);
 
-                    <View className={`px-2 py-0.5 rounded-lg border ${log.badgeColor}`}>
-                      <Text className="text-[9px] font-extrabold uppercase">{log.category}</Text>
+              return (
+                <Pressable
+                  key={log.id}
+                  onPress={() => setSelectedLog(log)}
+                  className="active:opacity-90"
+                >
+                  <GlassCard 
+                    className="p-4 md:p-5 mb-3.5 border border-white/10"
+                    style={{ backgroundColor: 'rgba(22, 25, 27, 0.75)' }}
+                  >
+                    {/* Top Row: User Avatar + Name + Role Badge */}
+                    <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-white/5">
+                      <View className="flex-row items-center flex-1 mr-2">
+                        <View 
+                          style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: 12,
+                            borderWidth: 1,
+                            backgroundColor: roleStyle.bg,
+                            borderColor: roleStyle.border,
+                          }}
+                        >
+                          <Text style={{ color: roleStyle.text, fontWeight: '900', fontSize: 13 }}>
+                            {log.avatarInitials}
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-white font-black text-sm md:text-base" numberOfLines={1}>
+                            {log.userName}
+                          </Text>
+                          <Text className="text-white/60 text-xs font-semibold mt-0.5">{log.roleTitle}</Text>
+                        </View>
+                      </View>
+
+                      <View 
+                        style={{
+                          backgroundColor: catBadge.bg,
+                          borderColor: catBadge.border,
+                          borderWidth: 1,
+                          paddingHorizontal: 10,
+                          paddingVertical: 3.5,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text 
+                          style={{
+                            color: catBadge.text,
+                            fontSize: 11,
+                            fontWeight: '900',
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          {log.category}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
 
                   {/* Action Title */}
-                  <View className="flex-row items-center gap-1.5 mb-1.5">
+                  <View className="flex-row items-center gap-2 mb-2">
                     {getCategoryIcon(log.category)}
-                    <Text className="text-white font-bold text-xs flex-1" numberOfLines={1}>
+                    <Text className="text-[#ffe5a0] font-bold text-sm md:text-base flex-1" numberOfLines={1}>
                       {log.actionTitle}
                     </Text>
                   </View>
 
                   {/* Details */}
-                  <Text className="text-white/70 text-xs leading-relaxed mb-3">
+                  <Text className="text-white/85 text-sm md:text-base leading-relaxed mb-3">
                     {log.details}
                   </Text>
 
                   {/* Bottom Footer Info */}
-                  <View className="flex-row items-center justify-between pt-2 border-t border-white/5">
-                    <View className="flex-row items-center gap-1">
-                      <Clock size={11} color="rgba(255, 255, 255, 0.4)" />
-                      <Text className="text-white/40 text-[10px]">{log.timestamp}</Text>
+                  <View className="flex-row items-center justify-between pt-2.5 border-t border-white/5">
+                    <View className="flex-row items-center gap-1.5">
+                      <Clock size={13} color="rgba(255, 255, 255, 0.5)" />
+                      <Text className="text-white/60 text-xs font-medium">{log.timestamp}</Text>
                     </View>
-                    <Text className="text-[#ffe5a0]/70 text-[10px] font-medium">{log.platform}</Text>
+                    <Text className="text-[#ffe5a0] text-xs font-bold">{log.platform}</Text>
                   </View>
                 </GlassCard>
               </Pressable>
-            ))
-          )}
-        </View>
-      </ScrollView>
+            );
+          })
+        )}
+      </View>
+    </ScrollView>
 
       {/* Detailed Log Modal */}
       {selectedLog && (
@@ -472,12 +561,29 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
               {/* Header */}
               <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
                 <View className="flex-row items-center">
-                  <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${getRoleBadgeStyle(selectedLog.userRole)}`}>
-                    <History size={16} color="#ffe5a0" />
-                  </View>
+                  {(() => {
+                    const roleStyle = getRoleBadgeStyle(selectedLog.userRole);
+                    return (
+                      <View 
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 12,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 10,
+                          borderWidth: 1,
+                          backgroundColor: roleStyle.bg,
+                          borderColor: roleStyle.border,
+                        }}
+                      >
+                        <History size={18} color={roleStyle.text} />
+                      </View>
+                    );
+                  })()}
                   <View>
-                    <Text className="text-white font-extrabold text-sm">Audit Trace Record</Text>
-                    <Text className="text-[#ffe5a0] text-[9px] font-bold">LOG #{selectedLog.id.toUpperCase()}</Text>
+                    <Text className="text-white font-extrabold text-base">Audit Trace Record</Text>
+                    <Text className="text-[#ffe5a0] text-xs font-bold">LOG #{selectedLog.id.toUpperCase()}</Text>
                   </View>
                 </View>
                 <Pressable onPress={() => setSelectedLog(null)} className="p-1">
@@ -486,40 +592,40 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
               </View>
 
               {/* User Metadata */}
-              <View className="bg-black/50 p-3 rounded-2xl border border-white/5 mb-3.5" style={{ gap: 8 }}>
+              <View className="bg-black/50 p-3.5 rounded-2xl border border-white/5 mb-3.5" style={{ gap: 10 }}>
                 <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">User</Text>
-                  <Text className="text-white font-extrabold text-xs">{selectedLog.userName} ({selectedLog.roleTitle})</Text>
+                  <Text className="text-white/60 text-sm font-semibold">User</Text>
+                  <Text className="text-white font-extrabold text-sm">{selectedLog.userName} ({selectedLog.roleTitle})</Text>
                 </View>
                 <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">Action</Text>
-                  <Text className="text-[#ffe5a0] font-bold text-xs">{selectedLog.actionTitle}</Text>
+                  <Text className="text-white/60 text-sm font-semibold">Action</Text>
+                  <Text className="text-[#ffe5a0] font-bold text-sm">{selectedLog.actionTitle}</Text>
                 </View>
                 <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">Target</Text>
-                  <Text className="text-white font-bold text-xs">{selectedLog.targetEntity}</Text>
+                  <Text className="text-white/60 text-sm font-semibold">Target</Text>
+                  <Text className="text-white font-bold text-sm">{selectedLog.targetEntity}</Text>
                 </View>
                 <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">Timestamp</Text>
-                  <Text className="text-white/80 text-xs">{selectedLog.timestamp}</Text>
+                  <Text className="text-white/60 text-sm font-semibold">Timestamp</Text>
+                  <Text className="text-white/90 text-sm">{selectedLog.timestamp}</Text>
                 </View>
                 <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs">Platform / IP</Text>
-                  <Text className="text-emerald-400 text-xs">{selectedLog.platform} • {selectedLog.ipAddress}</Text>
+                  <Text className="text-white/60 text-sm font-semibold">Platform / IP</Text>
+                  <Text className="text-emerald-400 text-sm font-bold">{selectedLog.platform} • {selectedLog.ipAddress}</Text>
                 </View>
               </View>
 
               {/* Event Content */}
-              <Text className="text-white/80 text-xs leading-relaxed mb-4 px-1">
+              <Text className="text-white/90 text-sm leading-relaxed mb-4 px-1">
                 {selectedLog.details}
               </Text>
 
               {/* Dismiss Button */}
               <Pressable
                 onPress={() => setSelectedLog(null)}
-                className="w-full py-3 rounded-xl bg-[#f0c110] items-center active:scale-95"
+                className="w-full py-3.5 rounded-xl bg-[#f0c110] items-center active:scale-95"
               >
-                <Text className="text-[#101415] text-xs font-black uppercase">Dismiss Record</Text>
+                <Text className="text-[#101415] text-sm font-black uppercase">Dismiss Record</Text>
               </Pressable>
             </Pressable>
           </Pressable>
