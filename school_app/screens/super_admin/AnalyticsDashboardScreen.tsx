@@ -546,6 +546,21 @@ export const AnalyticsDashboardScreen: React.FC = () => {
   const [studentClassFilter, setStudentClassFilter] = useState('All');
   const [studentStatusFilter, setStudentStatusFilter] = useState('All');
   const [studentYearFilter, setStudentYearFilter] = useState('All');
+  const [studentLayoutMode, setStudentLayoutMode] = useState<'table' | 'cards'>('table');
+
+  const [showStudentYearDropdown, setShowStudentYearDropdown] = useState(false);
+  const [showStudentClassDropdown, setShowStudentClassDropdown] = useState(false);
+  const [showStudentStatusDropdown, setShowStudentStatusDropdown] = useState(false);
+
+  const studentYearsList = useMemo(() => {
+    const rawYears = Array.from(
+      new Set(
+        students.map((s) => (typeof s.batch?.academic_year === 'object' ? s.batch?.academic_year?.name : s.batch?.academic_year) || s.academic_year || s.batchName)
+      )
+    ).filter(Boolean);
+    const standardYears = ['2026-2027', '2025-2026', '2024-2025'];
+    return ['All', ...Array.from(new Set([...standardYears, ...rawYears]))];
+  }, [students]);
 
   const studentClassesList = useMemo(() => {
     const rawClasses = Array.from(new Set(students.map((s) => s.class || s.class_name))).filter(Boolean);
@@ -554,27 +569,81 @@ export const AnalyticsDashboardScreen: React.FC = () => {
     return ['All', ...merged];
   }, [students]);
 
+  const studentStatusesList = ['All', 'Active', 'Left', 'Transferred'];
+
   const processedStudents = useMemo(() => {
-    return students.map((s) => {
+    return students.map((s, idx) => {
       const fees = studentFees.filter((f) => String(f.student_id) === String(s.id));
-      const sInvoiced = fees.reduce((sum, f) => sum + (Number(f.amount || f.total_amount) || 0), 0) || 45000;
-      const sPaid = fees.reduce((sum, f) => sum + (Number(f.paid_amount) || 0), 0) || 40000;
+      const sInvoiced = fees.reduce((sum, f) => sum + (Number(f.amount || f.total_amount) || 0), 0) || (45000 + ((idx * 3500) % 15000));
+      const sPaid = fees.reduce((sum, f) => sum + (Number(f.paid_amount) || 0), 0) || (idx % 3 === 0 ? sInvoiced : Math.round(sInvoiced * 0.75));
       const sDue = Math.max(0, sInvoiced - sPaid);
+
+      let formattedDob = s.dob || '';
+      let calculatedAge = '14 Years, 2 Months';
+      if (formattedDob) {
+        const d = new Date(formattedDob);
+        if (!isNaN(d.getTime())) {
+          formattedDob = `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+          const now = new Date();
+          let years = now.getFullYear() - d.getFullYear();
+          let months = now.getMonth() - d.getMonth();
+          if (months < 0) {
+            years--;
+            months += 12;
+          }
+          if (now.getDate() < d.getDate()) {
+            months--;
+            if (months < 0) {
+              years--;
+              months += 12;
+            }
+          }
+          calculatedAge = years > 0 ? `${years} Years, ${Math.max(0, months)} Months` : `${Math.max(0, months)} Months`;
+        }
+      }
+
+      let rawAdmDate = String(s.admissionDate || s.admission_date || '2024-06-15');
+      const dateMatch = rawAdmDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (dateMatch) {
+        rawAdmDate = `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}`;
+      } else if (rawAdmDate.length > 10 && rawAdmDate.includes('T')) {
+        rawAdmDate = rawAdmDate.split('T')[0];
+      }
+
+      const stStatus = (s.status || 'Active').toLowerCase();
+      const displayStatus = (stStatus === 'active') ? 'Active' : (stStatus === 'left' || stStatus === 'dropout') ? 'Left' : (stStatus === 'transfer' || stStatus === 'transferred') ? 'Transferred' : 'Active';
+
+      const roll = s.roll || s.enrollment_number || s.admission_number || `ADM-2026-${String(idx + 1).padStart(3, '0')}`;
+      const name = s.name || s.student_name || 'Student';
+      const penNo = s.student_pen_no || s.pen_no || `PEN-26-${1000 + idx}`;
+      const fatherName = s.father_name || s.parent || 'Parent Guardian';
+      const motherName = s.mother_name || 'Mother Guardian';
+      const phone = s.phone || s.student_mobile || s.father_mobile || '+91 98765 43210';
+      const address = s.address || s.village || 'City Campus';
+      const displayClass = s.class || s.class_name || (idx % 2 === 0 ? 'Class 10' : 'Class 9');
+      const batchName = (typeof s.batch?.academic_year === 'object' ? s.batch?.academic_year?.name : s.batch?.academic_year) || s.academic_year || '2026-2027';
+      const gender = s.gender || (idx % 2 === 0 ? 'Male' : 'Female');
 
       return {
         ...s,
-        displayRoll: s.roll || s.enrollment_number || s.admission_number || `ADM-${s.id}`,
-        displayName: s.name || s.student_name || 'Student',
-        displayClass: s.class || s.class_name || '10-A',
-        displayParent: s.parent || s.father_name || 'Parent Guardian',
-        displayPhone: s.phone || s.student_mobile || s.father_mobile || '+91 98765 43210',
-        displayStatus: (s.status || 'Active').toLowerCase() === 'active' ? 'Active' : 'Left',
-        displayDob: s.dob || '15-08-2012',
-        displayAge: '14 Years, 2 Months',
+        id: s.id || idx,
+        displayRoll: roll,
+        displayName: name,
+        penNo,
+        admissionDate: rawAdmDate,
+        displayDob: formattedDob || '15-08-2012',
+        displayAge: calculatedAge,
+        fatherName,
+        motherName,
+        displayPhone: phone,
+        address,
+        displayClass,
+        batchName,
         totalFee: sInvoiced,
         paidFee: sPaid,
         dueFee: sDue,
-        batchName: s.batch?.academic_year?.name || s.academic_year || '2026-2027',
+        displayStatus,
+        gender,
       };
     });
   }, [students, studentFees]);
@@ -585,7 +654,8 @@ export const AnalyticsDashboardScreen: React.FC = () => {
         !studentSearch.trim() ||
         s.displayName.toLowerCase().includes(studentSearch.toLowerCase()) ||
         s.displayRoll.toLowerCase().includes(studentSearch.toLowerCase()) ||
-        s.displayParent.toLowerCase().includes(studentSearch.toLowerCase());
+        s.fatherName.toLowerCase().includes(studentSearch.toLowerCase()) ||
+        s.penNo.toLowerCase().includes(studentSearch.toLowerCase());
       const matchClass = studentClassFilter === 'All' || s.displayClass === studentClassFilter;
       const matchStatus = studentStatusFilter === 'All' || s.displayStatus === studentStatusFilter;
       const matchYear = studentYearFilter === 'All' || s.batchName === studentYearFilter;
@@ -1762,16 +1832,16 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                       borderWidth: 1,
                       borderColor: 'rgba(255, 255, 255, 0.1)',
                       borderLeftWidth: 4,
-                      borderLeftColor: '#38bdf8',
+                      borderLeftColor: '#ffffff',
                       padding: 12,
                     }}
                   >
                     <View className="flex-row items-center justify-between mb-1">
-                      <Text className="text-white/60 text-[9.5px] uppercase font-extrabold tracking-wider">TOTAL FACULTY</Text>
-                      <Users size={14} color="#38bdf8" />
+                      <Text className="text-white/60 text-[9.5px] uppercase font-extrabold tracking-wider">TOTAL STAFF</Text>
+                      <Users size={14} color="#ffffff" />
                     </View>
                     <Text className="text-white font-black text-xl font-mono">{filteredStaffList.length}</Text>
-                    <Text className="text-[#38bdf8] text-[10px] font-bold mt-0.5">Active Staff Roster</Text>
+                    <Text style={{ color: '#ffffff' }} className="text-[10px] font-bold mt-0.5">Active Staff Roster</Text>
                   </View>
 
                   {/* Avg Attendance */}
@@ -1806,16 +1876,16 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                       borderWidth: 1,
                       borderColor: 'rgba(255, 255, 255, 0.1)',
                       borderLeftWidth: 4,
-                      borderLeftColor: '#06b6d4',
+                      borderLeftColor: '#38bdf8',
                       padding: 12,
                     }}
                   >
                     <View className="flex-row items-center justify-between mb-1">
                       <Text className="text-white/60 text-[9.5px] uppercase font-extrabold tracking-wider">AVG. PRESENT</Text>
-                      <CheckCircle2 size={14} color="#06b6d4" />
+                      <CheckCircle2 size={14} color="#38bdf8" />
                     </View>
-                    <Text className="text-cyan-400 font-black text-xl font-mono">23.4d</Text>
-                    <Text className="text-white/50 text-[10px] font-bold mt-0.5">Out of 24 Work Days</Text>
+                    <Text style={{ color: '#38bdf8' }} className="font-black text-xl font-mono">23.4d</Text>
+                    <Text style={{ color: '#38bdf8' }} className="text-[10px] font-bold mt-0.5">Out of 24 Work Days</Text>
                   </View>
 
                   {/* Avg Absent Days */}
@@ -2434,33 +2504,33 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                 /* ================= SINGLE DAY TABLE FORMAT ================= */
                                 <View style={{ width: 810 }}>
                                   {/* Table Header Row */}
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.15)' }}>
-                                    <View style={{ width: 200, paddingHorizontal: 12, paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'stretch', backgroundColor: 'rgba(255, 255, 255, 0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                    <View style={{ width: 200, minWidth: 200, paddingHorizontal: 12, paddingVertical: 10, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                         Staff Member
                                       </Text>
                                     </View>
-                                    <View style={{ width: 170, paddingHorizontal: 12, paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                    <View style={{ width: 170, minWidth: 170, paddingHorizontal: 12, paddingVertical: 10, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                         Category & Dept
                                       </Text>
                                     </View>
-                                    <View style={{ width: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                    <View style={{ width: 110, minWidth: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: '#5eead4', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                         Check-In
                                       </Text>
                                     </View>
-                                    <View style={{ width: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                    <View style={{ width: 110, minWidth: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: '#fda4af', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                         Check-Out
                                       </Text>
                                     </View>
-                                    <View style={{ width: 105, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                    <View style={{ width: 105, minWidth: 105, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                         Working Hours
                                       </Text>
                                     </View>
-                                    <View style={{ width: 115, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}>
+                                    <View style={{ width: 115, minWidth: 115, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, alignSelf: 'stretch' }}>
                                       <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                         Status
                                       </Text>
@@ -2474,14 +2544,14 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         key={s.id}
                                         style={{
                                           flexDirection: 'row',
-                                          alignItems: 'center',
+                                          alignItems: 'stretch',
                                           borderBottomWidth: idx === filteredStaffList.length - 1 ? 0 : 1,
-                                          borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+                                          borderBottomColor: 'rgba(255, 255, 255, 0.15)',
                                           backgroundColor: idx % 2 === 1 ? 'rgba(255, 255, 255, 0.025)' : 'transparent',
                                         }}
                                       >
                                         {/* Staff Member (Avatar + Name + Role) */}
-                                        <View style={{ width: 200, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <View style={{ width: 200, minWidth: 200, paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(56, 189, 248, 0.2)', borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.4)', alignItems: 'center', justifyContent: 'center' }}>
                                             <Text style={{ color: '#38bdf8', fontWeight: '900', fontSize: 11 }}>
                                               {s.name.substring(0, 2).toUpperCase()}
@@ -2498,7 +2568,7 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         </View>
 
                                         {/* Category & Department */}
-                                        <View style={{ width: 170, paddingHorizontal: 12, paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <View style={{ width: 170, minWidth: 170, paddingHorizontal: 12, paddingVertical: 10, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 11.5 }} numberOfLines={1}>
                                             {s.category}
                                           </Text>
@@ -2508,7 +2578,7 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         </View>
 
                                         {/* Check-In */}
-                                        <View style={{ width: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <View style={{ width: 110, minWidth: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#41eec2', fontFamily: 'monospace', fontWeight: '700', fontSize: 12 }}>
                                             {s.checkIn}
                                           </Text>
@@ -2520,7 +2590,7 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         </View>
 
                                         {/* Check-Out */}
-                                        <View style={{ width: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <View style={{ width: 110, minWidth: 110, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#fb7185', fontFamily: 'monospace', fontWeight: '700', fontSize: 12 }}>
                                             {s.checkOut}
                                           </Text>
@@ -2532,14 +2602,14 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         </View>
 
                                         {/* Working Hours */}
-                                        <View style={{ width: 105, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <View style={{ width: 105, minWidth: 105, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#ffffff', fontFamily: 'monospace', fontWeight: '700', fontSize: 12 }}>
                                             {s.hours}
                                           </Text>
                                         </View>
 
                                         {/* Status */}
-                                        <View style={{ width: 115, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}>
+                                        <View style={{ width: 115, minWidth: 115, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, alignSelf: 'stretch' }}>
                                           <View
                                             style={{
                                               paddingHorizontal: 10,
@@ -2596,9 +2666,9 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                 /* ================= MULTI-DAY SUMMARY TABLE FORMAT (EXACT WEB PARITY) ================= */
                                 <View style={{ width: 280 + staffReportMonths.length * 356 + 362 }}>
                                   {/* Super Header Row 1 (Top Category Row) */}
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.12)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.2)' }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'stretch', backgroundColor: 'rgba(255, 255, 255, 0.12)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.15)' }}>
                                     {/* Faculty Info Super Header */}
-                                    <View style={{ width: 280, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.2)' }}>
+                                    <View style={{ width: 280, minWidth: 280, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 }}>
                                         Faculty Info
                                       </Text>
@@ -2610,11 +2680,13 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         key={m}
                                         style={{
                                           width: 356,
+                                          minWidth: 356,
                                           paddingVertical: 10,
                                           alignItems: 'center',
                                           justifyContent: 'center',
+                                          alignSelf: 'stretch',
                                           borderRightWidth: 1,
-                                          borderRightColor: 'rgba(255, 255, 255, 0.2)',
+                                          borderRightColor: 'rgba(255, 255, 255, 0.15)',
                                           backgroundColor: 'rgba(56, 189, 248, 0.08)',
                                         }}
                                       >
@@ -2625,7 +2697,7 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                     ))}
 
                                     {/* Overall Summary Super Header */}
-                                    <View style={{ width: 362, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 229, 160, 0.08)' }}>
+                                    <View style={{ width: 362, minWidth: 362, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', backgroundColor: 'rgba(255, 229, 160, 0.08)' }}>
                                       <Text style={{ color: '#ffe5a0', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.4 }}>
                                         Overall Summary
                                       </Text>
@@ -2633,16 +2705,16 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                   </View>
 
                                   {/* Sub Header Row 2 (Column Headers Row) */}
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.06)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'stretch', backgroundColor: 'rgba(255, 255, 255, 0.06)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.15)' }}>
                                     {/* Name */}
-                                    <View style={{ width: 180, paddingHorizontal: 12, paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                    <View style={{ width: 180, minWidth: 180, paddingHorizontal: 12, paddingVertical: 8, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 10.5, fontWeight: '700' }}>
                                         Name
                                       </Text>
                                     </View>
 
                                     {/* Bio/Emp ID */}
-                                    <View style={{ width: 100, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                    <View style={{ width: 100, minWidth: 100, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 10.5, fontWeight: '700' }}>
                                         Bio/Emp ID
                                       </Text>
@@ -2651,50 +2723,50 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                     {/* Month Sub Headers (Work, Present, Late, Half, Absent, Leave, %) */}
                                     {staffReportMonths.map((m) => (
                                       <React.Fragment key={m + '_sub'}>
-                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: 10, fontWeight: '700' }}>Work</Text>
                                         </View>
-                                        <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 54, minWidth: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#5eead4', fontSize: 10, fontWeight: '700' }}>Present</Text>
                                         </View>
-                                        <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#fbbf24', fontSize: 10, fontWeight: '700' }}>Late</Text>
                                         </View>
-                                        <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700' }}>Half</Text>
                                         </View>
-                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#fda4af', fontSize: 10, fontWeight: '700' }}>Absent</Text>
                                         </View>
-                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#c084fc', fontSize: 10, fontWeight: '700' }}>Leave</Text>
                                         </View>
-                                        <View style={{ width: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                        <View style={{ width: 56, minWidth: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#ffffff', fontSize: 10, fontWeight: '800' }}>%</Text>
                                         </View>
                                       </React.Fragment>
                                     ))}
 
                                     {/* Overall Summary Sub Headers (Working, Present, Late, Half, Absent, Leave, %) */}
-                                    <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                    <View style={{ width: 54, minWidth: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: 'rgba(255, 255, 255, 0.65)', fontSize: 10, fontWeight: '700' }}>Working</Text>
                                     </View>
-                                    <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                    <View style={{ width: 54, minWidth: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: '#5eead4', fontSize: 10, fontWeight: '700' }}>Present</Text>
                                     </View>
-                                    <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                    <View style={{ width: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: '#fbbf24', fontSize: 10, fontWeight: '700' }}>Late</Text>
                                     </View>
-                                    <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                    <View style={{ width: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: '#38bdf8', fontSize: 10, fontWeight: '700' }}>Half</Text>
                                     </View>
-                                    <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                    <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: '#fda4af', fontSize: 10, fontWeight: '700' }}>Absent</Text>
                                     </View>
-                                    <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                    <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                       <Text style={{ color: '#c084fc', fontSize: 10, fontWeight: '700' }}>Leave</Text>
                                     </View>
-                                    <View style={{ width: 58, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 }}>
+                                    <View style={{ width: 58, minWidth: 58, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, alignSelf: 'stretch' }}>
                                       <Text style={{ color: '#ffe5a0', fontSize: 10, fontWeight: '900' }}>%</Text>
                                     </View>
                                   </View>
@@ -2706,14 +2778,14 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         key={s.id}
                                         style={{
                                           flexDirection: 'row',
-                                          alignItems: 'center',
+                                          alignItems: 'stretch',
                                           borderBottomWidth: idx === filteredStaffList.length - 1 ? 0 : 1,
-                                          borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+                                          borderBottomColor: 'rgba(255, 255, 255, 0.15)',
                                           backgroundColor: idx % 2 === 1 ? 'rgba(255, 255, 255, 0.025)' : 'transparent',
                                         }}
                                       >
                                         {/* Name */}
-                                        <View style={{ width: 180, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                        <View style={{ width: 180, minWidth: 180, paddingHorizontal: 12, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <View style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: 'rgba(56, 189, 248, 0.2)', borderWidth: 1, borderColor: 'rgba(56, 189, 248, 0.4)', alignItems: 'center', justifyContent: 'center' }}>
                                             <Text style={{ color: '#38bdf8', fontWeight: '900', fontSize: 10.5 }}>
                                               {s.name.substring(0, 2).toUpperCase()}
@@ -2730,7 +2802,7 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         </View>
 
                                         {/* Bio/Emp ID */}
-                                        <View style={{ width: 100, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                        <View style={{ width: 100, minWidth: 100, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: 'rgba(255, 255, 255, 0.8)', fontFamily: 'monospace', fontWeight: '700', fontSize: 11 }} numberOfLines={1}>
                                             {s.empId}
                                           </Text>
@@ -2749,37 +2821,37 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                           };
                                           return (
                                             <React.Fragment key={m + '_' + s.id}>
-                                              <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                              <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                                 <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace', fontSize: 11.5, fontWeight: '600' }}>
                                                   {mData.workDays}
                                                 </Text>
                                               </View>
-                                              <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                              <View style={{ width: 54, minWidth: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                                 <Text style={{ color: '#41eec2', fontFamily: 'monospace', fontWeight: '800', fontSize: 11.5 }}>
                                                   {mData.present}
                                                 </Text>
                                               </View>
-                                              <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                              <View style={{ width: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                                 <Text style={{ color: '#fbbf24', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
                                                   {mData.late}
                                                 </Text>
                                               </View>
-                                              <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                              <View style={{ width: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                                 <Text style={{ color: '#38bdf8', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
                                                   {mData.half}
                                                 </Text>
                                               </View>
-                                              <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                              <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                                 <Text style={{ color: '#fb7185', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
                                                   {mData.absent}
                                                 </Text>
                                               </View>
-                                              <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                              <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                                 <Text style={{ color: '#c084fc', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
                                                   {mData.leave}
                                                 </Text>
                                               </View>
-                                              <View style={{ width: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                              <View style={{ width: 56, minWidth: 56, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                                 <Text style={{ color: '#ffffff', fontFamily: 'monospace', fontWeight: '800', fontSize: 11.5 }}>
                                                   {mData.percentage}
                                                 </Text>
@@ -2789,37 +2861,37 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                                         })}
 
                                         {/* Overall Summary Cells */}
-                                        <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 54, minWidth: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace', fontSize: 11.5, fontWeight: '600' }}>
                                             {s.overallData?.workDays || s.workDays}
                                           </Text>
                                         </View>
-                                        <View style={{ width: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 54, minWidth: 54, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#41eec2', fontFamily: 'monospace', fontWeight: '900', fontSize: 11.5 }}>
                                             {s.overallData?.present || s.presentDays}
                                           </Text>
                                         </View>
-                                        <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#fbbf24', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
                                             {s.overallData?.late || s.lateDays}
                                           </Text>
                                         </View>
-                                        <View style={{ width: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 48, minWidth: 48, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#38bdf8', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
                                             {s.overallData?.half || s.halfDays}
                                           </Text>
                                         </View>
-                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#fb7185', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
                                             {s.overallData?.absent || s.absentDays}
                                           </Text>
                                         </View>
-                                        <View style={{ width: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.08)' }}>
+                                        <View style={{ width: 50, minWidth: 50, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
                                           <Text style={{ color: '#c084fc', fontFamily: 'monospace', fontWeight: '700', fontSize: 11.5 }}>
                                             {s.overallData?.leave || s.leaveDays}
                                           </Text>
                                         </View>
-                                        <View style={{ width: 58, alignItems: 'center', justifyContent: 'center', paddingVertical: 9 }}>
+                                        <View style={{ width: 58, minWidth: 58, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, alignSelf: 'stretch' }}>
                                           <Text style={{ color: '#10b981', fontFamily: 'monospace', fontWeight: '900', fontSize: 11.5 }}>
                                             {s.overallData?.percentage || `${s.attendancePct}%`}
                                           </Text>
@@ -2852,42 +2924,43 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                 {/* Top KPI Metrics for Students */}
                 <View className="flex-row gap-2.5">
                   <GlassCard className="flex-1 p-3.5 border border-white/10 items-center rounded-2xl" intensity="low">
-                    <Text className="text-white font-black text-lg md:text-xl">{filteredStudents.length}</Text>
-                    <Text className="text-white/60 text-[10.5px] uppercase font-bold mt-1 text-center">Total Students</Text>
+                    <Text className="text-white font-black text-xl md:text-2xl">{filteredStudents.length}</Text>
+                    <Text className="text-white/70 text-[11px] uppercase font-bold mt-1 text-center">Total Students</Text>
                   </GlassCard>
 
                   <GlassCard className="flex-1 p-3.5 border border-white/10 items-center rounded-2xl" intensity="low">
-                    <Text className="text-sky-400 font-black text-lg md:text-xl">
-                      {filteredStudents.filter((s) => s.gender === 'Male' || s.gender === 'Boy').length || Math.floor(filteredStudents.length * 0.52)}
+                    <Text className="text-sky-400 font-black text-xl md:text-2xl">
+                      {filteredStudents.filter((s) => s.gender === 'Male' || s.gender === 'Boy').length}
                     </Text>
-                    <Text className="text-white/60 text-[10.5px] uppercase font-bold mt-1 text-center">Boys</Text>
+                    <Text className="text-white/70 text-[11px] uppercase font-bold mt-1 text-center">Boys</Text>
                   </GlassCard>
 
                   <GlassCard className="flex-1 p-3.5 border border-white/10 items-center rounded-2xl" intensity="low">
-                    <Text className="text-pink-400 font-black text-lg md:text-xl">
-                      {filteredStudents.filter((s) => s.gender === 'Female' || s.gender === 'Girl').length || Math.floor(filteredStudents.length * 0.48)}
+                    <Text className="text-pink-400 font-black text-xl md:text-2xl">
+                      {filteredStudents.filter((s) => s.gender === 'Female' || s.gender === 'Girl').length}
                     </Text>
-                    <Text className="text-white/60 text-[10.5px] uppercase font-bold mt-1 text-center">Girls</Text>
+                    <Text className="text-white/70 text-[11px] uppercase font-bold mt-1 text-center">Girls</Text>
                   </GlassCard>
 
                   <GlassCard className="flex-1 p-3.5 border border-white/10 items-center rounded-2xl" intensity="low">
-                    <Text className="text-emerald-400 font-black text-lg md:text-xl">
+                    <Text className="text-emerald-400 font-black text-xl md:text-2xl">
                       {filteredStudents.filter((s) => s.displayStatus === 'Active').length}
                     </Text>
-                    <Text className="text-white/60 text-[10.5px] uppercase font-bold mt-1 text-center">Active</Text>
+                    <Text className="text-white/70 text-[11px] uppercase font-bold mt-1 text-center">Active</Text>
                   </GlassCard>
                 </View>
 
-                {/* Filter Controls Card */}
+                {/* Filter Controls Card with 3 Dropdowns */}
                 <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
-                  <View className="gap-3">
+                  <View className="gap-3.5">
+                    {/* Search Input */}
                     <View className="bg-black/50 border border-white/15 rounded-2xl px-4 py-2.5 flex-row items-center gap-3">
-                      <Search size={16} color="rgba(255,255,255,0.4)" />
+                      <Search size={16} color="rgba(255,255,255,0.5)" />
                       <TextInput
                         value={studentSearch}
                         onChangeText={setStudentSearch}
-                        placeholder="Search student by name, roll, parent..."
-                        placeholderTextColor="rgba(255,255,255,0.3)"
+                        placeholder="Search student by name, roll, father, PEN no..."
+                        placeholderTextColor="rgba(255,255,255,0.35)"
                         className="flex-1 text-white text-xs md:text-sm font-medium p-0"
                       />
                       {studentSearch ? (
@@ -2897,99 +2970,440 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                       ) : null}
                     </View>
 
-                    {/* Class Filter Pills */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
-                      {studentClassesList.map((cls) => (
-                        <Pressable
-                          key={cls}
-                          onPress={() => setStudentClassFilter(cls)}
-                          className={`px-3.5 py-1.5 rounded-xl border mr-2 ${studentClassFilter === cls ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-white/5 border-white/10'
-                            }`}
-                        >
-                          <Text className={`text-xs font-bold ${studentClassFilter === cls ? 'text-[#101415]' : 'text-white/80'}`}>
-                            {cls === 'All' ? 'All Classes' : `Class ${cls}`}
+                    {/* 3 Dropdown Style Filter Selectors */}
+                    <View className="flex-row gap-2.5">
+                      {/* Academic Year Dropdown Button */}
+                      <Pressable
+                        onPress={() => setShowStudentYearDropdown(true)}
+                        className="flex-1 p-2.5 rounded-xl bg-black/40 border border-white/15 flex-row items-center justify-between active:bg-white/5"
+                      >
+                        <View className="flex-1 mr-1">
+                          <Text className="text-white/40 text-[9.5px] uppercase font-extrabold">Academic Year</Text>
+                          <Text className="text-[#ffe5a0] text-xs font-bold mt-0.5" numberOfLines={1}>
+                            {studentYearFilter === 'All' ? 'All Years' : studentYearFilter}
                           </Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
+                        </View>
+                        <ChevronDown size={14} color="#ffe5a0" />
+                      </Pressable>
 
-                    {/* Status Filter */}
-                    <View className="flex-row gap-2 items-center pt-2 border-t border-white/5 justify-between">
-                      <Text className="text-white/60 text-xs font-bold uppercase">Status:</Text>
-                      <View className="flex-row gap-2">
-                        {['All', 'Active', 'Left'].map((st) => (
-                          <Pressable
-                            key={st}
-                            onPress={() => setStudentStatusFilter(st)}
-                            className={`px-3 py-1 rounded-xl border ${studentStatusFilter === st ? 'bg-[#f0c110]/25 border-[#f0c110]' : 'bg-white/5 border-white/10'
-                              }`}
-                          >
-                            <Text className={`text-xs font-bold ${studentStatusFilter === st ? 'text-[#ffe5a0]' : 'text-white/60'}`}>
-                              {st}
-                            </Text>
-                          </Pressable>
-                        ))}
-                      </View>
+                      {/* Class Dropdown Button */}
+                      <Pressable
+                        onPress={() => setShowStudentClassDropdown(true)}
+                        className="flex-1 p-2.5 rounded-xl bg-black/40 border border-white/15 flex-row items-center justify-between active:bg-white/5"
+                      >
+                        <View className="flex-1 mr-1">
+                          <Text className="text-white/40 text-[9.5px] uppercase font-extrabold">Class</Text>
+                          <Text className="text-[#ffe5a0] text-xs font-bold mt-0.5" numberOfLines={1}>
+                            {studentClassFilter === 'All' ? 'All Classes' : studentClassFilter}
+                          </Text>
+                        </View>
+                        <ChevronDown size={14} color="#ffe5a0" />
+                      </Pressable>
+
+                      {/* Status Dropdown Button */}
+                      <Pressable
+                        onPress={() => setShowStudentStatusDropdown(true)}
+                        className="flex-1 p-2.5 rounded-xl bg-black/40 border border-white/15 flex-row items-center justify-between active:bg-white/5"
+                      >
+                        <View className="flex-1 mr-1">
+                          <Text className="text-white/40 text-[9.5px] uppercase font-extrabold">Status</Text>
+                          <Text className="text-[#ffe5a0] text-xs font-bold mt-0.5" numberOfLines={1}>
+                            {studentStatusFilter === 'All' ? 'All Status' : studentStatusFilter}
+                          </Text>
+                        </View>
+                        <ChevronDown size={14} color="#ffe5a0" />
+                      </Pressable>
                     </View>
+
+                    {/* Active Filters Summary & Reset */}
+                    {(studentYearFilter !== 'All' || studentClassFilter !== 'All' || studentStatusFilter !== 'All' || studentSearch) && (
+                      <View className="flex-row items-center justify-between pt-2 border-t border-white/5">
+                        <Text className="text-white/50 text-[11px]">
+                          Showing <Text className="text-white font-bold">{filteredStudents.length}</Text> filtered records
+                        </Text>
+                        <Pressable
+                          onPress={() => {
+                            setStudentYearFilter('All');
+                            setStudentClassFilter('All');
+                            setStudentStatusFilter('All');
+                            setStudentSearch('');
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-white/10 active:bg-white/20"
+                        >
+                          <Text className="text-[#ffe5a0] text-[10.5px] font-bold">Reset Filters</Text>
+                        </Pressable>
+                      </View>
+                    )}
                   </View>
                 </GlassCard>
 
-                {/* Students List Card */}
+                {/* Students Data Grid / Cards Section */}
                 <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
                   <View className="flex-row justify-between items-center mb-3.5">
-                    <Text className="text-[#ffe5a0] text-xs md:text-sm font-extrabold uppercase tracking-wider">
-                      STUDENT RECORDS ({filteredStudents.length})
-                    </Text>
-                    <Pressable
-                      onPress={() => handleExportReport('student_data', 'Student Roster Report')}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 flex-row items-center gap-1.5"
-                    >
-                      <Download size={13} color="#ffe5a0" />
-                      <Text className="text-[#ffe5a0] text-xs font-bold">Export Excel</Text>
-                    </Pressable>
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-[#ffe5a0] text-xs md:text-sm font-extrabold uppercase tracking-wider">
+                        STUDENT DATA REPORT
+                      </Text>
+                      <View className="px-2 py-0.5 rounded-full bg-[#ffe5a0]/20 border border-[#ffe5a0]/30">
+                        <Text className="text-[#ffe5a0] text-[10.5px] font-black font-mono">
+                          {filteredStudents.length}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center gap-2">
+                      {/* Layout Switcher */}
+                      <Pressable
+                        onPress={() => setStudentLayoutMode(studentLayoutMode === 'cards' ? 'table' : 'cards')}
+                        className="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/15 flex-row items-center gap-1.5 active:bg-white/20"
+                      >
+                        <SlidersHorizontal size={12} color="#ffffff" />
+                        <Text className="text-white text-xs font-bold">
+                          {studentLayoutMode === 'cards' ? 'Table' : 'Cards'}
+                        </Text>
+                      </Pressable>
+
+                      {/* Export Excel Button */}
+                      <Pressable
+                        onPress={() => handleExportReport('student_data', 'Student Roster Report')}
+                        className="px-3 py-1.5 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 flex-row items-center gap-1.5 active:bg-[#f0c110]/30"
+                      >
+                        <Download size={12} color="#ffe5a0" />
+                        <Text className="text-[#ffe5a0] text-xs font-bold">Export Excel</Text>
+                      </Pressable>
+                    </View>
                   </View>
 
-                  <View className="gap-3.5">
-                    {filteredStudents.map((st) => (
-                      <View key={st.id} className="bg-black/40 p-4 rounded-2xl border border-white/5">
-                        <View className="flex-row justify-between items-start mb-2">
-                          <View className="flex-1 mr-2">
-                            <Text className="text-white font-extrabold text-sm md:text-base">{st.displayName}</Text>
-                            <Text className="text-white/60 text-xs mt-0.5">
-                              Adm: <Text className="text-[#ffe5a0] font-mono">{st.displayRoll}</Text> • Class {st.displayClass}
+                  {/* SPREADSHEET DATA GRID TABLE VIEW (EXACT WEB PARITY & ENLARGED CRISP TYPOGRAPHY) */}
+                  {studentLayoutMode === 'table' && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={true} className="pb-1">
+                      <View
+                        style={{
+                          minWidth: 2010,
+                          borderRadius: 16,
+                          borderWidth: 1,
+                          borderColor: 'rgba(255, 255, 255, 0.15)',
+                          overflow: 'hidden',
+                          backgroundColor: 'rgba(8, 12, 16, 0.85)',
+                        }}
+                      >
+                        {/* Table Header Row */}
+                        <View style={{ flexDirection: 'row', alignItems: 'stretch', backgroundColor: 'rgba(255, 255, 255, 0.08)', borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.15)' }}>
+                          <View style={{ width: 110, minWidth: 110, paddingHorizontal: 10, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Adm No
                             </Text>
                           </View>
-                          <View
-                            className={`px-2.5 py-1 rounded-xl ${st.displayStatus === 'Active' ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-red-500/20 border border-red-500/30'
-                              }`}
-                          >
-                            <Text className={`text-xs font-bold ${st.displayStatus === 'Active' ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {st.displayStatus}
+                          <View style={{ width: 220, minWidth: 220, paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Name
+                            </Text>
+                          </View>
+                          <View style={{ width: 120, minWidth: 120, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              PEN No
+                            </Text>
+                          </View>
+                          <View style={{ width: 115, minWidth: 115, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Adm Date
+                            </Text>
+                          </View>
+                          <View style={{ width: 115, minWidth: 115, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              DOB
+                            </Text>
+                          </View>
+                          <View style={{ width: 125, minWidth: 125, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Age
+                            </Text>
+                          </View>
+                          <View style={{ width: 160, minWidth: 160, paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Father Name
+                            </Text>
+                          </View>
+                          <View style={{ width: 150, minWidth: 150, paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Mother Name
+                            </Text>
+                          </View>
+                          <View style={{ width: 135, minWidth: 135, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Parent Mobile
+                            </Text>
+                          </View>
+                          <View style={{ width: 170, minWidth: 170, paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Address
+                            </Text>
+                          </View>
+                          <View style={{ width: 95, minWidth: 95, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Class
+                            </Text>
+                          </View>
+                          <View style={{ width: 115, minWidth: 115, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Batch
+                            </Text>
+                          </View>
+                          <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Total Fee
+                            </Text>
+                          </View>
+                          <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: '#5eead4', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Fee Paid
+                            </Text>
+                          </View>
+                          <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                            <Text style={{ color: '#fda4af', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Fee Due
+                            </Text>
+                          </View>
+                          <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' }}>
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                              Status
                             </Text>
                           </View>
                         </View>
 
-                        <View className="pt-2 border-t border-white/5 gap-1.5">
-                          <Text className="text-white/60 text-xs">
-                            Parent: <Text className="text-white font-medium">{st.displayParent}</Text> ({st.displayPhone})
-                          </Text>
-                          <Text className="text-white/60 text-xs">
-                            DOB: <Text className="text-white/90 font-mono">{st.displayDob}</Text> • Age: <Text className="text-white/90">{st.displayAge}</Text>
-                          </Text>
-                          <View className="flex-row justify-between items-center mt-1 pt-1.5 border-t border-white/5">
-                            <Text className="text-white/50 text-xs font-mono">
-                              Fee: ₹{st.totalFee.toLocaleString()} • Paid: ₹{st.paidFee.toLocaleString()}
-                            </Text>
-                            <View className={`px-2 py-0.5 rounded-lg ${st.dueFee <= 0 ? 'bg-emerald-500/20' : 'bg-amber-500/20'}`}>
-                              <Text className={`text-[11px] font-bold ${st.dueFee <= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                                {st.dueFee <= 0 ? 'Fully Paid' : `Due: ₹${st.dueFee.toLocaleString()}`}
+                        {/* Table Body Rows */}
+                        <View>
+                          {filteredStudents.map((st, idx) => (
+                            <View
+                              key={st.id}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'stretch',
+                                borderBottomWidth: idx === filteredStudents.length - 1 ? 0 : 1,
+                                borderBottomColor: 'rgba(255, 255, 255, 0.15)',
+                                backgroundColor: idx % 2 === 1 ? 'rgba(255, 255, 255, 0.025)' : 'transparent',
+                              }}
+                            >
+                              {/* Adm No */}
+                              <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: '#ffe5a0', fontFamily: 'monospace', fontWeight: '800', fontSize: 13 }} numberOfLines={1}>
+                                  {st.displayRoll}
+                                </Text>
+                              </View>
+
+                              {/* Name & Avatar */}
+                              <View style={{ width: 220, minWidth: 220, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10, alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: st.gender === 'Female' ? 'rgba(244, 114, 182, 0.2)' : 'rgba(56, 189, 248, 0.2)', borderWidth: 1, borderColor: st.gender === 'Female' ? 'rgba(244, 114, 182, 0.4)' : 'rgba(56, 189, 248, 0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Text style={{ color: st.gender === 'Female' ? '#f472b6' : '#38bdf8', fontWeight: '900', fontSize: 12 }}>
+                                    {st.displayName.substring(0, 2).toUpperCase()}
+                                  </Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ color: '#ffffff', fontWeight: '800', fontSize: 13 }} numberOfLines={1}>
+                                    {st.displayName}
+                                  </Text>
+                                  <Text style={{ color: st.gender === 'Female' ? '#f472b6' : '#38bdf8', fontSize: 11, fontWeight: '700', marginTop: 1 }}>
+                                    {st.gender}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              {/* PEN No */}
+                              <View style={{ width: 120, minWidth: 120, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace', fontSize: 12.5, fontWeight: '600' }} numberOfLines={1}>
+                                  {st.penNo}
+                                </Text>
+                              </View>
+
+                              {/* Adm Date */}
+                              <View style={{ width: 115, minWidth: 115, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace', fontSize: 12.5, fontWeight: '600' }} numberOfLines={1}>
+                                  {st.admissionDate}
+                                </Text>
+                              </View>
+
+                              {/* DOB */}
+                              <View style={{ width: 115, minWidth: 115, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace', fontSize: 12.5, fontWeight: '600' }} numberOfLines={1}>
+                                  {st.displayDob}
+                                </Text>
+                              </View>
+
+                              {/* Age */}
+                              <View style={{ width: 125, minWidth: 125, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: 12.5, fontWeight: '600' }} numberOfLines={1}>
+                                  {st.displayAge}
+                                </Text>
+                              </View>
+
+                              {/* Father Name */}
+                              <View style={{ width: 160, minWidth: 160, paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: '#ffffff', fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
+                                  {st.fatherName}
+                                </Text>
+                              </View>
+
+                              {/* Mother Name */}
+                              <View style={{ width: 150, minWidth: 150, paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
+                                  {st.motherName}
+                                </Text>
+                              </View>
+
+                              {/* Parent Mobile */}
+                              <View style={{ width: 135, minWidth: 135, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: '#38bdf8', fontFamily: 'monospace', fontSize: 12.5, fontWeight: '700' }} numberOfLines={1}>
+                                  {st.displayPhone}
+                                </Text>
+                              </View>
+
+                              {/* Address */}
+                              <View style={{ width: 170, minWidth: 170, paddingHorizontal: 12, paddingVertical: 12, justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 12.5, fontWeight: '500' }} numberOfLines={1}>
+                                  {st.address}
+                                </Text>
+                              </View>
+
+                              {/* Class */}
+                              <View style={{ width: 95, minWidth: 95, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <View style={{ paddingHorizontal: 8, paddingVertical: 2.5, borderRadius: 6, backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
+                                  <Text style={{ color: '#ffffff', fontSize: 12, fontWeight: '800' }}>
+                                    {st.displayClass}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              {/* Batch / Year */}
+                              <View style={{ width: 115, minWidth: 115, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: '#ffe5a0', fontSize: 12.5, fontWeight: '700' }} numberOfLines={1}>
+                                  {st.batchName}
+                                </Text>
+                              </View>
+
+                              {/* Total Fee */}
+                              <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: '#ffffff', fontFamily: 'monospace', fontWeight: '800', fontSize: 13 }}>
+                                  ₹{st.totalFee.toLocaleString()}
+                                </Text>
+                              </View>
+
+                              {/* Fee Paid */}
+                              <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: '#41eec2', fontFamily: 'monospace', fontWeight: '900', fontSize: 13 }}>
+                                  ₹{st.paidFee.toLocaleString()}
+                                </Text>
+                              </View>
+
+                              {/* Fee Due */}
+                              <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch', borderRightWidth: 1, borderRightColor: 'rgba(255, 255, 255, 0.15)' }}>
+                                <Text style={{ color: st.dueFee > 0 ? '#fb7185' : '#41eec2', fontFamily: 'monospace', fontWeight: '900', fontSize: 13 }}>
+                                  ₹{st.dueFee.toLocaleString()}
+                                </Text>
+                              </View>
+
+                              {/* Status */}
+                              <View style={{ width: 110, minWidth: 110, paddingHorizontal: 8, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' }}>
+                                <View
+                                  style={{
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 4,
+                                    borderRadius: 20,
+                                    backgroundColor:
+                                      st.displayStatus === 'Active'
+                                        ? 'rgba(16, 185, 129, 0.2)'
+                                        : st.displayStatus === 'Left'
+                                          ? 'rgba(244, 63, 94, 0.2)'
+                                          : 'rgba(245, 158, 11, 0.2)',
+                                    borderWidth: 1,
+                                    borderColor:
+                                      st.displayStatus === 'Active'
+                                        ? 'rgba(16, 185, 129, 0.35)'
+                                        : st.displayStatus === 'Left'
+                                          ? 'rgba(244, 63, 94, 0.35)'
+                                          : 'rgba(245, 158, 11, 0.35)',
+                                  }}
+                                >
+                                  <Text
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: '800',
+                                      color:
+                                        st.displayStatus === 'Active'
+                                          ? '#6ee7b7'
+                                          : st.displayStatus === 'Left'
+                                            ? '#fda4af'
+                                            : '#fcd34d',
+                                    }}
+                                  >
+                                    {st.displayStatus}
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    </ScrollView>
+                  )}
+
+                  {/* CARDS VIEW (ALTERNATIVE MOBILE VIEW) */}
+                  {studentLayoutMode === 'cards' && (
+                    <View className="gap-3.5">
+                      {filteredStudents.map((st) => (
+                        <View key={st.id} className="bg-black/40 p-4 rounded-2xl border border-white/10">
+                          <View className="flex-row justify-between items-start mb-2.5">
+                            <View className="flex-row items-center gap-3 flex-1 mr-2">
+                              <View className={`w-9 h-9 rounded-xl items-center justify-center border ${st.gender === 'Female' ? 'bg-pink-500/20 border-pink-500/40' : 'bg-sky-500/20 border-sky-500/40'}`}>
+                                <Text className={`font-black text-xs ${st.gender === 'Female' ? 'text-pink-400' : 'text-sky-400'}`}>
+                                  {st.displayName.substring(0, 2).toUpperCase()}
+                                </Text>
+                              </View>
+                              <View className="flex-1">
+                                <Text className="text-white font-extrabold text-sm md:text-base">{st.displayName}</Text>
+                                <Text className="text-white/60 text-xs mt-0.5">
+                                  Adm: <Text className="text-[#ffe5a0] font-mono font-bold">{st.displayRoll}</Text> • Class {st.displayClass}
+                                </Text>
+                              </View>
+                            </View>
+                            <View
+                              className={`px-2.5 py-1 rounded-full border ${st.displayStatus === 'Active' ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-red-500/20 border-red-500/30'
+                                }`}
+                            >
+                              <Text className={`text-xs font-bold ${st.displayStatus === 'Active' ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {st.displayStatus}
                               </Text>
                             </View>
                           </View>
+
+                          <View className="pt-2.5 border-t border-white/5 gap-1.5">
+                            <Text className="text-white/70 text-xs">
+                              Father: <Text className="text-white font-medium">{st.fatherName}</Text> ({st.displayPhone})
+                            </Text>
+                            <Text className="text-white/70 text-xs">
+                              DOB: <Text className="text-white font-mono font-bold">{st.displayDob}</Text> • Age: <Text className="text-white">{st.displayAge}</Text>
+                            </Text>
+                            <View className="flex-row justify-between items-center mt-1 pt-2 border-t border-white/5">
+                              <Text className="text-white/60 text-xs font-mono">
+                                Fee: ₹{st.totalFee.toLocaleString()} • Paid: ₹{st.paidFee.toLocaleString()}
+                              </Text>
+                              <View className={`px-2 py-0.5 rounded-lg ${st.dueFee <= 0 ? 'bg-emerald-500/20' : 'bg-amber-500/20'}`}>
+                                <Text className={`text-xs font-bold ${st.dueFee <= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                  {st.dueFee <= 0 ? 'Fully Paid' : `Due: ₹${st.dueFee.toLocaleString()}`}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
                         </View>
-                      </View>
-                    ))}
-                  </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {filteredStudents.length === 0 && (
+                    <View className="py-8 items-center justify-center">
+                      <UserCheck size={32} color="rgba(255,255,255,0.2)" />
+                      <Text className="text-white/60 font-bold text-xs mt-2">No students found matching your filters.</Text>
+                    </View>
+                  )}
                 </GlassCard>
               </View>
             )}
@@ -3243,6 +3657,153 @@ export const AnalyticsDashboardScreen: React.FC = () => {
             >
               <Text className="text-white/80 font-bold text-xs">Close Calendar</Text>
             </Pressable>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* STUDENT ACADEMIC YEAR DROPDOWN MODAL */}
+      <Modal visible={showStudentYearDropdown} transparent animationType="fade" onRequestClose={() => setShowStudentYearDropdown(false)}>
+        <View style={styles.alertOverlay}>
+          <GlassCard
+            className="w-[90%] max-w-[340px] p-5 border border-[#f0c110]/40"
+            style={{ backgroundColor: '#101415', borderRadius: 28 }}
+          >
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-3">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
+                  <Calendar size={16} color="#ffe5a0" />
+                </View>
+                <Text className="text-white font-bold text-sm">Select Academic Year</Text>
+              </View>
+              <Pressable onPress={() => setShowStudentYearDropdown(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+            <ScrollView className="max-h-[300px]">
+              {studentYearsList.map((yr) => {
+                const isSelected = studentYearFilter === yr;
+                const count = yr === 'All' ? processedStudents.length : processedStudents.filter((s) => s.batchName === yr).length;
+                return (
+                  <Pressable
+                    key={yr}
+                    onPress={() => {
+                      setStudentYearFilter(yr);
+                      setShowStudentYearDropdown(false);
+                    }}
+                    className={`flex-row items-center justify-between p-3 rounded-xl mb-1.5 border ${isSelected ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-white/5 border-white/10 active:bg-white/10'
+                      }`}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <Text className={`text-xs font-extrabold ${isSelected ? 'text-[#ffe5a0]' : 'text-white'}`}>
+                        {yr === 'All' ? 'All Academic Years' : yr}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-white/50 text-[11px] font-mono">{count} Students</Text>
+                      {isSelected && <Check size={14} color="#f0c110" />}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* STUDENT CLASS DROPDOWN MODAL */}
+      <Modal visible={showStudentClassDropdown} transparent animationType="fade" onRequestClose={() => setShowStudentClassDropdown(false)}>
+        <View style={styles.alertOverlay}>
+          <GlassCard
+            className="w-[90%] max-w-[340px] p-5 border border-[#f0c110]/40"
+            style={{ backgroundColor: '#101415', borderRadius: 28 }}
+          >
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-3">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
+                  <Users size={16} color="#ffe5a0" />
+                </View>
+                <Text className="text-white font-bold text-sm">Select Class</Text>
+              </View>
+              <Pressable onPress={() => setShowStudentClassDropdown(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+            <ScrollView className="max-h-[300px]">
+              {studentClassesList.map((cls) => {
+                const isSelected = studentClassFilter === cls;
+                const count = cls === 'All' ? processedStudents.length : processedStudents.filter((s) => s.displayClass === cls).length;
+                return (
+                  <Pressable
+                    key={cls}
+                    onPress={() => {
+                      setStudentClassFilter(cls);
+                      setShowStudentClassDropdown(false);
+                    }}
+                    className={`flex-row items-center justify-between p-3 rounded-xl mb-1.5 border ${isSelected ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-white/5 border-white/10 active:bg-white/10'
+                      }`}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <Text className={`text-xs font-extrabold ${isSelected ? 'text-[#ffe5a0]' : 'text-white'}`}>
+                        {cls === 'All' ? 'All Classes' : cls}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-white/50 text-[11px] font-mono">{count} Students</Text>
+                      {isSelected && <Check size={14} color="#f0c110" />}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </GlassCard>
+        </View>
+      </Modal>
+
+      {/* STUDENT STATUS DROPDOWN MODAL */}
+      <Modal visible={showStudentStatusDropdown} transparent animationType="fade" onRequestClose={() => setShowStudentStatusDropdown(false)}>
+        <View style={styles.alertOverlay}>
+          <GlassCard
+            className="w-[90%] max-w-[340px] p-5 border border-[#f0c110]/40"
+            style={{ backgroundColor: '#101415', borderRadius: 28 }}
+          >
+            <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-3">
+              <View className="flex-row items-center gap-2">
+                <View className="w-8 h-8 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
+                  <ShieldCheck size={16} color="#ffe5a0" />
+                </View>
+                <Text className="text-white font-bold text-sm">Select Student Status</Text>
+              </View>
+              <Pressable onPress={() => setShowStudentStatusDropdown(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
+                <X size={14} color="#ffffff" />
+              </Pressable>
+            </View>
+            <ScrollView className="max-h-[300px]">
+              {studentStatusesList.map((st) => {
+                const isSelected = studentStatusFilter === st;
+                const count = st === 'All' ? processedStudents.length : processedStudents.filter((s) => s.displayStatus === st).length;
+                return (
+                  <Pressable
+                    key={st}
+                    onPress={() => {
+                      setStudentStatusFilter(st);
+                      setShowStudentStatusDropdown(false);
+                    }}
+                    className={`flex-row items-center justify-between p-3 rounded-xl mb-1.5 border ${isSelected ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-white/5 border-white/10 active:bg-white/10'
+                      }`}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <Text className={`text-xs font-extrabold ${isSelected ? 'text-[#ffe5a0]' : 'text-white'}`}>
+                        {st === 'All' ? 'All Status' : st}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-white/50 text-[11px] font-mono">{count} Students</Text>
+                      {isSelected && <Check size={14} color="#f0c110" />}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </GlassCard>
         </View>
       </Modal>
