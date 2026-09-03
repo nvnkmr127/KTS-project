@@ -42,7 +42,7 @@ import {
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Svg, { G, Circle, Path } from 'react-native-svg';
+import Svg, { G, Circle, Path, Rect, Line, Text as SvgText } from 'react-native-svg';
 import { GlassCard } from '../../components/GlassCard';
 import { useResponsive } from '../../utils/responsive';
 import { api } from '../../services/api';
@@ -551,6 +551,7 @@ export const AnalyticsDashboardScreen: React.FC = () => {
   const [showStudentYearDropdown, setShowStudentYearDropdown] = useState(false);
   const [showStudentClassDropdown, setShowStudentClassDropdown] = useState(false);
   const [showStudentStatusDropdown, setShowStudentStatusDropdown] = useState(false);
+  const [selectedForecastMonthIdx, setSelectedForecastMonthIdx] = useState<number | null>(null);
 
   const studentYearsList = useMemo(() => {
     const rawYears = Array.from(
@@ -667,14 +668,25 @@ export const AnalyticsDashboardScreen: React.FC = () => {
   // =========================================================
   // FINANCIAL FORECASTING DATA
   // =========================================================
-  const forecastMonths = [
-    { month: 'Jul 2026', projected: 640000, target: 720000, minExp: 580000, outstandingGoal: 320000 },
-    { month: 'Aug 2026', projected: 590000, target: 680000, minExp: 520000, outstandingGoal: 280000 },
-    { month: 'Sep 2026', projected: 780000, target: 850000, minExp: 710000, outstandingGoal: 420000 },
-    { month: 'Oct 2026', projected: 820000, target: 910000, minExp: 750000, outstandingGoal: 480000 },
-    { month: 'Nov 2026', projected: 510000, target: 600000, minExp: 460000, outstandingGoal: 240000 },
-    { month: 'Dec 2026', projected: 920000, target: 1050000, minExp: 840000, outstandingGoal: 560000 },
-  ];
+  const forecastMonths = useMemo(() => {
+    const futureMonths = ['Jul 2026', 'Aug 2026', 'Sep 2026', 'Oct 2026', 'Nov 2026', 'Dec 2026'];
+    const baseOutstanding = totalOutstanding > 0 ? totalOutstanding : 450000;
+    let currentOutstanding = baseOutstanding;
+
+    return futureMonths.map((m, idx) => {
+      const monthlyRecoveryRate = idx === 0 ? 0.25 : idx === 1 ? 0.20 : idx === 2 ? 0.18 : idx === 3 ? 0.15 : idx === 4 ? 0.12 : 0.10;
+      const projected = Math.round(baseOutstanding * monthlyRecoveryRate);
+      currentOutstanding = Math.max(0, currentOutstanding - projected);
+
+      return {
+        month: m,
+        minExp: Math.round(projected * 0.8),
+        projected,
+        target: Math.round(projected * 1.15),
+        outstandingGoal: currentOutstanding,
+      };
+    });
+  }, [totalOutstanding]);
 
   // Header Title Helper
   const getHeaderTitle = () => {
@@ -3408,74 +3420,574 @@ export const AnalyticsDashboardScreen: React.FC = () => {
               </View>
             )}
 
-            {/* SCREEN 5: FINANCIAL FORECASTING */}
+            {/* SCREEN 5: FINANCIAL FORECASTING (EXACT WEB PARITY) */}
             {selectedSection === 'financial' && (
               <View className="gap-5">
                 {/* Top Financial KPI Cards */}
                 <View className="flex-row gap-2.5">
-                  <GlassCard className="flex-1 p-4 border border-white/10 rounded-2xl" intensity="low">
+                  <GlassCard className="flex-1 p-3.5 md:p-4 border border-white/10 rounded-2xl" intensity="low">
                     <View className="w-8 h-8 rounded-xl bg-amber-500/20 items-center justify-center mb-2">
                       <DollarSign size={16} color="#ffe5a0" />
                     </View>
-                    <Text className="text-[#ffe5a0] font-black text-lg md:text-xl">₹{(totalOutstanding / 100000).toFixed(1)}L</Text>
-                    <Text className="text-white/60 text-[10.5px] font-bold uppercase mt-0.5">Outstanding</Text>
-                    <Text className="text-white/40 text-[10px] mt-1">Currently uncollected</Text>
+                    <Text className="text-[#ffe5a0] font-black text-lg md:text-xl font-mono">
+                      ₹{(totalOutstanding / 100000).toFixed(1)}L
+                    </Text>
+                    <Text className="text-white/70 text-[10.5px] font-extrabold uppercase mt-0.5">Outstanding</Text>
+                    <Text className="text-white/40 text-[9.5px] mt-0.5">Currently uncollected</Text>
                   </GlassCard>
 
-                  <GlassCard className="flex-1 p-4 border border-white/10 rounded-2xl" intensity="low">
+                  <GlassCard className="flex-1 p-3.5 md:p-4 border border-white/10 rounded-2xl" intensity="low">
                     <View className="w-8 h-8 rounded-xl bg-emerald-500/20 items-center justify-center mb-2">
-                      <TrendingUp size={16} color="#41eec2" />
+                      <TrendingUp size={16} color="#2dd4bf" />
                     </View>
-                    <Text className="text-emerald-400 font-black text-lg md:text-xl">₹42.6L</Text>
-                    <Text className="text-white/60 text-[10.5px] font-bold uppercase mt-0.5">Projected</Text>
-                    <Text className="text-white/40 text-[10px] mt-1">Next 6 Months</Text>
+                    <Text className="text-[#2dd4bf] font-black text-lg md:text-xl font-mono">
+                      ₹{((totalOutstanding * 0.85) / 100000).toFixed(1)}L
+                    </Text>
+                    <Text className="text-white/70 text-[10.5px] font-extrabold uppercase mt-0.5">Projected (6M)</Text>
+                    <Text className="text-white/40 text-[9.5px] mt-0.5">Weighted estimate</Text>
                   </GlassCard>
 
-                  <GlassCard className="flex-1 p-4 border border-white/10 rounded-2xl" intensity="low">
+                  <GlassCard className="flex-1 p-3.5 md:p-4 border border-white/10 rounded-2xl" intensity="low">
                     <View className="w-8 h-8 rounded-xl bg-sky-500/20 items-center justify-center mb-2">
                       <Percent size={16} color="#38bdf8" />
                     </View>
-                    <Text className="text-sky-400 font-black text-lg md:text-xl">94.2%</Text>
-                    <Text className="text-white/60 text-[10.5px] font-bold uppercase mt-0.5">Accuracy</Text>
-                    <Text className="text-white/40 text-[10px] mt-1">Model Confidence</Text>
+                    <Text className="text-sky-400 font-black text-lg md:text-xl font-mono">94.8%</Text>
+                    <Text className="text-white/70 text-[10.5px] font-extrabold uppercase mt-0.5">Accuracy</Text>
+                    <Text className="text-white/40 text-[9.5px] mt-0.5">Model confidence</Text>
                   </GlassCard>
                 </View>
 
-                {/* 6-Month Projected Collection Chart */}
+                {/* 6-Month Projected Collection & Outstanding Recovery Composed Chart (Exact Web Parity) */}
                 <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
-                  <View className="flex-row items-center gap-2 mb-1.5">
-                    <TrendingUp size={18} color="#41eec2" />
-                    <Text className="text-white font-extrabold text-sm md:text-base">6-Month Collection Projection</Text>
+                  <View className="flex-row items-center justify-between mb-1.5">
+                    <View className="flex-row items-center gap-2 flex-1 mr-2">
+                      <TrendingUp size={18} color="#2dd4bf" />
+                      <Text className="text-white font-extrabold text-sm md:text-base">
+                        6-Month Collection Projection & Recovery
+                      </Text>
+                    </View>
+                    <View className="px-2.5 py-1 rounded-lg bg-[#2dd4bf]/20 border border-[#2dd4bf]/40">
+                      <Text className="text-[#2dd4bf] text-[10.5px] font-bold">2026-2027</Text>
+                    </View>
                   </View>
-                  <Text className="text-white/60 text-xs mb-4">
-                    Expected collection trends based on past cohort behaviors, term schedules & outstanding balances.
+                  <Text className="text-white/60 text-xs mb-3">
+                    Expected collection trends based on past cohort behaviors, monthly tuition terms, and outstanding balances.
                   </Text>
 
-                  <View className="gap-3">
-                    {forecastMonths.map((m) => (
-                      <View key={m.month} className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
-                        <View className="flex-row justify-between items-center mb-1.5">
-                          <Text className="text-[#ffe5a0] font-extrabold text-xs md:text-sm">{m.month}</Text>
-                          <Text className="text-emerald-400 font-mono text-xs font-bold">
-                            ₹{(m.projected / 1000).toFixed(0)}k Projected
+                  {/* Composed Chart Legend (Exact Web Parity) */}
+                  <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2 py-2.5 px-3 bg-white/5 rounded-xl border border-white/5 mb-3.5">
+                    {/* Outstanding Balance Bar */}
+                    <View className="flex-row items-center gap-1.5">
+                      <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: '#c084fc', opacity: 0.55 }} />
+                      <Text className="text-white/80 text-[11px] font-bold">Outstanding Balance (Goal)</Text>
+                    </View>
+
+                    {/* Projected Collection Line */}
+                    <View className="flex-row items-center gap-1.5">
+                      <View className="flex-row items-center">
+                        <View style={{ width: 12, height: 3, backgroundColor: '#2dd4bf' }} />
+                        <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#2dd4bf', marginLeft: -2 }} />
+                      </View>
+                      <Text className="text-white/80 text-[11px] font-bold">Projected Collection</Text>
+                    </View>
+
+                    {/* Min Expected Dashed Line */}
+                    <View className="flex-row items-center gap-1.5">
+                      <View style={{ width: 14, height: 0, borderBottomWidth: 2, borderBottomColor: '#fb7185', borderStyle: 'dashed' }} />
+                      <Text className="text-white/80 text-[11px] font-bold">Min Expected</Text>
+                    </View>
+
+                    {/* Max Target Dashed Line */}
+                    <View className="flex-row items-center gap-1.5">
+                      <View style={{ width: 14, height: 0, borderBottomWidth: 2, borderBottomColor: '#38bdf8', borderStyle: 'dashed' }} />
+                      <Text className="text-white/80 text-[11px] font-bold">Max Target</Text>
+                    </View>
+                  </View>
+
+                  {/* Interactive Selected Month Statistics Pop-up with Respected Color Codes */}
+                  {selectedForecastMonthIdx !== null && forecastMonths[selectedForecastMonthIdx] && (
+                    <View className="mb-3.5 p-3.5 bg-[#121618] rounded-2xl shadow-2xl shadow-black/80 border border-white/20">
+                      <View className="flex-row items-center justify-between pb-2 mb-2.5 border-b border-white/10">
+                        <View className="flex-row items-center gap-2">
+                          <View className="w-2.5 h-2.5 rounded-full bg-[#2dd4bf]" />
+                          <Text className="text-white font-black text-sm">
+                            {forecastMonths[selectedForecastMonthIdx].month}
+                          </Text>
+                          <View className="px-2 py-0.5 rounded-full bg-white/10 border border-white/15">
+                            <Text className="text-[#ffe5a0] text-[9.5px] font-extrabold uppercase tracking-wide">
+                              Forecast Figures
+                            </Text>
+                          </View>
+                        </View>
+                        <Pressable
+                          onPress={() => setSelectedForecastMonthIdx(null)}
+                          className="w-6 h-6 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <X size={13} color="#ffffff" />
+                        </Pressable>
+                      </View>
+
+                      {/* 4 Color-Coded Metric Cards */}
+                      <View className="flex-row flex-wrap gap-2">
+                        {/* 1. Projected Collection (Teal #2dd4bf) */}
+                        <View
+                          style={{
+                            flex: 1,
+                            minWidth: 140,
+                            backgroundColor: 'rgba(45, 212, 191, 0.12)',
+                            borderColor: 'rgba(45, 212, 191, 0.4)',
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            paddingHorizontal: 10,
+                            paddingVertical: 7,
+                          }}
+                        >
+                          <View className="flex-row items-center gap-1.5 mb-1">
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#2dd4bf' }} />
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: 10, fontWeight: '700' }}>
+                              Projected
+                            </Text>
+                          </View>
+                          <Text style={{ color: '#2dd4bf', fontSize: 13.5, fontWeight: '900', fontFamily: 'monospace' }}>
+                            ₹{forecastMonths[selectedForecastMonthIdx].projected.toLocaleString()}
                           </Text>
                         </View>
 
-                        <View className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden mb-2">
-                          <View style={{ width: `${(m.projected / 1000000) * 100}%` }} className="h-full bg-emerald-400 rounded-full" />
+                        {/* 2. Outstanding Balance Goal (Purple #c084fc) */}
+                        <View
+                          style={{
+                            flex: 1,
+                            minWidth: 140,
+                            backgroundColor: 'rgba(192, 132, 252, 0.12)',
+                            borderColor: 'rgba(192, 132, 252, 0.4)',
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            paddingHorizontal: 10,
+                            paddingVertical: 7,
+                          }}
+                        >
+                          <View className="flex-row items-center gap-1.5 mb-1">
+                            <View style={{ width: 6, height: 6, borderRadius: 2, backgroundColor: '#c084fc' }} />
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: 10, fontWeight: '700' }}>
+                              Balance Goal
+                            </Text>
+                          </View>
+                          <Text style={{ color: '#c084fc', fontSize: 13.5, fontWeight: '900', fontFamily: 'monospace' }}>
+                            ₹{forecastMonths[selectedForecastMonthIdx].outstandingGoal.toLocaleString()}
+                          </Text>
                         </View>
 
-                        <View className="flex-row justify-between items-center text-[10px] text-white/50 font-mono">
-                          <Text className="text-white/50 text-[10.5px]">Min: ₹{(m.minExp / 1000).toFixed(0)}k</Text>
-                          <Text className="text-sky-400 text-[10.5px]">Target: ₹{(m.target / 1000).toFixed(0)}k</Text>
-                          <Text className="text-[#ffe5a0] text-[10.5px]">Recovery: ₹{(m.outstandingGoal / 1000).toFixed(0)}k</Text>
+                        {/* 3. Min Expected (Coral #fb7185) */}
+                        <View
+                          style={{
+                            flex: 1,
+                            minWidth: 140,
+                            backgroundColor: 'rgba(251, 113, 133, 0.12)',
+                            borderColor: 'rgba(251, 113, 133, 0.4)',
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            paddingHorizontal: 10,
+                            paddingVertical: 7,
+                          }}
+                        >
+                          <View className="flex-row items-center gap-1.5 mb-1">
+                            <View style={{ width: 8, height: 2, backgroundColor: '#fb7185' }} />
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: 10, fontWeight: '700' }}>
+                              Min Expected
+                            </Text>
+                          </View>
+                          <Text style={{ color: '#fb7185', fontSize: 13.5, fontWeight: '900', fontFamily: 'monospace' }}>
+                            ₹{forecastMonths[selectedForecastMonthIdx].minExp.toLocaleString()}
+                          </Text>
+                        </View>
+
+                        {/* 4. Max Target (Sky Blue #38bdf8) */}
+                        <View
+                          style={{
+                            flex: 1,
+                            minWidth: 140,
+                            backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                            borderColor: 'rgba(56, 189, 248, 0.4)',
+                            borderWidth: 1,
+                            borderRadius: 12,
+                            paddingHorizontal: 10,
+                            paddingVertical: 7,
+                          }}
+                        >
+                          <View className="flex-row items-center gap-1.5 mb-1">
+                            <View style={{ width: 8, height: 2, backgroundColor: '#38bdf8' }} />
+                            <Text style={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: 10, fontWeight: '700' }}>
+                              Max Target
+                            </Text>
+                          </View>
+                          <Text style={{ color: '#38bdf8', fontSize: 13.5, fontWeight: '900', fontFamily: 'monospace' }}>
+                            ₹{forecastMonths[selectedForecastMonthIdx].target.toLocaleString()}
+                          </Text>
                         </View>
                       </View>
-                    ))}
+                    </View>
+                  )}
+
+                  {/* Main Graph Plot Area with Fixed Y-Axis & Horizontal Scrolling X-Axis */}
+                  <View className="pt-2 bg-black/40 rounded-2xl p-3 border border-white/5">
+                    {(() => {
+                      const maxVal = Math.max(
+                        ...forecastMonths.map((m) => Math.max(m.projected, m.target, m.minExp, m.outstandingGoal)),
+                        100000
+                      );
+                      const maxY = Math.ceil(maxVal / 100000) * 100000 || 500000;
+                      const plotHeight = 180;
+                      const chartWidth = 460;
+                      const colW = (chartWidth - 20) / 6;
+
+                      const yTicks = [
+                        maxY,
+                        Math.round(maxY * 0.75),
+                        Math.round(maxY * 0.5),
+                        Math.round(maxY * 0.25),
+                        0,
+                      ];
+
+                      const formatTick = (val: number) => {
+                        if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
+                        if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+                        if (val >= 1000) return `₹${(val / 1000).toFixed(0)}k`;
+                        return `₹${val}`;
+                      };
+
+                      const projPath = forecastMonths
+                        .map((d, i) => `${i === 0 ? 'M' : 'L'} ${10 + (i + 0.5) * colW} ${plotHeight - (d.projected / maxY) * plotHeight}`)
+                        .join(' ');
+
+                      const minPath = forecastMonths
+                        .map((d, i) => `${i === 0 ? 'M' : 'L'} ${10 + (i + 0.5) * colW} ${plotHeight - (d.minExp / maxY) * plotHeight}`)
+                        .join(' ');
+
+                      const targetPath = forecastMonths
+                        .map((d, i) => `${i === 0 ? 'M' : 'L'} ${10 + (i + 0.5) * colW} ${plotHeight - (d.target / maxY) * plotHeight}`)
+                        .join(' ');
+
+                      return (
+                        <View className="flex-row">
+                          {/* Fixed Left Y-Axis */}
+                          <View className="w-12">
+                            {/* Headroom spacer */}
+                            <View style={{ height: 16 }} />
+
+                            {/* 5 Ticks across plotHeight (180px) */}
+                            <View style={{ height: plotHeight, justifyContent: 'space-between', alignItems: 'flex-end', paddingRight: 6 }}>
+                              {yTicks.map((tVal, idx) => (
+                                <Text key={idx} style={{ fontSize: 9.5, lineHeight: 10 }} className="text-white/50 font-mono font-semibold">
+                                  {formatTick(tVal)}
+                                </Text>
+                              ))}
+                            </View>
+
+                            {/* Bottom X-axis label spacer */}
+                            <View style={{ height: 28 }} />
+                          </View>
+
+                          {/* Horizontal Scrolling Composed Chart */}
+                          <ScrollView horizontal showsHorizontalScrollIndicator={true} className="flex-1">
+                            <View style={{ width: chartWidth, position: 'relative' }}>
+                              {/* Headroom spacer */}
+                              <View style={{ height: 16 }} />
+
+                              <Svg width={chartWidth} height={plotHeight}>
+                                {/* Horizontal Grid Lines */}
+                                {[0, 0.25, 0.5, 0.75, 1].map((p, idx) => (
+                                  <Line
+                                    key={idx}
+                                    x1="0"
+                                    y1={plotHeight * p}
+                                    x2={chartWidth}
+                                    y2={plotHeight * p}
+                                    stroke="rgba(255, 255, 255, 0.08)"
+                                    strokeWidth="1"
+                                  />
+                                ))}
+
+                                {/* Selected Column Vertical Highlight Band & Guide Line */}
+                                {selectedForecastMonthIdx !== null && (
+                                  <>
+                                    <Rect
+                                      x={10 + selectedForecastMonthIdx * colW + 2}
+                                      y={0}
+                                      width={colW - 4}
+                                      height={plotHeight}
+                                      fill="rgba(255, 255, 255, 0.08)"
+                                      rx={8}
+                                    />
+                                    <Line
+                                      x1={10 + (selectedForecastMonthIdx + 0.5) * colW}
+                                      y1={0}
+                                      x2={10 + (selectedForecastMonthIdx + 0.5) * colW}
+                                      y2={plotHeight}
+                                      stroke="rgba(255, 255, 255, 0.25)"
+                                      strokeWidth="1"
+                                      strokeDasharray="3,3"
+                                    />
+                                  </>
+                                )}
+
+                                {/* 1. Purple Bars: Outstanding Balance (Goal) */}
+                                {forecastMonths.map((d, i) => {
+                                  const cx = 10 + (i + 0.5) * colW;
+                                  const barW = 28;
+                                  const barX = cx - barW / 2;
+                                  const barH = Math.max(4, (d.outstandingGoal / maxY) * plotHeight);
+                                  const barY = plotHeight - barH;
+                                  const isSelected = selectedForecastMonthIdx === i;
+
+                                  return (
+                                    <G key={'bar_group_' + i}>
+                                      <Rect
+                                        x={barX}
+                                        y={barY}
+                                        width={barW}
+                                        height={barH}
+                                        fill="#c084fc"
+                                        opacity={isSelected ? 0.8 : 0.32}
+                                        rx={5}
+                                        ry={5}
+                                      />
+                                      {/* Direct Purple Figure Badge when Selected */}
+                                      {isSelected && (
+                                        <G>
+                                          <Rect
+                                            x={cx - 24}
+                                            y={Math.max(2, barY - 20)}
+                                            width={48}
+                                            height={17}
+                                            rx={4}
+                                            fill="#c084fc"
+                                          />
+                                          <SvgText
+                                            x={cx}
+                                            y={Math.max(14, barY - 8)}
+                                            fill="#101415"
+                                            fontSize="9"
+                                            fontWeight="900"
+                                            textAnchor="middle"
+                                          >
+                                            {formatTick(d.outstandingGoal)}
+                                          </SvgText>
+                                        </G>
+                                      )}
+                                    </G>
+                                  );
+                                })}
+
+                                {/* 2. Coral Dashed Line: Min Expected */}
+                                <Path
+                                  d={minPath}
+                                  stroke="#fb7185"
+                                  strokeWidth="1.8"
+                                  strokeDasharray="4,4"
+                                  fill="none"
+                                />
+
+                                {/* 3. Sky Blue Dashed Line: Max Target */}
+                                <Path
+                                  d={targetPath}
+                                  stroke="#38bdf8"
+                                  strokeWidth="1.8"
+                                  strokeDasharray="4,4"
+                                  fill="none"
+                                />
+
+                                {/* 4. Thick Teal Solid Line: Projected Collection */}
+                                <Path
+                                  d={projPath}
+                                  stroke="#2dd4bf"
+                                  strokeWidth="3.2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  fill="none"
+                                />
+
+                                {/* 5. Dots on Lines & Selected Point Badges */}
+                                {forecastMonths.map((d, i) => {
+                                  const cx = 10 + (i + 0.5) * colW;
+                                  const projY = plotHeight - (d.projected / maxY) * plotHeight;
+                                  const minY = plotHeight - (d.minExp / maxY) * plotHeight;
+                                  const targetY = plotHeight - (d.target / maxY) * plotHeight;
+                                  const isSelected = selectedForecastMonthIdx === i;
+
+                                  return (
+                                    <G key={'dot_' + i}>
+                                      {/* Points on Min and Target when Selected */}
+                                      {isSelected && (
+                                        <>
+                                          {/* Min Expected Point + Coral Figure Badge */}
+                                          <Circle
+                                            cx={cx}
+                                            cy={minY}
+                                            r={4.5}
+                                            fill="#fb7185"
+                                            stroke="#101415"
+                                            strokeWidth="1.5"
+                                          />
+                                          <Rect
+                                            x={cx + 7}
+                                            y={minY - 8}
+                                            width={44}
+                                            height={16}
+                                            rx={4}
+                                            fill="#fb7185"
+                                          />
+                                          <SvgText
+                                            x={cx + 29}
+                                            y={minY + 3.5}
+                                            fill="#101415"
+                                            fontSize="8.5"
+                                            fontWeight="900"
+                                            textAnchor="middle"
+                                          >
+                                            {formatTick(d.minExp)}
+                                          </SvgText>
+
+                                          {/* Max Target Point + Sky Blue Figure Badge */}
+                                          <Circle
+                                            cx={cx}
+                                            cy={targetY}
+                                            r={4.5}
+                                            fill="#38bdf8"
+                                            stroke="#101415"
+                                            strokeWidth="1.5"
+                                          />
+                                          <Rect
+                                            x={cx + 7}
+                                            y={targetY - 8}
+                                            width={44}
+                                            height={16}
+                                            rx={4}
+                                            fill="#38bdf8"
+                                          />
+                                          <SvgText
+                                            x={cx + 29}
+                                            y={targetY + 3.5}
+                                            fill="#101415"
+                                            fontSize="8.5"
+                                            fontWeight="900"
+                                            textAnchor="middle"
+                                          >
+                                            {formatTick(d.target)}
+                                          </SvgText>
+                                        </>
+                                      )}
+
+                                      {/* Outer Halo when Selected */}
+                                      {isSelected && (
+                                        <Circle
+                                          cx={cx}
+                                          cy={projY}
+                                          r={13}
+                                          fill="rgba(45, 212, 191, 0.35)"
+                                          stroke="#2dd4bf"
+                                          strokeWidth="2"
+                                        />
+                                      )}
+
+                                      {/* Solid Center Dot */}
+                                      <Circle
+                                        cx={cx}
+                                        cy={projY}
+                                        r={5.5}
+                                        fill="#2dd4bf"
+                                        stroke="#101415"
+                                        strokeWidth="2"
+                                      />
+
+                                      {/* Direct Teal Projected Figure Badge when Selected */}
+                                      {isSelected && (
+                                        <G>
+                                          <Rect
+                                            x={cx - 26}
+                                            y={Math.max(2, projY - 24)}
+                                            width={52}
+                                            height={18}
+                                            rx={5}
+                                            fill="#2dd4bf"
+                                          />
+                                          <SvgText
+                                            x={cx}
+                                            y={Math.max(14, projY - 11)}
+                                            fill="#101415"
+                                            fontSize="9.5"
+                                            fontWeight="900"
+                                            textAnchor="middle"
+                                          >
+                                            {formatTick(d.projected)}
+                                          </SvgText>
+                                        </G>
+                                      )}
+                                    </G>
+                                  );
+                                })}
+                              </Svg>
+
+                              {/* Native Pressable Touch Column Overlay (100% Reliable Native Touches) */}
+                              <View
+                                style={{
+                                  position: 'absolute',
+                                  top: 16,
+                                  left: 10,
+                                  width: chartWidth - 20,
+                                  height: plotHeight,
+                                  flexDirection: 'row',
+                                  zIndex: 10,
+                                }}
+                              >
+                                {forecastMonths.map((d, i) => (
+                                  <Pressable
+                                    key={'press_col_' + i}
+                                    onPress={() => setSelectedForecastMonthIdx(selectedForecastMonthIdx === i ? null : i)}
+                                    style={{
+                                      width: colW,
+                                      height: '100%',
+                                    }}
+                                  />
+                                ))}
+                              </View>
+
+                              {/* Baseline Line */}
+                              <View className="w-full border-b border-white/20" />
+
+                              {/* X-Axis Month Labels */}
+                              <View className="flex-row items-center w-full" style={{ height: 28 }}>
+                                {forecastMonths.map((d, i) => {
+                                  const isSelected = selectedForecastMonthIdx === i;
+                                  return (
+                                    <Pressable
+                                      key={d.month}
+                                      onPress={() => setSelectedForecastMonthIdx(isSelected ? null : i)}
+                                      style={{ width: colW, alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      <Text
+                                        numberOfLines={1}
+                                        style={{
+                                          fontSize: 10.5,
+                                          fontWeight: isSelected ? '900' : '700',
+                                          color: isSelected ? '#ffe5a0' : 'rgba(255, 255, 255, 0.65)',
+                                        }}
+                                      >
+                                        {d.month}
+                                      </Text>
+                                    </Pressable>
+                                  );
+                                })}
+                              </View>
+                            </View>
+                          </ScrollView>
+                        </View>
+                      );
+                    })()}
                   </View>
                 </GlassCard>
 
-                {/* Methodology & Risk Analysis */}
+                {/* Methodology & Risk Analysis Cards (Exact Web Parity) */}
                 <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
                   <Text className="text-[#ffe5a0] text-xs md:text-sm font-extrabold uppercase tracking-wider mb-3">
                     FORECASTING METHODOLOGY & RISK INSIGHTS
@@ -3483,22 +3995,22 @@ export const AnalyticsDashboardScreen: React.FC = () => {
 
                   <View className="gap-3">
                     <View className="p-3.5 bg-black/40 rounded-2xl border border-white/5">
-                      <View className="flex-row items-center gap-2 mb-1">
+                      <View className="flex-row items-center gap-2 mb-1.5">
                         <ArrowRight size={14} color="#38bdf8" />
-                        <Text className="text-white font-bold text-xs md:text-sm">Weighted Probability Model</Text>
+                        <Text className="text-white font-bold text-xs md:text-sm">Collection Projection Methodology</Text>
                       </View>
                       <Text className="text-white/60 text-xs leading-relaxed">
-                        Projections use historical class group payment timings, parent credit ratings, and term-vs-monthly settlement ratios.
+                        Expected collection projections use a weighted probability index based on class group payment timings, parent credit ratings, and historical fee category collection rates (term vs monthly).
                       </Text>
                     </View>
 
                     <View className="p-3.5 bg-black/40 rounded-2xl border border-white/5">
-                      <View className="flex-row items-center gap-2 mb-1">
-                        <ArrowRight size={14} color="#41eec2" />
+                      <View className="flex-row items-center gap-2 mb-1.5">
+                        <ArrowRight size={14} color="#2dd4bf" />
                         <Text className="text-white font-bold text-xs md:text-sm">Recovery Rate Projections</Text>
                       </View>
                       <Text className="text-white/60 text-xs leading-relaxed">
-                        Outstanding fees are projected to settle around 82% over the next two terms, while 18% is categorized as high risk requiring manual collection notices.
+                        Outstanding fee recovery rates are projected to settle around 82% over the next two terms, while remaining 18% is categorized as high risk requiring manual collection triggers.
                       </Text>
                     </View>
                   </View>
