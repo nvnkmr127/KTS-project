@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   CheckCircle2,
   AlertCircle,
+  History,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -278,6 +279,17 @@ export const PortalToolsScreen: React.FC = () => {
               </Text>
             </Pressable>
           </GlassCard>
+
+          {/* My Activity Logs Button */}
+          <Pressable
+            onPress={() => navigation.navigate('SuperAdminActivityLog')}
+            className="w-full p-4 bg-white/5 border border-white/15 rounded-2xl flex-row items-center justify-center gap-2.5 active:bg-white/10 active:scale-95"
+          >
+            <History size={18} color="#ffe5a0" />
+            <Text className="text-[#ffe5a0] font-extrabold text-sm uppercase tracking-wider">
+              My Activity Logs
+            </Text>
+          </Pressable>
 
           {/* Sign Out Button */}
           <Pressable
