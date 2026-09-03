@@ -261,29 +261,37 @@ export const AnalyticsDashboardScreen: React.FC = () => {
   // =========================================================
   // COHORT & YOY DATA
   // =========================================================
+  const [selectedYoyMonthIdx, setSelectedYoyMonthIdx] = useState<number | null>(7); // Default to Aug
+  const [selectedFunnelIdx, setSelectedFunnelIdx] = useState<number | null>(null);
+  const [selectedCohortIdx, setSelectedCohortIdx] = useState<number | null>(null);
+
   const yoyData = [
-    { month: 'Jan', lastYear: 320, thisYear: 410 },
-    { month: 'Feb', lastYear: 290, thisYear: 380 },
-    { month: 'Mar', lastYear: 450, thisYear: 560 },
-    { month: 'Apr', lastYear: 610, thisYear: 780 },
-    { month: 'May', lastYear: 380, thisYear: 490 },
-    { month: 'Jun', lastYear: 520, thisYear: 640 },
-    { month: 'Jul', lastYear: 480, thisYear: 610 },
-    { month: 'Aug', lastYear: 420, thisYear: 530 },
+    { month: 'Jan', lastYear: 320, thisYear: 410, fullMonth: 'Jan 2026', growth: '+28.1%' },
+    { month: 'Feb', lastYear: 290, thisYear: 380, fullMonth: 'Feb 2026', growth: '+31.0%' },
+    { month: 'Mar', lastYear: 450, thisYear: 560, fullMonth: 'Mar 2026', growth: '+24.4%' },
+    { month: 'Apr', lastYear: 610, thisYear: 780, fullMonth: 'Apr 2026', growth: '+27.8%' },
+    { month: 'May', lastYear: 380, thisYear: 490, fullMonth: 'May 2026', growth: '+28.9%' },
+    { month: 'Jun', lastYear: 520, thisYear: 640, fullMonth: 'Jun 2026', growth: '+23.1%' },
+    { month: 'Jul', lastYear: 480, thisYear: 610, fullMonth: 'Jul 2026', growth: '+27.1%' },
+    { month: 'Aug', lastYear: 420, thisYear: 530, fullMonth: 'Aug 2026', growth: '+26.2%' },
+    { month: 'Sep', lastYear: 460, thisYear: 580, fullMonth: 'Sep 2026', growth: '+26.1%' },
+    { month: 'Oct', lastYear: 510, thisYear: 640, fullMonth: 'Oct 2026', growth: '+25.5%' },
+    { month: 'Nov', lastYear: 390, thisYear: 480, fullMonth: 'Nov 2026', growth: '+23.1%' },
+    { month: 'Dec', lastYear: 580, thisYear: 720, fullMonth: 'Dec 2026', growth: '+24.1%' },
   ];
 
   const funnelStages = [
-    { stage: '1. Invoiced Fees Total', value: 5420000, percentage: 100, fill: '#38bdf8' },
-    { stage: '2. Net After Concessions', value: 4940000, percentage: 91, fill: '#e0bdff' },
-    { stage: '3. Collected To Date', value: 4495000, percentage: 83, fill: '#41eec2' },
-    { stage: '4. Bank Settled & Verified', value: 4180000, percentage: 77, fill: '#f0c110' },
+    { stage: '1. Invoiced Fees Total', value: 5420000, percentage: 100, fill: '#38bdf8', desc: 'Gross billed across all active academic batches' },
+    { stage: '2. Net After Concessions', value: 4940000, percentage: 91, fill: '#e0bdff', desc: 'Net billable post scholarship and sibling waivers' },
+    { stage: '3. Collected To Date', value: 4495000, percentage: 83, fill: '#41eec2', desc: 'Realized collections from online and counter channels' },
+    { stage: '4. Bank Settled & Verified', value: 4180000, percentage: 77, fill: '#f0c110', desc: 'Cleared bank funds reconciled against ledger' },
   ];
 
   const cohortData = [
-    { cohort: '2023-2024 Batch', enrolled: 142, year1: 100, year2: 95, year3: 92, year4: 89, avgPaid: '₹44,500' },
-    { cohort: '2024-2025 Batch', enrolled: 168, year1: 100, year2: 96, year3: 93, year4: null, avgPaid: '₹47,200' },
-    { cohort: '2025-2026 Batch', enrolled: 185, year1: 100, year2: 97, year3: null, year4: null, avgPaid: '₹51,000' },
-    { cohort: '2026-2027 Batch', enrolled: 210, year1: 100, year2: null, year3: null, year4: null, avgPaid: '₹54,200' },
+    { cohort: '2023-2024 Batch', enrolled: 142, year1: 100, year2: 95, year3: 92, year4: 89, avgPaid: '₹44,500', status: 'High Retention' },
+    { cohort: '2024-2025 Batch', enrolled: 168, year1: 100, year2: 96, year3: 93, year4: null, avgPaid: '₹47,200', status: 'Optimal' },
+    { cohort: '2025-2026 Batch', enrolled: 185, year1: 100, year2: 97, year3: null, year4: null, avgPaid: '₹51,000', status: 'Top Growing' },
+    { cohort: '2026-2027 Batch', enrolled: 210, year1: 100, year2: null, year3: null, year4: null, avgPaid: '₹54,200', status: 'Current Intake' },
   ];
 
   // =========================================================
@@ -1014,60 +1022,258 @@ export const AnalyticsDashboardScreen: React.FC = () => {
             {/* SCREEN 2: COHORT & YOY COLLECTION */}
             {selectedSection === 'cohort' && (
               <View className="gap-5">
-                {/* Year-over-Year Collection Comparison */}
+                {/* Year-over-Year Collection Comparison Bar Graph */}
                 <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
                   <View className="flex-row items-center justify-between mb-2">
                     <View className="flex-row items-center gap-2">
                       <TrendingUp size={18} color="#41eec2" />
                       <Text className="text-white font-extrabold text-sm md:text-base">Year-over-Year (YoY) Collection</Text>
                     </View>
-                    <View className="px-2.5 py-1 rounded-lg bg-emerald-500/20">
-                      <Text className="text-emerald-400 text-[10px] font-black">+23% Growth</Text>
+                    <View className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30">
+                      <Text className="text-emerald-400 text-[10px] font-black">+26.2% Avg Growth</Text>
                     </View>
                   </View>
-                  <Text className="text-white/60 text-xs leading-relaxed mb-4">Comparing monthly collections of 2026 vs 2025.</Text>
+                  <Text className="text-white/60 text-xs leading-relaxed mb-3">
+                    Comparing month-wise collections of 2026 vs 2025 across all 12 months.
+                  </Text>
 
-                  <View className="gap-2.5">
-                    {yoyData.map((d) => (
-                      <View key={d.month} className="bg-black/40 p-3 rounded-2xl border border-white/5">
-                        <View className="flex-row justify-between items-center mb-1.5">
-                          <Text className="text-[#ffe5a0] font-bold text-xs">{d.month}</Text>
-                          <Text className="text-white text-xs font-mono">
-                            <Text className="text-white/50">2025: ₹{d.lastYear}k</Text> • <Text className="text-emerald-400 font-bold">2026: ₹{d.thisYear}k</Text>
+                  {/* Graph Series Legend */}
+                  <View className="flex-row flex-wrap items-center gap-4 mb-3 pt-1 border-t border-white/5">
+                    <View className="flex-row items-center gap-1.5">
+                      <View className="w-2.5 h-2.5 rounded-sm bg-[#41eec2]" />
+                      <Text className="text-white/90 text-xs font-bold">This Year (2026)</Text>
+                    </View>
+                    <View className="flex-row items-center gap-1.5">
+                      <View className="w-2.5 h-2.5 rounded-sm bg-[#94a3b8]" />
+                      <Text className="text-white/60 text-xs font-bold">Last Year (2025)</Text>
+                    </View>
+                  </View>
+
+                  {/* Interactive Selected Month Tooltip Card (Matching Reference Design) */}
+                  {selectedYoyMonthIdx !== null && (
+                    <View className="mb-3.5 p-3.5 bg-white/95 rounded-2xl border border-white/40 shadow-lg flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-3.5 flex-1">
+                        <View className="pr-3 border-r border-gray-300">
+                          <Text className="text-gray-900 font-black text-sm">{yoyData[selectedYoyMonthIdx].fullMonth}</Text>
+                          <Text className="text-emerald-600 text-[10px] font-black uppercase mt-0.5">
+                            {yoyData[selectedYoyMonthIdx].growth} Growth
                           </Text>
                         </View>
-                        <View className="flex-row gap-2 items-center">
-                          <View className="flex-1 bg-white/10 h-2 rounded-full overflow-hidden">
-                            <View style={{ width: `${(d.thisYear / 800) * 100}%` }} className="h-full bg-emerald-400 rounded-full" />
-                          </View>
+                        <View className="flex-row flex-wrap gap-x-3.5 gap-y-1">
+                          <Text className="text-[#0d9488] font-bold text-xs font-mono">
+                            2026 : <Text className="font-black">₹{yoyData[selectedYoyMonthIdx].thisYear}k</Text>
+                          </Text>
+                          <Text className="text-slate-600 font-bold text-xs font-mono">
+                            2025 : <Text className="font-black">₹{yoyData[selectedYoyMonthIdx].lastYear}k</Text>
+                          </Text>
                         </View>
                       </View>
-                    ))}
+                      <Pressable
+                        onPress={() => setSelectedYoyMonthIdx(null)}
+                        className="p-1.5 rounded-full bg-gray-200 active:bg-gray-300"
+                      >
+                        <X size={13} color="#374151" />
+                      </Pressable>
+                    </View>
+                  )}
+
+                  {/* Horizontal Scrolling Bar Graph with Left Fixed Y-Axis */}
+                  <View className="flex-row" style={{ height: 230 }}>
+                    {/* Fixed Left Y-Axis */}
+                    <View className="w-12 justify-between items-end pr-2 pt-[22px] pb-[28px]">
+                      {['₹1000k', '₹800k', '₹600k', '₹400k', '₹200k', '₹0k'].map((label) => (
+                        <Text key={label} className="text-white/40 text-[9.5px] font-mono font-bold">
+                          {label}
+                        </Text>
+                      ))}
+                    </View>
+
+                    {/* Scrollable Graph Area */}
+                    <View className="flex-1 relative">
+                      {/* Horizontal Gridlines */}
+                      <View className="absolute left-0 right-0 top-[22px] h-[180px] justify-between pointer-events-none">
+                        {[0, 1, 2, 3, 4, 5].map((i) => (
+                          <View key={i} className="border-b border-white/10 w-full" />
+                        ))}
+                      </View>
+
+                      {/* Scrollable Month Columns */}
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ paddingHorizontal: 4, height: 230 }}
+                      >
+                        {yoyData.map((d, idx) => {
+                          const isSelected = selectedYoyMonthIdx === idx;
+                          const thisYearBarHeight = Math.max(4, Math.round((d.thisYear / 1000) * 180));
+                          const lastYearBarHeight = Math.max(4, Math.round((d.lastYear / 1000) * 180));
+
+                          return (
+                            <Pressable
+                              key={d.month}
+                              onPress={() => setSelectedYoyMonthIdx(isSelected ? null : idx)}
+                              className="items-center justify-end"
+                              style={{ width: 62, height: 230 }}
+                            >
+                              {/* Selected Column Gray Highlight Pill */}
+                              {isSelected && (
+                                <View
+                                  className="absolute rounded-xl bg-white/15 border border-white/30"
+                                  style={{
+                                    left: 2,
+                                    right: 2,
+                                    top: 6,
+                                    bottom: 30,
+                                  }}
+                                />
+                              )}
+
+                              {/* Bars Area */}
+                              <View
+                                className="flex-row items-end justify-center w-full relative"
+                                style={{ height: 180, gap: 4 }}
+                              >
+                                {/* 2026 Bar (Teal) */}
+                                <View className="items-center relative">
+                                  {isSelected && (
+                                    <View
+                                      style={{
+                                        position: 'absolute',
+                                        bottom: thisYearBarHeight + 2,
+                                        width: 32,
+                                        alignItems: 'center',
+                                      }}
+                                    >
+                                      <Text
+                                        numberOfLines={1}
+                                        style={{ color: '#41eec2' }}
+                                        className="text-[9.5px] font-black font-mono text-center"
+                                      >
+                                        ₹{d.thisYear}k
+                                      </Text>
+                                    </View>
+                                  )}
+                                  <View
+                                    style={{
+                                      height: thisYearBarHeight,
+                                      width: 14,
+                                      backgroundColor: '#41eec2',
+                                      borderTopLeftRadius: 3,
+                                      borderTopRightRadius: 3,
+                                      opacity: selectedYoyMonthIdx !== null && !isSelected ? 0.4 : 1,
+                                    }}
+                                  />
+                                </View>
+
+                                {/* 2025 Bar (Slate) */}
+                                <View className="items-center relative">
+                                  {isSelected && (
+                                    <View
+                                      style={{
+                                        position: 'absolute',
+                                        bottom: lastYearBarHeight + 2,
+                                        width: 32,
+                                        alignItems: 'center',
+                                      }}
+                                    >
+                                      <Text
+                                        numberOfLines={1}
+                                        style={{ color: '#cbd5e1' }}
+                                        className="text-[9.5px] font-black font-mono text-center"
+                                      >
+                                        ₹{d.lastYear}k
+                                      </Text>
+                                    </View>
+                                  )}
+                                  <View
+                                    style={{
+                                      height: lastYearBarHeight,
+                                      width: 14,
+                                      backgroundColor: '#94a3b8',
+                                      borderTopLeftRadius: 3,
+                                      borderTopRightRadius: 3,
+                                      opacity: selectedYoyMonthIdx !== null && !isSelected ? 0.4 : 1,
+                                    }}
+                                  />
+                                </View>
+                              </View>
+
+                              {/* Baseline Divider */}
+                              <View className="w-full border-b border-white/20" />
+
+                              {/* Month Name */}
+                              <View className="h-[28px] justify-center items-center">
+                                <Text
+                                  style={{ color: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.6)' }}
+                                  className={`text-[11px] font-mono ${isSelected ? 'font-black' : 'font-semibold'}`}
+                                >
+                                  {d.month}
+                                </Text>
+                              </View>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
                   </View>
                 </GlassCard>
 
                 {/* Fee Collection Funnel */}
                 <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
-                  <View className="flex-row items-center gap-2 mb-1.5">
-                    <Percent size={18} color="#e0bdff" />
-                    <Text className="text-white font-extrabold text-sm md:text-base">Fee Collection Funnel</Text>
+                  <View className="flex-row items-center justify-between mb-1.5">
+                    <View className="flex-row items-center gap-2">
+                      <Percent size={18} color="#e0bdff" />
+                      <Text className="text-white font-extrabold text-sm md:text-base">Fee Collection Funnel</Text>
+                    </View>
+                    <View className="px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/30">
+                      <Text className="text-purple-300 text-[10px] font-black">77% Settlement</Text>
+                    </View>
                   </View>
                   <Text className="text-white/60 text-xs mb-4">Progression of invoice value through settlement stages.</Text>
 
                   <View className="gap-3">
-                    {funnelStages.map((stage) => (
-                      <View key={stage.stage} className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
-                        <View className="flex-row justify-between text-xs font-bold mb-1.5">
-                          <Text className="text-white/80 text-xs font-bold">{stage.stage}</Text>
-                          <Text className="text-white text-xs font-mono font-bold">
-                            ₹{stage.value.toLocaleString()} ({stage.percentage}%)
-                          </Text>
-                        </View>
-                        <View className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
-                          <View style={{ width: `${stage.percentage}%`, backgroundColor: stage.fill }} className="h-full rounded-full" />
-                        </View>
-                      </View>
-                    ))}
+                    {funnelStages.map((stage, sIdx) => {
+                      const isSelected = selectedFunnelIdx === sIdx;
+                      return (
+                        <Pressable
+                          key={stage.stage}
+                          onPress={() => setSelectedFunnelIdx(isSelected ? null : sIdx)}
+                          style={{
+                            padding: 12,
+                            borderRadius: 16,
+                            borderWidth: isSelected ? 2 : 1,
+                            borderColor: isSelected ? stage.fill : 'rgba(255, 255, 255, 0.1)',
+                            backgroundColor: isSelected ? `${stage.fill}20` : 'rgba(0, 0, 0, 0.4)',
+                          }}
+                        >
+                          <View className="flex-row justify-between items-center mb-2">
+                            <Text style={{ color: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.85)' }} className="text-xs font-bold">
+                              {stage.stage}
+                            </Text>
+                            <Text style={{ color: stage.fill }} className="text-xs font-mono font-black">
+                              ₹{stage.value.toLocaleString()} ({stage.percentage}%)
+                            </Text>
+                          </View>
+
+                          <View className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
+                            <View
+                              style={{
+                                width: `${stage.percentage}%`,
+                                backgroundColor: stage.fill,
+                                opacity: isSelected ? 1 : 0.85,
+                              }}
+                              className="h-full rounded-full"
+                            />
+                          </View>
+
+                          {isSelected && (
+                            <Text className="text-white/80 text-[11px] font-medium mt-2 pt-2 border-t border-white/10">
+                              ℹ️ {stage.desc}
+                            </Text>
+                          )}
+                        </Pressable>
+                      );
+                    })}
 
                     <View className="bg-white/5 p-3 rounded-2xl border border-white/10 mt-1">
                       <Text className="text-[#ffe5a0] text-xs leading-relaxed">
@@ -1079,46 +1285,119 @@ export const AnalyticsDashboardScreen: React.FC = () => {
 
                 {/* Student Enrollment & Retention Cohort Analysis */}
                 <GlassCard className="p-4 md:p-5 border border-white/10 rounded-2xl" intensity="low">
-                  <View className="flex-row items-center gap-2 mb-1.5">
-                    <Users size={18} color="#38bdf8" />
-                    <Text className="text-white font-extrabold text-sm md:text-base">Retention Cohort Analysis</Text>
+                  <View className="flex-row items-center justify-between mb-1.5">
+                    <View className="flex-row items-center gap-2">
+                      <Users size={18} color="#38bdf8" />
+                      <Text className="text-white font-extrabold text-sm md:text-base">Retention Cohort Analysis</Text>
+                    </View>
+                    <View className="px-2 py-0.5 rounded-lg bg-sky-500/20 border border-sky-500/30">
+                      <Text className="text-sky-300 text-[10px] font-black">4 Academic Batches</Text>
+                    </View>
                   </View>
-                  <Text className="text-white/60 text-xs mb-4">Student retention rates year-over-year based on enrollment batch.</Text>
+                  <Text className="text-white/60 text-xs mb-3.5">
+                    Tracking student retention rates year-over-year based on enrollment batch.
+                  </Text>
 
-                  <View className="gap-3">
-                    {cohortData.map((row) => (
-                      <View key={row.cohort} className="bg-black/40 p-3.5 rounded-2xl border border-white/5">
-                        <View className="flex-row justify-between items-center mb-2">
-                          <Text className="text-white font-extrabold text-xs md:text-sm">{row.cohort}</Text>
-                          <Text className="text-[#ffe5a0] font-bold text-xs">{row.enrolled} Students</Text>
-                        </View>
-
-                        <View className="flex-row flex-wrap gap-2 pt-1 border-t border-white/5">
-                          <View className="px-2.5 py-1 rounded-lg bg-sky-500/20">
-                            <Text className="text-sky-400 text-[11px] font-bold">Y1: {row.year1}%</Text>
-                          </View>
-                          {row.year2 ? (
-                            <View className="px-2.5 py-1 rounded-lg bg-emerald-500/20">
-                              <Text className="text-emerald-400 text-[11px] font-bold">Y2: {row.year2}%</Text>
-                            </View>
-                          ) : null}
-                          {row.year3 ? (
-                            <View className="px-2.5 py-1 rounded-lg bg-purple-500/20">
-                              <Text className="text-purple-300 text-[11px] font-bold">Y3: {row.year3}%</Text>
-                            </View>
-                          ) : null}
-                          {row.year4 ? (
-                            <View className="px-2.5 py-1 rounded-lg bg-amber-500/20">
-                              <Text className="text-amber-400 text-[11px] font-bold">Y4: {row.year4}%</Text>
-                            </View>
-                          ) : null}
-                          <View className="ml-auto">
-                            <Text className="text-white/60 text-[11px] font-mono">Avg: <Text className="text-white font-bold">{row.avgPaid}</Text></Text>
-                          </View>
-                        </View>
+                  {/* Horizontal Scrollable Matrix Table */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pb-1">
+                    <View style={{ minWidth: 540 }}>
+                      {/* Table Header */}
+                      <View className="flex-row items-center pb-2.5 border-b border-white/15 px-2">
+                        <Text className="text-white/50 text-[11px] font-bold w-[140px]">Enrollment Cohort</Text>
+                        <Text className="text-white/50 text-[11px] font-bold w-[75px] text-center">Enrolled</Text>
+                        <Text className="text-white/50 text-[11px] font-bold w-[70px] text-center">Year 1</Text>
+                        <Text className="text-white/50 text-[11px] font-bold w-[70px] text-center">Year 2</Text>
+                        <Text className="text-white/50 text-[11px] font-bold w-[70px] text-center">Year 3</Text>
+                        <Text className="text-white/50 text-[11px] font-bold w-[70px] text-center">Year 4</Text>
+                        <Text className="text-white/50 text-[11px] font-bold w-[85px] text-right">Avg Fee</Text>
                       </View>
-                    ))}
-                  </View>
+
+                      {/* Table Body */}
+                      <View className="gap-2 pt-2">
+                        {cohortData.map((row, rIdx) => {
+                          const isSelected = selectedCohortIdx === rIdx;
+                          return (
+                            <Pressable
+                              key={row.cohort}
+                              onPress={() => setSelectedCohortIdx(isSelected ? null : rIdx)}
+                              style={{
+                                paddingVertical: 10,
+                                paddingHorizontal: 8,
+                                borderRadius: 14,
+                                borderWidth: isSelected ? 2 : 1,
+                                borderColor: isSelected ? '#38bdf8' : 'rgba(255, 255, 255, 0.08)',
+                                backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(0, 0, 0, 0.35)',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text className="text-white font-extrabold text-xs w-[140px]">{row.cohort}</Text>
+                              <Text className="text-[#ffe5a0] font-mono font-bold text-xs w-[75px] text-center">
+                                {row.enrolled}
+                              </Text>
+
+                              <View className="w-[70px] items-center">
+                                <View className="px-2 py-0.5 rounded-md bg-sky-500/20">
+                                  <Text className="text-sky-300 text-[10px] font-bold">{row.year1}%</Text>
+                                </View>
+                              </View>
+
+                              <View className="w-[70px] items-center">
+                                {row.year2 !== null ? (
+                                  <View className="px-2 py-0.5 rounded-md bg-emerald-500/20">
+                                    <Text className="text-emerald-300 text-[10px] font-bold">{row.year2}%</Text>
+                                  </View>
+                                ) : (
+                                  <Text className="text-white/30 text-xs font-mono">—</Text>
+                                )}
+                              </View>
+
+                              <View className="w-[70px] items-center">
+                                {row.year3 !== null ? (
+                                  <View className="px-2 py-0.5 rounded-md bg-purple-500/20">
+                                    <Text className="text-purple-300 text-[10px] font-bold">{row.year3}%</Text>
+                                  </View>
+                                ) : (
+                                  <Text className="text-white/30 text-xs font-mono">—</Text>
+                                )}
+                              </View>
+
+                              <View className="w-[70px] items-center">
+                                {row.year4 !== null ? (
+                                  <View className="px-2 py-0.5 rounded-md bg-amber-500/20">
+                                    <Text className="text-amber-300 text-[10px] font-bold">{row.year4}%</Text>
+                                  </View>
+                                ) : (
+                                  <Text className="text-white/30 text-xs font-mono">—</Text>
+                                )}
+                              </View>
+
+                              <Text className="text-white/90 font-mono font-bold text-xs w-[85px] text-right">
+                                {row.avgPaid}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </ScrollView>
+
+                  {/* Selected Cohort Breakdown Banner */}
+                  {selectedCohortIdx !== null && (
+                    <View className="mt-3 p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 flex-row justify-between items-center">
+                      <View>
+                        <Text className="text-sky-200 font-extrabold text-xs">
+                          {cohortData[selectedCohortIdx].cohort} Status: {cohortData[selectedCohortIdx].status}
+                        </Text>
+                        <Text className="text-white/60 text-[10.5px] mt-0.5">
+                          {cohortData[selectedCohortIdx].enrolled} active students enrolled with {cohortData[selectedCohortIdx].avgPaid} annual realization.
+                        </Text>
+                      </View>
+                      <Pressable onPress={() => setSelectedCohortIdx(null)} className="p-1 rounded-full bg-white/10">
+                        <X size={12} color="#ffffff" />
+                      </Pressable>
+                    </View>
+                  )}
                 </GlassCard>
               </View>
             )}
