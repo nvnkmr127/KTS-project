@@ -122,6 +122,9 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
   };
 
   const handleNextMonth = () => {
+    const today = new Date();
+    const isCurrentOrFutureMonth = viewDate.getFullYear() > today.getFullYear() || (viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() >= today.getMonth());
+    if (isCurrentOrFutureMonth) return;
     setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
@@ -457,9 +460,19 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                 <ChevronLeft size={16} color={primaryColor} />
               </Pressable>
               <Text className="text-white font-extrabold text-sm">{monthYearDisplay}</Text>
-              <Pressable onPress={handleNextMonth} className="p-1 border border-white/10 rounded-lg bg-white/5">
-                <ChevronRight size={16} color={primaryColor} />
-              </Pressable>
+              {(() => {
+                const today = new Date();
+                const isCurrentOrFutureMonth = viewDate.getFullYear() > today.getFullYear() || (viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() >= today.getMonth());
+                return (
+                  <Pressable
+                    onPress={handleNextMonth}
+                    disabled={isCurrentOrFutureMonth}
+                    className={`p-1 border border-white/10 rounded-lg bg-white/5 ${isCurrentOrFutureMonth ? 'opacity-25' : 'active:bg-white/20'}`}
+                  >
+                    <ChevronRight size={16} color={primaryColor} />
+                  </Pressable>
+                );
+              })()}
             </View>
 
             {/* Swipeable Calendar Grid Container (Swipe Left/Right to change months) */}
@@ -480,17 +493,30 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                     return <View key={idx} style={{ width: '14.28%', height: 36 }} />;
                   }
                   const isSelected = selectedDate === cell.dateStr;
+                  const now = new Date();
+                  now.setHours(23, 59, 59, 999);
+                  const cellDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), cell.dayNum);
+                  const isFuture = cellDate > now;
 
                   return (
                     <View key={idx} style={{ width: '14.28%', height: 36, padding: 2 }}>
                       <Pressable
+                        disabled={isFuture}
                         onPress={() => {
-                          setSelectedDate(cell.dateStr);
-                          setShowDatePickerModal(false);
+                          if (!isFuture) {
+                            setSelectedDate(cell.dateStr);
+                            setShowDatePickerModal(false);
+                          }
                         }}
-                        className={`w-full h-full rounded-xl items-center justify-center border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
+                        className={`w-full h-full rounded-xl items-center justify-center border ${
+                          isFuture
+                            ? 'opacity-20 bg-white/5 border-transparent'
+                            : isSelected
+                            ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]')
+                            : 'bg-white/5 border-white/10'
+                        }`}
                       >
-                        <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white'}`}>
+                        <Text className={`text-xs font-bold ${isFuture ? 'text-white/30' : isSelected ? 'text-[#101415]' : 'text-white'}`}>
                           {cell.dayNum}
                         </Text>
                       </Pressable>

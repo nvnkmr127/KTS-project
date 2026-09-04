@@ -352,6 +352,11 @@ export const AnalyticsDashboardScreen: React.FC = () => {
   };
 
   const handleSelectStaffCalendarDate = (day: number) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const selectedObj = new Date(staffPickerYear, staffPickerMonth, day);
+    if (selectedObj > today) return;
+
     const dd = String(day).padStart(2, '0');
     const mm = String(staffPickerMonth + 1).padStart(2, '0');
     const yyyy = String(staffPickerYear);
@@ -4111,19 +4116,27 @@ export const AnalyticsDashboardScreen: React.FC = () => {
               <Text className="text-white font-extrabold text-xs">
                 {MONTH_NAMES[staffPickerMonth]} {staffPickerYear}
               </Text>
-              <Pressable
-                onPress={() => {
-                  if (staffPickerMonth === 11) {
-                    setStaffPickerMonth(0);
-                    setStaffPickerYear((y) => y + 1);
-                  } else {
-                    setStaffPickerMonth((m) => m + 1);
-                  }
-                }}
-                className="p-1 border border-white/10 rounded-lg bg-white/5 active:bg-white/20"
-              >
-                <ChevronRight size={16} color="#ffe5a0" />
-              </Pressable>
+              {(() => {
+                const today = new Date();
+                const isCurrentOrFuture = staffPickerYear > today.getFullYear() || (staffPickerYear === today.getFullYear() && staffPickerMonth >= today.getMonth());
+                return (
+                  <Pressable
+                    onPress={() => {
+                      if (isCurrentOrFuture) return;
+                      if (staffPickerMonth === 11) {
+                        setStaffPickerMonth(0);
+                        setStaffPickerYear((y) => y + 1);
+                      } else {
+                        setStaffPickerMonth((m) => m + 1);
+                      }
+                    }}
+                    disabled={isCurrentOrFuture}
+                    className={`p-1 border border-white/10 rounded-lg bg-white/5 ${isCurrentOrFuture ? 'opacity-25' : 'active:bg-white/20'}`}
+                  >
+                    <ChevronRight size={16} color="#ffe5a0" />
+                  </Pressable>
+                );
+              })()}
             </View>
 
             {/* 7 Days of Week Header */}
@@ -4145,16 +4158,27 @@ export const AnalyticsDashboardScreen: React.FC = () => {
                 const currentFormatted = `${String(dayNum).padStart(2, '0')}-${String(staffPickerMonth + 1).padStart(2, '0')}-${staffPickerYear}`;
                 const isSelected = (staffTargetDateField === 'start' ? staffStartDate : staffEndDate) === currentFormatted;
 
+                const now = new Date();
+                now.setHours(23, 59, 59, 999);
+                const cellDate = new Date(staffPickerYear, staffPickerMonth, dayNum);
+                const isFuture = cellDate > now;
+
                 return (
                   <View key={idx} style={{ width: '14.28%', height: 34, padding: 1.5 }}>
                     <Pressable
-                      onPress={() => handleSelectStaffCalendarDate(dayNum)}
-                      className={`w-full h-full rounded-lg items-center justify-center border ${isSelected
-                        ? 'bg-[#f0c110] border-[#f0c110]'
-                        : 'bg-white/5 border-white/10 active:bg-white/20'
-                        }`}
+                      disabled={isFuture}
+                      onPress={() => {
+                        if (!isFuture) handleSelectStaffCalendarDate(dayNum);
+                      }}
+                      className={`w-full h-full rounded-lg items-center justify-center border ${
+                        isFuture
+                          ? 'opacity-20 bg-white/5 border-transparent'
+                          : isSelected
+                          ? 'bg-[#f0c110] border-[#f0c110]'
+                          : 'bg-white/5 border-white/10 active:bg-white/20'
+                      }`}
                     >
-                      <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white'}`}>
+                      <Text className={`text-xs font-bold ${isFuture ? 'text-white/30' : isSelected ? 'text-[#101415]' : 'text-white'}`}>
                         {dayNum}
                       </Text>
                     </Pressable>

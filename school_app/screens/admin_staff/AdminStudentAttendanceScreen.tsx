@@ -107,6 +107,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
 
   const [gridMonth, setGridMonth] = useState<number>(7); // 7 = August (0-indexed)
   const [gridYear, setGridYear] = useState<number>(2026);
+  const [modalViewDate, setModalViewDate] = useState<Date>(() => new Date(2026, 7, 4));
 
   const handlePrevGridMonth = () => {
     if (gridMonth === 0) {
@@ -118,12 +119,26 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   };
 
   const handleNextGridMonth = () => {
+    const today = new Date();
+    const isCurrentOrFuture = gridYear > today.getFullYear() || (gridYear === today.getFullYear() && gridMonth >= today.getMonth());
+    if (isCurrentOrFuture) return;
     if (gridMonth === 11) {
       setGridMonth(0);
       setGridYear(prev => prev + 1);
     } else {
       setGridMonth(prev => prev + 1);
     }
+  };
+
+  const handlePrevModalMonth = () => {
+    setModalViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleNextModalMonth = () => {
+    const today = new Date();
+    const isCurrentOrFuture = modalViewDate.getFullYear() > today.getFullYear() || (modalViewDate.getFullYear() === today.getFullYear() && modalViewDate.getMonth() >= today.getMonth());
+    if (isCurrentOrFuture) return;
+    setModalViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
   const gridPrevMonthRef = useRef(handlePrevGridMonth);
@@ -494,9 +509,19 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   <ChevronLeft size={16} color={primaryColor} />
                 </Pressable>
                 <Text className="text-white font-bold text-xs">{MONTH_NAMES[gridMonth]} {gridYear}</Text>
-                <Pressable onPress={handleNextGridMonth} className="p-1.5 rounded-lg bg-white/5 border border-white/10 active:bg-white/15">
-                  <ChevronRight size={16} color={primaryColor} />
-                </Pressable>
+                {(() => {
+                  const today = new Date();
+                  const isCurrentOrFuture = gridYear > today.getFullYear() || (gridYear === today.getFullYear() && gridMonth >= today.getMonth());
+                  return (
+                    <Pressable
+                      onPress={handleNextGridMonth}
+                      disabled={isCurrentOrFuture}
+                      className={`p-1.5 rounded-lg bg-white/5 border border-white/10 ${isCurrentOrFuture ? 'opacity-25' : 'active:bg-white/15'}`}
+                    >
+                      <ChevronRight size={16} color={primaryColor} />
+                    </Pressable>
+                  );
+                })()}
               </View>
 
               {/* Swipeable Calendar Grid Container (Swipe Left/Right to change months) */}
@@ -523,6 +548,11 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     const status = item.status;
                     const isSelected = selectedCalendarDay === dayNum;
 
+                    const now = new Date();
+                    now.setHours(23, 59, 59, 999);
+                    const cellDate = new Date(gridYear, gridMonth, dayNum);
+                    const isFuture = cellDate > now;
+
                     let bgStyle = primaryBadgeClass;
                     let textStyle = primaryTextClass;
                     if (status === 'partial') {
@@ -539,14 +569,19 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     return (
                       <View key={`day_${dayNum}`} className="w-[14.28%] p-1">
                         <Pressable
-                          onPress={() => setSelectedCalendarDay(dayNum)}
+                          disabled={isFuture}
+                          onPress={() => {
+                            if (!isFuture) setSelectedCalendarDay(dayNum);
+                          }}
                           className={`h-10 rounded-xl items-center justify-center border ${
-                            isSelected 
+                            isFuture
+                              ? 'opacity-20 bg-white/5 border-transparent'
+                              : isSelected 
                               ? (isSuperAdmin ? 'border-[#f0c110] bg-[#f0c110]/30 shadow-lg' : 'border-[#00f1a1] bg-[#00f1a1]/30 shadow-lg')
                               : bgStyle
                           }`}
                         >
-                          <Text className={`text-xs font-bold ${isSelected ? 'text-white' : textStyle}`}>
+                          <Text className={`text-xs font-bold ${isFuture ? 'text-white/30' : isSelected ? 'text-white' : textStyle}`}>
                             {dayNum}
                           </Text>
                         </Pressable>
@@ -607,68 +642,98 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
               </Pressable>
             </View>
 
-            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-2">Calendar Grid Date Selector</Text>
+            {/* Month Year Ribbon */}
             <View className="flex-row justify-between items-center bg-white/5 p-2.5 rounded-2xl mb-3 border border-white/10">
-              <Pressable 
-                onPress={() => {
-                  const d = new Date(selectedDate.split('-').reverse().join('-'));
-                  d.setMonth(d.getMonth() - 1);
-                  const yearStr = d.getFullYear();
-                  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
-                  setSelectedDate(`01-${monthStr}-${yearStr}`);
-                }}
-                className="p-1 border border-white/10 rounded-lg bg-white/5"
-              >
+              <Pressable onPress={handlePrevModalMonth} className="p-1 border border-white/10 rounded-lg bg-white/5 active:bg-white/20">
                 <ChevronLeft size={16} color={primaryColor} />
               </Pressable>
-              <Text className="text-white font-extrabold text-sm">{selectedDate}</Text>
-              <Pressable 
-                onPress={() => {
-                  const d = new Date(selectedDate.split('-').reverse().join('-'));
-                  d.setMonth(d.getMonth() + 1);
-                  const yearStr = d.getFullYear();
-                  const monthStr = String(d.getMonth() + 1).padStart(2, '0');
-                  setSelectedDate(`01-${monthStr}-${yearStr}`);
-                }}
-                className="p-1 border border-white/10 rounded-lg bg-white/5"
-              >
-                <ChevronRight size={16} color={primaryColor} />
-              </Pressable>
-            </View>
-
-            <View className="flex-row flex-wrap mb-4" style={{ gap: 8 }}>
-              {['04-08-2026', '03-08-2026', '02-08-2026', '01-08-2026', '31-07-2026', '30-07-2026'].map(qd => {
-                const isSel = selectedDate === qd;
+              <Text className="text-white font-extrabold text-sm">
+                {modalViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </Text>
+              {(() => {
+                const today = new Date();
+                const isCurrentOrFuture = modalViewDate.getFullYear() > today.getFullYear() || (modalViewDate.getFullYear() === today.getFullYear() && modalViewDate.getMonth() >= today.getMonth());
                 return (
                   <Pressable
-                    key={qd}
-                    onPress={() => {
-                      setSelectedDate(qd);
-                      setCustomDateInput(qd);
-                      setShowDatePickerModal(false);
-                    }}
-                    className={`px-3 py-2 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
+                    onPress={handleNextModalMonth}
+                    disabled={isCurrentOrFuture}
+                    className={`p-1 border border-white/10 rounded-lg bg-white/5 ${isCurrentOrFuture ? 'opacity-25' : 'active:bg-white/20'}`}
                   >
-                    <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>{qd}</Text>
+                    <ChevronRight size={16} color={primaryColor} />
                   </Pressable>
                 );
-              })}
+              })()}
             </View>
 
-            <View className="flex-row border-t border-white/10 pt-3" style={{ gap: 10 }}>
-              <Pressable onPress={() => setShowDatePickerModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
+            {/* 7-Column Days Header */}
+            <View className="flex-row mb-2">
+              {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
+                <View key={i} style={{ width: '14.28%', alignItems: 'center' }}>
+                  <Text className="text-white/40 text-[9.5px] font-bold uppercase">{d}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* 7-Column Calendar Days Grid with Future Disabled */}
+            {(() => {
+              const y = modalViewDate.getFullYear();
+              const m = modalViewDate.getMonth();
+              const firstDay = new Date(y, m, 1).getDay();
+              const daysInM = new Date(y, m + 1, 0).getDate();
+              const cells: (number | null)[] = [];
+              for (let i = 0; i < firstDay; i++) cells.push(null);
+              for (let d = 1; d <= daysInM; d++) cells.push(d);
+
+              const now = new Date();
+              now.setHours(23, 59, 59, 999);
+
+              return (
+                <View className="flex-row flex-wrap mb-4">
+                  {cells.map((dayNum, idx) => {
+                    if (!dayNum) {
+                      return <View key={idx} style={{ width: '14.28%', height: 36 }} />;
+                    }
+
+                    const dayStr = String(dayNum).padStart(2, '0');
+                    const monthStr = String(m + 1).padStart(2, '0');
+                    const formattedDateStr = `${dayStr}-${monthStr}-${y}`;
+                    const isSelected = selectedDate === formattedDateStr;
+                    const cellDate = new Date(y, m, dayNum);
+                    const isFuture = cellDate > now;
+
+                    return (
+                      <View key={idx} style={{ width: '14.28%', height: 36, padding: 2 }}>
+                        <Pressable
+                          disabled={isFuture}
+                          onPress={() => {
+                            if (!isFuture) {
+                              setSelectedDate(formattedDateStr);
+                              setCustomDateInput(formattedDateStr);
+                              setShowDatePickerModal(false);
+                            }
+                          }}
+                          className={`w-full h-full rounded-xl items-center justify-center border ${
+                            isFuture
+                              ? 'opacity-20 bg-white/5 border-transparent'
+                              : isSelected
+                              ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]')
+                              : 'bg-white/5 border-white/10 active:bg-white/20'
+                          }`}
+                        >
+                          <Text className={`text-xs font-bold ${isFuture ? 'text-white/30' : isSelected ? 'text-[#101415]' : 'text-white'}`}>
+                            {dayNum}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })()}
+
+            <View className="flex-row border-t border-white/10 pt-3">
+              <Pressable onPress={() => setShowDatePickerModal(false)} className="w-full py-3 rounded-xl bg-white/10 items-center active:bg-white/20">
                 <Text className="text-white font-bold text-xs">Close</Text>
-              </Pressable>
-              <Pressable 
-                onPress={() => {
-                  if (customDateInput.trim()) {
-                    setSelectedDate(customDateInput.trim());
-                  }
-                  setShowDatePickerModal(false);
-                }} 
-                className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
-              >
-                <Text className="text-[#101415] font-extrabold text-xs">Apply Date</Text>
               </Pressable>
             </View>
           </View>

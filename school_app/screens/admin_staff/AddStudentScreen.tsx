@@ -17,11 +17,8 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const YEAR_OPTIONS = [
-  2028, 2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020,
-  2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011,
-  2010, 2009, 2008, 2007, 2006, 2005, 2004, 2003, 2002, 2001, 2000
-];
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 30 }, (_, i) => CURRENT_YEAR - i);
 
 export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -91,6 +88,9 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
   };
 
   const handleNextMonth = () => {
+    const today = new Date();
+    const isCurrentOrFutureMonth = calYear > today.getFullYear() || (calYear === today.getFullYear() && calMonth >= today.getMonth());
+    if (isCurrentOrFutureMonth) return;
     if (calMonth === 11) {
       setCalMonth(0);
       setCalYear(prev => prev + 1);
@@ -132,6 +132,15 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
     const day = selectedDayOverride || calSelectedDay;
     const daysInCurrentMonth = new Date(calYear, calMonth + 1, 0).getDate();
     const safeDay = Math.min(Math.max(1, day), daysInCurrentMonth);
+
+    // Prevent selecting future dates
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const candidateDate = new Date(calYear, calMonth, safeDay);
+    if (candidateDate > today) {
+      return;
+    }
+
     const dayStr = String(safeDay).padStart(2, '0');
     const monthStr = String(calMonth + 1).padStart(2, '0');
     const formatted = `${dayStr}-${monthStr}-${calYear}`;
@@ -837,13 +846,20 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
                 <ChevronDown size={14} color={primaryColor} />
               </Pressable>
 
-              <Pressable
-                onPress={handleNextMonth}
-                className="p-2 rounded-xl bg-white/10 active:bg-white/20"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <ChevronRight size={18} color={primaryColor} />
-              </Pressable>
+              {(() => {
+                const today = new Date();
+                const isCurrentOrFutureMonth = calYear > today.getFullYear() || (calYear === today.getFullYear() && calMonth >= today.getMonth());
+                return (
+                  <Pressable
+                    onPress={handleNextMonth}
+                    disabled={isCurrentOrFutureMonth}
+                    className={`p-2 rounded-xl bg-white/10 ${isCurrentOrFutureMonth ? 'opacity-25' : 'active:bg-white/20'}`}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <ChevronRight size={18} color={primaryColor} />
+                  </Pressable>
+                );
+              })()}
             </View>
 
             {/* Year Picker View (Fast Year Jump) */}
@@ -892,17 +908,27 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
                       return <View key={`empty-${idx}`} style={{ width: '14.28%', height: 36 }} />;
                     }
                     const isSelected = dayNum === calSelectedDay;
+                    const now = new Date();
                     const isToday =
-                      dayNum === new Date().getDate() &&
-                      calMonth === new Date().getMonth() &&
-                      calYear === new Date().getFullYear();
+                      dayNum === now.getDate() &&
+                      calMonth === now.getMonth() &&
+                      calYear === now.getFullYear();
+
+                    const cellDate = new Date(calYear, calMonth, dayNum);
+                    now.setHours(23, 59, 59, 999);
+                    const isFuture = cellDate > now;
 
                     return (
                       <View key={`day-${dayNum}`} style={{ width: '14.28%', height: 38, alignItems: 'center', justifyContent: 'center' }}>
                         <Pressable
-                          onPress={() => setCalSelectedDay(dayNum)}
+                          disabled={isFuture}
+                          onPress={() => {
+                            if (!isFuture) setCalSelectedDay(dayNum);
+                          }}
                           className={`w-8 h-8 rounded-xl items-center justify-center ${
-                            isSelected
+                            isFuture
+                              ? 'opacity-20 bg-white/5'
+                              : isSelected
                               ? primaryBtnClass
                               : isToday
                               ? 'border border-white/40 bg-white/10'
@@ -911,7 +937,9 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
                         >
                           <Text
                             className={`text-xs font-bold ${
-                              isSelected
+                              isFuture
+                                ? 'text-white/30'
+                                : isSelected
                                 ? 'text-[#101415]'
                                 : isToday
                                 ? primaryTextClass

@@ -101,14 +101,18 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
     return false;
   }, [selectedDate]);
 
-  // Step Date by N Days
+  // Step Date by N Days (Future dates disabled)
   const handleStepDate = (days: number) => {
     try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (days > 0 && selectedDate >= todayStr) return;
       const parts = selectedDate.split('-');
       if (parts.length === 3) {
         const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
         d.setDate(d.getDate() + days);
-        setSelectedDate(d.toISOString().split('T')[0]);
+        const nextStr = d.toISOString().split('T')[0];
+        if (days > 0 && nextStr > todayStr) return;
+        setSelectedDate(nextStr);
       }
     } catch (_) {}
   };
@@ -293,12 +297,21 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
                 <Text className="text-[#f0c110] text-[10px] font-bold uppercase">Today</Text>
               </Pressable>
 
-              <Pressable
-                onPress={() => handleStepDate(1)}
-                className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 items-center justify-center active:bg-white/15 active:scale-95"
-              >
-                <ChevronRight size={18} color="#ffe5a0" />
-              </Pressable>
+              {(() => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const isTodayOrFuture = selectedDate >= todayStr;
+                return (
+                  <Pressable
+                    onPress={() => handleStepDate(1)}
+                    disabled={isTodayOrFuture}
+                    className={`w-9 h-9 rounded-xl bg-white/5 border border-white/10 items-center justify-center ${
+                      isTodayOrFuture ? 'opacity-25' : 'active:bg-white/15 active:scale-95'
+                    }`}
+                  >
+                    <ChevronRight size={18} color="#ffe5a0" />
+                  </Pressable>
+                );
+              })()}
             </View>
           </GlassCard>
         </View>
