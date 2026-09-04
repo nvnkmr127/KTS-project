@@ -9,8 +9,10 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
 import {
   UserPlus, ChevronDown, Calendar, HelpCircle,
-  CheckCircle2, ArrowLeft, Check, ChevronLeft, ChevronRight, X
+  CheckCircle2, ArrowLeft, Check, ChevronLeft, ChevronRight, X,
+  MapPin, Bus
 } from 'lucide-react-native';
+import { useFeeStore, DEMO_VILLAGE_RATES } from '../../store/useFeeStore';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -24,6 +26,7 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const { user } = useAuthStore();
+  const { villageRates } = useFeeStore();
   const isSuperAdmin = user?.role === 'super_admin';
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
@@ -213,7 +216,9 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
   const [motherMobile, setMotherMobile] = useState('');
   const [motherOccupation, setMotherOccupation] = useState('');
   const [guardianMobile, setGuardianMobile] = useState('');
-  const [address, setAddress] = useState('');
+  const [address, setAddress] = useState(() => editStudent?.address || '');
+  const [selectedVillage, setSelectedVillage] = useState<string>(() => editStudent?.village || '');
+  const [showVillagePicker, setShowVillagePicker] = useState(false);
   const [biometricCode, setBiometricCode] = useState('');
   const [aadharNumber, setAadharNumber] = useState('');
 
@@ -235,6 +240,18 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedStudentData, setSavedStudentData] = useState<any>(null);
 
+  const matchedVillageRate = (villageRates || DEMO_VILLAGE_RATES).find(
+    r => r.village.toLowerCase() === selectedVillage.toLowerCase()
+  );
+
+  const handleSelectVillage = (villageName: string) => {
+    setSelectedVillage(villageName);
+    setShowVillagePicker(false);
+    if (!address || address.trim() === '' || (villageRates || DEMO_VILLAGE_RATES).some(r => r.village === address)) {
+      setAddress(villageName);
+    }
+  };
+
   const handleSaveStudent = async () => {
     setIsSaving(true);
     const dbStatus = statusForm === 'Transferred' ? 'transfer' : statusForm === 'Left' ? 'left' : 'active';
@@ -255,6 +272,9 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
       status: normalizedStatus,
       initials: ((firstName[0] || editStudent?.name?.[0] || 'S') + (lastName[0] || editStudent?.name?.[1] || 'T')).toUpperCase(),
       avatarColor: editStudent?.avatarColor || '#3b82f6',
+      address,
+      village: selectedVillage,
+      transportFee: matchedVillageRate?.amount || 0,
     };
 
     setSavedStudentData(studentDataToSave);
@@ -271,6 +291,9 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
           status: dbStatus,
           father_name: fatherName,
           father_mobile: fatherMobile,
+          address,
+          village: selectedVillage,
+          transport_fee: matchedVillageRate?.amount || 0,
         });
       } else {
         await api.createResource('students', {
@@ -287,6 +310,8 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
           mother_name: motherName,
           mother_mobile: motherMobile,
           address,
+          village: selectedVillage,
+          transport_fee: matchedVillageRate?.amount || 0,
           aadhar_number: aadharNumber,
           status: dbStatus,
         });
@@ -634,6 +659,82 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
                   className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
+            </View>
+
+            {/* Village / Transport Route (Bus Transport) */}
+            <View className="mb-4">
+              <View className="flex-row justify-between items-center mb-1.5">
+                <Text className="text-white/80 text-sm font-bold flex-row items-center">
+                  Village / Route (Bus Transport)
+                </Text>
+                {selectedVillage ? (
+                  <Pressable onPress={() => setSelectedVillage('')}>
+                    <Text className="text-rose-400 text-xs font-bold">Clear Route</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+
+              <Pressable
+                onPress={() => setShowVillagePicker(!showVillagePicker)}
+                className="bg-white/5 border border-white/15 rounded-xl px-4 py-3 flex-row justify-between items-center active:bg-white/10"
+              >
+                <View className="flex-row items-center">
+                  <MapPin size={16} color={primaryColor} style={{ marginRight: 8 }} />
+                  <Text className={`text-sm ${selectedVillage ? 'text-white font-bold' : 'text-white/40'}`}>
+                    {selectedVillage ? `${selectedVillage} Route` : 'Select Student Village Route (Optional)'}
+                  </Text>
+                </View>
+                <ChevronDown size={16} color={primaryColor} />
+              </Pressable>
+
+              {showVillagePicker && (
+                <View className={`bg-[#121817] border p-2 rounded-xl mt-2 max-h-52 ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
+                  <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
+                    {(villageRates || DEMO_VILLAGE_RATES).map(rate => {
+                      const isSelected = selectedVillage.toLowerCase() === rate.village.toLowerCase();
+                      return (
+                        <Pressable
+                          key={rate.id}
+                          onPress={() => handleSelectVillage(rate.village)}
+                          className={`px-3 py-2.5 rounded-lg flex-row items-center justify-between mb-1 ${
+                            isSelected ? (isSuperAdmin ? 'bg-[#f0c110]/20' : 'bg-[#00f1a1]/20') : 'active:bg-white/5'
+                          }`}
+                        >
+                          <View className="flex-row items-center">
+                            <MapPin size={13} color={primaryColor} style={{ marginRight: 6 }} />
+                            <Text className={`text-xs ${isSelected ? `${primaryTextClass} font-bold` : 'text-white/80 font-medium'}`}>
+                              {rate.village}
+                            </Text>
+                          </View>
+                          <Text className="text-emerald-400 font-bold text-xs">₹{rate.amount.toLocaleString()}/yr</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Transport Fee Active Badge */}
+              {selectedVillage && matchedVillageRate && (
+                <View className="mt-2 p-2.5 rounded-xl bg-purple-950/40 border border-purple-400/30 flex-row items-center justify-between">
+                  <View className="flex-row items-center flex-1">
+                    <Bus size={15} color="#c084fc" style={{ marginRight: 6 }} />
+                    <View>
+                      <Text className="text-purple-200 text-xs font-bold">
+                        Bus Route: {selectedVillage}
+                      </Text>
+                      <Text className="text-purple-300/70 text-[10px]">
+                        Annual Transport Fee Allocated
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-400/40">
+                    <Text className="text-purple-300 font-extrabold text-xs">
+                      ₹{matchedVillageRate.amount.toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* Address */}

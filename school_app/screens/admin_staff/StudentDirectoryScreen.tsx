@@ -39,7 +39,9 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Trash2,
-  Users
+  Users,
+  MapPin,
+  Bus
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
@@ -62,6 +64,9 @@ export interface StudentItem {
   status: 'Active' | 'Left' | 'Transfer';
   initials: string;
   avatarColor: string;
+  address?: string;
+  village?: string;
+  transportFee?: number;
 }
 
 const MOCK_STUDENTS: StudentItem[] = [
@@ -80,6 +85,9 @@ const MOCK_STUDENTS: StudentItem[] = [
     status: 'Active',
     initials: 'UD',
     avatarColor: '#3b82f6',
+    address: 'Khanapuram Gate',
+    village: 'Khanapuram',
+    transportFee: 11500,
   },
   {
     id: '2',
@@ -96,6 +104,9 @@ const MOCK_STUDENTS: StudentItem[] = [
     status: 'Active',
     initials: 'AP',
     avatarColor: '#ec4899',
+    address: 'Chevella Main Road, Chevella',
+    village: 'Chevella',
+    transportFee: 7000,
   },
   {
     id: '3',
@@ -112,6 +123,9 @@ const MOCK_STUDENTS: StudentItem[] = [
     status: 'Active',
     initials: 'JV',
     avatarColor: '#f59e0b',
+    address: 'DharmaSagar Village Center',
+    village: 'DharmaSagar',
+    transportFee: 8000,
   },
 ];
 
@@ -831,6 +845,23 @@ export const StudentDirectoryScreen: React.FC = () => {
                     <Text className="text-white/40 text-[10px] uppercase font-bold">Academic Year</Text>
                     <Text className="text-white text-xs font-semibold mt-0.5">{student.academicYear}</Text>
                   </View>
+
+                  {(student.village || student.address) && (
+                    <View className="w-full pt-1.5 border-t border-white/5 flex-row justify-between items-center">
+                      <View className="flex-row items-center flex-1 pr-2">
+                        <MapPin size={11} color={primaryColor} style={{ marginRight: 4 }} />
+                        <Text className="text-white/70 text-[11px] font-medium" numberOfLines={1}>
+                          {student.village ? `${student.village} Route` : student.address}
+                        </Text>
+                      </View>
+                      {student.transportFee ? (
+                        <View className="bg-purple-500/20 px-2 py-0.5 rounded-md border border-purple-400/30 flex-row items-center" style={{ gap: 3 }}>
+                          <Bus size={10} color="#c084fc" />
+                          <Text className="text-purple-300 text-[10px] font-bold">₹{student.transportFee.toLocaleString()}/yr</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  )}
                 </View>
 
                 {/* Action Buttons Row */}

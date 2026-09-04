@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Pressable, Image, TextInput, BackHa
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
-  UserCheck, Clock, Calendar, Search, Filter, Fingerprint, ShieldCheck, Lock, Eye
+  UserCheck, Clock, Calendar, Search, Filter, Fingerprint, ShieldCheck, Lock, Eye, ChevronLeft, ChevronRight
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
@@ -20,6 +20,30 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<'All' | 'Teaching' | 'Non-Teaching' | 'Admin' | 'Support'>('All');
 
   const { staffList, loading, fetchStaff } = useStaffStore();
+
+  const handleStepDate = (days: number) => {
+    try {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (days > 0 && selectedDate >= todayStr) return;
+      const parts = selectedDate.split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        d.setDate(d.getDate() + days);
+        const nextStr = d.toISOString().split('T')[0];
+        if (days > 0 && nextStr > todayStr) return;
+        setSelectedDate(nextStr);
+      }
+    } catch (_) {}
+  };
+
+  const handleSetToday = () => {
+    setSelectedDate(new Date().toISOString().split('T')[0]);
+  };
+
+  const isToday = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return selectedDate === todayStr;
+  }, [selectedDate]);
 
   // Handle Hardware Back Button
   useFocusEffect(
@@ -146,16 +170,43 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
           </GlassCard>
         </View>
 
-        {/* Date Selector */}
+        {/* Date Selector & Navigation Bar */}
         <View className="px-5 mb-4 flex-row justify-between items-center">
-          <View className="flex-row items-center bg-[#101415]/90 border border-white/10 px-3 py-1.5 rounded-xl">
-            <Calendar size={14} color={primaryColor} style={{ marginRight: 6 }} />
-            <Text className="text-white font-extrabold text-xs">{selectedDate}</Text>
+          <View className="flex-row items-center bg-[#101415]/90 border border-white/10 p-1 rounded-xl">
+            <Pressable
+              onPress={() => handleStepDate(-1)}
+              className="w-7 h-7 rounded-lg bg-white/5 items-center justify-center mr-1"
+            >
+              <ChevronLeft size={16} color="rgba(255,255,255,0.7)" />
+            </Pressable>
+
+            <View className="flex-row items-center px-2 py-0.5">
+              <Calendar size={13} color={primaryColor} style={{ marginRight: 6 }} />
+              <Text className="text-white font-extrabold text-xs">{selectedDate}</Text>
+            </View>
+
+            <Pressable
+              onPress={() => handleStepDate(1)}
+              disabled={isToday}
+              className={`w-7 h-7 rounded-lg items-center justify-center ml-1 ${isToday ? 'bg-white/5 opacity-30' : 'bg-white/10'}`}
+            >
+              <ChevronRight size={16} color="rgba(255,255,255,0.7)" />
+            </Pressable>
           </View>
 
-          <View className={`px-3 py-1 rounded-xl flex-row items-center ${primaryBadgeClass}`}>
-            <ShieldCheck size={13} color={primaryColor} style={{ marginRight: 4 }} />
-            <Text className={`${primaryTextClass} text-[10px] font-bold`}>Biometric e-TimeOffice</Text>
+          <View className="flex-row items-center" style={{ gap: 6 }}>
+            {!isToday && (
+              <Pressable
+                onPress={handleSetToday}
+                className="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/15"
+              >
+                <Text className="text-white/80 text-[10px] font-bold">Today</Text>
+              </Pressable>
+            )}
+            <View className={`px-2.5 py-1.5 rounded-xl flex-row items-center ${primaryBadgeClass}`}>
+              <ShieldCheck size={12} color={primaryColor} style={{ marginRight: 4 }} />
+              <Text className={`${primaryTextClass} text-[10px] font-bold`}>e-TimeOffice Live</Text>
+            </View>
           </View>
         </View>
 

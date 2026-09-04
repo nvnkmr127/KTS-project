@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   Tags, Plus, Trash2, Pencil, CheckCircle2, 
-  AlertCircle, X, ShieldAlert, BookOpen, School, Search
+  AlertCircle, X, ShieldAlert, BookOpen, School, Search,
+  MapPin, Bus, Check, RotateCcw
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useFeeStore, VillageRate, DEMO_VILLAGE_RATES } from '../../store/useFeeStore';
 import { useResponsive } from '../../utils/responsive';
+import { api } from '../../services/api';
 
 export interface FeeCategoryItem {
   id: string;
@@ -21,7 +24,7 @@ export interface FeeCategoryItem {
 
 const MOCK_FEE_CATEGORIES: FeeCategoryItem[] = [
   { id: 'cat_1', name: 'Tuition Fee', amount: 35000, description: 'Core academic term fee including classroom instruction and study material', status: 'Active', applicableClasses: 'All Classes (1 to 10)' },
-  { id: 'cat_2', name: 'Transport / Bus Fee', amount: 12000, description: 'Annual AC bus transport facility per student route', status: 'Active', applicableClasses: 'Opted Students' },
+  { id: 'cat_2', name: 'Transport / Bus Fee', amount: 12000, description: 'Annual AC bus transport facility per student route / village area', status: 'Active', applicableClasses: 'Opted Students' },
   { id: 'cat_3', name: 'Examination Fee', amount: 3000, description: 'Internal midterm, quarterly and board prep exam evaluation fees', status: 'Active', applicableClasses: 'Classes 6 to 10' },
   { id: 'cat_4', name: 'Laboratory & Practical Fee', amount: 5000, description: 'Science lab equipment, computer lab systems and consumables', status: 'Active', applicableClasses: 'Classes 8 to 10' },
   { id: 'cat_5', name: 'Sports & Cultural Fee', amount: 2000, description: 'Annual sports day events, athletic equipment and cultural fest', status: 'Active', applicableClasses: 'All Classes' }
@@ -33,6 +36,25 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
   const isSuperAdmin = user?.role === 'super_admin';
   const [categories, setCategories] = useState<FeeCategoryItem[]>(MOCK_FEE_CATEGORIES);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Global Fee Store
+  const { 
+    villageRates, 
+    setVillageRates, 
+    addVillageRate, 
+    updateVillageRate, 
+    removeVillageRate 
+  } = useFeeStore();
+
+  // Village Rates Modal States
+  const [showRatesModal, setShowRatesModal] = useState(false);
+  const [selectedCatForRates, setSelectedCatForRates] = useState<FeeCategoryItem | null>(null);
+  const [ratesSearch, setRatesSearch] = useState('');
+  const [newVillageName, setNewVillageName] = useState('');
+  const [newVillageAmount, setNewVillageAmount] = useState('');
+  const [editingRateId, setEditingRateId] = useState<string | null>(null);
+  const [editingVillageName, setEditingVillageName] = useState('');
+  const [editingVillageAmount, setEditingVillageAmount] = useState('');
 
   // Modal States
   const [showAddEditModal, setShowAddEditModal] = useState(false);
@@ -52,6 +74,11 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
 
   const showToast = (title: string, message: string, type: 'success' | 'warning' = 'success') => {
     setToastData({ visible: true, title, message, type });
+  };
+
+  const isTransportCategory = (name: string) => {
+    const k = name.toLowerCase();
+    return k.includes('bus') || k.includes('transport') || k.includes('route') || k.includes('village');
   };
 
   const handleOpenAdd = () => {
@@ -112,9 +139,60 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
     showToast('Category Deleted', `${name} removed from fee categories.`, 'warning');
   };
 
+  // Village Rates Actions
+  const handleOpenRatesModal = (cat: FeeCategoryItem) => {
+    setSelectedCatForRates(cat);
+    setRatesSearch('');
+    setNewVillageName('');
+    setNewVillageAmount('');
+    setEditingRateId(null);
+    setShowRatesModal(true);
+  };
+
+  const handleAddNewVillageRate = () => {
+    if (!newVillageName.trim()) {
+      showToast('Missing Village', 'Please enter village or stop name.', 'warning');
+      return;
+    }
+    const amt = parseFloat(newVillageAmount);
+    if (isNaN(amt) || amt <= 0) {
+      showToast('Invalid Amount', 'Please enter a valid transport fee amount.', 'warning');
+      return;
+    }
+    addVillageRate(newVillageName.trim(), amt);
+    setNewVillageName('');
+    setNewVillageAmount('');
+    showToast('Rate Added', `Added ${newVillageName.trim()} with fee ₹${amt.toLocaleString()}`);
+  };
+
+  const handleStartEditRate = (rate: VillageRate) => {
+    setEditingRateId(rate.id);
+    setEditingVillageName(rate.village);
+    setEditingVillageAmount(String(rate.amount));
+  };
+
+  const handleSaveEditRate = (id: string) => {
+    if (!editingVillageName.trim() || !editingVillageAmount) return;
+    const amt = parseFloat(editingVillageAmount) || 0;
+    updateVillageRate(id, editingVillageName.trim(), amt);
+    setEditingRateId(null);
+    setEditingVillageName('');
+    setEditingVillageAmount('');
+    showToast('Rate Updated', `Updated ${editingVillageName.trim()} rate.`);
+  };
+
+  const handleResetToStandardRates = () => {
+    setVillageRates(DEMO_VILLAGE_RATES);
+    showToast('Rates Reset', 'Loaded 38 standard Telangana village transport rates.');
+  };
+
   const filteredCategories = categories.filter(c => 
     c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     c.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredVillageRates = villageRates.filter(r =>
+    r.village.toLowerCase().includes(ratesSearch.toLowerCase())
   );
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
@@ -135,7 +213,7 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
         title="Fee Structure & Categories"
-        subtitle={isSuperAdmin ? "Super Admin Category Allotments" : "School Fee Allotments & Amounts"}
+        subtitle={isSuperAdmin ? "Super Admin Category Allotments" : "School Fee Allotments & Transport Rates"}
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
             <Tags size={20} color={primaryColor} />
@@ -151,19 +229,19 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
         {/* Header Ribbon & Add Button */}
         <View className="px-5 mb-5 flex-row justify-between items-center">
           <View className="flex-1 mr-3">
-            <View className={`bg-[#101415] border rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/15'}`}>
-              <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
+            <View className={`bg-[#101415] border rounded-2xl flex-row items-center px-3.5 py-3 shadow-md ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/15'}`}>
+              <Search size={18} color={primaryColor} style={{ marginRight: 8 }} />
               <TextInput
                 placeholder="Search category name or description..."
                 placeholderTextColor="rgba(255, 255, 255, 0.4)"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                className="flex-1 text-white text-xs"
+                className="flex-1 text-white text-sm"
                 style={{ paddingVertical: 0 }}
               />
               {searchQuery.length > 0 && (
                 <Pressable onPress={() => setSearchQuery('')}>
-                  <X size={15} color="rgba(255, 255, 255, 0.5)" />
+                  <X size={16} color="rgba(255, 255, 255, 0.5)" />
                 </Pressable>
               )}
             </View>
@@ -171,11 +249,11 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
 
           <Pressable
             onPress={handleOpenAdd}
-            className={`${primaryBtnClass} px-3.5 py-2.5 rounded-2xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
-            style={{ minWidth: 118 }}
+            className={`${primaryBtnClass} px-4 py-3 rounded-2xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+            style={{ minWidth: 128 }}
           >
-            <Plus size={15} color="#101415" style={{ marginRight: 4 }} />
-            <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+            <Plus size={16} color="#101415" style={{ marginRight: 5 }} />
+            <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 13.5, fontWeight: '800', flexShrink: 0 }}>
               Add Category
             </Text>
           </Pressable>
@@ -183,104 +261,296 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
 
         {/* Fee Category List Cards */}
         <View className="px-5">
-          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Configured Fee Structure Categories ({filteredCategories.length})</Text>
+          <Text className="text-white/70 text-sm font-bold uppercase tracking-wider mb-3">
+            Configured Fee Structure Categories ({filteredCategories.length})
+          </Text>
 
-          {filteredCategories.map(cat => (
-            <GlassCard key={cat.id} intensity="low" className={`mb-4 p-4 border bg-[#101415]/90 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
-              <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
-                <View className="flex-row items-center flex-1 mr-2">
-                  <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
-                    <Tags size={20} color={primaryColor} />
+          {filteredCategories.map(cat => {
+            const isTransport = isTransportCategory(cat.name);
+            return (
+              <GlassCard key={cat.id} intensity="low" className={`mb-4 p-4 border bg-[#101415]/90 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
+                <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
+                  <View className="flex-row items-center flex-1 mr-2">
+                    <View className={`w-11 h-11 rounded-2xl items-center justify-center mr-3 ${isTransport ? 'bg-purple-500/20 border border-purple-500/40' : primaryBadgeClass}`}>
+                      {isTransport ? <Bus size={22} color="#c084fc" /> : <Tags size={22} color={primaryColor} />}
+                    </View>
+                    <View className="flex-1">
+                      <View className="flex-row items-center flex-wrap" style={{ gap: 6 }}>
+                        <Text className="text-white font-extrabold text-base mr-1">{cat.name}</Text>
+                        <View className={`px-2.5 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                          <Text className={`${primaryTextClass} text-xs font-bold`}>{cat.status}</Text>
+                        </View>
+                        {isTransport && (
+                          <View className="bg-purple-500/20 border border-purple-500/40 px-2.5 py-0.5 rounded-md">
+                            <Text className="text-purple-300 text-xs font-extrabold">Transport Head</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className={`${primaryTextClass} font-extrabold text-base mt-1`}>
+                        {isTransport ? 'Dynamic Area Rates' : `₹${cat.amount.toLocaleString()}`} 
+                        <Text className="text-white/50 text-xs font-normal"> / student</Text>
+                      </Text>
+                    </View>
                   </View>
-                  <View className="flex-1">
-                    <View className="flex-row items-center">
-                      <Text className="text-white font-extrabold text-base mr-2">{cat.name}</Text>
-                      <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
-                        <Text className={`${primaryTextClass} text-[9.5px] font-bold`}>{cat.status}</Text>
+
+                  <View className="flex-row items-center" style={{ gap: 6 }}>
+                    <Pressable
+                      onPress={() => handleOpenEdit(cat)}
+                      className="bg-white/5 border border-white/10 p-2.5 rounded-xl"
+                    >
+                      <Pencil size={15} color="rgba(255,255,255,0.7)" />
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => setDeletingCat(cat)}
+                      className="bg-rose-500/10 border border-rose-500/30 p-2.5 rounded-xl"
+                    >
+                      <Trash2 size={15} color="#ff516a" />
+                    </Pressable>
+                  </View>
+                </View>
+
+                <Text className="text-white/80 text-sm leading-relaxed mb-3">{cat.description}</Text>
+
+                {/* Village Transport Rates Section on Transport Categories */}
+                {isTransport && (
+                  <View className="mb-3 bg-purple-500/10 border border-purple-500/25 p-3.5 rounded-2xl">
+                    <View className="flex-row justify-between items-center mb-2">
+                      <View className="flex-row items-center">
+                        <MapPin size={16} color="#c084fc" style={{ marginRight: 6 }} />
+                        <Text className="text-white font-extrabold text-sm">Village / Route Transport Rates</Text>
+                      </View>
+                      <View className="bg-purple-500/30 px-2.5 py-0.5 rounded-full">
+                        <Text className="text-purple-200 text-xs font-extrabold">{villageRates.length} Villages</Text>
                       </View>
                     </View>
-                    <Text className={`${primaryTextClass} font-extrabold text-sm mt-0.5`}>₹{cat.amount.toLocaleString()} <Text className="text-white/40 text-[10px] font-normal">/ student</Text></Text>
+                    <Text className="text-white/70 text-xs leading-relaxed mb-3">
+                      Define area-wise transport fee charges for bus routes (e.g., Chevella, DharmaSagar, Antaram).
+                    </Text>
+                    <Pressable
+                      onPress={() => handleOpenRatesModal(cat)}
+                      className="bg-purple-500/25 border border-purple-500/40 py-2.5 px-3 rounded-xl flex-row items-center justify-center active:bg-purple-500/40"
+                    >
+                      <MapPin size={15} color="#c084fc" style={{ marginRight: 6 }} />
+                      <Text className="text-purple-200 font-extrabold text-sm">
+                        Configure {villageRates.length} Village Area Rates
+                      </Text>
+                    </Pressable>
                   </View>
+                )}
+
+                <View className="bg-black/40 p-3 rounded-xl border border-white/5 flex-row justify-between items-center">
+                  <Text className="text-white/50 text-xs font-bold uppercase">Applicability</Text>
+                  <Text className="text-sky-300 text-sm font-bold">{cat.applicableClasses}</Text>
                 </View>
-
-                <View className="flex-row items-center" style={{ gap: 6 }}>
-                  <Pressable
-                    onPress={() => handleOpenEdit(cat)}
-                    className="bg-white/5 border border-white/10 p-2 rounded-xl"
-                  >
-                    <Pencil size={14} color="rgba(255,255,255,0.7)" />
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => setDeletingCat(cat)}
-                    className="bg-rose-500/10 border border-rose-500/30 p-2 rounded-xl"
-                  >
-                    <Trash2 size={14} color="#ff516a" />
-                  </Pressable>
-                </View>
-              </View>
-
-              <Text className="text-white/70 text-xs leading-relaxed mb-3">{cat.description}</Text>
-
-              <View className="bg-black/40 p-2.5 rounded-xl border border-white/5 flex-row justify-between items-center">
-                <Text className="text-white/40 text-[10px] font-bold uppercase">Applicability</Text>
-                <Text className="text-sky-300 text-xs font-bold">{cat.applicableClasses}</Text>
-              </View>
-            </GlassCard>
-          ))}
+              </GlassCard>
+            );
+          })}
         </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* VILLAGE TRANSPORT RATES MODAL */}
+      <Modal visible={showRatesModal} transparent animationType="slide" onRequestClose={() => setShowRatesModal(false)}>
+        <View className="flex-1 bg-black/85 justify-center items-center p-4">
+          <View className="bg-[#101415] border-2 border-purple-500/40 rounded-3xl w-full max-w-md max-h-[90%] p-5 shadow-2xl">
+            
+            {/* Modal Header */}
+            <View className="flex-row justify-between items-start border-b border-white/10 pb-3 mb-3">
+              <View className="flex-1 mr-2">
+                <View className="flex-row items-center">
+                  <View className="w-8 h-8 rounded-lg bg-purple-500/20 items-center justify-center mr-2">
+                    <Bus size={18} color="#c084fc" />
+                  </View>
+                  <Text className="text-white font-extrabold text-lg">Village / Route Rates</Text>
+                </View>
+                <Text className="text-white/70 text-sm mt-0.5">
+                  Dynamic transport fee per village location ({villageRates.length} active routes)
+                </Text>
+              </View>
+              <Pressable onPress={() => setShowRatesModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                <X size={16} color="#ffffff" />
+              </Pressable>
+            </View>
+
+            {/* Quick Add Form */}
+            <View className="bg-white/5 border border-white/10 p-3.5 rounded-2xl mb-3">
+              <Text className="text-purple-300 text-sm font-extrabold mb-2.5">+ Add New Village Route Rate</Text>
+              <View className="flex-row mb-2.5" style={{ gap: 8 }}>
+                <TextInput
+                  value={newVillageName}
+                  onChangeText={setNewVillageName}
+                  placeholder="Village Name (e.g. Aloor)"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  className="flex-1 bg-black/50 border border-white/15 rounded-xl text-white px-3 py-2.5 text-sm font-semibold"
+                />
+                <TextInput
+                  value={newVillageAmount}
+                  onChangeText={setNewVillageAmount}
+                  keyboardType="numeric"
+                  placeholder="Amount (₹)"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  className="w-28 bg-black/50 border border-white/15 rounded-xl text-white px-3 py-2.5 text-sm font-bold font-mono"
+                />
+              </View>
+              <Pressable
+                onPress={handleAddNewVillageRate}
+                className="bg-purple-500 py-2.5 rounded-xl items-center active:opacity-80"
+              >
+                <Text className="text-white font-extrabold text-sm">Add Village Rate</Text>
+              </Pressable>
+            </View>
+
+            {/* Search & Reset */}
+            <View className="flex-row justify-between items-center mb-3" style={{ gap: 8 }}>
+              <View className="flex-1 bg-black/40 border border-white/15 rounded-xl flex-row items-center px-3 py-2">
+                <Search size={16} color="#c084fc" style={{ marginRight: 6 }} />
+                <TextInput
+                  value={ratesSearch}
+                  onChangeText={setRatesSearch}
+                  placeholder="Search village (e.g. Chevella)..."
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  className="flex-1 text-white text-sm"
+                  style={{ paddingVertical: 0 }}
+                />
+                {ratesSearch.length > 0 && (
+                  <Pressable onPress={() => setRatesSearch('')}>
+                    <X size={14} color="rgba(255,255,255,0.5)" />
+                  </Pressable>
+                )}
+              </View>
+
+              <Pressable
+                onPress={handleResetToStandardRates}
+                className="bg-white/10 border border-white/15 px-3 py-2.5 rounded-xl flex-row items-center"
+              >
+                <RotateCcw size={14} color="#ffffff" style={{ marginRight: 4 }} />
+                <Text className="text-white text-xs font-bold">Standard 38</Text>
+              </Pressable>
+            </View>
+
+            {/* Rates Scrollable List */}
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 240 }} className="mb-3">
+              {filteredVillageRates.length === 0 ? (
+                <View className="py-6 items-center">
+                  <Text className="text-white/50 text-sm">No village rates matching "{ratesSearch}"</Text>
+                </View>
+              ) : (
+                filteredVillageRates.map(rate => {
+                  const isEditing = editingRateId === rate.id;
+                  return (
+                    <View key={rate.id} className="bg-black/40 border border-white/10 p-3 rounded-xl mb-2 flex-row justify-between items-center">
+                      {isEditing ? (
+                        <View className="flex-1 flex-row items-center mr-2" style={{ gap: 6 }}>
+                          <TextInput
+                            value={editingVillageName}
+                            onChangeText={setEditingVillageName}
+                            className="flex-1 bg-black/70 border border-white/30 rounded-lg text-white px-2.5 py-1.5 text-sm"
+                          />
+                          <TextInput
+                            value={editingVillageAmount}
+                            onChangeText={setEditingVillageAmount}
+                            keyboardType="numeric"
+                            className="w-20 bg-black/70 border border-white/30 rounded-lg text-white px-2.5 py-1.5 text-sm font-mono font-bold"
+                          />
+                        </View>
+                      ) : (
+                        <View className="flex-1 mr-2">
+                          <Text className="text-white font-bold text-sm">{rate.village}</Text>
+                          <Text className="text-purple-300 font-extrabold text-sm font-mono mt-0.5">
+                            ₹{rate.amount.toLocaleString()} <Text className="text-white/50 text-xs font-normal">/ student</Text>
+                          </Text>
+                        </View>
+                      )}
+
+                      <View className="flex-row items-center" style={{ gap: 6 }}>
+                        {isEditing ? (
+                          <>
+                            <Pressable onPress={() => handleSaveEditRate(rate.id)} className="bg-emerald-500/20 border border-emerald-500/40 p-2 rounded-lg">
+                              <Check size={15} color="#34d399" />
+                            </Pressable>
+                            <Pressable onPress={() => setEditingRateId(null)} className="bg-white/10 p-2 rounded-lg">
+                              <X size={15} color="#ffffff" />
+                            </Pressable>
+                          </>
+                        ) : (
+                          <>
+                            <Pressable onPress={() => handleStartEditRate(rate)} className="bg-white/5 border border-white/10 p-2 rounded-lg">
+                              <Pencil size={14} color="rgba(255,255,255,0.7)" />
+                            </Pressable>
+                            <Pressable onPress={() => removeVillageRate(rate.id)} className="bg-rose-500/10 border border-rose-500/30 p-2 rounded-lg">
+                              <Trash2 size={14} color="#ff516a" />
+                            </Pressable>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+
+            {/* Footer Action */}
+            <Pressable
+              onPress={() => setShowRatesModal(false)}
+              className="w-full py-3.5 bg-purple-500 rounded-xl items-center shadow-lg active:scale-95"
+            >
+              <Text className="text-white font-extrabold text-sm">Done & Save Village Rates</Text>
+            </Pressable>
+
+          </View>
+        </View>
+      </Modal>
 
       {/* ADD / EDIT CATEGORY MODAL */}
       <Modal visible={showAddEditModal} transparent animationType="slide" onRequestClose={() => setShowAddEditModal(false)}>
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
           <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
-              <Text className="text-white font-bold text-base">{editingCat ? 'Edit Fee Category' : 'Create Fee Category'}</Text>
-              <Pressable onPress={() => setShowAddEditModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
-                <X size={14} color="#ffffff" />
+              <Text className="text-white font-extrabold text-lg">{editingCat ? 'Edit Fee Category' : 'Create Fee Category'}</Text>
+              <Pressable onPress={() => setShowAddEditModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                <X size={16} color="#ffffff" />
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
-              <View className="mb-3">
-                <Text className="text-white/70 text-xs font-bold mb-1">Category Name *</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
+              <View className="mb-3.5">
+                <Text className="text-white/80 text-sm font-bold mb-1.5">Category Name *</Text>
                 <TextInput
                   value={formName}
                   onChangeText={setFormName}
                   placeholder="e.g. Science Laboratory Fee"
                   placeholderTextColor="rgba(255,255,255,0.4)"
-                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-sm"
                 />
               </View>
 
-              <View className="mb-3">
-                <Text className="text-white/70 text-xs font-bold mb-1">Fee Amount (₹) *</Text>
+              <View className="mb-3.5">
+                <Text className="text-white/80 text-sm font-bold mb-1.5">Fee Amount (₹) *</Text>
                 <TextInput
                   value={formAmount}
                   onChangeText={setFormAmount}
                   keyboardType="numeric"
                   placeholder="5000"
                   placeholderTextColor="rgba(255,255,255,0.4)"
-                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs font-mono"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-sm font-mono font-bold"
                 />
               </View>
 
-              <View className="mb-3">
-                <Text className="text-white/70 text-xs font-bold mb-1">Applicable Classes</Text>
+              <View className="mb-3.5">
+                <Text className="text-white/80 text-sm font-bold mb-1.5">Applicable Classes</Text>
                 <TextInput
                   value={formClasses}
                   onChangeText={setFormClasses}
                   placeholder="e.g. Classes 8 to 10"
                   placeholderTextColor="rgba(255,255,255,0.4)"
-                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-sm"
                 />
               </View>
 
-              <View className="mb-3">
-                <Text className="text-white/70 text-xs font-bold mb-1">Category Description</Text>
+              <View className="mb-3.5">
+                <Text className="text-white/80 text-sm font-bold mb-1.5">Category Description</Text>
                 <TextInput
                   value={formDescription}
                   onChangeText={setFormDescription}
@@ -288,18 +558,18 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
                   numberOfLines={3}
                   placeholder="Details regarding fee usage and allocation..."
                   placeholderTextColor="rgba(255,255,255,0.4)"
-                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-black/40 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-sm"
                   style={{ textAlignVertical: 'top' }}
                 />
               </View>
             </ScrollView>
 
-            <View className="flex-row border-t border-white/10 pt-3 mt-2" style={{ gap: 10 }}>
+            <View className="flex-row border-t border-white/10 pt-3.5 mt-2" style={{ gap: 10 }}>
               <Pressable onPress={() => setShowAddEditModal(false)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
-                <Text className="text-white font-bold text-xs">Cancel</Text>
+                <Text className="text-white font-bold text-sm">Cancel</Text>
               </Pressable>
               <Pressable onPress={handleSaveCategory} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
-                <Text className="text-[#101415] font-extrabold text-xs">
+                <Text className="text-[#101415] font-extrabold text-sm">
                   {editingCat ? 'Update Category' : 'Save Category'}
                 </Text>
               </Pressable>
@@ -316,17 +586,17 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
               <Trash2 size={28} color="#ff516a" />
             </View>
 
-            <Text className="text-white text-lg font-extrabold text-center mb-1">Delete Fee Category?</Text>
-            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">
+            <Text className="text-white text-xl font-extrabold text-center mb-1.5">Delete Fee Category?</Text>
+            <Text className="text-white/80 text-sm text-center mb-6 leading-relaxed px-2">
               Are you sure you want to remove "{deletingCat?.name}" from fee categories?
             </Text>
 
             <View className="flex-row w-full" style={{ gap: 10 }}>
               <Pressable onPress={() => setDeletingCat(null)} className="flex-1 py-3.5 rounded-xl bg-white/10 items-center">
-                <Text className="text-white font-bold text-xs">Cancel</Text>
+                <Text className="text-white font-bold text-sm">Cancel</Text>
               </Pressable>
               <Pressable onPress={handleConfirmDeleteCategory} className="flex-1 py-3.5 rounded-xl bg-rose-500 items-center shadow-[0_0_12px_rgba(255,81,106,0.4)]">
-                <Text className="text-white font-extrabold text-xs">Delete Category</Text>
+                <Text className="text-white font-extrabold text-sm">Delete Category</Text>
               </Pressable>
             </View>
           </View>
@@ -345,14 +615,14 @@ export const FeeCategoryScreen: React.FC<any> = ({ navigation }) => {
               )}
             </View>
 
-            <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
-            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
+            <Text className="text-white text-xl font-extrabold text-center mb-1.5">{toastData.title}</Text>
+            <Text className="text-white/80 text-sm text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
               className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
-              <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
+              <Text className="text-[#101415] font-extrabold text-base">Got it</Text>
             </Pressable>
           </View>
         </View>

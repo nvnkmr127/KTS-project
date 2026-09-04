@@ -9,7 +9,18 @@ import {
   Phone,
   MessageCircle,
   MapPin,
-  Award
+  Award,
+  Bus,
+  CreditCard,
+  Clock,
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
+  FileText,
+  Download,
+  Navigation as NavigationIcon,
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react-native';
 import { useResponsive } from '../../utils/responsive';
 
@@ -49,16 +60,39 @@ export const ProfileScreen: React.FC = () => {
     admissionDate: currentChild.id === 'stud_001' ? '02 Jan 2024' : '11 Jun 2025',
     bloodGroup: currentChild.id === 'stud_001' ? 'A+ Pos' : 'O+ Pos',
     house: currentChild.id === 'stud_001' ? 'Emerald' : 'Ruby',
-    address: '42 Quantum Heights, Silicon Valley District, EdTech City, 94043',
+    village: 'Chevella',
+    address: 'Chevella Main Road, Near Bus Station, Chevella, Telangana',
     guardians: [
-      { name: 'Marcus Voss', relation: 'Primary Guardian', phone: '+1 (555) 019-2834' },
-      { name: 'Elena Voss', relation: 'Secondary Guardian', phone: '+1 (555) 019-5821' }
+      { name: 'Marcus Voss', relation: 'Primary Guardian', phone: '+91 98765 43210' },
+      { name: 'Elena Voss', relation: 'Secondary Guardian', phone: '+91 98765 43211' }
     ],
-    kpi: currentChild.id === 'stud_001' ? { performance: '88.4%', rank: '4th / 32' } : { performance: '91.2%', rank: '2nd / 28' }
+    kpi: currentChild.id === 'stud_001' ? { performance: '88.4%', rank: '4th / 32' } : { performance: '91.2%', rank: '2nd / 28' },
+    transport: {
+      route: 'Route #4 — Chevella / DharmaSagar Express',
+      busNo: 'TS-07-UA-8821',
+      driverName: 'Ramesh Kumar',
+      driverPhone: '+91 98480 12345',
+      pickupPoint: 'Chevella Main Arch Gate',
+      pickupTime: '07:45 AM',
+      dropTime: '04:30 PM',
+      village: 'Chevella',
+      annualFee: 7000,
+      feeStatus: 'Active Bus Pass',
+      stops: ['Chevella Arch (07:45 AM)', 'DharmaSagar (08:00 AM)', 'Urella Jn (08:15 AM)', 'School Campus (08:35 AM)']
+    },
+    fees: {
+      total: 42000,
+      paid: 35000,
+      due: 7000,
+      breakdown: [
+        { name: 'Tuition Fee (Term 1 & 2)', amount: 35000, status: 'Paid', date: '12 May 2026' },
+        { name: 'Transport / Bus Fee (Chevella Route)', amount: 7000, status: 'Pending', dueDate: '30 Jun 2026' }
+      ]
+    }
   };
 
   const handleCall = (name: string, phone: string) => {
-    showCustomAlert("Calling Guardian", `Dialing ${name} at ${phone}...`, 'info');
+    showCustomAlert("Calling Contact", `Dialing ${name} at ${phone}...`, 'info');
   };
 
   const handleChat = (name: string) => {
@@ -247,6 +281,258 @@ export const ProfileScreen: React.FC = () => {
                 </View>
               </View>
             </View>
+          </View>
+        )}
+
+        {/* Transport Tab Content */}
+        {activeTab === 'transport' && (
+          <View className="px-5 mb-8 gap-4">
+            {/* Bus Route Hero Card */}
+            <View style={styles.glassCard} className="p-5 rounded-2xl border border-purple-400/30 gap-3">
+              <View className="flex-row justify-between items-start">
+                <View className="flex-row items-center gap-2.5">
+                  <View className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-400/30 items-center justify-center">
+                    <Bus size={22} color="#c084fc" />
+                  </View>
+                  <View>
+                    <Text className="text-white font-extrabold text-base">{studentInfo.transport.route}</Text>
+                    <Text className="text-purple-300 text-xs font-semibold">Bus No: {studentInfo.transport.busNo}</Text>
+                  </View>
+                </View>
+                <View className="bg-emerald-500/20 px-2.5 py-1 rounded-full border border-emerald-400/30">
+                  <Text className="text-emerald-400 text-[10px] font-bold">{studentInfo.transport.feeStatus}</Text>
+                </View>
+              </View>
+
+              <View className="h-[1px] bg-white/10 w-full my-1" />
+
+              {/* Pickup & Drop Times Bento */}
+              <View className="flex-row gap-3">
+                <View className="flex-1 bg-black/40 p-3 rounded-xl border border-white/5">
+                  <View className="flex-row items-center gap-1.5 mb-1">
+                    <Clock size={12} color="#46f1c5" />
+                    <Text className="text-white/50 text-[10px] font-bold uppercase">Morning Pickup</Text>
+                  </View>
+                  <Text className="text-white font-black text-sm">{studentInfo.transport.pickupTime}</Text>
+                  <Text className="text-white/60 text-[10px] mt-0.5" numberOfLines={1}>{studentInfo.transport.pickupPoint}</Text>
+                </View>
+
+                <View className="flex-1 bg-black/40 p-3 rounded-xl border border-white/5">
+                  <View className="flex-row items-center gap-1.5 mb-1">
+                    <Clock size={12} color="#f0c110" />
+                    <Text className="text-white/50 text-[10px] font-bold uppercase">Evening Drop</Text>
+                  </View>
+                  <Text className="text-white font-black text-sm">{studentInfo.transport.dropTime}</Text>
+                  <Text className="text-white/60 text-[10px] mt-0.5" numberOfLines={1}>Return to {studentInfo.transport.village}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Village Transport Fee Rate Card */}
+            <View style={styles.glassCard} className="p-4 rounded-xl border border-white/5 gap-2">
+              <View className="flex-row justify-between items-center">
+                <View className="flex-row items-center gap-2">
+                  <MapPin size={16} color="#46f1c5" />
+                  <Text className="text-white/50 text-[10px] font-bold uppercase">Registered Transport Route</Text>
+                </View>
+                <View className="bg-purple-500/20 px-2.5 py-0.5 rounded-lg border border-purple-400/30">
+                  <Text className="text-purple-300 font-extrabold text-xs">
+                    ₹{studentInfo.transport.annualFee.toLocaleString()} / year
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-white font-bold text-sm">{studentInfo.transport.village} Area Route</Text>
+              <Text className="text-white/60 text-xs leading-relaxed">
+                Covers daily pickup & drop from {studentInfo.transport.village} village with GPS tracking and verified bus attendant.
+              </Text>
+            </View>
+
+            {/* Bus Driver & Support Contact */}
+            <View style={styles.glassCard} className="p-4 rounded-xl border border-white/5 gap-3">
+              <Text className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Driver / Transport Incharge</Text>
+              <View className="flex-row justify-between items-center">
+                <View>
+                  <Text className="text-white font-bold text-sm">{studentInfo.transport.driverName}</Text>
+                  <Text className="text-white/50 text-xs mt-0.5">Assigned Bus Driver ({studentInfo.transport.busNo})</Text>
+                </View>
+                <View className="flex-row gap-2">
+                  <Pressable
+                    onPress={() => handleCall(studentInfo.transport.driverName, studentInfo.transport.driverPhone)}
+                    style={styles.insetCard}
+                    className="w-9 h-9 rounded-full bg-white/5 border border-white/10 items-center justify-center active:scale-90"
+                  >
+                    <Phone size={14} color="#46f1c5" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleChat(studentInfo.transport.driverName)}
+                    style={styles.insetCard}
+                    className="w-9 h-9 rounded-full bg-white/5 border border-white/10 items-center justify-center active:scale-90"
+                  >
+                    <MessageCircle size={14} color="#25D366" />
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+
+            {/* Route Stops Timeline */}
+            <View style={styles.glassCard} className="p-4 rounded-xl border border-white/5 gap-3">
+              <Text className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Route Stops & Timetable</Text>
+              {studentInfo.transport.stops.map((stop, idx) => (
+                <View key={idx} className="flex-row items-center gap-3">
+                  <View className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-400/40 items-center justify-center">
+                    <Text className="text-emerald-400 text-[10px] font-black">{idx + 1}</Text>
+                  </View>
+                  <Text className="text-white/90 text-xs font-semibold">{stop}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Live Tracking Shortcut */}
+            <Pressable
+              onPress={() => {
+                if (navigation?.navigate) {
+                  navigation.navigate('BusTracking');
+                } else {
+                  showCustomAlert('Live Tracking', 'Connecting to bus GPS stream...', 'info');
+                }
+              }}
+              className="w-full py-3.5 rounded-xl bg-[#00d4aa] flex-row items-center justify-center gap-2 shadow-lg shadow-[#00d4aa]/30 active:scale-95"
+            >
+              <NavigationIcon size={16} color="#002118" />
+              <Text className="text-[#002118] text-xs font-black uppercase tracking-wider">Open Live Bus GPS Tracking</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Fees Tab Content */}
+        {activeTab === 'fees' && (
+          <View className="px-5 mb-8 gap-4">
+            {/* Fee Summary Bento */}
+            <View style={styles.glassCard} className="p-5 rounded-2xl border border-[#46f1c5]/20 gap-3">
+              <Text className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Fee Summary (2026-2027)</Text>
+              <View className="flex-row justify-between items-end">
+                <View>
+                  <Text className="text-white/50 text-xs">Total Academic & Transport Fee</Text>
+                  <Text className="text-2xl font-black text-white mt-0.5">₹{studentInfo.fees.total.toLocaleString()}</Text>
+                </View>
+                <View className="items-end">
+                  <Text className="text-rose-400 text-xs font-bold">Outstanding Due</Text>
+                  <Text className="text-xl font-extrabold text-rose-400 mt-0.5">₹{studentInfo.fees.due.toLocaleString()}</Text>
+                </View>
+              </View>
+
+              <View className="h-[1px] bg-white/10 w-full my-1" />
+
+              <View className="flex-row justify-between text-xs">
+                <Text className="text-white/50 text-xs">Paid Till Date:</Text>
+                <Text className="text-emerald-400 font-bold text-xs">₹{studentInfo.fees.paid.toLocaleString()}</Text>
+              </View>
+            </View>
+
+            {/* Itemized Fee Breakdown */}
+            <View style={styles.glassCard} className="p-4 rounded-xl border border-white/5 gap-3">
+              <Text className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Allocated Fee Categories</Text>
+
+              {studentInfo.fees.breakdown.map((item, idx) => (
+                <View key={idx} className="p-3 bg-black/40 rounded-xl border border-white/5 mb-1">
+                  <View className="flex-row justify-between items-start mb-1.5">
+                    <View className="flex-1 pr-2">
+                      <Text className="text-white font-bold text-xs">{item.name}</Text>
+                      <Text className="text-white/40 text-[10px] mt-0.5">
+                        {item.status === 'Paid' ? `Paid on ${item.date}` : `Due by ${item.dueDate}`}
+                      </Text>
+                    </View>
+                    <View className="items-end">
+                      <Text className="text-white font-extrabold text-xs">₹{item.amount.toLocaleString()}</Text>
+                      <View className={`px-2 py-0.5 rounded-full mt-1 ${item.status === 'Paid' ? 'bg-emerald-500/20 border border-emerald-400/30' : 'bg-rose-500/20 border border-rose-400/30'}`}>
+                        <Text className={`text-[9px] font-bold ${item.status === 'Paid' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {item.status}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Fee Receipt CTA */}
+            <Pressable
+              onPress={() => showCustomAlert('Fee Receipt', 'Downloading official fee payment receipt (PDF)...', 'success')}
+              className="w-full py-3.5 rounded-xl bg-white/10 border border-white/20 flex-row items-center justify-center gap-2 active:scale-95"
+            >
+              <Download size={16} color="#46f1c5" />
+              <Text className="text-white text-xs font-bold uppercase tracking-wider">Download Fee Receipt PDF</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Attendance Tab Content */}
+        {activeTab === 'attendance' && (
+          <View className="px-5 mb-8 gap-4">
+            <View style={styles.glassCard} className="p-5 rounded-2xl border border-emerald-400/30 gap-3">
+              <Text className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Academic Attendance</Text>
+              <View className="flex-row justify-between items-end">
+                <View>
+                  <Text className="text-3xl font-black text-emerald-400">94.2%</Text>
+                  <Text className="text-white/60 text-xs mt-0.5">Overall Academic Attendance</Text>
+                </View>
+                <View className="bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-400/30">
+                  <Text className="text-emerald-400 text-xs font-bold">Good Standing</Text>
+                </View>
+              </View>
+
+              <View className="h-[1px] bg-white/10 w-full my-1" />
+
+              <View className="flex-row justify-between">
+                <View className="items-center">
+                  <Text className="text-white font-bold text-sm">22</Text>
+                  <Text className="text-white/40 text-[10px]">Present Days</Text>
+                </View>
+                <View className="items-center">
+                  <Text className="text-rose-400 font-bold text-sm">1</Text>
+                  <Text className="text-white/40 text-[10px]">Absent Days</Text>
+                </View>
+                <View className="items-center">
+                  <Text className="text-amber-400 font-bold text-sm">0</Text>
+                  <Text className="text-white/40 text-[10px]">Late Mark</Text>
+                </View>
+                <View className="items-center">
+                  <Text className="text-white/60 font-bold text-sm">7</Text>
+                  <Text className="text-white/40 text-[10px]">Holidays</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Documents Tab Content */}
+        {activeTab === 'docs' && (
+          <View className="px-5 mb-8 gap-3">
+            {[
+              { name: 'Admission Application Form', size: '1.2 MB', verified: true },
+              { name: 'Transfer Certificate (TC)', size: '840 KB', verified: true },
+              { name: 'Student Bus Transport Pass (2026-27)', size: '450 KB', verified: true },
+              { name: 'Birth Certificate Copy', size: '920 KB', verified: true },
+              { name: 'Student Aadhar Card Copy', size: '680 KB', verified: true },
+            ].map((doc, idx) => (
+              <View key={idx} style={styles.glassCard} className="p-3.5 rounded-xl border border-white/5 flex-row justify-between items-center">
+                <View className="flex-row items-center gap-3">
+                  <View className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 items-center justify-center">
+                    <FileText size={18} color="#46f1c5" />
+                  </View>
+                  <View>
+                    <Text className="text-white font-bold text-xs">{doc.name}</Text>
+                    <Text className="text-white/40 text-[10px] mt-0.5">{doc.size} • Verified</Text>
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => showCustomAlert('Document Download', `Downloading ${doc.name}...`, 'success')}
+                  className="w-8 h-8 rounded-full bg-white/5 border border-white/10 items-center justify-center active:scale-90"
+                >
+                  <Download size={14} color="#46f1c5" />
+                </Pressable>
+              </View>
+            ))}
           </View>
         )}
       </ScrollView>

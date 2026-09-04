@@ -7,12 +7,14 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { 
   Banknote, Search, Plus, Download, Upload, Filter, 
-  CheckCircle2, AlertCircle, X, CreditCard, Clock, User, FileText, ChevronRight, Tag, FileSpreadsheet, ChevronDown, Check, Trash2
+  CheckCircle2, AlertCircle, X, CreditCard, Clock, User, FileText, ChevronRight, Tag, FileSpreadsheet, ChevronDown, Check, Trash2,
+  MapPin, Bus, Users
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useFeeStore, VillageRate, DEMO_VILLAGE_RATES } from '../../store/useFeeStore';
 import { useResponsive } from '../../utils/responsive';
 
 export interface StudentFeeRecord {
@@ -26,6 +28,8 @@ export interface StudentFeeRecord {
   status: 'Paid' | 'Partial' | 'Unpaid';
   lastPaymentDate: string;
   feeCategory?: string;
+  address?: string;
+  village?: string;
 }
 
 const MOCK_FEE_RECORDS: StudentFeeRecord[] = [
@@ -40,6 +44,8 @@ const MOCK_FEE_RECORDS: StudentFeeRecord[] = [
     status: 'Paid',
     lastPaymentDate: '2026-05-12',
     feeCategory: 'Class X ( School Fee )',
+    address: 'Chevella Main Road, Chevella',
+    village: 'Chevella',
   },
   {
     id: 'f2',
@@ -52,6 +58,8 @@ const MOCK_FEE_RECORDS: StudentFeeRecord[] = [
     status: 'Partial',
     lastPaymentDate: '2026-05-20',
     feeCategory: 'Tuition Fee',
+    address: 'Near Temple, Urella',
+    village: 'Urella',
   },
   {
     id: 'f3',
@@ -64,6 +72,8 @@ const MOCK_FEE_RECORDS: StudentFeeRecord[] = [
     status: 'Unpaid',
     lastPaymentDate: 'None',
     feeCategory: 'Transport Fee',
+    address: 'DharmaSagar Village Gate',
+    village: 'DharmaSagar',
   },
   {
     id: 'f4',
@@ -76,11 +86,41 @@ const MOCK_FEE_RECORDS: StudentFeeRecord[] = [
     status: 'Partial',
     lastPaymentDate: '2026-04-18',
     feeCategory: 'Class X ( School Fee )',
+    address: 'Devuni Yerravally Colony',
+    village: 'Devuni Yerravally',
+  },
+  {
+    id: 'f5',
+    name: 'Malkapur Ramesh',
+    rollNo: '10A05',
+    className: 'Class 10A',
+    totalFee: 42000,
+    paidAmount: 35000,
+    balanceDue: 7000,
+    status: 'Partial',
+    lastPaymentDate: '2026-05-10',
+    feeCategory: 'Tuition Fee',
+    address: 'Malkapur Post',
+    village: 'Malkapur',
+  },
+  {
+    id: 'f6',
+    name: 'Kesaram Ananya',
+    rollNo: '8A01',
+    className: 'Class 8A',
+    totalFee: 38000,
+    paidAmount: 38000,
+    balanceDue: 0,
+    status: 'Paid',
+    lastPaymentDate: '2026-05-18',
+    feeCategory: 'Tuition Fee',
+    address: 'Kesaram Village',
+    village: 'Kesaram',
   }
 ];
 
 const DEFAULT_CLASSES = ['Class 8A', 'Class 9A', 'Class 10A', 'Class 1A', 'Class 2A', 'Class 3A', 'Class 4A', 'Class 5A', 'Class 6A', 'Class 7A'];
-const DEFAULT_FEE_CATEGORIES = ['Class X ( School Fee )', 'Transport Fee', 'Tuition Fee', 'Term 1 Fee', 'Annual Activity Fee'];
+const DEFAULT_FEE_CATEGORIES = ['Class X ( School Fee )', 'Transport / Bus Fee', 'Tuition Fee', 'Term 1 Fee', 'Annual Activity Fee'];
 
 export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const navigation = useNavigation<any>() || propNavigation;
@@ -93,6 +133,9 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
   const primaryTextClass = isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]';
   const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
   const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
+
+  // Fee Store Village Rates
+  const { villageRates } = useFeeStore();
 
   const [feeRecords, setFeeRecords] = useState<StudentFeeRecord[]>(MOCK_FEE_RECORDS);
   const [classList, setClassList] = useState<string[]>(DEFAULT_CLASSES);
@@ -130,6 +173,8 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
             status: (f.status || 'Unpaid') as any,
             lastPaymentDate: f.last_payment_date || 'Recent',
             feeCategory: f.fee_category || f.feeCategory || 'School Fee',
+            address: f.address || f.village || '',
+            village: f.village || '',
           }));
           setFeeRecords(mapped);
         }
@@ -156,7 +201,7 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
 
   // Web-Parity Assign Fee Modal States
   const [showAssignFeeModal, setShowAssignFeeModal] = useState(false);
-  const [assignTargetType, setAssignTargetType] = useState<'student' | 'class'>('student');
+  const [assignTargetType, setAssignTargetType] = useState<'student' | 'class' | 'transport'>('student');
   const [selectedStudentForAssign, setSelectedStudentForAssign] = useState<string>('f1');
   const [selectedClassForAssign, setSelectedClassForAssign] = useState<string>('Class 10A');
   const [selectedCategoryForAssign, setSelectedCategoryForAssign] = useState<string>('Tuition Fee');
@@ -164,6 +209,11 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
   const [dueDateAssign, setDueDateAssign] = useState<string>('2026-06-30');
   const [assignedFeeItems, setAssignedFeeItems] = useState<{ category: string; amount: number }[]>([]);
   const [assignStudentSearchQuery, setAssignStudentSearchQuery] = useState<string>('');
+
+  // Transport Route Fee States
+  const [selectedVillageArea, setSelectedVillageArea] = useState<string>('');
+  const [selectedTransportStudentIds, setSelectedTransportStudentIds] = useState<string[]>([]);
+  const [showVillageRouteDropdown, setShowVillageRouteDropdown] = useState<boolean>(false);
 
   // Import Modal States
   const [showImportModal, setShowImportModal] = useState(false);
@@ -234,7 +284,83 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
     setAmountInputAssign('');
   };
 
+  // Village Route Selection Handler
+  const handleSelectVillageRoute = (villageName: string) => {
+    setSelectedVillageArea(villageName);
+    setShowVillageRouteDropdown(false);
+    setSelectedCategoryForAssign('Transport / Bus Fee');
+
+    const match = (villageRates || DEMO_VILLAGE_RATES).find(r => r.village.toLowerCase() === villageName.toLowerCase());
+    if (match) {
+      setAmountInputAssign(String(match.amount));
+    }
+
+    // Auto-match students in this village
+    const vLower = villageName.trim().toLowerCase();
+    const matched = feeRecords.filter(s => {
+      const addr = ((s.address || '') + ' ' + (s.village || '') + ' ' + s.name).toLowerCase();
+      return addr.includes(vLower);
+    }).map(s => s.id);
+
+    setSelectedTransportStudentIds(matched.length > 0 ? matched : feeRecords.slice(0, 2).map(s => s.id));
+  };
+
   const handleConfirmAssignFee = async () => {
+    // 1. Transport Route Assignment Flow
+    if (assignTargetType === 'transport') {
+      if (!selectedVillageArea) {
+        Alert.alert('Select Village Route', 'Please pick a village / transport route first.');
+        return;
+      }
+      if (selectedTransportStudentIds.length === 0) {
+        Alert.alert('No Students Selected', 'Please select at least one student for transport fee assignment.');
+        return;
+      }
+      const amt = parseFloat(amountInputAssign);
+      if (isNaN(amt) || amt <= 0) {
+        Alert.alert('Invalid Amount', 'Please enter a valid transport fee amount.');
+        return;
+      }
+
+      setFeeRecords(prev => prev.map(f => {
+        if (selectedTransportStudentIds.includes(f.id)) {
+          const newTotal = f.totalFee + amt;
+          const newBal = f.balanceDue + amt;
+          const newStatus = f.paidAmount >= newTotal ? 'Paid' : f.paidAmount > 0 ? 'Partial' : 'Unpaid';
+          return {
+            ...f,
+            totalFee: newTotal,
+            balanceDue: newBal,
+            status: newStatus,
+            feeCategory: `Transport Fee (${selectedVillageArea})`
+          };
+        }
+        return f;
+      }));
+
+      try {
+        await api.createResource('student-fees', {
+          assign_type: 'transport',
+          village: selectedVillageArea,
+          student_ids: selectedTransportStudentIds,
+          category: `Transport Fee (${selectedVillageArea})`,
+          amount: amt,
+          due_date: dueDateAssign,
+        });
+      } catch (e) {
+        console.log('Error creating transport fee assignment in DB:', e);
+      }
+
+      setShowAssignFeeModal(false);
+      setAssignedFeeItems([]);
+      showToast(
+        'Transport Fee Assigned!',
+        `Successfully allocated ₹${amt.toLocaleString()} to ${selectedTransportStudentIds.length} students for ${selectedVillageArea} route.`
+      );
+      return;
+    }
+
+    // 2. Single Student / Whole Class Assignment Flow
     let itemsToProcess = [...assignedFeeItems];
     if (itemsToProcess.length === 0) {
       const amt = parseFloat(amountInputAssign);
@@ -413,18 +539,18 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
 
           <Pressable
             onPress={() => setShowImportModal(true)}
-            className="bg-[#101415]/90 border border-white/15 py-2 px-3 rounded-xl flex-row items-center"
+            className="bg-[#101415]/90 border border-white/15 py-2.5 px-3.5 rounded-xl flex-row items-center"
           >
-            <Upload size={13} color={primaryColor} style={{ marginRight: 5 }} />
-            <Text className="text-white text-xs font-bold">Import</Text>
+            <Upload size={15} color={primaryColor} style={{ marginRight: 6 }} />
+            <Text className="text-white text-sm font-bold">Import</Text>
           </Pressable>
 
           <Pressable
             onPress={handleExportFeesReport}
-            className="bg-[#101415]/90 border border-white/15 py-2 px-3 rounded-xl flex-row items-center"
+            className="bg-[#101415]/90 border border-white/15 py-2.5 px-3.5 rounded-xl flex-row items-center"
           >
-            <Download size={13} color={primaryColor} style={{ marginRight: 5 }} />
-            <Text className="text-white text-xs font-bold">Export</Text>
+            <Download size={15} color={primaryColor} style={{ marginRight: 6 }} />
+            <Text className="text-white text-sm font-bold">Export</Text>
           </Pressable>
 
           <Pressable
@@ -432,11 +558,11 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
               if (feeRecords.length > 0) setSelectedStudentForAssign(feeRecords[0].id);
               setShowAssignFeeModal(true);
             }}
-            className={`${primaryBtnClass} py-2 px-3.5 rounded-xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
-            style={{ minWidth: 105 }}
+            className={`${primaryBtnClass} py-2.5 px-4 rounded-xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+            style={{ minWidth: 115 }}
           >
-            <Plus size={14} color="#101415" style={{ marginRight: 4 }} />
-            <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+            <Plus size={16} color="#101415" style={{ marginRight: 5 }} />
+            <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 13.5, fontWeight: '800', flexShrink: 0 }}>
               Assign Fee
             </Text>
           </Pressable>
@@ -444,57 +570,57 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
 
         {/* Top 4 Summary KPI Cards */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Total Collected</Text>
-              <CheckCircle2 size={14} color={primaryColor} />
+          <GlassCard intensity="low" className="w-[48%] p-4 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-white/60 text-xs font-bold uppercase">Total Collected</Text>
+              <CheckCircle2 size={16} color={primaryColor} />
             </View>
-            <Text className={`${primaryTextClass} text-xl font-extrabold`}>₹{(totalCollected / 100000).toFixed(2)}L</Text>
-            <Text className="text-white/50 text-[10px] font-semibold mt-0.5">● Term 2 • 2026</Text>
+            <Text className={`${primaryTextClass} text-2xl font-extrabold`}>₹{(totalCollected / 100000).toFixed(2)}L</Text>
+            <Text className="text-white/60 text-xs font-semibold mt-1">● Term 2 • 2026</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Pending Balance</Text>
-              <AlertCircle size={14} color="#ff516a" />
+          <GlassCard intensity="low" className="w-[48%] p-4 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-white/60 text-xs font-bold uppercase">Pending Balance</Text>
+              <AlertCircle size={16} color="#ff516a" />
             </View>
-            <Text className="text-rose-400 text-xl font-extrabold">₹{(totalDue / 100000).toFixed(2)}L</Text>
-            <Text className="text-rose-300 text-[10px] font-semibold mt-0.5">● {feeRecords.filter(f => f.balanceDue > 0).length} Students</Text>
+            <Text className="text-rose-400 text-2xl font-extrabold">₹{(totalDue / 100000).toFixed(2)}L</Text>
+            <Text className="text-rose-300 text-xs font-semibold mt-1">● {feeRecords.filter(f => f.balanceDue > 0).length} Students</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Paid Students</Text>
-              <User size={14} color="#38bdf8" />
+          <GlassCard intensity="low" className="w-[48%] p-4 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-white/60 text-xs font-bold uppercase">Paid Students</Text>
+              <User size={16} color="#38bdf8" />
             </View>
-            <Text className="text-sky-400 text-xl font-extrabold">{feeRecords.filter(f => f.status === 'Paid').length}</Text>
-            <Text className="text-white/50 text-[10px] font-semibold mt-0.5">Out of {feeRecords.length} total</Text>
+            <Text className="text-sky-400 text-2xl font-extrabold">{feeRecords.filter(f => f.status === 'Paid').length}</Text>
+            <Text className="text-white/60 text-xs font-semibold mt-1">Out of {feeRecords.length} total</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Recovery Rate</Text>
-              <CreditCard size={14} color="#c084fc" />
+          <GlassCard intensity="low" className="w-[48%] p-4 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-white/60 text-xs font-bold uppercase">Recovery Rate</Text>
+              <CreditCard size={16} color="#c084fc" />
             </View>
-            <Text className="text-purple-300 text-xl font-extrabold">{collectionPct}%</Text>
-            <Text className="text-purple-400 text-[10px] font-semibold mt-0.5">● Target Achieved</Text>
+            <Text className="text-purple-300 text-2xl font-extrabold">{collectionPct}%</Text>
+            <Text className="text-purple-400 text-xs font-semibold mt-1">● Target Achieved</Text>
           </GlassCard>
         </View>
 
         {/* Directory Header & Status Tabs */}
         <View className="px-5 mb-3 flex-row items-center justify-between flex-wrap" style={{ gap: 8 }}>
-          <Text className="text-white font-extrabold text-xs sm:text-sm flex-1 min-w-[130px]" numberOfLines={1}>Fee Collection Directory</Text>
+          <Text className="text-white font-extrabold text-base flex-1 min-w-[140px]" numberOfLines={1}>Fee Collection Directory</Text>
 
-          <View className="flex-row bg-[#101415] border border-white/10 p-0.5 rounded-xl flex-shrink-0">
+          <View className="flex-row bg-[#101415] border border-white/10 p-1 rounded-xl flex-shrink-0">
             {(['All', 'Paid', 'Partial', 'Unpaid'] as const).map((filter) => {
               const active = statusFilter === filter;
               return (
                 <Pressable
                   key={filter}
                   onPress={() => setStatusFilter(filter)}
-                  className={`px-2 sm:px-2.5 py-1 rounded-lg ${active ? primaryBtnClass : ''}`}
+                  className={`px-3 py-1.5 rounded-lg ${active ? primaryBtnClass : ''}`}
                 >
-                  <Text className={`text-[9.5px] sm:text-[10px] font-bold ${active ? 'text-[#101415]' : 'text-white/60'}`}>
+                  <Text className={`text-xs font-bold ${active ? 'text-[#101415]' : 'text-white/60'}`}>
                     {filter}
                   </Text>
                 </Pressable>
@@ -505,14 +631,14 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
 
         {/* Search Bar & Dropdowns */}
         <View className="px-5 mb-4">
-          <View className={`bg-[#101415] border rounded-2xl flex-row items-center px-3.5 py-2.5 mb-2.5 shadow-md ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/15'}`}>
-            <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
+          <View className={`bg-[#101415] border rounded-2xl flex-row items-center px-3.5 py-3 mb-2.5 shadow-md ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/15'}`}>
+            <Search size={18} color={primaryColor} style={{ marginRight: 8 }} />
             <TextInput
               placeholder="Search student name, class, or fee category..."
               placeholderTextColor="rgba(255, 255, 255, 0.4)"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 text-white text-xs"
+              className="flex-1 text-white text-sm"
               style={{ paddingVertical: 0 }}
             />
           </View>
@@ -527,16 +653,16 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                   setShowClassDropdown(!showClassDropdown);
                   setShowCategoryDropdown(false);
                 }}
-                className="bg-[#101415] border border-white/15 px-3 py-2 rounded-xl flex-row items-center justify-between"
+                className="bg-[#101415] border border-white/15 px-3.5 py-2.5 rounded-xl flex-row items-center justify-between"
               >
-                <Text className="text-white text-xs font-bold" numberOfLines={1}>
+                <Text className="text-white text-sm font-bold" numberOfLines={1}>
                   {selectedClassFilter}
                 </Text>
-                <ChevronDown size={14} color={primaryColor} />
+                <ChevronDown size={16} color={primaryColor} />
               </Pressable>
 
               {showClassDropdown && (
-                <View className={`absolute top-11 left-0 right-0 z-50 bg-[#101415] border rounded-2xl p-1.5 shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`} style={{ backgroundColor: '#101415' }}>
+                <View className={`absolute top-12 left-0 right-0 z-50 bg-[#101415] border rounded-2xl p-1.5 shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`} style={{ backgroundColor: '#101415' }}>
                   {['All classes', ...classList].map((cls) => (
                     <Pressable
                       key={cls}
@@ -547,10 +673,10 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                       className={`p-2.5 rounded-xl flex-row items-center justify-between ${selectedClassFilter === cls ? primaryBadgeClass : 'active:bg-white/5'
                         }`}
                     >
-                      <Text className={`text-xs ${selectedClassFilter === cls ? `${primaryTextClass} font-extrabold` : 'text-white/80'}`}>
+                      <Text className={`text-sm ${selectedClassFilter === cls ? `${primaryTextClass} font-extrabold` : 'text-white/80'}`}>
                         {cls}
                       </Text>
-                      {selectedClassFilter === cls && <Check size={12} color={primaryColor} />}
+                      {selectedClassFilter === cls && <Check size={14} color={primaryColor} />}
                     </Pressable>
                   ))}
                 </View>
@@ -564,16 +690,16 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                   setShowCategoryDropdown(!showCategoryDropdown);
                   setShowClassDropdown(false);
                 }}
-                className="bg-[#101415] border border-white/15 px-3 py-2 rounded-xl flex-row items-center justify-between"
+                className="bg-[#101415] border border-white/15 px-3.5 py-2.5 rounded-xl flex-row items-center justify-between"
               >
-                <Text className="text-white text-xs font-bold" numberOfLines={1}>
+                <Text className="text-white text-sm font-bold" numberOfLines={1}>
                   {selectedCategoryFilter}
                 </Text>
-                <ChevronDown size={14} color={primaryColor} />
+                <ChevronDown size={16} color={primaryColor} />
               </Pressable>
 
               {showCategoryDropdown && (
-                <View className={`absolute top-11 left-0 right-0 z-50 bg-[#101415] border rounded-2xl p-1.5 shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`} style={{ backgroundColor: '#101415' }}>
+                <View className={`absolute top-12 left-0 right-0 z-50 bg-[#101415] border rounded-2xl p-1.5 shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`} style={{ backgroundColor: '#101415' }}>
                   {['All Fee Categories', ...feeCategoryList].map((cat) => (
                     <Pressable
                       key={cat}
@@ -584,10 +710,10 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                       className={`p-2.5 rounded-xl flex-row items-center justify-between ${selectedCategoryFilter === cat ? primaryBadgeClass : 'active:bg-white/5'
                         }`}
                     >
-                      <Text className={`text-xs ${selectedCategoryFilter === cat ? `${primaryTextClass} font-extrabold` : 'text-white/80'}`}>
+                      <Text className={`text-sm ${selectedCategoryFilter === cat ? `${primaryTextClass} font-extrabold` : 'text-white/80'}`}>
                         {cat}
                       </Text>
-                      {selectedCategoryFilter === cat && <Check size={12} color={primaryColor} />}
+                      {selectedCategoryFilter === cat && <Check size={14} color={primaryColor} />}
                     </Pressable>
                   ))}
                 </View>
@@ -601,12 +727,12 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
         <View className="px-5 mb-8">
           {filteredRecords.length === 0 ? (
             <GlassCard className="p-8 items-center justify-center border border-white/10 bg-[#101415]/90" intensity="low">
-              <Text className="text-white/40 text-xs font-bold">No student fee records found matching filter criteria.</Text>
+              <Text className="text-white/50 text-sm font-bold">No student fee records found matching filter criteria.</Text>
             </GlassCard>
           ) : (
             filteredRecords.map((item) => (
-              <GlassCard key={item.id} intensity="low" className={`p-4 mb-3 border bg-[#101415]/90 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
-                <View className="flex-row items-center justify-between mb-2">
+              <GlassCard key={item.id} intensity="low" className={`p-4 mb-3.5 border bg-[#101415]/90 ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}>
+                <View className="flex-row items-center justify-between mb-2.5">
                   <Pressable
                     onPress={() => {
                       navigation.navigate('StudentPerformance', {
@@ -629,22 +755,22 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                     }}
                     className="flex-row items-center flex-1 mr-2 active:opacity-70"
                   >
-                    <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
-                      <Text className={`${primaryTextClass} font-extrabold text-xs`}>
+                    <View className={`w-11 h-11 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                      <Text className={`${primaryTextClass} font-extrabold text-sm`}>
                         {item.name.split(' ').map(n=>n[0]).join('').slice(0,2)}
                       </Text>
                     </View>
                     <View className="flex-1">
-                      <Text className="text-white font-extrabold text-sm">{item.name}</Text>
-                      <Text className={`${primaryTextClass} text-[10px] font-extrabold uppercase mt-0.5`}>{item.className} • Roll #{item.rollNo}</Text>
+                      <Text className="text-white font-extrabold text-base">{item.name}</Text>
+                      <Text className={`${primaryTextClass} text-xs font-extrabold uppercase mt-0.5`}>{item.className} • Roll #{item.rollNo}</Text>
                     </View>
                   </Pressable>
 
-                  <View className={`px-2.5 py-1 rounded-full border ${item.status === 'Paid' ? primaryBadgeClass :
+                  <View className={`px-3 py-1 rounded-full border ${item.status === 'Paid' ? primaryBadgeClass :
                       item.status === 'Partial' ? 'bg-amber-500/20 border-amber-500/40' :
                         'bg-rose-500/20 border-rose-500/40'
                     }`}>
-                    <Text className={`text-[10px] font-extrabold uppercase ${item.status === 'Paid' ? primaryTextClass :
+                    <Text className={`text-xs font-extrabold uppercase ${item.status === 'Paid' ? primaryTextClass :
                         item.status === 'Partial' ? 'text-amber-400' :
                           'text-rose-400'
                       }`}>
@@ -654,38 +780,38 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                 </View>
 
                 {/* Ledger Breakdown Details */}
-                <View className="bg-black/40 p-3 rounded-2xl border border-white/5 mb-3">
-                  <View className="flex-row justify-between mb-1">
-                    <Text className="text-white/50 text-xs">Category:</Text>
-                    <Text className="text-white/80 font-bold text-xs">{item.feeCategory || 'Class X ( School Fee )'}</Text>
+                <View className="bg-black/40 p-3.5 rounded-2xl border border-white/5 mb-3">
+                  <View className="flex-row justify-between mb-1.5">
+                    <Text className="text-white/60 text-sm">Category:</Text>
+                    <Text className="text-white/90 font-bold text-sm">{item.feeCategory || 'Class X ( School Fee )'}</Text>
                   </View>
-                  <View className="flex-row justify-between mb-1">
-                    <Text className="text-white/50 text-xs">Total Assigned Fee:</Text>
-                    <Text className="text-white font-bold text-xs">₹{item.totalFee.toLocaleString()}</Text>
+                  <View className="flex-row justify-between mb-1.5">
+                    <Text className="text-white/60 text-sm">Total Assigned Fee:</Text>
+                    <Text className="text-white font-bold text-sm">₹{item.totalFee.toLocaleString()}</Text>
                   </View>
-                  <View className="flex-row justify-between mb-1">
-                    <Text className="text-white/50 text-xs">Paid Till Date:</Text>
-                    <Text className={`${primaryTextClass} font-bold text-xs`}>₹{item.paidAmount.toLocaleString()}</Text>
+                  <View className="flex-row justify-between mb-1.5">
+                    <Text className="text-white/60 text-sm">Paid Till Date:</Text>
+                    <Text className={`${primaryTextClass} font-bold text-sm`}>₹{item.paidAmount.toLocaleString()}</Text>
                   </View>
                   <View className="flex-row justify-between">
-                    <Text className="text-white/50 text-xs font-bold">Outstanding Due:</Text>
-                    <Text className="text-rose-400 font-extrabold text-xs">₹{item.balanceDue.toLocaleString()}</Text>
+                    <Text className="text-white/60 text-sm font-bold">Outstanding Due:</Text>
+                    <Text className="text-rose-400 font-extrabold text-sm">₹{item.balanceDue.toLocaleString()}</Text>
                   </View>
                 </View>
 
                 {/* Action Row */}
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-white/40 text-[10px]">Last Payment: {item.lastPaymentDate}</Text>
+                  <Text className="text-white/50 text-xs font-medium">Last Payment: {item.lastPaymentDate}</Text>
 
                   <Pressable
                     onPress={() => handleOpenPaymentModal(item)}
-                    className={`px-3.5 py-2 rounded-xl flex-row items-center ${item.balanceDue === 0 ? 'bg-white/10' : `${primaryBtnClass} shadow-lg`
+                    className={`px-4 py-2.5 rounded-xl flex-row items-center ${item.balanceDue === 0 ? 'bg-white/10' : `${primaryBtnClass} shadow-lg`
                       }`}
                   >
-                    <Text className={`text-xs font-extrabold ${item.balanceDue === 0 ? 'text-white/40' : 'text-[#101415]'}`}>
+                    <Text className={`text-sm font-extrabold ${item.balanceDue === 0 ? 'text-white/40' : 'text-[#101415]'}`}>
                       {item.balanceDue === 0 ? 'No Dues' : 'Collect Payment'}
                     </Text>
-                    <ChevronRight size={14} color={item.balanceDue === 0 ? 'rgba(255,255,255,0.4)' : '#101415'} />
+                    <ChevronRight size={16} color={item.balanceDue === 0 ? 'rgba(255,255,255,0.4)' : '#101415'} />
                   </Pressable>
                 </View>
 
@@ -704,63 +830,63 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
             <View className={`w-full max-w-sm p-5 border rounded-3xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-white/20'}`} style={{ backgroundColor: '#101415' }}>
               <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-white/10">
                 <View>
-                  <Text className="text-white font-extrabold text-base">{selectedFeeStudent.name}</Text>
-                  <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedFeeStudent.className}</Text>
+                  <Text className="text-white font-extrabold text-lg">{selectedFeeStudent.name}</Text>
+                  <Text className={`${primaryTextClass} text-sm font-bold`}>{selectedFeeStudent.className}</Text>
                 </View>
                 <Pressable onPress={() => setSelectedFeeStudent(null)} className="p-1">
                   <X size={20} color="rgba(255,255,255,0.6)" />
                 </Pressable>
               </View>
 
-              <View className="bg-black/60 p-3 rounded-2xl border border-white/10 mb-4">
-                <View className="flex-row justify-between mb-1">
-                  <Text className="text-white/50 text-xs">Total Assigned Fee:</Text>
-                  <Text className="text-white font-bold text-xs">₹{selectedFeeStudent.totalFee.toLocaleString()}</Text>
+              <View className="bg-black/60 p-3.5 rounded-2xl border border-white/10 mb-4">
+                <View className="flex-row justify-between mb-1.5">
+                  <Text className="text-white/60 text-sm">Total Assigned Fee:</Text>
+                  <Text className="text-white font-bold text-sm">₹{selectedFeeStudent.totalFee.toLocaleString()}</Text>
                 </View>
-                <View className="flex-row justify-between mb-1">
-                  <Text className="text-white/50 text-xs">Paid Till Date:</Text>
-                  <Text className={`${primaryTextClass} font-bold text-xs`}>₹{selectedFeeStudent.paidAmount.toLocaleString()}</Text>
+                <View className="flex-row justify-between mb-1.5">
+                  <Text className="text-white/60 text-sm">Paid Till Date:</Text>
+                  <Text className={`${primaryTextClass} font-bold text-sm`}>₹{selectedFeeStudent.paidAmount.toLocaleString()}</Text>
                 </View>
                 <View className="flex-row justify-between">
-                  <Text className="text-white/50 text-xs font-bold">Outstanding Balance:</Text>
-                  <Text className="text-rose-400 font-extrabold text-xs">₹{selectedFeeStudent.balanceDue.toLocaleString()}</Text>
+                  <Text className="text-white/60 text-sm font-bold">Outstanding Balance:</Text>
+                  <Text className="text-rose-400 font-extrabold text-sm">₹{selectedFeeStudent.balanceDue.toLocaleString()}</Text>
                 </View>
               </View>
 
               <View className="mb-4">
-                <Text className="text-white/60 text-xs font-bold uppercase mb-1">Collection Amount (₹)</Text>
+                <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">Collection Amount (₹)</Text>
                 <TextInput
                   value={paymentAmountInput}
                   onChangeText={setPaymentAmountInput}
                   keyboardType="numeric"
                   placeholder="Enter amount"
                   placeholderTextColor="rgba(255,255,255,0.3)"
-                  className="bg-black/60 border border-white/10 text-white font-extrabold text-base p-3 rounded-xl mb-3"
+                  className="bg-black/60 border border-white/10 text-white font-extrabold text-lg p-3 rounded-xl mb-3.5"
                 />
 
-                <Text className="text-white/60 text-xs font-bold uppercase mb-1">Payment Mode</Text>
-                <View className="flex-row mb-3" style={{ gap: 6 }}>
+                <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">Payment Mode</Text>
+                <View className="flex-row mb-3.5" style={{ gap: 6 }}>
                   {(['Cash', 'UPI', 'Bank Transfer', 'Cheque'] as const).map(mode => (
                     <Pressable
                       key={mode}
                       onPress={() => setPaymentModeInput(mode)}
-                      className={`flex-1 py-2 rounded-xl items-center border ${paymentModeInput === mode ? primaryBtnClass : 'bg-white/5 border-white/10'
+                      className={`flex-1 py-2.5 rounded-xl items-center border ${paymentModeInput === mode ? primaryBtnClass : 'bg-white/5 border-white/10'
                         }`}
                     >
-                      <Text className={`text-[10px] font-bold ${paymentModeInput === mode ? 'text-[#101415]' : 'text-white/70'}`}>
+                      <Text className={`text-xs font-bold ${paymentModeInput === mode ? 'text-[#101415]' : 'text-white/70'}`}>
                         {mode}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
 
-                <Text className="text-white/60 text-xs font-bold uppercase mb-1">Reference / Transaction ID</Text>
+                <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">Reference / Transaction ID</Text>
                 <TextInput
                   value={refNoInput}
                   onChangeText={setRefNoInput}
                   placeholder="e.g. UPI8849201"
                   placeholderTextColor="rgba(255,255,255,0.3)"
-                  className="bg-black/60 border border-white/10 text-white text-xs p-3 rounded-xl"
+                  className="bg-black/60 border border-white/10 text-white text-sm p-3 rounded-xl"
                 />
               </View>
 
@@ -768,7 +894,7 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                 onPress={handleProcessFeePayment}
                 className={`w-full py-3.5 ${primaryBtnClass} rounded-xl items-center shadow-lg`}
               >
-                <Text className="text-[#101415] font-extrabold text-xs uppercase tracking-wider">Record Collection</Text>
+                <Text className="text-[#101415] font-extrabold text-sm uppercase tracking-wider">Record Collection</Text>
               </Pressable>
             </View>
           </View>
@@ -782,20 +908,23 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
             <View className={`w-full max-w-md p-5 border rounded-3xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-white/20'}`} style={{ backgroundColor: '#101415' }}>
               <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-white/10">
                 <View className="flex-row items-center">
-                  <Tag size={18} color={primaryColor} style={{ marginRight: 6 }} />
-                  <Text className="text-white font-extrabold text-base">Assign New Fee</Text>
+                  <Tag size={20} color={primaryColor} style={{ marginRight: 8 }} />
+                  <Text className="text-white font-extrabold text-lg">Assign New Fee</Text>
                 </View>
                 <Pressable onPress={() => setShowAssignFeeModal(false)} className="p-1">
                   <X size={20} color="rgba(255,255,255,0.6)" />
                 </Pressable>
               </View>
 
-              <ScrollView className="max-h-[420px]" showsVerticalScrollIndicator={false}>
+              <ScrollView className="max-h-[440px]" showsVerticalScrollIndicator={false}>
                 {/* 1. Radio Target Selection */}
-                <Text className="text-white/60 text-xs font-bold uppercase mb-1.5">Assign Target *</Text>
-                <View className="flex-row mb-3" style={{ gap: 8 }}>
+                <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">Assign Target *</Text>
+                <View className="flex-row mb-3.5" style={{ gap: 6 }}>
                   <Pressable
-                    onPress={() => setAssignTargetType('student')}
+                    onPress={() => {
+                      setAssignTargetType('student');
+                      setSelectedCategoryForAssign('Tuition Fee');
+                    }}
                     className={`flex-1 py-2.5 rounded-xl items-center border ${assignTargetType === 'student' ? primaryBtnClass : 'bg-white/5 border-white/10'
                       }`}
                   >
@@ -805,7 +934,10 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                   </Pressable>
 
                   <Pressable
-                    onPress={() => setAssignTargetType('class')}
+                    onPress={() => {
+                      setAssignTargetType('class');
+                      setSelectedCategoryForAssign('Tuition Fee');
+                    }}
                     className={`flex-1 py-2.5 rounded-xl items-center border ${assignTargetType === 'class' ? primaryBtnClass : 'bg-white/5 border-white/10'
                       }`}
                   >
@@ -813,29 +945,47 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                       Whole Class
                     </Text>
                   </Pressable>
+
+                  <Pressable
+                    onPress={() => {
+                      setAssignTargetType('transport');
+                      setSelectedCategoryForAssign('Transport / Bus Fee');
+                      if (!selectedVillageArea && (villageRates || DEMO_VILLAGE_RATES).length > 0) {
+                        handleSelectVillageRoute((villageRates || DEMO_VILLAGE_RATES)[0].village);
+                      }
+                    }}
+                    className={`flex-1 py-2.5 rounded-xl items-center flex-row justify-center border ${assignTargetType === 'transport' ? primaryBtnClass : 'bg-white/5 border-white/10'
+                      }`}
+                    style={{ gap: 5 }}
+                  >
+                    <Bus size={14} color={assignTargetType === 'transport' ? '#101415' : primaryColor} />
+                    <Text className={`text-xs font-bold ${assignTargetType === 'transport' ? 'text-[#101415]' : 'text-white/70'}`}>
+                      Transport
+                    </Text>
+                  </Pressable>
                 </View>
 
                 {/* Target Dropdown Selection */}
-                {assignTargetType === 'student' ? (
-                  <View className="mb-3">
-                    <View className="mb-2 bg-black/60 border border-white/10 rounded-xl px-3 py-2 flex-row items-center">
-                      <Search size={14} color={primaryColor} style={{ marginRight: 6 }} />
+                {assignTargetType === 'student' && (
+                  <View className="mb-3.5">
+                    <View className="mb-2.5 bg-black/60 border border-white/10 rounded-xl px-3 py-2.5 flex-row items-center">
+                      <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
                       <TextInput
                         placeholder="Search student by name, roll, or class..."
                         placeholderTextColor="rgba(255,255,255,0.4)"
                         value={assignStudentSearchQuery}
                         onChangeText={setAssignStudentSearchQuery}
-                        className="flex-1 text-white text-xs"
+                        className="flex-1 text-white text-sm"
                         style={{ paddingVertical: 0 }}
                       />
                       {assignStudentSearchQuery !== '' && (
                         <Pressable onPress={() => setAssignStudentSearchQuery('')}>
-                          <X size={14} color="rgba(255,255,255,0.5)" />
+                          <X size={16} color="rgba(255,255,255,0.5)" />
                         </Pressable>
                       )}
                     </View>
 
-                    <Text className="text-white/60 text-xs font-bold uppercase mb-1">Select Student</Text>
+                    <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">Select Student</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View className="flex-row" style={{ gap: 6 }}>
                         {feeRecords
@@ -848,10 +998,10 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                             <Pressable
                               key={s.id}
                               onPress={() => setSelectedStudentForAssign(s.id)}
-                              className={`px-3 py-2 rounded-xl border ${selectedStudentForAssign === s.id ? primaryBtnClass : 'bg-black/50 border-white/10'
+                              className={`px-3.5 py-2.5 rounded-xl border ${selectedStudentForAssign === s.id ? primaryBtnClass : 'bg-black/50 border-white/10'
                                 }`}
                             >
-                              <Text className={`text-xs font-bold ${selectedStudentForAssign === s.id ? 'text-[#101415]' : 'text-white/80'}`}>
+                              <Text className={`text-sm font-bold ${selectedStudentForAssign === s.id ? 'text-[#101415]' : 'text-white/80'}`}>
                                 {s.name} ({s.className})
                               </Text>
                             </Pressable>
@@ -859,19 +1009,21 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                       </View>
                     </ScrollView>
                   </View>
-                ) : (
-                  <View className="mb-3">
-                    <Text className="text-white/60 text-xs font-bold uppercase mb-1">Select Class (For Bulk Assignment)</Text>
+                )}
+
+                {assignTargetType === 'class' && (
+                  <View className="mb-3.5">
+                    <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">Select Class (For Bulk Assignment)</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View className="flex-row" style={{ gap: 6 }}>
                         {classList.map(cls => (
                           <Pressable
                             key={cls}
                             onPress={() => setSelectedClassForAssign(cls)}
-                            className={`px-3 py-2 rounded-xl border ${selectedClassForAssign === cls ? primaryBtnClass : 'bg-black/50 border-white/10'
+                            className={`px-3.5 py-2.5 rounded-xl border ${selectedClassForAssign === cls ? primaryBtnClass : 'bg-black/50 border-white/10'
                               }`}
                           >
-                            <Text className={`text-xs font-bold ${selectedClassForAssign === cls ? 'text-[#101415]' : 'text-white/80'}`}>
+                            <Text className={`text-sm font-bold ${selectedClassForAssign === cls ? 'text-[#101415]' : 'text-white/80'}`}>
                               {cls}
                             </Text>
                           </Pressable>
@@ -881,70 +1033,187 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                   </View>
                 )}
 
-                {/* Fee Category Selection */}
-                <View className="mb-3">
-                  <Text className="text-white/60 text-xs font-bold uppercase mb-1">Fee Category *</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View className="flex-row" style={{ gap: 6 }}>
-                      {feeCategoryList.map(cat => (
+                {assignTargetType === 'transport' && (
+                  <View className="mb-3.5">
+                    {/* Village Route Selector */}
+                    <Text className="text-white/70 text-sm font-bold uppercase mb-1.5 flex-row items-center">
+                      Select Village / Transport Route *
+                    </Text>
+                    
+                    <Pressable
+                      onPress={() => setShowVillageRouteDropdown(!showVillageRouteDropdown)}
+                      className="bg-black/60 border border-white/15 rounded-xl px-3.5 py-3 flex-row justify-between items-center mb-2.5"
+                    >
+                      <View className="flex-row items-center">
+                        <MapPin size={16} color={primaryColor} style={{ marginRight: 8 }} />
+                        <Text className="text-white text-sm font-bold">
+                          {selectedVillageArea ? `${selectedVillageArea} Route` : 'Select Village Route'}
+                        </Text>
+                      </View>
+                      <ChevronDown size={16} color={primaryColor} />
+                    </Pressable>
+
+                    {showVillageRouteDropdown && (
+                      <View className="bg-black/90 border border-white/15 rounded-xl p-2.5 mb-2.5 max-h-48">
+                        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
+                          {(villageRates || DEMO_VILLAGE_RATES).map(rate => (
+                            <Pressable
+                              key={rate.id}
+                              onPress={() => handleSelectVillageRoute(rate.village)}
+                              className={`p-2.5 rounded-lg flex-row justify-between items-center ${selectedVillageArea === rate.village ? 'bg-white/15' : 'active:bg-white/5'
+                                }`}
+                            >
+                              <Text className={`text-sm ${selectedVillageArea === rate.village ? `${primaryTextClass} font-bold` : 'text-white/80'}`}>
+                                {rate.village}
+                              </Text>
+                              <Text className="text-emerald-400 font-bold text-sm">₹{rate.amount.toLocaleString()}</Text>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+
+                    {/* Matched Students List */}
+                    <View className="bg-black/40 border border-white/10 rounded-2xl p-3.5 mb-2.5">
+                      <View className="flex-row justify-between items-center mb-2.5 pb-2 border-b border-white/10">
+                        <View className="flex-row items-center">
+                          <Users size={15} color={primaryColor} style={{ marginRight: 6 }} />
+                          <Text className="text-white font-bold text-sm">
+                            Students in {selectedVillageArea || 'Route'} ({selectedTransportStudentIds.length}/{feeRecords.length})
+                          </Text>
+                        </View>
                         <Pressable
-                          key={cat}
-                          onPress={() => setSelectedCategoryForAssign(cat)}
-                          className={`px-3 py-2 rounded-xl border ${selectedCategoryForAssign === cat ? primaryBtnClass : 'bg-black/50 border-white/10'
-                            }`}
+                          onPress={() => {
+                            if (selectedTransportStudentIds.length === feeRecords.length) {
+                              setSelectedTransportStudentIds([]);
+                            } else {
+                              setSelectedTransportStudentIds(feeRecords.map(s => s.id));
+                            }
+                          }}
                         >
-                          <Text className={`text-xs font-bold ${selectedCategoryForAssign === cat ? 'text-[#101415]' : 'text-white/80'}`}>
-                            {cat}
+                          <Text className={`${primaryTextClass} text-xs font-bold`}>
+                            {selectedTransportStudentIds.length === feeRecords.length ? 'Deselect All' : 'Select All'}
                           </Text>
                         </Pressable>
-                      ))}
+                      </View>
+
+                      <ScrollView className="max-h-36" nestedScrollEnabled showsVerticalScrollIndicator={true}>
+                        {feeRecords.map(student => {
+                          const isSelected = selectedTransportStudentIds.includes(student.id);
+
+                          return (
+                            <Pressable
+                              key={student.id}
+                              onPress={() => {
+                                if (isSelected) {
+                                  setSelectedTransportStudentIds(prev => prev.filter(id => id !== student.id));
+                                } else {
+                                  setSelectedTransportStudentIds(prev => [...prev, student.id]);
+                                }
+                              }}
+                              className={`p-2.5 rounded-xl mb-1.5 flex-row justify-between items-center border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110]/15 border-[#f0c110]/30' : 'bg-[#00f1a1]/15 border-[#00f1a1]/30') : 'bg-black/30 border-white/5'
+                                }`}
+                            >
+                              <View className="flex-1 pr-2">
+                                <View className="flex-row items-center">
+                                  <Text className="text-white text-sm font-bold mr-1.5">{student.name}</Text>
+                                  <Text className="text-white/50 text-xs">({student.className})</Text>
+                                </View>
+                                <Text className="text-white/60 text-xs mt-0.5" numberOfLines={1}>
+                                  📍 {student.address || student.village || 'Route Stop'}
+                                </Text>
+                              </View>
+                              <View className={`w-5 h-5 rounded-md items-center justify-center border ${isSelected ? primaryBtnClass : 'border-white/20'
+                                }`}>
+                                {isSelected && <Check size={13} color="#101415" />}
+                              </View>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+
+                      {selectedTransportStudentIds.length > 0 && (
+                        <View className="flex-row justify-between items-center pt-2.5 mt-1 border-t border-white/10">
+                          <Text className="text-white/70 text-xs">Total Allocation:</Text>
+                          <Text className={`${primaryTextClass} font-extrabold text-sm`}>
+                            ₹{(selectedTransportStudentIds.length * Number(amountInputAssign || 0)).toLocaleString()}
+                          </Text>
+                        </View>
+                      )}
                     </View>
-                  </ScrollView>
-                </View>
+                  </View>
+                )}
+
+                {/* Fee Category Selection (Shown for Student & Class) */}
+                {assignTargetType !== 'transport' && (
+                  <View className="mb-3.5">
+                    <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">Fee Category *</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View className="flex-row" style={{ gap: 6 }}>
+                        {feeCategoryList.map(cat => (
+                          <Pressable
+                            key={cat}
+                            onPress={() => setSelectedCategoryForAssign(cat)}
+                            className={`px-3.5 py-2.5 rounded-xl border ${selectedCategoryForAssign === cat ? primaryBtnClass : 'bg-black/50 border-white/10'
+                              }`}
+                          >
+                            <Text className={`text-sm font-bold ${selectedCategoryForAssign === cat ? 'text-[#101415]' : 'text-white/80'}`}>
+                              {cat}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )}
 
                 {/* Amount & Due Date Inputs */}
-                <View className="flex-row justify-between mb-3" style={{ gap: 8 }}>
+                <View className="flex-row justify-between mb-3.5" style={{ gap: 8 }}>
                   <View className="flex-1">
-                    <Text className="text-white/60 text-xs font-bold uppercase mb-1">Amount (₹) *</Text>
+                    <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">
+                      {assignTargetType === 'transport' ? 'Transport Rate (₹) *' : 'Amount (₹) *'}
+                    </Text>
                     <View className="flex-row items-center">
                       <TextInput
                         value={amountInputAssign}
                         onChangeText={setAmountInputAssign}
                         keyboardType="numeric"
-                        className="flex-1 bg-black/60 border border-white/10 text-white font-extrabold text-xs p-2.5 rounded-xl mr-2"
+                        className="flex-1 bg-black/60 border border-white/10 text-white font-extrabold text-sm p-3 rounded-xl mr-2 font-mono"
                       />
-                      <Pressable
-                        onPress={handleAddFeeItemToAssign}
-                        className={`${primaryBtnClass} p-2.5 rounded-xl items-center justify-center`}
-                      >
-                        <Plus size={16} color="#101415" />
-                      </Pressable>
+                      {assignTargetType !== 'transport' && (
+                        <Pressable
+                          onPress={handleAddFeeItemToAssign}
+                          className={`${primaryBtnClass} p-3 rounded-xl items-center justify-center`}
+                        >
+                          <Plus size={18} color="#101415" />
+                        </Pressable>
+                      )}
                     </View>
                   </View>
 
                   <View className="flex-1">
-                    <Text className="text-white/60 text-xs font-bold uppercase mb-1">Due Date *</Text>
+                    <Text className="text-white/70 text-sm font-bold uppercase mb-1.5">Due Date *</Text>
                     <TextInput
                       value={dueDateAssign}
                       onChangeText={setDueDateAssign}
                       placeholder="YYYY-MM-DD"
                       placeholderTextColor="rgba(255,255,255,0.3)"
-                      className="bg-black/60 border border-white/10 text-white text-xs p-2.5 rounded-xl"
+                      className="bg-black/60 border border-white/10 text-white text-sm p-3 rounded-xl"
                     />
                   </View>
                 </View>
 
-                {/* Added Items List */}
-                {assignedFeeItems.length > 0 && (
-                  <View className="mb-4 bg-black/40 p-3 rounded-2xl border border-white/5">
-                    <Text className="text-white/60 text-xs font-bold uppercase mb-2">Items to Assign ({assignedFeeItems.length})</Text>
+                {/* Added Items List (For Multi-Item Single/Class Assignment) */}
+                {assignTargetType !== 'transport' && assignedFeeItems.length > 0 && (
+                  <View className="mb-4 bg-black/40 p-3.5 rounded-2xl border border-white/5">
+                    <Text className="text-white/70 text-sm font-bold uppercase mb-2">Items to Assign ({assignedFeeItems.length})</Text>
                     {assignedFeeItems.map((item, idx) => (
-                      <View key={idx} className="flex-row justify-between items-center py-1.5 border-b border-white/5">
-                        <Text className="text-white font-bold text-xs">{item.category}</Text>
+                      <View key={idx} className="flex-row justify-between items-center py-2 border-b border-white/5">
+                        <Text className="text-white font-bold text-sm">{item.category}</Text>
                         <View className="flex-row items-center">
-                          <Text className={`${primaryTextClass} font-extrabold text-xs mr-3`}>₹{item.amount.toLocaleString()}</Text>
+                          <Text className={`${primaryTextClass} font-extrabold text-sm mr-3 font-mono`}>₹{item.amount.toLocaleString()}</Text>
                           <Pressable onPress={() => setAssignedFeeItems(prev => prev.filter((_, i) => i !== idx))}>
-                            <Trash2 size={13} color="#ff516a" />
+                            <Trash2 size={15} color="#ff516a" />
                           </Pressable>
                         </View>
                       </View>
@@ -958,7 +1227,11 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                 onPress={handleConfirmAssignFee}
                 className={`w-full py-3.5 ${primaryBtnClass} rounded-xl items-center shadow-lg mt-2`}
               >
-                <Text className="text-[#101415] font-extrabold text-xs uppercase tracking-wider">Assign Fee Now</Text>
+                <Text className="text-[#101415] font-extrabold text-sm uppercase tracking-wider">
+                  {assignTargetType === 'transport' 
+                    ? `Assign Transport Fee (${selectedTransportStudentIds.length} Students)`
+                    : 'Assign Fee Now'}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -972,8 +1245,8 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
             <View className={`w-full max-w-sm p-5 border rounded-3xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-white/20'}`} style={{ backgroundColor: '#101415' }}>
               <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-white/10">
                 <View className="flex-row items-center">
-                  <Upload size={18} color={primaryColor} style={{ marginRight: 6 }} />
-                  <Text className="text-white font-extrabold text-base">Import Fee Records</Text>
+                  <Upload size={20} color={primaryColor} style={{ marginRight: 8 }} />
+                  <Text className="text-white font-extrabold text-lg">Import Fee Records</Text>
                 </View>
                 <Pressable onPress={() => setShowImportModal(false)} className="p-1">
                   <X size={20} color="rgba(255,255,255,0.6)" />
@@ -981,18 +1254,20 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
               </View>
 
               <View className="mb-5">
-                <Text className="text-white/60 text-xs mb-3">Upload CSV or Excel file containing student fee details (Student Name, Roll No, Class, Total Fee, Paid Amount).</Text>
+                <Text className="text-white/70 text-sm mb-3.5 leading-relaxed">
+                  Upload CSV or Excel file containing student fee details (Student Name, Roll No, Class, Total Fee, Paid Amount).
+                </Text>
 
                 <Pressable
                   onPress={handlePickImportFile}
-                  className={`bg-black/50 border border-dashed p-5 rounded-2xl items-center justify-center ${isSuperAdmin ? 'border-[#f0c110]/50' : 'border-[#00f1a1]/50'}`}
+                  className={`bg-black/50 border border-dashed p-6 rounded-2xl items-center justify-center ${isSuperAdmin ? 'border-[#f0c110]/50' : 'border-[#00f1a1]/50'}`}
                 >
-                  <FileSpreadsheet size={28} color={primaryColor} style={{ marginBottom: 6 }} />
-                  <Text className="text-white font-bold text-xs">
+                  <FileSpreadsheet size={32} color={primaryColor} style={{ marginBottom: 8 }} />
+                  <Text className="text-white font-bold text-sm">
                     {selectedImportFile ? selectedImportFile.name : 'Tap to Choose CSV/Excel File'}
                   </Text>
                   {selectedImportFile && (
-                    <Text className={`${primaryTextClass} text-[10px] mt-1`}>{selectedImportFile.size}</Text>
+                    <Text className={`${primaryTextClass} text-xs mt-1 font-semibold`}>{selectedImportFile.size}</Text>
                   )}
                 </Pressable>
               </View>
@@ -1002,7 +1277,7 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
                 disabled={isImporting}
                 className={`w-full py-3.5 ${primaryBtnClass} rounded-xl items-center shadow-lg`}
               >
-                <Text className="text-[#101415] font-extrabold text-xs uppercase tracking-wider">
+                <Text className="text-[#101415] font-extrabold text-sm uppercase tracking-wider">
                   {isImporting ? 'Importing Records...' : 'Start Fee Import'}
                 </Text>
               </Pressable>
@@ -1013,12 +1288,12 @@ export const FeeCollectionScreen: React.FC<any> = ({ navigation: propNavigation 
 
       {/* Toast Banner */}
       {toastMessage && (
-        <View className={`absolute bottom-6 left-5 right-5 ${primaryBtnClass} p-3.5 rounded-2xl flex-row items-center justify-between shadow-2xl`}>
+        <View className={`absolute bottom-6 left-5 right-5 ${primaryBtnClass} p-4 rounded-2xl flex-row items-center justify-between shadow-2xl`}>
           <View>
-            <Text className="text-[#101415] font-extrabold text-xs">{toastMessage.title}</Text>
-            <Text className="text-[#101415]/80 text-[10px]">{toastMessage.desc}</Text>
+            <Text className="text-[#101415] font-extrabold text-sm">{toastMessage.title}</Text>
+            <Text className="text-[#101415]/80 text-xs mt-0.5">{toastMessage.desc}</Text>
           </View>
-          <CheckCircle2 size={18} color="#101415" />
+          <CheckCircle2 size={20} color="#101415" />
         </View>
       )}
     </View>

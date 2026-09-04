@@ -41,9 +41,22 @@ const DEFAULT_PERIOD_TIMINGS: PeriodTiming[] = [
   { period: 8, label: 'Period 7', start: '01:45', end: '02:30' }
 ];
 
+export const getSubjectsForClass = (clsName: string): string[] => {
+  if (!clsName) return ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Computer Science', 'Physical Education', 'Break'];
+  const cleanClass = clsName.replace(/^Class\s*/i, '').trim();
+
+  const match = cleanClass.match(/^(\d+)/);
+  const classNum = match ? parseInt(match[1], 10) : 10;
+
+  if (classNum >= 8) {
+    return ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social Studies', 'Computer Science', 'Physical Education', 'Hindi', 'Break'];
+  }
+  return ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Computer Science', 'Physical Education', 'Art', 'Break'];
+};
+
 const SUBJECTS = [
   'Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 
-  'Social Studies', 'Computer Science', 'Physical Education', 'Hindi', 'Telugu', 'Art', 'Music'
+  'Social Studies', 'Computer Science', 'Physical Education', 'Hindi', 'Telugu', 'Art', 'Music', 'Break'
 ];
 
 const ROOMS = [
@@ -725,7 +738,7 @@ export const TimetableBuilderScreen: React.FC<any> = ({ navigation }) => {
               <Text className="text-white/70 text-xs font-bold mb-1.5">Subject *</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
                 <View className="flex-row" style={{ gap: 6 }}>
-                  {SUBJECTS.map(sub => {
+                  {getSubjectsForClass(selectedClass).map(sub => {
                     const isSel = formSubject === sub;
                     return (
                       <Pressable
