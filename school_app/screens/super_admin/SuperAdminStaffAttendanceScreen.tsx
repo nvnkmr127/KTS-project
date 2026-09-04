@@ -246,8 +246,8 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
             onPress={handleMarkAllPresent}
             className="px-3.5 py-2.5 rounded-xl bg-[#f0c110]/15 border border-[#f0c110]/30 flex-row items-center active:scale-95"
           >
-            <UserCheck size={16} color="#f0c110" style={{ marginRight: 6 }} />
-            <Text className="text-[#f0c110] text-xs font-bold uppercase">Mark All Present</Text>
+            <UserCheck size={18} color="#f0c110" style={{ marginRight: 6 }} />
+            <Text className="text-[#f0c110] text-sm font-bold uppercase">Mark All Present</Text>
           </Pressable>
         </BlurView>
 
@@ -266,7 +266,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
         {/* Date Selector Navigation Bar */}
         <View className="px-5 mb-5">
           <GlassCard
-            className="p-3 border border-white/15 flex-row items-center justify-between"
+            className="p-3.5 border border-white/15 flex-row items-center justify-between"
             style={{ backgroundColor: '#1d2122' }}
           >
             <Pressable
@@ -278,23 +278,23 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
 
             <View className="items-center flex-1 px-2">
               <View className="flex-row items-center gap-1.5">
-                <Calendar size={14} color="#f0c110" />
-                <Text className="text-white font-extrabold text-sm">{formattedDateString}</Text>
+                <Calendar size={16} color="#f0c110" />
+                <Text className="text-white font-extrabold text-base">{formattedDateString}</Text>
                 {isSunday && (
-                  <View className="px-1.5 py-0.5 rounded bg-red-500/20 border border-red-500/30">
-                    <Text className="text-rose-400 text-[9px] font-bold">Sunday</Text>
+                  <View className="px-2 py-0.5 rounded bg-red-500/20 border border-red-500/30">
+                    <Text className="text-rose-400 text-xs font-bold">Sunday</Text>
                   </View>
                 )}
               </View>
-              <Text className="text-white/40 text-[10px] font-mono mt-0.5">{selectedDate}</Text>
+              <Text className="text-white/50 text-xs font-mono mt-0.5">{selectedDate}</Text>
             </View>
 
             <View className="flex-row items-center gap-1.5">
               <Pressable
                 onPress={handleSetToday}
-                className="px-2.5 py-1.5 rounded-lg bg-[#f0c110]/15 border border-[#f0c110]/30 active:scale-95"
+                className="px-3 py-1.5 rounded-lg bg-[#f0c110]/15 border border-[#f0c110]/30 active:scale-95"
               >
-                <Text className="text-[#f0c110] text-[10px] font-bold uppercase">Today</Text>
+                <Text className="text-[#f0c110] text-xs font-bold uppercase">Today</Text>
               </Pressable>
 
               {(() => {
@@ -319,47 +319,47 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
         {/* KPI Stat Cards (4 columns) */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 8 }}>
           <GlassCard
-            className="w-[23%] p-2.5 border border-white/10 items-center"
+            className="w-[23%] p-3 border border-white/10 items-center"
             style={{ backgroundColor: '#1d2122' }}
           >
-            <Text className="text-white/40 text-[8.5px] font-bold uppercase text-center">Total Staff</Text>
-            <Text className="text-white text-lg font-extrabold mt-0.5">{totalStaffCount}</Text>
+            <Text className="text-white/60 text-[10px] sm:text-xs font-extrabold uppercase text-center" numberOfLines={1}>Total Staff</Text>
+            <Text className="text-white text-xl font-black mt-1 font-mono">{totalStaffCount}</Text>
           </GlassCard>
 
           <GlassCard
-            className="w-[23%] p-2.5 border border-white/10 items-center"
+            className="w-[23%] p-3 border border-white/10 items-center"
             style={{ backgroundColor: '#1d2122' }}
           >
-            <Text className="text-white/40 text-[8.5px] font-bold uppercase text-center">Present</Text>
-            <Text className="text-[#41eec2] text-lg font-extrabold mt-0.5">{presentCount}</Text>
+            <Text className="text-white/60 text-[10px] sm:text-xs font-extrabold uppercase text-center" numberOfLines={1}>Present</Text>
+            <Text className="text-[#41eec2] text-xl font-black mt-1 font-mono">{presentCount}</Text>
           </GlassCard>
 
           <GlassCard
-            className="w-[23%] p-2.5 border border-white/10 items-center"
+            className="w-[23%] p-3 border border-white/10 items-center"
             style={{ backgroundColor: '#1d2122' }}
           >
-            <Text className="text-white/40 text-[8.5px] font-bold uppercase text-center">Absent/Leave</Text>
-            <Text className="text-rose-400 text-lg font-extrabold mt-0.5">{absentCount}</Text>
+            <Text className="text-white/60 text-[10px] sm:text-xs font-extrabold uppercase text-center" numberOfLines={1}>Absent/Leave</Text>
+            <Text className="text-rose-400 text-xl font-black mt-1 font-mono">{absentCount}</Text>
           </GlassCard>
 
           <GlassCard
-            className="w-[23%] p-2.5 border border-white/10 items-center"
+            className="w-[23%] p-3 border border-white/10 items-center"
             style={{ backgroundColor: '#1d2122' }}
           >
-            <Text className="text-white/40 text-[8.5px] font-bold uppercase text-center">Rate %</Text>
-            <Text className="text-[#ffe5a0] text-lg font-extrabold mt-0.5">{attendanceRate}%</Text>
+            <Text className="text-white/60 text-[10px] sm:text-xs font-extrabold uppercase text-center" numberOfLines={1}>Rate %</Text>
+            <Text className="text-[#ffe5a0] text-xl font-black mt-1 font-mono">{attendanceRate}%</Text>
           </GlassCard>
         </View>
 
         {/* Biometric Integration Banner */}
         <View className="px-5 mb-4">
-          <View className="bg-[#f0c110]/10 border border-[#f0c110]/25 p-3 rounded-2xl flex-row items-center">
-            <View className="w-8 h-8 rounded-xl bg-[#f0c110]/20 items-center justify-center mr-3">
-              <Fingerprint size={18} color="#f0c110" />
+          <View className="bg-[#f0c110]/10 border border-[#f0c110]/25 p-3.5 rounded-2xl flex-row items-center">
+            <View className="w-9 h-9 rounded-xl bg-[#f0c110]/20 items-center justify-center mr-3">
+              <Fingerprint size={20} color="#f0c110" />
             </View>
             <View className="flex-1">
-              <Text className="text-[#ffe5a0] font-extrabold text-xs">e-TimeOffice Biometric Sync Active</Text>
-              <Text className="text-white/60 text-[10px] mt-0.5">
+              <Text className="text-[#ffe5a0] font-extrabold text-sm">e-TimeOffice Biometric Sync Active</Text>
+              <Text className="text-white/70 text-xs mt-0.5 font-medium leading-relaxed">
                 Super Admin can override attendance status or timings. Changes sync to cloud archive.
               </Text>
             </View>
@@ -375,7 +375,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
               onChangeText={setSearchQuery}
               placeholder="Search faculty name or biometric code..."
               placeholderTextColor="rgba(255,255,255,0.4)"
-              className="flex-1 text-white text-xs font-semibold"
+              className="flex-1 text-white text-sm font-medium"
             />
           </View>
         </View>
@@ -390,11 +390,11 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
                   <Pressable
                     key={dept}
                     onPress={() => setSelectedDeptFilter(dept)}
-                    className={`px-3.5 py-1.5 rounded-xl border ${
+                    className={`px-4 py-2 rounded-xl border ${
                       isSel ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-white/5 border-white/15'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
+                    <Text className={`text-sm font-bold ${isSel ? 'text-[#101415]' : 'text-white/80'}`}>
                       {dept}
                     </Text>
                   </Pressable>
@@ -409,8 +409,8 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
           {filteredStaff.length === 0 ? (
             <GlassCard className="p-8 items-center justify-center border border-white/10" style={{ backgroundColor: '#1d2122' }}>
               <Users size={32} color="#ffe5a0" style={{ opacity: 0.5, marginBottom: 12 }} />
-              <Text className="text-white font-bold text-sm">No Faculty Found</Text>
-              <Text className="text-white/40 text-xs mt-1 text-center">
+              <Text className="text-white font-extrabold text-base">No Faculty Found</Text>
+              <Text className="text-white/60 text-sm mt-1 text-center font-medium">
                 No staff records match the selected department filter.
               </Text>
             </GlassCard>
@@ -433,36 +433,37 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
                   <View className="flex-row items-center flex-1 mr-2">
                     <Image
                       source={{ uri: staff.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150' }}
-                      className="w-12 h-12 rounded-2xl border border-white/15 mr-3"
+                      className="w-13 h-13 rounded-2xl border border-white/15 mr-3"
+                      style={{ width: 48, height: 48 }}
                     />
                     <View className="flex-1">
-                      <Text className="text-white font-extrabold text-sm" numberOfLines={1}>
+                      <Text className="text-white font-extrabold text-base" numberOfLines={1}>
                         {staff.name}
                       </Text>
-                      <Text className="text-[#ffe5a0] text-[11px] font-bold mt-0.5" numberOfLines={1}>
+                      <Text className="text-[#ffe5a0] text-xs font-bold mt-0.5" numberOfLines={1}>
                         {staff.designation || staff.department} • {staff.biometric_employee_code || `BIO-${staff.id}`}
                       </Text>
                     </View>
                   </View>
 
                   <View className="flex-row items-center">
-                    <Fingerprint size={13} color={staff.biometricSynced !== false ? '#41eec2' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
-                    <Text className={`text-[10px] font-bold ${staff.biometricSynced !== false ? 'text-[#41eec2]' : 'text-white/40'}`}>
+                    <Fingerprint size={14} color={staff.biometricSynced !== false ? '#41eec2' : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
+                    <Text className={`text-xs font-bold ${staff.biometricSynced !== false ? 'text-[#41eec2]' : 'text-white/50'}`}>
                       {staff.biometricSynced !== false ? 'Synced' : 'Manual'}
                     </Text>
                   </View>
                 </View>
 
                 {/* Timing Info Row */}
-                <View className="flex-row justify-between items-center bg-black/40 p-2.5 rounded-xl border border-white/5 mb-3">
+                <View className="flex-row justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5 mb-3">
                   <View className="flex-row items-center">
-                    <Clock size={13} color="#ffe5a0" style={{ marginRight: 5 }} />
-                    <Text className="text-white/80 text-xs font-semibold">
+                    <Clock size={15} color="#ffe5a0" style={{ marginRight: 5 }} />
+                    <Text className="text-white/80 text-sm font-semibold font-mono">
                       IN: <Text className="text-white font-bold">{staff.inTime || '08:30 AM'}</Text>  |  OUT: <Text className="text-white font-bold">{staff.outTime || '04:30 PM'}</Text>
                     </Text>
                   </View>
 
-                  <Text className="text-white/40 text-[10px] font-mono uppercase">{staff.category || staff.department}</Text>
+                  <Text className="text-white/50 text-xs font-mono uppercase font-bold">{staff.category || staff.department}</Text>
                 </View>
 
                 {/* Interactive Status Toggle Buttons (Super Admin Override) */}
@@ -481,15 +482,15 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
                       <Pressable
                         key={st.key}
                         onPress={() => handleUpdateStatus(staff.id, st.key)}
-                        className={`flex-1 py-2 rounded-xl items-center justify-center border transition-all active:scale-95 ${
+                        className={`flex-1 py-2.5 rounded-xl items-center justify-center border transition-all active:scale-95 ${
                           isSelected
                             ? `${st.bg} border-transparent shadow-sm`
                             : 'bg-white/5 border-white/10'
                         }`}
                       >
                         <Text
-                          className={`text-[11px] font-extrabold ${
-                            isSelected ? 'text-[#101415]' : 'text-white/60'
+                          className={`text-xs font-extrabold ${
+                            isSelected ? 'text-[#101415]' : 'text-white/70'
                           }`}
                         >
                           {st.label}
@@ -515,7 +516,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
             ) : (
               <Save size={18} color="#101415" style={{ marginRight: 8 }} />
             )}
-            <Text className="text-[#101415] text-sm font-extrabold uppercase tracking-wider">
+            <Text className="text-[#101415] text-base font-extrabold uppercase tracking-wider">
               {saving ? 'Saving Records...' : 'Save & Sync Attendance'}
             </Text>
           </Pressable>
@@ -545,10 +546,10 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
               <Check size={24} color="#f0c110" strokeWidth={3} />
             </View>
 
-            <Text className="text-white text-lg font-bold font-display-md text-center mb-2">
+            <Text className="text-white text-xl font-bold font-display-md text-center mb-2">
               {customAlert.title}
             </Text>
-            <Text className="text-white/60 text-xs text-center leading-relaxed mb-6 px-1">
+            <Text className="text-white/70 text-sm text-center leading-relaxed mb-6 px-1 font-medium">
               {customAlert.message}
             </Text>
 
@@ -556,7 +557,7 @@ export const SuperAdminStaffAttendanceScreen: React.FC = () => {
               onPress={() => setCustomAlert((prev) => ({ ...prev, visible: false }))}
               className="w-full py-3.5 rounded-xl bg-[#f0c110] items-center active:scale-95 shadow-md shadow-[#f0c110]/30"
             >
-              <Text className="text-[#101415] text-xs font-bold uppercase tracking-wider">Dismiss</Text>
+              <Text className="text-[#101415] text-sm font-extrabold uppercase tracking-wider">Dismiss</Text>
             </Pressable>
           </GlassCard>
         </View>

@@ -180,19 +180,19 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/95">
             <View className="flex-row items-center justify-between pb-3 border-b border-white/10 mb-4">
               <View className="flex-row items-center">
-                <Sliders size={18} color={primaryColor} style={{ marginRight: 8 }} />
-                <Text className="text-white font-extrabold text-base">Automated Parent Alert Rules</Text>
+                <Sliders size={20} color={primaryColor} style={{ marginRight: 8 }} />
+                <Text className="text-white font-extrabold text-lg">Automated Parent Alert Rules</Text>
               </View>
-              <View className={`px-2.5 py-1 rounded-xl ${primaryBadgeClass}`}>
-                <Text className={`${primaryTextClass} text-[10px] font-extrabold uppercase`}>Auto-Sync Active</Text>
+              <View className={`px-3 py-1 rounded-xl ${primaryBadgeClass}`}>
+                <Text className={`${primaryTextClass} text-xs font-extrabold uppercase`}>Auto-Sync Active</Text>
               </View>
             </View>
 
             {/* Rule 1: Fee Payment Due Reminder */}
-            <View className="flex-row items-center justify-between py-3 border-b border-white/5">
+            <View className="flex-row items-center justify-between py-3.5 border-b border-white/5">
               <View className="flex-1 mr-3">
-                <Text className="text-white font-bold text-xs">Fee Payment Due Reminder</Text>
-                <Text className="text-white/50 text-[10px] mt-0.5">Send automated SMS & Push notification 3 days prior to fee due date</Text>
+                <Text className="text-white font-bold text-base">Fee Payment Due Reminder</Text>
+                <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Send automated SMS & Push notification 3 days prior to fee due date</Text>
               </View>
               <Switch
                 value={feeDueReminder}
@@ -203,10 +203,10 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
             </View>
 
             {/* Rule 2: Overdue Fee Warning Notice */}
-            <View className="flex-row items-center justify-between py-3 border-b border-white/5">
+            <View className="flex-row items-center justify-between py-3.5 border-b border-white/5">
               <View className="flex-1 mr-3">
-                <Text className="text-white font-bold text-xs">Overdue Fee Warning Notice</Text>
-                <Text className="text-white/50 text-[10px] mt-0.5">Send weekly automated warning alerts to parents for unpaid installments</Text>
+                <Text className="text-white font-bold text-base">Overdue Fee Warning Notice</Text>
+                <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Send weekly automated warning alerts to parents for unpaid installments</Text>
               </View>
               <Switch
                 value={feeOverdueNotice}
@@ -217,10 +217,10 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
             </View>
 
             {/* Rule 3: Payment Receipt Confirmation */}
-            <View className="flex-row items-center justify-between py-3 border-b border-white/5">
+            <View className="flex-row items-center justify-between py-3.5 border-b border-white/5">
               <View className="flex-1 mr-3">
-                <Text className="text-white font-bold text-xs">Instant Payment Receipt SMS</Text>
-                <Text className="text-white/50 text-[10px] mt-0.5">Send instant payment confirmation receipt upon offline/online fee collection</Text>
+                <Text className="text-white font-bold text-base">Instant Payment Receipt SMS</Text>
+                <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Send instant payment confirmation receipt upon offline/online fee collection</Text>
               </View>
               <Switch
                 value={paymentConfirmationReceipt}
@@ -231,10 +231,10 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
             </View>
 
             {/* Rule 4: Absence Alert */}
-            <View className="flex-row items-center justify-between pt-3">
+            <View className="flex-row items-center justify-between pt-3.5">
               <View className="flex-1 mr-3">
-                <Text className="text-white font-bold text-xs">Student Absence Parent Alert</Text>
-                <Text className="text-white/50 text-[10px] mt-0.5">Notify parents automatically at 10:00 AM if student is marked absent</Text>
+                <Text className="text-white font-bold text-base">Student Absence Parent Alert</Text>
+                <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Notify parents automatically at 10:00 AM if student is marked absent</Text>
               </View>
               <Switch
                 value={absenceAlert}
@@ -251,29 +251,29 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/95">
             <View className="flex-row items-center justify-between pb-3 border-b border-white/10 mb-4">
               <View className="flex-row items-center">
-                <Send size={18} color={primaryColor} style={{ marginRight: 8 }} />
-                <Text className="text-white font-extrabold text-base">Send Instant Alert to Parents</Text>
+                <Send size={20} color={primaryColor} style={{ marginRight: 8 }} />
+                <Text className="text-white font-extrabold text-lg">Send Instant Alert to Parents</Text>
               </View>
             </View>
 
             {/* Target Class Dropdown Selector */}
             <View className="mb-4">
-              <Text className="text-white/70 text-xs font-bold mb-1.5">Target Recipient Class *</Text>
+              <Text className="text-white/80 text-sm font-bold mb-1.5">Target Recipient Class *</Text>
               <Pressable
                 onPress={() => setShowClassDropdown(true)}
-                className="bg-black/60 border border-white/15 rounded-2xl px-3.5 py-3 flex-row justify-between items-center"
+                className="bg-black/60 border border-white/15 rounded-2xl px-4 py-3 flex-row justify-between items-center"
               >
                 <View className="flex-row items-center">
-                  <Users size={16} color={primaryColor} style={{ marginRight: 8 }} />
-                  <Text className="text-white font-bold text-xs">{selectedTargetClass}</Text>
+                  <Users size={18} color={primaryColor} style={{ marginRight: 8 }} />
+                  <Text className="text-white font-bold text-base">{selectedTargetClass}</Text>
                 </View>
-                <ChevronDown size={16} color="rgba(255,255,255,0.6)" />
+                <ChevronDown size={18} color="rgba(255,255,255,0.7)" />
               </Pressable>
             </View>
 
             {/* Template Selector Pills */}
             <View className="mb-4">
-              <Text className="text-white/70 text-xs font-bold mb-2">Alert Category / Quick Template *</Text>
+              <Text className="text-white/80 text-sm font-bold mb-2">Alert Category / Quick Template *</Text>
               <View className="flex-row" style={{ gap: 8 }}>
                 {(['Fee Due', 'Fee Overdue', 'Custom Notice'] as const).map(t => {
                   const isSel = selectedTemplate === t;
@@ -281,11 +281,11 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
                     <Pressable
                       key={t}
                       onPress={() => handleSelectTemplate(t)}
-                      className={`px-3 py-2 rounded-xl border flex-1 items-center ${
+                      className={`px-3.5 py-2.5 rounded-xl border flex-1 items-center ${
                         isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/10'
                       }`}
                     >
-                      <Text className={`text-xs font-extrabold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>{t}</Text>
+                      <Text className={`text-sm font-extrabold ${isSel ? 'text-[#101415]' : 'text-white/80'}`}>{t}</Text>
                     </Pressable>
                   );
                 })}
@@ -294,7 +294,7 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
 
             {/* Message Body Input */}
             <View className="mb-4">
-              <Text className="text-white/70 text-xs font-bold mb-1.5">Alert Message Content *</Text>
+              <Text className="text-white/80 text-sm font-bold mb-1.5">Alert Message Content *</Text>
               <TextInput
                 value={customMessageText}
                 onChangeText={setCustomMessageText}
@@ -302,43 +302,43 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
                 numberOfLines={4}
                 placeholder="Type alert message to parents..."
                 placeholderTextColor="rgba(255,255,255,0.3)"
-                className="bg-black/60 border border-white/15 rounded-2xl text-white p-3 text-xs leading-relaxed"
+                className="bg-black/60 border border-white/15 rounded-2xl text-white p-3.5 text-sm leading-relaxed font-medium"
                 style={{ textAlignVertical: 'top' }}
               />
             </View>
 
             {/* Delivery Channels */}
             <View className="mb-5">
-              <Text className="text-white/70 text-xs font-bold mb-2">Select Delivery Channels *</Text>
+              <Text className="text-white/80 text-sm font-bold mb-2">Select Delivery Channels *</Text>
               <View className="flex-row justify-between" style={{ gap: 8 }}>
                 <Pressable
                   onPress={() => setSendPush(!sendPush)}
-                  className={`flex-1 p-2.5 rounded-xl border flex-row items-center justify-center ${
+                  className={`flex-1 p-3 rounded-xl border flex-row items-center justify-center ${
                     sendPush ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : 'bg-white/5 border-white/10'
                   }`}
                 >
-                  <Smartphone size={14} color={sendPush ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 6 }} />
-                  <Text className={`text-xs font-bold ${sendPush ? primaryTextClass : 'text-white/60'}`}>Push</Text>
+                  <Smartphone size={16} color={sendPush ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 6 }} />
+                  <Text className={`text-sm font-bold ${sendPush ? primaryTextClass : 'text-white/60'}`}>Push</Text>
                 </Pressable>
 
                 <Pressable
                   onPress={() => setSendSMS(!sendSMS)}
-                  className={`flex-1 p-2.5 rounded-xl border flex-row items-center justify-center ${
+                  className={`flex-1 p-3 rounded-xl border flex-row items-center justify-center ${
                     sendSMS ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : 'bg-white/5 border-white/10'
                   }`}
                 >
-                  <MessageSquare size={14} color={sendSMS ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 6 }} />
-                  <Text className={`text-xs font-bold ${sendSMS ? primaryTextClass : 'text-white/60'}`}>SMS</Text>
+                  <MessageSquare size={16} color={sendSMS ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 6 }} />
+                  <Text className={`text-sm font-bold ${sendSMS ? primaryTextClass : 'text-white/60'}`}>SMS</Text>
                 </Pressable>
 
                 <Pressable
                   onPress={() => setSendWhatsApp(!sendWhatsApp)}
-                  className={`flex-1 p-2.5 rounded-xl border flex-row items-center justify-center ${
+                  className={`flex-1 p-3 rounded-xl border flex-row items-center justify-center ${
                     sendWhatsApp ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : 'bg-white/5 border-white/10'
                   }`}
                 >
-                  <MessageSquare size={14} color={sendWhatsApp ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 6 }} />
-                  <Text className={`text-xs font-bold ${sendWhatsApp ? primaryTextClass : 'text-white/60'}`}>WhatsApp</Text>
+                  <MessageSquare size={16} color={sendWhatsApp ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 6 }} />
+                  <Text className={`text-sm font-bold ${sendWhatsApp ? primaryTextClass : 'text-white/60'}`}>WhatsApp</Text>
                 </Pressable>
               </View>
             </View>
@@ -347,12 +347,12 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
             <Pressable
               onPress={handleSendInstantAlert}
               disabled={isSending}
-              className={`py-3.5 rounded-2xl items-center flex-row justify-center shadow-lg ${
+              className={`py-4 rounded-2xl items-center flex-row justify-center shadow-lg ${
                 isSending ? 'bg-white/20' : primaryBtnClass
               }`}
             >
-              <Send size={16} color="#101415" style={{ marginRight: 6 }} />
-              <Text className="text-[#101415] font-extrabold text-xs uppercase tracking-wider">
+              <Send size={18} color="#101415" style={{ marginRight: 6 }} />
+              <Text className="text-[#101415] font-extrabold text-sm uppercase tracking-wider">
                 {isSending ? 'Broadcasting Alert...' : 'Dispatch Alert to Parents'}
               </Text>
             </Pressable>
@@ -362,25 +362,25 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
         {/* SECTION 3: RECENT SENT ALERTS LOGS */}
         <View className="px-5 mb-8">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Alert Broadcast History ({alertLogs.length})</Text>
-            <History size={14} color={primaryColor} />
+            <Text className="text-white/70 text-sm font-extrabold uppercase tracking-wider">Alert Broadcast History ({alertLogs.length})</Text>
+            <History size={16} color={primaryColor} />
           </View>
 
           {alertLogs.map(log => (
-            <GlassCard key={log.id} intensity="low" className="mb-3 p-3.5 border-white/10 bg-[#101415]/90">
-              <View className="flex-row justify-between items-start mb-2">
+            <GlassCard key={log.id} intensity="low" className="mb-3.5 p-4 border-white/10 bg-[#101415]/90">
+              <View className="flex-row justify-between items-start mb-2.5">
                 <View className="flex-1 mr-2">
-                  <Text className="text-white font-extrabold text-sm">{log.title}</Text>
-                  <Text className={`${primaryTextClass} text-[10px] font-bold mt-0.5`}>{log.targetClass} • {log.recipientCount} Parents</Text>
+                  <Text className="text-white font-extrabold text-base">{log.title}</Text>
+                  <Text className={`${primaryTextClass} text-xs font-bold mt-0.5`}>{log.targetClass} • {log.recipientCount} Parents</Text>
                 </View>
-                <View className={`px-2 py-0.5 rounded-lg ${primaryBadgeClass}`}>
-                  <Text className={`${primaryTextClass} text-[9px] font-black`}>{log.status}</Text>
+                <View className={`px-2.5 py-1 rounded-lg ${primaryBadgeClass}`}>
+                  <Text className={`${primaryTextClass} text-xs font-black`}>{log.status}</Text>
                 </View>
               </View>
 
-              <View className="flex-row justify-between items-center pt-2 border-t border-white/5">
-                <Text className="text-white/40 text-[10px]">Via {log.channel}</Text>
-                <Text className="text-white/50 text-[10px] font-semibold">{log.sentAt}</Text>
+              <View className="flex-row justify-between items-center pt-2.5 border-t border-white/5">
+                <Text className="text-white/50 text-xs font-medium">Via {log.channel}</Text>
+                <Text className="text-white/60 text-xs font-semibold">{log.sentAt}</Text>
               </View>
             </GlassCard>
           ))}
@@ -393,8 +393,8 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
       {showClassDropdown && (
         <Modal visible transparent animationType="fade" onRequestClose={() => setShowClassDropdown(false)}>
           <View className="flex-1 bg-black/85 justify-center items-center p-4">
-            <View className={`w-full max-w-xs p-4 border rounded-3xl ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`} style={{ backgroundColor: '#101415' }}>
-              <Text className="text-white font-extrabold text-sm mb-3 text-center">Select Recipient Class</Text>
+            <View className={`w-full max-w-xs p-5 border rounded-3xl ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`} style={{ backgroundColor: '#101415' }}>
+              <Text className="text-white font-extrabold text-base mb-3.5 text-center">Select Recipient Class</Text>
               
               {availableClasses.map(cls => {
                 const isSelected = selectedTargetClass === cls;
@@ -405,12 +405,12 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
                       setSelectedTargetClass(cls);
                       setShowClassDropdown(false);
                     }}
-                    className={`py-3 px-3 rounded-xl mb-1.5 flex-row justify-between items-center ${
+                    className={`py-3 px-3.5 rounded-xl mb-2 flex-row justify-between items-center ${
                       isSelected ? (isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]' : 'bg-[#00f1a1]/20 border border-[#00f1a1]') : 'bg-white/5 border border-white/10'
                     }`}
                   >
-                    <Text className={`text-xs font-bold ${isSelected ? primaryTextClass : 'text-white'}`}>{cls}</Text>
-                    {isSelected && <Check size={14} color={primaryColor} />}
+                    <Text className={`text-sm font-bold ${isSelected ? primaryTextClass : 'text-white'}`}>{cls}</Text>
+                    {isSelected && <Check size={16} color={primaryColor} />}
                   </Pressable>
                 );
               })}
@@ -421,12 +421,12 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
 
       {/* TOAST NOTIFICATION */}
       {toastData.visible && (
-        <View className={`absolute bottom-6 left-5 right-5 ${primaryBtnClass} p-3.5 rounded-2xl flex-row items-center justify-between shadow-lg`}>
+        <View className={`absolute bottom-6 left-5 right-5 ${primaryBtnClass} p-4 rounded-2xl flex-row items-center justify-between shadow-lg`}>
           <View className="flex-1 mr-2">
-            <Text className="text-[#101415] font-extrabold text-xs">{toastData.title}</Text>
-            <Text className="text-[#101415]/80 text-[10px]">{toastData.message}</Text>
+            <Text className="text-[#101415] font-extrabold text-sm">{toastData.title}</Text>
+            <Text className="text-[#101415]/90 text-xs font-medium mt-0.5">{toastData.message}</Text>
           </View>
-          <CheckCircle2 size={20} color="#101415" />
+          <CheckCircle2 size={22} color="#101415" />
         </View>
       )}
 

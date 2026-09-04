@@ -107,22 +107,22 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
         
         {/* Top 3 KPI Summary Cards */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
-          <GlassCard intensity="low" className="w-[31%] p-3 border-white/10 bg-[#101415]/80 items-center">
-            <Text className="text-white/40 text-[9px] font-bold uppercase mb-1">Students</Text>
-            <Text className="text-[#00f1a1] text-lg font-extrabold">{deletedStudents.length}</Text>
-            <Text className="text-[#00f1a1] text-[9px] font-semibold">● Restorable</Text>
+          <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/80 items-center">
+            <Text className="text-white/60 text-xs font-extrabold uppercase tracking-wider mb-1">Students</Text>
+            <Text className="text-[#00f1a1] text-2xl font-black font-mono">{deletedStudents.length}</Text>
+            <Text className="text-[#00f1a1] text-xs font-bold mt-0.5">● Restorable</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[31%] p-3 border-white/10 bg-[#101415]/80 items-center">
-            <Text className="text-white/40 text-[9px] font-bold uppercase mb-1">Staff</Text>
-            <Text className="text-sky-400 text-lg font-extrabold">{deletedStaff.length}</Text>
-            <Text className="text-sky-300 text-[9px] font-semibold">● Restorable</Text>
+          <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/80 items-center">
+            <Text className="text-white/60 text-xs font-extrabold uppercase tracking-wider mb-1">Staff</Text>
+            <Text className="text-sky-400 text-2xl font-black font-mono">{deletedStaff.length}</Text>
+            <Text className="text-sky-300 text-xs font-bold mt-0.5">● Restorable</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[31%] p-3 border-white/10 bg-[#101415]/80 items-center">
-            <Text className="text-white/40 text-[9px] font-bold uppercase mb-1">Activity Logs</Text>
-            <Text className="text-purple-300 text-lg font-extrabold">{deletedLogs.length}</Text>
-            <Text className="text-purple-400 text-[9px] font-semibold">● Archived</Text>
+          <GlassCard intensity="low" className="w-[31%] p-3.5 border-white/10 bg-[#101415]/80 items-center">
+            <Text className="text-white/60 text-xs font-extrabold uppercase tracking-wider mb-1">Activity Logs</Text>
+            <Text className="text-purple-300 text-2xl font-black font-mono">{deletedLogs.length}</Text>
+            <Text className="text-purple-400 text-xs font-bold mt-0.5">● Archived</Text>
           </GlassCard>
         </View>
 
@@ -131,27 +131,27 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
           <View className="flex-row bg-[#101415] p-1.5 rounded-2xl border border-white/10" style={{ gap: 6 }}>
             <Pressable
               onPress={() => setActiveTab('students')}
-              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'students' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+              className={`flex-1 py-2.5 rounded-xl items-center ${activeTab === 'students' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
             >
-              <Text className={`text-xs font-extrabold ${activeTab === 'students' ? 'text-[#101415]' : 'text-white/60'}`}>
+              <Text className={`text-sm font-extrabold ${activeTab === 'students' ? 'text-[#101415]' : 'text-white/70'}`}>
                 Students ({deletedStudents.length})
               </Text>
             </Pressable>
 
             <Pressable
               onPress={() => setActiveTab('staff')}
-              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'staff' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+              className={`flex-1 py-2.5 rounded-xl items-center ${activeTab === 'staff' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
             >
-              <Text className={`text-xs font-extrabold ${activeTab === 'staff' ? 'text-[#101415]' : 'text-white/60'}`}>
+              <Text className={`text-sm font-extrabold ${activeTab === 'staff' ? 'text-[#101415]' : 'text-white/70'}`}>
                 Staff ({deletedStaff.length})
               </Text>
             </Pressable>
 
             <Pressable
               onPress={() => setActiveTab('logs')}
-              className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'logs' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
+              className={`flex-1 py-2.5 rounded-xl items-center ${activeTab === 'logs' ? 'bg-[#00f1a1]' : 'bg-transparent'}`}
             >
-              <Text className={`text-xs font-extrabold ${activeTab === 'logs' ? 'text-[#101415]' : 'text-white/60'}`}>
+              <Text className={`text-sm font-extrabold ${activeTab === 'logs' ? 'text-[#101415]' : 'text-white/70'}`}>
                 Logs ({deletedLogs.length})
               </Text>
             </Pressable>
@@ -161,18 +161,18 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
         {/* Search Bar */}
         <View className="px-5 mb-4">
           <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
-            <Search size={16} color="#00f1a1" style={{ marginRight: 8 }} />
+            <Search size={18} color="#00f1a1" style={{ marginRight: 8 }} />
             <TextInput
               placeholder="Search deleted records..."
               placeholderTextColor="rgba(255, 255, 255, 0.4)"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 text-white text-xs"
+              className="flex-1 text-white text-sm font-medium"
               style={{ paddingVertical: 0 }}
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')}>
-                <X size={15} color="rgba(255, 255, 255, 0.5)" />
+                <X size={16} color="rgba(255, 255, 255, 0.5)" />
               </Pressable>
             )}
           </View>
@@ -180,47 +180,47 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
 
         {/* Deleted Items List */}
         <View className="px-5">
-          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Archived Trash Items ({filteredList.length})</Text>
+          <Text className="text-white/70 text-sm font-extrabold uppercase tracking-wider mb-3">Archived Trash Items ({filteredList.length})</Text>
 
           {filteredList.length > 0 ? (
             filteredList.map(item => (
-              <GlassCard key={item.id} intensity="low" className="mb-3 p-4 border-white/10 bg-[#101415]/90">
-                <View className="flex-row justify-between items-center mb-2 pb-2.5 border-b border-white/10">
+              <GlassCard key={item.id} intensity="low" className="mb-3.5 p-4 border-white/10 bg-[#101415]/90">
+                <View className="flex-row justify-between items-center mb-2.5 pb-3 border-b border-white/10">
                   <View className="flex-1 mr-2">
-                    <Text className="text-white font-extrabold text-sm">{item.name}</Text>
-                    <Text className="text-white/50 text-[10.5px] mt-0.5">{item.details}</Text>
+                    <Text className="text-white font-extrabold text-base">{item.name}</Text>
+                    <Text className="text-white/70 text-xs font-medium mt-1">{item.details}</Text>
                   </View>
 
                   {/* Actions: Restore & Permanent Purge Delete */}
-                  <View className="flex-row items-center" style={{ gap: 6 }}>
+                  <View className="flex-row items-center" style={{ gap: 8 }}>
                     <Pressable
                       onPress={() => handleOpenAction(item, 'restore')}
-                      className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3 py-1.5 rounded-xl flex-row items-center"
+                      className="bg-[#00f1a1]/15 border border-[#00f1a1]/40 px-3.5 py-2 rounded-xl flex-row items-center"
                     >
-                      <RotateCcw size={12} color="#00f1a1" style={{ marginRight: 4 }} />
-                      <Text className="text-[#00f1a1] text-xs font-extrabold">Restore</Text>
+                      <RotateCcw size={14} color="#00f1a1" style={{ marginRight: 5 }} />
+                      <Text className="text-[#00f1a1] text-sm font-extrabold">Restore</Text>
                     </Pressable>
 
                     <Pressable
                       onPress={() => handleOpenAction(item, 'purge')}
-                      className="bg-rose-500/15 border border-rose-500/40 p-2 rounded-xl"
+                      className="bg-rose-500/15 border border-rose-500/40 p-2.5 rounded-xl"
                     >
-                      <Trash2 size={13} color="#ff516a" />
+                      <Trash2 size={16} color="#ff516a" />
                     </Pressable>
                   </View>
                 </View>
 
                 <View className="flex-row justify-between items-center">
-                  <Text className="text-white/40 text-[9.5px]">Deleted At: {item.deletedAt}</Text>
-                  <Text className="text-white/40 text-[9.5px]">By: {item.deletedBy}</Text>
+                  <Text className="text-white/50 text-xs font-medium">Deleted At: {item.deletedAt}</Text>
+                  <Text className="text-white/50 text-xs font-medium">By: {item.deletedBy}</Text>
                 </View>
               </GlassCard>
             ))
           ) : (
             <GlassCard intensity="low" className="p-6 border-white/10 bg-[#101415]/90 items-center justify-center">
               <CheckCircle2 size={28} color="#00f1a1" style={{ marginBottom: 8 }} />
-              <Text className="text-white font-bold text-sm">Recycle Bin Empty!</Text>
-              <Text className="text-white/40 text-xs mt-1">No deleted records in {activeTab} section.</Text>
+              <Text className="text-white font-extrabold text-base">Recycle Bin Empty!</Text>
+              <Text className="text-white/60 text-sm mt-1 font-medium">No deleted records in {activeTab} section.</Text>
             </GlassCard>
           )}
         </View>
@@ -240,11 +240,11 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
               )}
             </View>
 
-            <Text className="text-white text-lg font-extrabold text-center mb-1">
+            <Text className="text-white text-xl font-extrabold text-center mb-1.5">
               {confirmModal.actionType === 'purge' ? 'Permanently Purge Item?' : 'Restore Record?'}
             </Text>
 
-            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">
+            <Text className="text-white/80 text-sm text-center mb-6 leading-relaxed px-2 font-medium">
               {confirmModal.actionType === 'purge'
                 ? `Are you sure you want to permanently delete "${confirmModal.item?.name}" from database? This action CANNOT be undone.`
                 : `Restore "${confirmModal.item?.name}" back to active school directory?`
@@ -253,13 +253,13 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
 
             <View className="flex-row w-full" style={{ gap: 10 }}>
               <Pressable onPress={() => setConfirmModal(prev => ({ ...prev, visible: false }))} className="flex-1 py-3.5 rounded-xl bg-white/10 items-center">
-                <Text className="text-white font-bold text-xs">Cancel</Text>
+                <Text className="text-white font-bold text-sm">Cancel</Text>
               </Pressable>
               <Pressable
                 onPress={handleConfirmAction}
                 className={`flex-1 py-3.5 rounded-xl items-center ${confirmModal.actionType === 'purge' ? 'bg-rose-500' : 'bg-[#00f1a1]'}`}
               >
-                <Text className={`font-extrabold text-xs ${confirmModal.actionType === 'purge' ? 'text-white' : 'text-[#101415]'}`}>
+                <Text className={`font-extrabold text-sm ${confirmModal.actionType === 'purge' ? 'text-white' : 'text-[#101415]'}`}>
                   {confirmModal.actionType === 'purge' ? 'Purge Forever' : 'Restore Record'}
                 </Text>
               </Pressable>
@@ -280,14 +280,14 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
               )}
             </View>
 
-            <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
-            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
+            <Text className="text-white text-xl font-extrabold text-center mb-1.5">{toastData.title}</Text>
+            <Text className="text-white/80 text-sm text-center mb-6 leading-relaxed px-2 font-medium">{toastData.message}</Text>
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
               className="w-full py-3.5 rounded-xl bg-[#00f1a1] items-center shadow-[0_0_12px_rgba(0,241,161,0.4)]"
             >
-              <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
+              <Text className="text-[#101415] font-extrabold text-base">Got it</Text>
             </Pressable>
           </View>
         </View>

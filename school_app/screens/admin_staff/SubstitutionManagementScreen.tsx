@@ -140,51 +140,51 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
         
         {/* KPI Cards */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Absent Faculty</Text>
-              <UserX size={14} color="#ff516a" />
+          <GlassCard intensity="low" className="w-[48%] p-4 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-white/60 text-xs font-extrabold uppercase tracking-wider">Absent Faculty</Text>
+              <UserX size={16} color="#ff516a" />
             </View>
-            <Text className="text-rose-400 text-xl font-extrabold">{absentTeachers.length} On Leave</Text>
-            <Text className="text-rose-300 text-[10px] font-semibold mt-0.5">● Today (2026-08-04)</Text>
+            <Text className="text-rose-400 text-2xl font-black">{absentTeachers.length} On Leave</Text>
+            <Text className="text-rose-300 text-xs font-bold mt-1">● Today (2026-08-04)</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/80">
-            <View className="flex-row items-center justify-between mb-1">
-              <Text className="text-white/40 text-[10px] font-bold uppercase">Active Subs</Text>
-              <CheckCircle2 size={14} color={primaryColor} />
+          <GlassCard intensity="low" className="w-[48%] p-4 border-white/10 bg-[#101415]/80">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-white/60 text-xs font-extrabold uppercase tracking-wider">Active Subs</Text>
+              <CheckCircle2 size={16} color={primaryColor} />
             </View>
-            <Text className={`${primaryTextClass} text-xl font-extrabold`}>{activeSubstitutions.length} Allotted</Text>
-            <Text className={`${primaryTextClass} text-[10px] font-semibold mt-0.5`}>● Period Covered</Text>
+            <Text className={`${primaryTextClass} text-2xl font-black`}>{activeSubstitutions.length} Allotted</Text>
+            <Text className={`${primaryTextClass} text-xs font-bold mt-1`}>● Period Covered</Text>
           </GlassCard>
         </View>
 
         {/* Unassigned Period Slots (Absent Teachers) */}
         <View className="px-5 mb-5">
-          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Unassigned Periods Requiring Substitutes ({absentTeachers.length})</Text>
+          <Text className="text-white/70 text-sm font-extrabold uppercase tracking-wider mb-3">Unassigned Periods Requiring Substitutes ({absentTeachers.length})</Text>
 
           {absentTeachers.length > 0 ? (
             absentTeachers.map(ab => (
-              <GlassCard key={ab.id} intensity="low" className="mb-3 p-4 border-white/10 bg-[#101415]/90">
+              <GlassCard key={ab.id} intensity="low" className="mb-3.5 p-4 border-white/10 bg-[#101415]/90">
                 <View className="flex-row justify-between items-start pb-3 border-b border-white/10 mb-3">
                   <View className="flex-1 mr-2">
                     <View className="flex-row items-center">
-                      <Text className="text-white font-extrabold text-base mr-2">{ab.targetClass}</Text>
-                      <View className="bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-md">
-                        <Text className="text-rose-400 text-[9.5px] font-bold">{ab.unassignedPeriod}</Text>
+                      <Text className="text-white font-extrabold text-lg mr-2">{ab.targetClass}</Text>
+                      <View className="bg-rose-500/20 border border-rose-500/40 px-2.5 py-0.5 rounded-md">
+                        <Text className="text-rose-400 text-xs font-bold">{ab.unassignedPeriod}</Text>
                       </View>
                     </View>
-                    <Text className={`${primaryTextClass} text-xs font-bold mt-0.5`}>{ab.timeSlot}</Text>
-                    <Text className="text-white/50 text-[11px] mt-0.5">Absent: {ab.name} ({ab.subject})</Text>
+                    <Text className={`${primaryTextClass} text-sm font-bold mt-1`}>{ab.timeSlot}</Text>
+                    <Text className="text-white/70 text-sm font-medium mt-1">Absent: {ab.name} ({ab.subject})</Text>
                   </View>
 
                   <Pressable
                     onPress={() => handleOpenAssignModal(ab)}
-                    className={`${primaryBtnClass} px-3.5 py-2 rounded-xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
-                    style={{ minWidth: 100 }}
+                    className={`${primaryBtnClass} px-3.5 py-2.5 rounded-xl flex-row items-center justify-center shadow-lg active:scale-95 flex-shrink-0`}
+                    style={{ minWidth: 110 }}
                   >
-                    <UserPlus size={13} color="#101415" style={{ marginRight: 4 }} />
-                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 12, fontWeight: '800', flexShrink: 0 }}>
+                    <UserPlus size={15} color="#101415" style={{ marginRight: 4 }} />
+                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#101415', fontSize: 13, fontWeight: '800', flexShrink: 0 }}>
                       Assign Sub
                     </Text>
                   </Pressable>
@@ -192,33 +192,33 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
               </GlassCard>
             ))
           ) : (
-            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 items-center justify-center">
-              <CheckCircle2 size={24} color={primaryColor} style={{ marginBottom: 6 }} />
-              <Text className="text-white font-bold text-xs">All Absent Periods Covered!</Text>
-              <Text className="text-white/40 text-[10px] mt-0.5">No unassigned period slots remaining today.</Text>
+            <GlassCard intensity="low" className="p-5 border-white/10 bg-[#101415]/90 items-center justify-center">
+              <CheckCircle2 size={28} color={primaryColor} style={{ marginBottom: 8 }} />
+              <Text className="text-white font-extrabold text-base">All Absent Periods Covered!</Text>
+              <Text className="text-white/60 text-sm mt-1 font-medium">No unassigned period slots remaining today.</Text>
             </GlassCard>
           )}
         </View>
 
         {/* Active Substitute Assignments Summary List */}
         <View className="px-5">
-          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Today's Assigned Substitutions ({activeSubstitutions.length})</Text>
+          <Text className="text-white/70 text-sm font-extrabold uppercase tracking-wider mb-3">Today's Assigned Substitutions ({activeSubstitutions.length})</Text>
 
           {activeSubstitutions.map(sub => (
-            <GlassCard key={sub.id} intensity="low" className="mb-3 p-3.5 border-white/10 bg-[#101415]/90">
+            <GlassCard key={sub.id} intensity="low" className="mb-3 p-4 border-white/10 bg-[#101415]/90">
               <View className="flex-row items-center justify-between">
-                <View className="flex-1">
+                <View className="flex-1 mr-2">
                   <View className="flex-row items-center">
-                    <Text className="text-white font-extrabold text-sm mr-2">{sub.targetClass}</Text>
-                    <Text className={`${primaryTextClass} text-xs font-bold`}>{sub.period}</Text>
+                    <Text className="text-white font-extrabold text-base mr-2">{sub.targetClass}</Text>
+                    <Text className={`${primaryTextClass} text-sm font-bold`}>{sub.period}</Text>
                   </View>
-                  <Text className="text-white/60 text-xs mt-1">
+                  <Text className="text-white/80 text-sm mt-1 font-medium">
                     Substitute: <Text className="text-white font-bold">{sub.subTeacher}</Text> (for {sub.originalTeacher})
                   </Text>
                 </View>
 
-                <View className={`px-2.5 py-1 rounded-xl ${primaryBadgeClass}`}>
-                  <Text className={`${primaryTextClass} text-[10px] font-bold`}>Active ✓</Text>
+                <View className={`px-3 py-1 rounded-xl ${primaryBadgeClass}`}>
+                  <Text className={`${primaryTextClass} text-xs font-bold`}>Active ✓</Text>
                 </View>
               </View>
             </GlassCard>
@@ -234,21 +234,21 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
           <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-md p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
-                  <UserPlus size={16} color={primaryColor} />
+                <View className={`w-9 h-9 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <UserPlus size={18} color={primaryColor} />
                 </View>
                 <View>
-                  <Text className="text-white font-bold text-base">Assign Substitute</Text>
-                  <Text className={`${primaryTextClass} text-[11px] font-bold`}>{selectedUnassigned?.targetClass} • {selectedUnassigned?.unassignedPeriod}</Text>
+                  <Text className="text-white font-extrabold text-lg">Assign Substitute</Text>
+                  <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedUnassigned?.targetClass} • {selectedUnassigned?.unassignedPeriod}</Text>
                 </View>
               </View>
-              <Pressable onPress={() => setSelectedUnassigned(null)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
-                <X size={14} color="#ffffff" />
+              <Pressable onPress={() => setSelectedUnassigned(null)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                <X size={16} color="#ffffff" />
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 300 }}>
-              <Text className="text-white/70 text-xs font-bold mb-2">Available Free Teachers for {selectedUnassigned?.unassignedPeriod} *</Text>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+              <Text className="text-white/80 text-sm font-bold mb-2.5">Available Free Teachers for {selectedUnassigned?.unassignedPeriod} *</Text>
 
               {MOCK_FREE_TEACHERS.map(ft => {
                 const isSel = selectedSubTeacherId === ft.id;
@@ -256,15 +256,15 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={ft.id}
                     onPress={() => setSelectedSubTeacherId(ft.id)}
-                    className={`p-3 rounded-2xl border mb-2.5 flex-row justify-between items-center ${isSel ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
+                    className={`p-3.5 rounded-2xl border mb-2.5 flex-row justify-between items-center ${isSel ? (isSuperAdmin ? 'bg-[#f0c110]/20 border-[#f0c110]' : 'bg-[#00f1a1]/20 border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
                   >
-                    <View>
-                      <Text className={`text-xs font-extrabold ${isSel ? primaryTextClass : 'text-white'}`}>{ft.name}</Text>
-                      <Text className="text-white/40 text-[10px]">{ft.subject} • {ft.freeStatus}</Text>
+                    <View className="flex-1 mr-2">
+                      <Text className={`text-base font-extrabold ${isSel ? primaryTextClass : 'text-white'}`}>{ft.name}</Text>
+                      <Text className="text-white/60 text-xs mt-0.5 font-medium">{ft.subject} • {ft.freeStatus}</Text>
                     </View>
 
-                    <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
-                      <Text className={`${primaryTextClass} text-[9px] font-bold`}>Free Slot</Text>
+                    <View className={`px-2.5 py-1 rounded-lg ${primaryBadgeClass}`}>
+                      <Text className={`${primaryTextClass} text-xs font-bold`}>Free Slot</Text>
                     </View>
                   </Pressable>
                 );
@@ -272,11 +272,11 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
             </ScrollView>
 
             <View className="flex-row border-t border-white/10 pt-3 mt-2" style={{ gap: 10 }}>
-              <Pressable onPress={() => setSelectedUnassigned(null)} className="flex-1 py-3 rounded-xl bg-white/10 items-center">
-                <Text className="text-white font-bold text-xs">Cancel</Text>
+              <Pressable onPress={() => setSelectedUnassigned(null)} className="flex-1 py-3.5 rounded-xl bg-white/10 items-center">
+                <Text className="text-white font-bold text-sm">Cancel</Text>
               </Pressable>
-              <Pressable onPress={handleConfirmSubstitute} className={`flex-1 py-3 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
-                <Text className="text-[#101415] font-extrabold text-xs">Confirm Sub</Text>
+              <Pressable onPress={handleConfirmSubstitute} className={`flex-1 py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}>
+                <Text className="text-[#101415] font-extrabold text-sm">Confirm Sub</Text>
               </Pressable>
             </View>
           </View>
@@ -295,14 +295,14 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
               )}
             </View>
 
-            <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
-            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
+            <Text className="text-white text-xl font-extrabold text-center mb-1.5">{toastData.title}</Text>
+            <Text className="text-white/80 text-sm text-center mb-6 leading-relaxed px-2 font-medium">{toastData.message}</Text>
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
               className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
-              <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
+              <Text className="text-[#101415] font-extrabold text-base">Got it</Text>
             </Pressable>
           </View>
         </View>

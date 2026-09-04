@@ -136,61 +136,61 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
         
         {/* View Only Mode Notification Ribbon */}
         <View className="px-5 mb-4">
-          <View className="bg-sky-500/15 border border-sky-500/30 p-3 rounded-2xl flex-row items-center">
-            <View className="w-8 h-8 rounded-xl bg-sky-500/20 items-center justify-center mr-3">
-              <Eye size={18} color="#38bdf8" />
+          <View className="bg-sky-500/15 border border-sky-500/30 p-3.5 rounded-2xl flex-row items-center">
+            <View className="w-9 h-9 rounded-xl bg-sky-500/20 items-center justify-center mr-3">
+              <Eye size={20} color="#38bdf8" />
             </View>
             <View className="flex-1">
-              <Text className="text-sky-400 font-extrabold text-xs">View Only Mode Active</Text>
-              <Text className="text-sky-200/70 text-[10px] mt-0.5">Admin Staff login has view-only access. Super Admin manages staff members and attendance modifications.</Text>
+              <Text className="text-sky-400 font-extrabold text-sm">View Only Mode Active</Text>
+              <Text className="text-sky-200/80 text-xs mt-0.5 font-medium leading-relaxed">Admin Staff login has view-only access. Super Admin manages staff members and attendance modifications.</Text>
             </View>
           </View>
         </View>
 
         {/* Top 4 KPI Metrics Cards */}
         <View className="px-5 mb-5 flex-row flex-wrap justify-between" style={{ gap: 10 }}>
-          <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
-            <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Total Staff</Text>
-            <Text className="text-white text-lg font-extrabold mt-0.5">{totalStaffCount}</Text>
+          <GlassCard intensity="low" className="w-[23%] p-3 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/60 text-[10px] sm:text-xs font-extrabold uppercase text-center" numberOfLines={1}>Total Staff</Text>
+            <Text className="text-white text-xl font-black mt-1 font-mono">{totalStaffCount}</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
-            <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Present</Text>
-            <Text className={`${primaryTextClass} text-lg font-extrabold mt-0.5`}>{presentCount}</Text>
+          <GlassCard intensity="low" className="w-[23%] p-3 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/60 text-[10px] sm:text-xs font-extrabold uppercase text-center" numberOfLines={1}>Present</Text>
+            <Text className={`${primaryTextClass} text-xl font-black mt-1 font-mono`}>{presentCount}</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
-            <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Absent/Leave</Text>
-            <Text className="text-rose-400 text-lg font-extrabold mt-0.5">{absentCount}</Text>
+          <GlassCard intensity="low" className="w-[23%] p-3 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/60 text-[10px] sm:text-xs font-extrabold uppercase text-center" numberOfLines={1}>Absent/Leave</Text>
+            <Text className="text-rose-400 text-xl font-black mt-1 font-mono">{absentCount}</Text>
           </GlassCard>
 
-          <GlassCard intensity="low" className="w-[23%] p-2.5 border-white/10 bg-[#101415]/90 items-center">
-            <Text className="text-white/50 text-[8.5px] font-bold uppercase text-center">Half Day</Text>
-            <Text className="text-amber-400 text-lg font-extrabold mt-0.5">{halfDayCount}</Text>
+          <GlassCard intensity="low" className="w-[23%] p-3 border-white/10 bg-[#101415]/90 items-center">
+            <Text className="text-white/60 text-[10px] sm:text-xs font-extrabold uppercase text-center" numberOfLines={1}>Half Day</Text>
+            <Text className="text-amber-400 text-xl font-black mt-1 font-mono">{halfDayCount}</Text>
           </GlassCard>
         </View>
 
         {/* Date Selector & Navigation Bar */}
-        <View className="px-5 mb-4 flex-row justify-between items-center">
-          <View className="flex-row items-center bg-[#101415]/90 border border-white/10 p-1 rounded-xl">
+        <View className="px-5 mb-4 flex-row justify-between items-center flex-wrap" style={{ gap: 8 }}>
+          <View className="flex-row items-center bg-[#101415]/90 border border-white/10 p-1.5 rounded-xl">
             <Pressable
               onPress={() => handleStepDate(-1)}
-              className="w-7 h-7 rounded-lg bg-white/5 items-center justify-center mr-1"
+              className="w-8 h-8 rounded-lg bg-white/5 items-center justify-center mr-1"
             >
-              <ChevronLeft size={16} color="rgba(255,255,255,0.7)" />
+              <ChevronLeft size={18} color="rgba(255,255,255,0.8)" />
             </Pressable>
 
-            <View className="flex-row items-center px-2 py-0.5">
-              <Calendar size={13} color={primaryColor} style={{ marginRight: 6 }} />
-              <Text className="text-white font-extrabold text-xs">{selectedDate}</Text>
+            <View className="flex-row items-center px-2.5 py-0.5">
+              <Calendar size={15} color={primaryColor} style={{ marginRight: 6 }} />
+              <Text className="text-white font-extrabold text-sm font-mono">{selectedDate}</Text>
             </View>
 
             <Pressable
               onPress={() => handleStepDate(1)}
               disabled={isToday}
-              className={`w-7 h-7 rounded-lg items-center justify-center ml-1 ${isToday ? 'bg-white/5 opacity-30' : 'bg-white/10'}`}
+              className={`w-8 h-8 rounded-lg items-center justify-center ml-1 ${isToday ? 'bg-white/5 opacity-30' : 'bg-white/10'}`}
             >
-              <ChevronRight size={16} color="rgba(255,255,255,0.7)" />
+              <ChevronRight size={18} color="rgba(255,255,255,0.8)" />
             </Pressable>
           </View>
 
@@ -198,14 +198,14 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
             {!isToday && (
               <Pressable
                 onPress={handleSetToday}
-                className="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/15"
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15"
               >
-                <Text className="text-white/80 text-[10px] font-bold">Today</Text>
+                <Text className="text-white/90 text-xs font-bold">Today</Text>
               </Pressable>
             )}
-            <View className={`px-2.5 py-1.5 rounded-xl flex-row items-center ${primaryBadgeClass}`}>
-              <ShieldCheck size={12} color={primaryColor} style={{ marginRight: 4 }} />
-              <Text className={`${primaryTextClass} text-[10px] font-bold`}>e-TimeOffice Live</Text>
+            <View className={`px-3 py-2 rounded-xl flex-row items-center ${primaryBadgeClass}`}>
+              <ShieldCheck size={14} color={primaryColor} style={{ marginRight: 5 }} />
+              <Text className={`${primaryTextClass} text-xs font-bold`}>e-TimeOffice Live</Text>
             </View>
           </View>
         </View>
@@ -213,13 +213,13 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
         {/* Search Bar */}
         <View className="px-5 mb-4">
           <View className="bg-[#101415]/90 border border-white/10 rounded-2xl px-3.5 py-2.5 flex-row items-center">
-            <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
+            <Search size={18} color={primaryColor} style={{ marginRight: 8 }} />
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search faculty name or emp code..."
               placeholderTextColor="rgba(255,255,255,0.4)"
-              className="flex-1 text-white text-xs"
+              className="flex-1 text-white text-sm font-medium"
             />
           </View>
         </View>
@@ -234,9 +234,9 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     key={d}
                     onPress={() => setSelectedDeptFilter(d)}
-                    className={`px-3 py-1.5 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-[#101415]/90 border-white/10'}`}
+                    className={`px-4 py-2 rounded-xl border ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-[#101415]/90 border-white/10'}`}
                   >
-                    <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
+                    <Text className={`text-sm font-bold ${isSel ? 'text-[#101415]' : 'text-white/80'}`}>
                       {d}
                     </Text>
                   </Pressable>
@@ -250,36 +250,37 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
         <View className="px-5 mb-8">
           {filteredStaff.length === 0 ? (
             <GlassCard className="p-8 items-center justify-center border border-white/10 bg-[#101415]/90" intensity="low">
-              <Text className="text-white/40 text-xs font-bold">No staff members found matching filter.</Text>
+              <Text className="text-white/60 text-sm font-bold">No staff members found matching filter.</Text>
             </GlassCard>
           ) : (
             filteredStaff.map(staff => {
               const currentStatus = staff.attendanceStatus || (staff.status === 'On Leave' ? 'Leave' : 'Present');
               return (
-                <GlassCard key={staff.id} intensity="low" className="p-4 mb-3 border-white/10 bg-[#101415]/90">
+                <GlassCard key={staff.id} intensity="low" className="p-4 mb-3.5 border-white/10 bg-[#101415]/90">
                   
                   {/* Profile Header Row */}
                   <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-white/10">
                     <View className="flex-row items-center flex-1 mr-2">
                       <Image
                         source={{ uri: staff.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150' }}
-                        className="w-12 h-12 rounded-2xl border border-white/10 mr-3"
+                        className="w-13 h-13 rounded-2xl border border-white/10 mr-3"
+                        style={{ width: 48, height: 48 }}
                       />
                       <View className="flex-1">
-                        <Text className="text-white font-extrabold text-sm">{staff.name}</Text>
-                        <Text className={`${primaryTextClass} text-[10px] font-extrabold uppercase mt-0.5`}>
+                        <Text className="text-white font-extrabold text-base">{staff.name}</Text>
+                        <Text className={`${primaryTextClass} text-xs font-bold uppercase mt-0.5`}>
                           {staff.designation || staff.department} • {staff.biometric_employee_code || `BIO-${staff.id}`}
                         </Text>
                       </View>
                     </View>
 
-                    <View className={`px-2.5 py-1 rounded-full border ${
+                    <View className={`px-3 py-1 rounded-full border ${
                       currentStatus === 'Present' ? primaryBadgeClass :
                       currentStatus === 'Absent' ? 'bg-rose-500/20 border-rose-500/40' :
                       currentStatus === 'Half Day' ? 'bg-amber-500/20 border-amber-500/40' :
                       'bg-sky-500/20 border-sky-500/40'
                     }`}>
-                      <Text className={`text-[10px] font-extrabold uppercase ${
+                      <Text className={`text-xs font-extrabold uppercase ${
                         currentStatus === 'Present' ? primaryTextClass :
                         currentStatus === 'Absent' ? 'text-rose-400' :
                         currentStatus === 'Half Day' ? 'text-amber-400' : 'text-sky-400'
@@ -290,17 +291,17 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   </View>
 
                   {/* Timing Info & Biometric Sync Tag */}
-                  <View className="flex-row justify-between items-center flex-wrap bg-black/40 p-2.5 rounded-xl border border-white/5" style={{ gap: 6 }}>
+                  <View className="flex-row justify-between items-center flex-wrap bg-black/40 p-3 rounded-xl border border-white/5" style={{ gap: 6 }}>
                     <View className="flex-row items-center flex-shrink-0">
-                      <Clock size={13} color={primaryColor} style={{ marginRight: 4 }} />
-                      <Text className="text-white/70 text-xs font-bold">
+                      <Clock size={15} color={primaryColor} style={{ marginRight: 5 }} />
+                      <Text className="text-white/80 text-sm font-bold font-mono">
                         IN: {staff.inTime || '08:30 AM'}  |  OUT: {staff.outTime || '04:30 PM'}
                       </Text>
                     </View>
 
                     <View className="flex-row items-center flex-shrink-0">
-                      <Fingerprint size={12} color={staff.biometricSynced !== false ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 3 }} />
-                      <Text className={`text-[9px] font-bold ${staff.biometricSynced !== false ? primaryTextClass : 'text-white/40'}`}>
+                      <Fingerprint size={14} color={staff.biometricSynced !== false ? primaryColor : 'rgba(255,255,255,0.4)'} style={{ marginRight: 4 }} />
+                      <Text className={`text-xs font-bold ${staff.biometricSynced !== false ? primaryTextClass : 'text-white/50'}`}>
                         {staff.biometricSynced !== false ? 'e-TimeOffice Live' : 'Recorded'}
                       </Text>
                     </View>
