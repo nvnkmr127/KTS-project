@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform, PanResponder } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { ChevronLeft, Bell, AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Bell, AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react-native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export const AttendanceHistoryScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -15,6 +20,49 @@ export const AttendanceHistoryScreen: React.FC = () => {
   const currentChild = user?.children?.find(c => c.id === activeChildId) || user?.children?.[0];
   const isTab = route.name === 'Attendance';
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+
+  const [currentMonth, setCurrentMonth] = useState(7); // Default August 2026
+  const [currentYear, setCurrentYear] = useState(2026);
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear(prev => prev - 1);
+    } else {
+      setCurrentMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear(prev => prev + 1);
+    } else {
+      setCurrentMonth(prev => prev + 1);
+    }
+  };
+
+  const calPrevMonthRef = useRef(handlePrevMonth);
+  const calNextMonthRef = useRef(handleNextMonth);
+  calPrevMonthRef.current = handlePrevMonth;
+  calNextMonthRef.current = handleNextMonth;
+
+  // Swipe Gesture Responder for Calendar Month Grid (Right-to-Left: Next Month, Left-to-Right: Previous Month)
+  const calSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -35) {
+          calNextMonthRef.current?.();
+        } else if (gestureState.dx > 35) {
+          calPrevMonthRef.current?.();
+        }
+      },
+    })
+  ).current;
 
   const screenMargin = isSmallPhone ? 14 : 20;
   const cardPadding = isSmallPhone ? 12 : 16;
@@ -28,44 +76,46 @@ export const AttendanceHistoryScreen: React.FC = () => {
     { label: 'Total', val: '88%', color: '#818CF8', isTotal: true }
   ];
 
-  // Calendar dates matching October 2023
-  const calendarDays = [
-    // Week 1 (Partial) - starts with Saturday Oct 1
-    { dayNum: null, status: null }, { dayNum: null, status: null }, { dayNum: null, status: null },
-    { dayNum: null, status: null }, { dayNum: null, status: null },
-    { dayNum: 1, status: 'present' },
-    { dayNum: 2, status: 'holiday' },
-    // Week 2
-    { dayNum: 3, status: 'present' }, { dayNum: 4, status: 'present' }, { dayNum: 5, status: 'present' },
-    { dayNum: 6, status: 'present' }, { dayNum: 7, status: 'present' }, { dayNum: 8, status: 'present' },
-    { dayNum: 9, status: 'holiday' },
-    // Week 3
-    { dayNum: 10, status: 'present' }, { dayNum: 11, status: 'absent' }, { dayNum: 12, status: 'present' },
-    { dayNum: 13, status: 'present' }, { dayNum: 14, status: 'present' }, { dayNum: 15, status: 'late' },
-    { dayNum: 16, status: 'holiday' },
-    // Week 4
-    { dayNum: 17, status: 'present' }, { dayNum: 18, status: 'present' }, { dayNum: 19, status: 'present' },
-    { dayNum: 20, status: 'absent' }, { dayNum: 21, status: 'present' }, { dayNum: 22, status: 'present' },
-    { dayNum: 23, status: 'holiday' },
-    // Week 5
-    { dayNum: 24, status: 'present' }, { dayNum: 25, status: 'present' }, { dayNum: 26, status: 'present' },
-    { dayNum: 27, status: 'present' }, { dayNum: 28, status: 'present' }, { dayNum: 29, status: 'present' },
-    { dayNum: 30, status: 'holiday' }
-  ];
+  // Calendar dates generated dynamically
+  const calendarDays = useMemo(() => {
+    const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun, 1 = Mon ...
+    const offset = (firstDayOfWeek + 6) % 7; // Monday-first offset
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const days: Array<{ dayNum: number | null; status: string | null }> = [];
+    for (let i = 0; i < offset; i++) {
+      days.push({ dayNum: null, status: null });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayOfWeek = (offset + d - 1) % 7;
+      let status = 'present';
+      if (dayOfWeek === 6) { // Sunday
+        status = 'holiday';
+      } else if ((d + currentMonth) % 11 === 0) {
+        status = 'absent';
+      } else if ((d + currentMonth) % 7 === 0) {
+        status = 'late';
+      }
+      days.push({ dayNum: d, status });
+    }
+    return days;
+  }, [currentMonth, currentYear]);
 
   // Group calendar days into weekly rows of 7 cells
-  const weeks: any[][] = [];
-  let currentWeek: any[] = [];
-  calendarDays.forEach((dayObj, index) => {
-    currentWeek.push(dayObj);
-    if (currentWeek.length === 7 || index === calendarDays.length - 1) {
-      while (currentWeek.length < 7) {
-        currentWeek.push({ dayNum: null, status: null });
+  const weeks: any[][] = useMemo(() => {
+    const res: any[][] = [];
+    let currentWeek: any[] = [];
+    calendarDays.forEach((dayObj, index) => {
+      currentWeek.push(dayObj);
+      if (currentWeek.length === 7 || index === calendarDays.length - 1) {
+        while (currentWeek.length < 7) {
+          currentWeek.push({ dayNum: null, status: null });
+        }
+        res.push(currentWeek);
+        currentWeek = [];
       }
-      weeks.push(currentWeek);
-      currentWeek = [];
-    }
-  });
+    });
+    return res;
+  }, [calendarDays]);
 
   const listItems = [
     { date: 'October 20, 2023', dayName: 'Friday', remark: 'No remark provided', status: 'absent' },
@@ -223,11 +273,22 @@ export const AttendanceHistoryScreen: React.FC = () => {
 
         {/* View Controls Header */}
         <View className="px-5 mb-4 flex-row justify-between items-center">
-          <Text className="text-white text-base font-bold font-headline-md">October 2023</Text>
+          <View className="flex-row items-center bg-white/5 border border-white/10 px-2 py-1 rounded-xl">
+            <Pressable onPress={handlePrevMonth} className="p-1 active:opacity-60">
+              <ChevronLeft size={16} color="#818CF8" />
+            </Pressable>
+            <Text className="text-white text-sm font-bold font-headline-md mx-2">
+              {MONTH_NAMES[currentMonth]} {currentYear}
+            </Text>
+            <Pressable onPress={handleNextMonth} className="p-1 active:opacity-60">
+              <ChevronRight size={16} color="#818CF8" />
+            </Pressable>
+          </View>
+          
           <View style={styles.toggleContainer} className="p-1 rounded-full flex-row">
             <Pressable 
               onPress={() => setViewMode('calendar')}
-              className={`px-5 py-2 rounded-full ${viewMode === 'calendar' ? 'bg-[#232145]' : ''}`}
+              className={`px-4 py-1.5 rounded-full ${viewMode === 'calendar' ? 'bg-[#232145]' : ''}`}
             >
               <Text className={`text-xs font-bold ${viewMode === 'calendar' ? 'text-white' : 'text-white/40'}`}>
                 Calendar
@@ -235,7 +296,7 @@ export const AttendanceHistoryScreen: React.FC = () => {
             </Pressable>
             <Pressable 
               onPress={() => setViewMode('list')}
-              className={`px-5 py-2 rounded-full ${viewMode === 'list' ? 'bg-[#232145]' : ''}`}
+              className={`px-4 py-1.5 rounded-full ${viewMode === 'list' ? 'bg-[#232145]' : ''}`}
             >
               <Text className={`text-xs font-bold ${viewMode === 'list' ? 'text-white' : 'text-white/40'}`}>
                 List View
@@ -246,7 +307,7 @@ export const AttendanceHistoryScreen: React.FC = () => {
 
         {/* Dynamic content */}
         {viewMode === 'calendar' ? (
-          <View className="px-5 mb-8">
+          <View className="px-5 mb-8" {...calSwipeResponder.panHandlers}>
             {/* Calendar Card */}
             <View style={styles.calendarCard}>
               {/* Day headers */}

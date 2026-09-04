@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, BackHandler } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, BackHandler, PanResponder } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -271,6 +271,28 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
     }
   };
 
+  const calPrevMonthRef = useRef(handlePrevMonth);
+  const calNextMonthRef = useRef(handleNextMonth);
+  calPrevMonthRef.current = handlePrevMonth;
+  calNextMonthRef.current = handleNextMonth;
+
+  // Swipe Gesture Responder for Calendar Month Grid (Right-to-Left: Next Month, Left-to-Right: Previous Month)
+  const calSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -35) {
+          calNextMonthRef.current?.();
+        } else if (gestureState.dx > 35) {
+          calPrevMonthRef.current?.();
+        }
+      },
+    })
+  ).current;
+
   const filteredHolidays = holidays.filter(h => {
     const matchesSearch = h.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           h.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -387,76 +409,79 @@ export const HolidayCalendarScreen: React.FC<any> = ({ navigation: propNavigatio
                 </View>
               </View>
 
-              {/* Weekday Labels Header */}
-              <View className="flex-row mb-3 bg-black/40 py-2.5 px-1 rounded-xl border border-white/5">
-                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
-                  <View key={d} style={{ width: '14.28%' }} className="items-center">
-                    <Text className={`text-[10px] font-extrabold uppercase ${i === 0 ? 'text-rose-400' : 'text-white/60'}`} numberOfLines={1}>
-                      {d.slice(0, 3)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Calendar Days Grid (Exact 7 Columns Layout) */}
-              <View className="flex-row flex-wrap">
-                {/* Empty Offset Boxes before day 1 */}
-                {Array.from({ length: firstDayWeekdayIndex }).map((_, i) => (
-                  <View key={`empty_${i}`} style={{ width: '14.28%', height: 68, padding: 2 }} />
-                ))}
-
-                {/* Days of Month (1 through N) */}
-                {Array.from({ length: daysInMonthCount }).map((_, idx) => {
-                  const dayNum = idx + 1;
-                  const dayOfWeek = (firstDayWeekdayIndex + idx) % 7;
-                  const isSunday = dayOfWeek === 0;
-
-                  const monthStr = String(calendarMonth + 1).padStart(2, '0');
-                  const dayStr = String(dayNum).padStart(2, '0');
-                  const fullDateStr = `${calendarYear}-${monthStr}-${dayStr}`;
-
-                  // Find configured holiday for this day
-                  const holidayOnDay = holidays.find(h => 
-                    h.dateStr === fullDateStr || 
-                    h.dateRange.includes(`${dayNum} ${MONTH_NAMES[calendarMonth].slice(0, 3)}`)
-                  );
-
-                  return (
-                    <View key={`day_${dayNum}`} style={{ width: '14.28%', padding: 2 }}>
-                      <Pressable
-                        onPress={() => handleOpenDateConfigModal(dayNum)}
-                        className={`h-[66px] p-1.5 rounded-2xl border flex-col justify-between ${
-                          isSunday 
-                            ? 'bg-rose-500/15 border-rose-500/40' 
-                            : holidayOnDay 
-                            ? (isSuperAdmin ? 'bg-[#f0c110]/15 border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border-[#00f1a1]/40')
-                            : 'bg-white/5 border-white/10 active:bg-white/15'
-                        }`}
-                      >
-                        <View className="flex-row items-center justify-between">
-                          <Text className={`text-xs font-extrabold ${isSunday ? 'text-rose-400' : 'text-white'}`}>
-                            {dayNum}
-                          </Text>
-                          {holidayOnDay && (
-                            <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: holidayOnDay.color || primaryGold }} />
-                          )}
-                        </View>
-
-                        {isSunday ? (
-                          <View className="bg-rose-500/20 px-0.5 py-0.5 rounded-md border border-rose-500/30">
-                            <Text className="text-rose-300 text-[6.5px] font-black uppercase text-center" numberOfLines={1}>SUNDAY</Text>
-                          </View>
-                        ) : holidayOnDay ? (
-                          <View className="px-1 py-0.5 rounded-md" style={{ backgroundColor: holidayOnDay.color || primaryGold }}>
-                            <Text className="text-[#101415] text-[7px] font-black text-center" numberOfLines={1}>
-                              {holidayOnDay.title}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </Pressable>
+              {/* Calendar Swipeable Container (Swipe left/right to change months) */}
+              <View {...calSwipeResponder.panHandlers}>
+                {/* Weekday Labels Header */}
+                <View className="flex-row mb-3 bg-black/40 py-2.5 px-1 rounded-xl border border-white/5">
+                  {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => (
+                    <View key={d} style={{ width: '14.28%' }} className="items-center">
+                      <Text className={`text-[10px] font-extrabold uppercase ${i === 0 ? 'text-rose-400' : 'text-white/60'}`} numberOfLines={1}>
+                        {d.slice(0, 3)}
+                      </Text>
                     </View>
-                  );
-                })}
+                  ))}
+                </View>
+
+                {/* Calendar Days Grid (Exact 7 Columns Layout) */}
+                <View className="flex-row flex-wrap">
+                  {/* Empty Offset Boxes before day 1 */}
+                  {Array.from({ length: firstDayWeekdayIndex }).map((_, i) => (
+                    <View key={`empty_${i}`} style={{ width: '14.28%', height: 68, padding: 2 }} />
+                  ))}
+
+                  {/* Days of Month (1 through N) */}
+                  {Array.from({ length: daysInMonthCount }).map((_, idx) => {
+                    const dayNum = idx + 1;
+                    const dayOfWeek = (firstDayWeekdayIndex + idx) % 7;
+                    const isSunday = dayOfWeek === 0;
+
+                    const monthStr = String(calendarMonth + 1).padStart(2, '0');
+                    const dayStr = String(dayNum).padStart(2, '0');
+                    const fullDateStr = `${calendarYear}-${monthStr}-${dayStr}`;
+
+                    // Find configured holiday for this day
+                    const holidayOnDay = holidays.find(h => 
+                      h.dateStr === fullDateStr || 
+                      h.dateRange.includes(`${dayNum} ${MONTH_NAMES[calendarMonth].slice(0, 3)}`)
+                    );
+
+                    return (
+                      <View key={`day_${dayNum}`} style={{ width: '14.28%', padding: 2 }}>
+                        <Pressable
+                          onPress={() => handleOpenDateConfigModal(dayNum)}
+                          className={`h-[66px] p-1.5 rounded-2xl border flex-col justify-between ${
+                            isSunday 
+                              ? 'bg-rose-500/15 border-rose-500/40' 
+                              : holidayOnDay 
+                              ? (isSuperAdmin ? 'bg-[#f0c110]/15 border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border-[#00f1a1]/40')
+                              : 'bg-white/5 border-white/10 active:bg-white/15'
+                          }`}
+                        >
+                          <View className="flex-row items-center justify-between">
+                            <Text className={`text-xs font-extrabold ${isSunday ? 'text-rose-400' : 'text-white'}`}>
+                              {dayNum}
+                            </Text>
+                            {holidayOnDay && (
+                              <View className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: holidayOnDay.color || primaryGold }} />
+                            )}
+                          </View>
+
+                          {isSunday ? (
+                            <View className="bg-rose-500/20 px-0.5 py-0.5 rounded-md border border-rose-500/30">
+                              <Text className="text-rose-300 text-[6.5px] font-black uppercase text-center" numberOfLines={1}>SUNDAY</Text>
+                            </View>
+                          ) : holidayOnDay ? (
+                            <View className="px-1 py-0.5 rounded-md" style={{ backgroundColor: holidayOnDay.color || primaryGold }}>
+                              <Text className="text-[#101415] text-[7px] font-black text-center" numberOfLines={1}>
+                                {holidayOnDay.title}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
               </View>
 
             </GlassCard>

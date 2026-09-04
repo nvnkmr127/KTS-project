@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, Alert } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, Alert, PanResponder } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   User, Award, Phone, Mail, MapPin, Calendar, Clock,
@@ -207,6 +207,28 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
       setCalendarMonth(prev => prev + 1);
     }
   };
+
+  const calPrevMonthRef = useRef(handlePrevMonth);
+  const calNextMonthRef = useRef(handleNextMonth);
+  calPrevMonthRef.current = handlePrevMonth;
+  calNextMonthRef.current = handleNextMonth;
+
+  // Swipe Gesture Responder for Calendar Month Grid (Right-to-Left: Next Month, Left-to-Right: Previous Month)
+  const calSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -35) {
+          calNextMonthRef.current?.();
+        } else if (gestureState.dx > 35) {
+          calPrevMonthRef.current?.();
+        }
+      },
+    })
+  ).current;
 
   // Dynamic Real Calendar Grid Computation with Padding Cells for Weekday Alignment
   const calendarGridCells = useMemo(() => {
@@ -614,45 +636,48 @@ export const StudentPerformanceScreen: React.FC<any> = ({ route, navigation }) =
                   </View>
                 </View>
 
-                {/* Weekday Labels Header Row */}
-                <View className="flex-row justify-between mb-2">
-                  {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
-                    <Text key={d} className={`w-[14.28%] text-center text-[9.5px] font-bold uppercase ${i === 0 ? 'text-rose-400/80' : 'text-white/40'}`}>{d}</Text>
-                  ))}
-                </View>
+                {/* Swipeable Calendar Grid Container (Swipe Left/Right to change months) */}
+                <View {...calSwipeResponder.panHandlers}>
+                  {/* Weekday Labels Header Row */}
+                  <View className="flex-row justify-between mb-2">
+                    {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
+                      <Text key={d} className={`w-[14.28%] text-center text-[9.5px] font-bold uppercase ${i === 0 ? 'text-rose-400/80' : 'text-white/40'}`}>{d}</Text>
+                    ))}
+                  </View>
 
-                {/* Real Calendar Grid with Weekday Alignment */}
-                <View className="flex-row flex-wrap" style={{ margin: -2 }}>
-                  {calendarGridCells.map((item, idx) => {
-                    if (item.day === null) {
+                  {/* Real Calendar Grid with Weekday Alignment */}
+                  <View className="flex-row flex-wrap" style={{ margin: -2 }}>
+                    {calendarGridCells.map((item, idx) => {
+                      if (item.day === null) {
+                        return (
+                          <View key={`pad_${idx}`} className="w-[14.28%] p-1">
+                            <View className="h-8 border border-transparent rounded-lg" />
+                          </View>
+                        );
+                      }
+
+                      let bgStyle = primaryBadgeClass;
+                      let textStyle = primaryTextClass;
+                      if (item.status === 'partial') {
+                        bgStyle = 'bg-amber-500/20 border-amber-500/40';
+                        textStyle = 'text-amber-400';
+                      } else if (item.status === 'absent') {
+                        bgStyle = 'bg-rose-500/20 border-rose-500/40';
+                        textStyle = 'text-rose-400';
+                      } else if (item.status === 'off') {
+                        bgStyle = 'bg-white/5 border-white/10';
+                        textStyle = 'text-white/30';
+                      }
+
                       return (
-                        <View key={`pad_${idx}`} className="w-[14.28%] p-1">
-                          <View className="h-8 border border-transparent rounded-lg" />
+                        <View key={`day_${item.day}`} className="w-[14.28%] p-1">
+                          <View className={`h-8 border rounded-lg items-center justify-center ${bgStyle}`}>
+                            <Text className={`text-[10px] font-bold ${textStyle}`}>{item.day}</Text>
+                          </View>
                         </View>
                       );
-                    }
-
-                    let bgStyle = primaryBadgeClass;
-                    let textStyle = primaryTextClass;
-                    if (item.status === 'partial') {
-                      bgStyle = 'bg-amber-500/20 border-amber-500/40';
-                      textStyle = 'text-amber-400';
-                    } else if (item.status === 'absent') {
-                      bgStyle = 'bg-rose-500/20 border-rose-500/40';
-                      textStyle = 'text-rose-400';
-                    } else if (item.status === 'off') {
-                      bgStyle = 'bg-white/5 border-white/10';
-                      textStyle = 'text-white/30';
-                    }
-
-                    return (
-                      <View key={`day_${item.day}`} className="w-[14.28%] p-1">
-                        <View className={`h-8 border rounded-lg items-center justify-center ${bgStyle}`}>
-                          <Text className={`text-[10px] font-bold ${textStyle}`}>{item.day}</Text>
-                        </View>
-                      </View>
-                    );
-                  })}
+                    })}
+                  </View>
                 </View>
               </View>
             )}

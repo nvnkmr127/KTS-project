@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, BackHandler } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, BackHandler, PanResponder } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -124,6 +124,28 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
   const handleNextMonth = () => {
     setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
+
+  const calPrevMonthRef = useRef(handlePrevMonth);
+  const calNextMonthRef = useRef(handleNextMonth);
+  calPrevMonthRef.current = handlePrevMonth;
+  calNextMonthRef.current = handleNextMonth;
+
+  // Swipe Gesture Responder for Calendar Month Grid (Right-to-Left: Next Month, Left-to-Right: Previous Month)
+  const calSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -35) {
+          calNextMonthRef.current?.();
+        } else if (gestureState.dx > 35) {
+          calPrevMonthRef.current?.();
+        }
+      },
+    })
+  ).current;
 
   const monthYearDisplay = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
@@ -440,39 +462,42 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
               </Pressable>
             </View>
 
-            {/* 7-Column Days of Week Bar (14.28% Width Each) */}
-            <View className="flex-row mb-2">
-              {DAYS_OF_WEEK.map((d, i) => (
-                <View key={i} style={{ width: '14.28%', alignItems: 'center' }}>
-                  <Text className="text-white/40 text-[10px] font-bold uppercase">{d}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* 7-Column Calendar Days Grid (14.28% Width Each) */}
-            <View className="flex-row flex-wrap mb-4">
-              {calendarGridDays.map((cell, idx) => {
-                if (!cell) {
-                  return <View key={idx} style={{ width: '14.28%', height: 36 }} />;
-                }
-                const isSelected = selectedDate === cell.dateStr;
-
-                return (
-                  <View key={idx} style={{ width: '14.28%', height: 36, padding: 2 }}>
-                    <Pressable
-                      onPress={() => {
-                        setSelectedDate(cell.dateStr);
-                        setShowDatePickerModal(false);
-                      }}
-                      className={`w-full h-full rounded-xl items-center justify-center border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
-                    >
-                      <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white'}`}>
-                        {cell.dayNum}
-                      </Text>
-                    </Pressable>
+            {/* Swipeable Calendar Grid Container (Swipe Left/Right to change months) */}
+            <View {...calSwipeResponder.panHandlers}>
+              {/* 7-Column Days of Week Bar (14.28% Width Each) */}
+              <View className="flex-row mb-2">
+                {DAYS_OF_WEEK.map((d, i) => (
+                  <View key={i} style={{ width: '14.28%', alignItems: 'center' }}>
+                    <Text className="text-white/40 text-[10px] font-bold uppercase">{d}</Text>
                   </View>
-                );
-              })}
+                ))}
+              </View>
+
+              {/* 7-Column Calendar Days Grid (14.28% Width Each) */}
+              <View className="flex-row flex-wrap mb-4">
+                {calendarGridDays.map((cell, idx) => {
+                  if (!cell) {
+                    return <View key={idx} style={{ width: '14.28%', height: 36 }} />;
+                  }
+                  const isSelected = selectedDate === cell.dateStr;
+
+                  return (
+                    <View key={idx} style={{ width: '14.28%', height: 36, padding: 2 }}>
+                      <Pressable
+                        onPress={() => {
+                          setSelectedDate(cell.dateStr);
+                          setShowDatePickerModal(false);
+                        }}
+                        className={`w-full h-full rounded-xl items-center justify-center border ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/10'}`}
+                      >
+                        <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white'}`}>
+                          {cell.dayNum}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
             </View>
 
             <Pressable

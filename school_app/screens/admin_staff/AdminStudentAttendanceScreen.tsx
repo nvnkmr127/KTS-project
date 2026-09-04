@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, BackHandler } from 'react-native';
+import React, { useState, useMemo, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, BackHandler, PanResponder } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -10,6 +10,11 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export interface ClassItemSummary {
   id: string;
@@ -32,6 +37,18 @@ export interface StudentAttendanceRecord {
   attended: number;
   overallPct: number;
   attendanceMap: Record<number, 'present' | 'absent' | 'partial'>;
+}
+
+export interface StudentAttendanceSummary {
+  id: string;
+  rollNo: string;
+  name: string;
+  initials: string;
+  className: string;
+  totalLectures: number;
+  attended: number;
+  overallPct: number;
+  attendanceMap?: Record<number, 'present' | 'absent' | 'partial'>;
 }
 
 const MOCK_CLASSES: ClassItemSummary[] = [
@@ -57,26 +74,32 @@ const MOCK_CLASSES: ClassItemSummary[] = [
 const MOCK_CLASS_STUDENTS: StudentAttendanceRecord[] = [
   { id: 's1', name: 'B Sandeep Goud', initials: 'BS', rollNo: '123', totalLectures: 45, attended: 42, overallPct: 93.3, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'partial', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'absent', 12: 'present', 13: 'present', 14: 'present' } },
   { id: 's2', name: 'Banda Teja Sri', initials: 'BT', rollNo: '124', totalLectures: 45, attended: 44, overallPct: 97.7, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
-  { id: 's3', name: 'Chandippa Sragvi', initials: 'CS', rollNo: '125', totalLectures: 45, attended: 40, overallPct: 88.8, attendanceMap: { 1: 'present', 2: 'absent', 3: 'present', 4: 'present', 5: 'present', 6: 'absent', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'absent', 14: 'present' } },
-  { id: 's4', name: 'Chilkuri Shiva Prasad', initials: 'CS', rollNo: '126', totalLectures: 45, attended: 45, overallPct: 100.0, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
-  { id: 's5', name: 'D Thanush', initials: 'DT', rollNo: '127', totalLectures: 45, attended: 41, overallPct: 91.1, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'absent', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'absent', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
-  { id: 's6', name: 'Dutha Varshini', initials: 'DV', rollNo: '128', totalLectures: 45, attended: 43, overallPct: 95.5, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'absent', 12: 'present', 13: 'present', 14: 'present' } },
-  { id: 's7', name: 'Harijan Naveen Kumar', initials: 'HN', rollNo: '129', totalLectures: 45, attended: 39, overallPct: 86.6, attendanceMap: { 1: 'present', 2: 'absent', 3: 'present', 4: 'present', 5: 'absent', 6: 'present', 7: 'present', 8: 'present', 10: 'absent', 11: 'present', 12: 'present', 13: 'present', 14: 'absent' } },
-  { id: 's8', name: 'Kandikonda Ashwitha', initials: 'KA', rollNo: '130', totalLectures: 45, attended: 44, overallPct: 97.7, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
-  { id: 's9', name: 'Katikam Sreshta', initials: 'KS', rollNo: '131', totalLectures: 45, attended: 42, overallPct: 93.3, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'absent', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
-  { id: 's10', name: 'Kavali Chaithra', initials: 'KC', rollNo: '132', totalLectures: 45, attended: 45, overallPct: 100.0, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } }
+  { id: 's3', name: 'Chandippa Sragvi', initials: 'CS', rollNo: '125', totalLectures: 45, attended: 40, overallPct: 88.8, attendanceMap: { 1: 'present', 2: 'absent', 3: 'present', 4: 'present', 5: 'present', 6: 'absent', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'absent', 14: 'present' } }
+];
+
+const MOCK_STUDENTS: StudentAttendanceSummary[] = [
+  { id: 'st_1', rollNo: '101', name: 'Arjun Reddy', initials: 'AR', className: 'Class 10 — A', totalLectures: 180, attended: 168, overallPct: 93.3 },
+  { id: 'st_2', rollNo: '102', name: 'Bhavana Patel', initials: 'BP', className: 'Class 10 — A', totalLectures: 180, attended: 176, overallPct: 97.7 },
+  { id: 'st_3', rollNo: '103', name: 'Charan Teja', initials: 'CT', className: 'Class 10 — A', totalLectures: 180, attended: 154, overallPct: 85.5 },
+  { id: 'st_4', rollNo: '104', name: 'Divya Sri', initials: 'DS', className: 'Class 10 — A', totalLectures: 180, attended: 172, overallPct: 95.5 },
+  { id: 'st_5', rollNo: '105', name: 'Eshwar Rao', initials: 'ER', className: 'Class 10 — A', totalLectures: 180, attended: 162, overallPct: 90.0 },
+  { id: 'st_6', rollNo: '106', name: 'Farhan Khan', initials: 'FK', className: 'Class 10 — A', totalLectures: 180, attended: 142, overallPct: 78.8 },
+  { id: 'st_7', rollNo: '107', name: 'Gowri Shankar', initials: 'GS', className: 'Class 10 — A', totalLectures: 180, attended: 175, overallPct: 97.2 },
+  { id: 'st_8', rollNo: '108', name: 'Harika Reddy', initials: 'HR', className: 'Class 10 — A', totalLectures: 180, attended: 169, overallPct: 93.8 }
 ];
 
 export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const isSuperAdmin = user?.role === 'super_admin';
   const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
-  // Navigation level: 1 = Class Directory, 2 = Class Student List, 3 = Student Monthly Grid
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  // Navigation Drill-Down State: 1 = Class Directory, 2 = Student Roster, 3 = Monthly Attendance Calendar Grid
   const [viewLevel, setViewLevel] = useState<1 | 2 | 3>(1);
   const [selectedClass, setSelectedClass] = useState<ClassItemSummary | null>(null);
   const [selectedStudent, setSelectedStudent] = useState<StudentAttendanceRecord | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [academicYear, setAcademicYear] = useState('2026-2027 (Current)');
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<'All' | '10' | '9' | '8' | '7' | '6'>('All');
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(4); // Default 4 Aug
   const [selectedDate, setSelectedDate] = useState('04-08-2026');
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
@@ -84,11 +107,6 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
 
   const [gridMonth, setGridMonth] = useState<number>(7); // 7 = August (0-indexed)
   const [gridYear, setGridYear] = useState<number>(2026);
-
-  const MONTH_NAMES = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
 
   const handlePrevGridMonth = () => {
     if (gridMonth === 0) {
@@ -107,6 +125,28 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
       setGridMonth(prev => prev + 1);
     }
   };
+
+  const gridPrevMonthRef = useRef(handlePrevGridMonth);
+  const gridNextMonthRef = useRef(handleNextGridMonth);
+  gridPrevMonthRef.current = handlePrevGridMonth;
+  gridNextMonthRef.current = handleNextGridMonth;
+
+  // Swipe Gesture Responder for Calendar Month Grid (Right-to-Left: Next Month, Left-to-Right: Previous Month)
+  const gridSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -35) {
+          gridNextMonthRef.current?.();
+        } else if (gestureState.dx > 35) {
+          gridPrevMonthRef.current?.();
+        }
+      },
+    })
+  ).current;
 
   const calendarGridCells = useMemo(() => {
     const firstDayOfWeek = new Date(gridYear, gridMonth, 1).getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
@@ -459,58 +499,61 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 </Pressable>
               </View>
 
-              {/* Days Header Row */}
-              <View className="flex-row justify-between mb-2">
-                {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
-                  <Text key={d} className={`w-[14.28%] text-center text-[9.5px] font-bold uppercase ${i === 0 ? 'text-rose-400/80' : 'text-white/40'}`}>{d}</Text>
-                ))}
-              </View>
+              {/* Swipeable Calendar Grid Container (Swipe Left/Right to change months) */}
+              <View {...gridSwipeResponder.panHandlers}>
+                {/* Days Header Row */}
+                <View className="flex-row justify-between mb-2">
+                  {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
+                    <Text key={d} className={`w-[14.28%] text-center text-[9.5px] font-bold uppercase ${i === 0 ? 'text-rose-400/80' : 'text-white/40'}`}>{d}</Text>
+                  ))}
+                </View>
 
-              {/* Real Calendar Days Grid */}
-              <View className="flex-row flex-wrap" style={{ margin: -2 }}>
-                {calendarGridCells.map((item, idx) => {
-                  if (item.day === null) {
+                {/* Real Calendar Days Grid */}
+                <View className="flex-row flex-wrap" style={{ margin: -2 }}>
+                  {calendarGridCells.map((item, idx) => {
+                    if (item.day === null) {
+                      return (
+                        <View key={`pad_${idx}`} className="w-[14.28%] p-1">
+                          <View className="h-10 border border-transparent rounded-xl" />
+                        </View>
+                      );
+                    }
+
+                    const dayNum = item.day;
+                    const status = item.status;
+                    const isSelected = selectedCalendarDay === dayNum;
+
+                    let bgStyle = primaryBadgeClass;
+                    let textStyle = primaryTextClass;
+                    if (status === 'partial') {
+                      bgStyle = 'bg-amber-500/20 border-amber-500/40';
+                      textStyle = 'text-amber-400';
+                    } else if (status === 'absent') {
+                      bgStyle = 'bg-rose-500/20 border-rose-500/40';
+                      textStyle = 'text-rose-400';
+                    } else if (status === 'off') {
+                      bgStyle = 'bg-white/5 border-white/10';
+                      textStyle = 'text-white/30';
+                    }
+
                     return (
-                      <View key={`pad_${idx}`} className="w-[14.28%] p-1">
-                        <View className="h-10 border border-transparent rounded-xl" />
+                      <View key={`day_${dayNum}`} className="w-[14.28%] p-1">
+                        <Pressable
+                          onPress={() => setSelectedCalendarDay(dayNum)}
+                          className={`h-10 rounded-xl items-center justify-center border ${
+                            isSelected 
+                              ? (isSuperAdmin ? 'border-[#f0c110] bg-[#f0c110]/30 shadow-lg' : 'border-[#00f1a1] bg-[#00f1a1]/30 shadow-lg')
+                              : bgStyle
+                          }`}
+                        >
+                          <Text className={`text-xs font-bold ${isSelected ? 'text-white' : textStyle}`}>
+                            {dayNum}
+                          </Text>
+                        </Pressable>
                       </View>
                     );
-                  }
-
-                  const dayNum = item.day;
-                  const status = item.status;
-                  const isSelected = selectedCalendarDay === dayNum;
-
-                  let bgStyle = primaryBadgeClass;
-                  let textStyle = primaryTextClass;
-                  if (status === 'partial') {
-                    bgStyle = 'bg-amber-500/20 border-amber-500/40';
-                    textStyle = 'text-amber-400';
-                  } else if (status === 'absent') {
-                    bgStyle = 'bg-rose-500/20 border-rose-500/40';
-                    textStyle = 'text-rose-400';
-                  } else if (status === 'off') {
-                    bgStyle = 'bg-white/5 border-white/10';
-                    textStyle = 'text-white/30';
-                  }
-
-                  return (
-                    <View key={`day_${dayNum}`} className="w-[14.28%] p-1">
-                      <Pressable
-                        onPress={() => setSelectedCalendarDay(dayNum)}
-                        className={`h-10 rounded-xl items-center justify-center border ${
-                          isSelected 
-                            ? (isSuperAdmin ? 'border-[#f0c110] bg-[#f0c110]/30 shadow-lg' : 'border-[#00f1a1] bg-[#00f1a1]/30 shadow-lg')
-                            : bgStyle
-                        }`}
-                      >
-                        <Text className={`text-xs font-bold ${isSelected ? 'text-white' : textStyle}`}>
-                          {dayNum}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  );
-                })}
+                  })}
+                </View>
               </View>
             </GlassCard>
 

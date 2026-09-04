@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, Platform, Keyboard } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, Platform, Keyboard, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GlassCard } from '../../components/GlassCard';
@@ -9,8 +9,19 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
 import {
   UserPlus, ChevronDown, Calendar, HelpCircle,
-  CheckCircle2, ArrowLeft, Check
+  CheckCircle2, ArrowLeft, Check, ChevronLeft, ChevronRight, X
 } from 'lucide-react-native';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const YEAR_OPTIONS = [
+  2028, 2027, 2026, 2025, 2024, 2023, 2022, 2021, 2020,
+  2019, 2018, 2017, 2016, 2015, 2014, 2013, 2012, 2011,
+  2010, 2009, 2008, 2007, 2006, 2005, 2004, 2003, 2002, 2001, 2000
+];
 
 export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -29,6 +40,121 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
 
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [keyboardPadding, setKeyboardPadding] = useState(0);
+
+  // Calendar Modal State
+  const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+  const [calendarTargetField, setCalendarTargetField] = useState<'dob' | 'admissionDate'>('dob');
+  const [calMonth, setCalMonth] = useState<number>(() => new Date().getMonth());
+  const [calYear, setCalYear] = useState<number>(() => new Date().getFullYear());
+  const [calSelectedDay, setCalSelectedDay] = useState<number>(() => new Date().getDate());
+  const [showYearPicker, setShowYearPicker] = useState(false);
+
+  const openCalendarFor = (target: 'dob' | 'admissionDate') => {
+    setCalendarTargetField(target);
+    const val = target === 'dob' ? dobForm : admissionDateForm;
+    let d = new Date();
+    if (val && val.includes('-')) {
+      const parts = val.split('-');
+      if (parts.length === 3) {
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD
+          d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        } else {
+          // DD-MM-YYYY
+          d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        }
+      }
+    } else if (target === 'dob' && !val) {
+      d = new Date(2016, 5, 15);
+    }
+    if (!isNaN(d.getTime())) {
+      setCalYear(d.getFullYear());
+      setCalMonth(d.getMonth());
+      setCalSelectedDay(d.getDate());
+    } else {
+      const now = new Date();
+      setCalYear(now.getFullYear());
+      setCalMonth(now.getMonth());
+      setCalSelectedDay(now.getDate());
+    }
+    setShowYearPicker(false);
+    setCalendarModalVisible(true);
+  };
+
+  const handlePrevMonth = () => {
+    if (calMonth === 0) {
+      setCalMonth(11);
+      setCalYear(prev => prev - 1);
+    } else {
+      setCalMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calMonth === 11) {
+      setCalMonth(0);
+      setCalYear(prev => prev + 1);
+    } else {
+      setCalMonth(prev => prev + 1);
+    }
+  };
+
+  const calPrevMonthRef = useRef(handlePrevMonth);
+  const calNextMonthRef = useRef(handleNextMonth);
+  calPrevMonthRef.current = handlePrevMonth;
+  calNextMonthRef.current = handleNextMonth;
+
+  // Swipe Gesture Responder for Calendar Month Grid (Right-to-Left: Next Month, Left-to-Right: Previous Month)
+  const calSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -35) {
+          calNextMonthRef.current?.();
+        } else if (gestureState.dx > 35) {
+          calPrevMonthRef.current?.();
+        }
+      },
+    })
+  ).current;
+
+  const handleSetToday = () => {
+    const now = new Date();
+    setCalYear(now.getFullYear());
+    setCalMonth(now.getMonth());
+    setCalSelectedDay(now.getDate());
+  };
+
+  const handleApplyCalendarDate = (selectedDayOverride?: number) => {
+    const day = selectedDayOverride || calSelectedDay;
+    const daysInCurrentMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const safeDay = Math.min(Math.max(1, day), daysInCurrentMonth);
+    const dayStr = String(safeDay).padStart(2, '0');
+    const monthStr = String(calMonth + 1).padStart(2, '0');
+    const formatted = `${dayStr}-${monthStr}-${calYear}`;
+    if (calendarTargetField === 'dob') {
+      setDobForm(formatted);
+    } else {
+      setAdmissionDateForm(formatted);
+    }
+    setCalendarModalVisible(false);
+  };
+
+  const calendarCells = React.useMemo(() => {
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const totalDays = new Date(calYear, calMonth + 1, 0).getDate();
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstDay; i++) {
+      cells.push(null);
+    }
+    for (let d = 1; d <= totalDays; d++) {
+      cells.push(d);
+    }
+    return cells;
+  }, [calYear, calMonth]);
 
   useEffect(() => {
     const showSub = Keyboard.addListener(
@@ -204,155 +330,167 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           <GlassCard intensity="low" className={`p-5 bg-[#101415]/80 mb-6 border ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
-            <Text className="text-white text-lg font-bold mb-1">{isEdit ? "Update Student Details" : "Student Registration Form"}</Text>
-            <Text className="text-white/60 text-xs mb-5">Fill in all required student and parent details to update the record.</Text>
+            <Text className="text-white text-xl font-extrabold mb-1.5">{isEdit ? "Update Student Details" : "Student Registration Form"}</Text>
+            <Text className="text-white/70 text-sm mb-6 leading-5">Fill in all required student and parent details to {isEdit ? "update" : "register"} the student record.</Text>
 
             {/* SECTION 1: Core Info */}
-            <Text className={`${primaryTextClass} text-xs font-bold tracking-wider uppercase mb-3 pb-1 border-b ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
+            <Text className={`${primaryTextClass} text-sm font-extrabold tracking-wider uppercase mb-4 pb-2 border-b ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
               1. Basic Student Info
             </Text>
 
             {/* First Name & Last Name */}
-            <View className="flex-row mb-3" style={{ gap: 10 }}>
+            <View className="flex-row mb-4" style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">First Name <Text className="text-[#ff516a]">*</Text></Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">First Name <Text className="text-[#ff516a]">*</Text></Text>
                 <TextInput
                   placeholder="Arjun"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={firstName}
                   onChangeText={setFirstName}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-sm"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Last Name <Text className="text-[#ff516a]">*</Text></Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Last Name <Text className="text-[#ff516a]">*</Text></Text>
                 <TextInput
                   placeholder="Reddy"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={lastName}
                   onChangeText={setLastName}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-sm"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
             </View>
 
             {/* Class, Section, Gender Pickers */}
-            <View className="flex-row mb-3" style={{ gap: 8 }}>
+            <View className="flex-row mb-4" style={{ gap: 10 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Class <Text className="text-[#ff516a]">*</Text></Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Class <Text className="text-[#ff516a]">*</Text></Text>
                 <Pressable
                   onPress={() => setShowClassPicker(!showClassPicker)}
-                  className="bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 flex-row justify-between items-center"
+                  className="bg-white/5 border border-white/15 rounded-xl px-3.5 py-3 flex-row justify-between items-center"
                 >
-                  <Text className="text-white text-xs font-semibold">{studentClass}</Text>
-                  <ChevronDown size={14} color={primaryColor} />
+                  <Text className="text-white text-sm font-bold" numberOfLines={1}>{studentClass}</Text>
+                  <ChevronDown size={16} color={primaryColor} />
                 </Pressable>
               </View>
 
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Section <Text className="text-[#ff516a]">*</Text></Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Section <Text className="text-[#ff516a]">*</Text></Text>
                 <Pressable
                   onPress={() => setShowSectionPicker(!showSectionPicker)}
-                  className="bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 flex-row justify-between items-center"
+                  className="bg-white/5 border border-white/15 rounded-xl px-3.5 py-3 flex-row justify-between items-center"
                 >
-                  <Text className="text-white text-xs font-semibold">{section}</Text>
-                  <ChevronDown size={14} color={primaryColor} />
+                  <Text className="text-white text-sm font-bold" numberOfLines={1}>{section}</Text>
+                  <ChevronDown size={16} color={primaryColor} />
                 </Pressable>
               </View>
 
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Gender <Text className="text-[#ff516a]">*</Text></Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Gender <Text className="text-[#ff516a]">*</Text></Text>
                 <Pressable
                   onPress={() => setShowGenderPicker(!showGenderPicker)}
-                  className="bg-white/5 border border-white/15 rounded-xl px-3 py-2.5 flex-row justify-between items-center"
+                  className="bg-white/5 border border-white/15 rounded-xl px-3.5 py-3 flex-row justify-between items-center"
                 >
-                  <Text className="text-white text-xs font-semibold">{gender}</Text>
-                  <ChevronDown size={14} color={primaryColor} />
+                  <Text className="text-white text-sm font-bold" numberOfLines={1}>{gender}</Text>
+                  <ChevronDown size={16} color={primaryColor} />
                 </Pressable>
               </View>
             </View>
 
             {/* Expandable Pickers Selection Row */}
             {showClassPicker && (
-              <View className={`bg-white/5 border p-2 rounded-xl mb-3 flex-row flex-wrap ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`} style={{ gap: 6 }}>
+              <View className={`bg-[#141a18] border p-3 rounded-xl mb-4 flex-row flex-wrap ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`} style={{ gap: 8 }}>
                 {['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10'].map(cls => (
-                  <Pressable key={cls} onPress={() => { setStudentClass(cls); setShowClassPicker(false); }} className={`px-2.5 py-1.5 rounded-lg ${studentClass === cls ? primaryBtnClass : 'bg-white/10'}`}>
-                    <Text className={`text-xs font-bold ${studentClass === cls ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
+                  <Pressable key={cls} onPress={() => { setStudentClass(cls); setShowClassPicker(false); }} className={`px-3 py-2 rounded-lg ${studentClass === cls ? primaryBtnClass : 'bg-white/10'}`}>
+                    <Text className={`text-sm font-bold ${studentClass === cls ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
                   </Pressable>
                 ))}
               </View>
             )}
 
             {showSectionPicker && (
-              <View className={`bg-white/5 border p-2 rounded-xl mb-3 flex-row flex-wrap ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`} style={{ gap: 6 }}>
+              <View className={`bg-[#141a18] border p-3 rounded-xl mb-4 flex-row flex-wrap ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`} style={{ gap: 8 }}>
                 {['Section A', 'Section B', 'Section C', 'Section D'].map(sec => (
-                  <Pressable key={sec} onPress={() => { setSection(sec); setShowSectionPicker(false); }} className={`px-2.5 py-1.5 rounded-lg ${section === sec ? primaryBtnClass : 'bg-white/10'}`}>
-                    <Text className={`text-xs font-bold ${section === sec ? 'text-[#101415]' : 'text-white'}`}>{sec}</Text>
+                  <Pressable key={sec} onPress={() => { setSection(sec); setShowSectionPicker(false); }} className={`px-3 py-2 rounded-lg ${section === sec ? primaryBtnClass : 'bg-white/10'}`}>
+                    <Text className={`text-sm font-bold ${section === sec ? 'text-[#101415]' : 'text-white'}`}>{sec}</Text>
                   </Pressable>
                 ))}
               </View>
             )}
 
             {showGenderPicker && (
-              <View className={`bg-white/5 border p-2 rounded-xl mb-3 flex-row flex-wrap ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`} style={{ gap: 6 }}>
+              <View className={`bg-[#141a18] border p-3 rounded-xl mb-4 flex-row flex-wrap ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/30'}`} style={{ gap: 8 }}>
                 {['Male', 'Female', 'Other'].map(g => (
-                  <Pressable key={g} onPress={() => { setGender(g); setShowGenderPicker(false); }} className={`px-2.5 py-1.5 rounded-lg ${gender === g ? primaryBtnClass : 'bg-white/10'}`}>
-                    <Text className={`text-xs font-bold ${gender === g ? 'text-[#101415]' : 'text-white'}`}>{g}</Text>
+                  <Pressable key={g} onPress={() => { setGender(g); setShowGenderPicker(false); }} className={`px-3.5 py-2 rounded-lg ${gender === g ? primaryBtnClass : 'bg-white/10'}`}>
+                    <Text className={`text-sm font-bold ${gender === g ? 'text-[#101415]' : 'text-white'}`}>{g}</Text>
                   </Pressable>
                 ))}
               </View>
             )}
 
             {/* Admission Number & Student PEN NO. */}
-            <View className="flex-row mb-3" style={{ gap: 10 }}>
+            <View className="flex-row mb-4" style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Admission Number</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Admission Number</Text>
                 <TextInput
                   placeholder="Leave blank to auto-generate"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={admissionNoForm}
                   onChangeText={setAdmissionNoForm}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Student PEN NO.</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Student PEN NO.</Text>
                 <TextInput
                   placeholder="Student PEN Number"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={penNoForm}
                   onChangeText={setPenNoForm}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
             </View>
 
             {/* Date of Birth & Admission Date */}
-            <View className={`flex-row ${isEdit ? 'mb-4' : 'mb-6'}`} style={{ gap: 10 }}>
+            <View className={`flex-row ${isEdit ? 'mb-4' : 'mb-6'}`} style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Date of Birth <Text className="text-[#ff516a]">*</Text></Text>
-                <View className="flex-row items-center bg-white/5 border border-white/15 rounded-xl px-3 py-2.5">
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Date of Birth <Text className="text-[#ff516a]">*</Text></Text>
+                <View className="flex-row items-center bg-white/5 border border-white/15 rounded-xl px-3.5 py-1.5">
                   <TextInput
                     placeholder="dd-mm-yyyy"
                     placeholderTextColor="rgba(255,255,255,0.4)"
                     value={dobForm}
                     onChangeText={setDobForm}
-                    className="flex-1 text-white text-xs p-0"
+                    className="flex-1 text-white text-sm font-medium py-2 pr-1"
                   />
-                  <Calendar size={14} color={primaryColor} />
+                  <Pressable
+                    onPress={() => openCalendarFor('dob')}
+                    className={`p-2 rounded-lg ${isSuperAdmin ? 'bg-[#f0c110]/20' : 'bg-[#00f1a1]/20'} active:scale-95`}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Calendar size={18} color={primaryColor} />
+                  </Pressable>
                 </View>
               </View>
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Admission Date</Text>
-                <View className="flex-row items-center bg-white/5 border border-white/15 rounded-xl px-3 py-2.5">
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Admission Date</Text>
+                <View className="flex-row items-center bg-white/5 border border-white/15 rounded-xl px-3.5 py-1.5">
                   <TextInput
                     placeholder="03-08-2026"
                     placeholderTextColor="rgba(255,255,255,0.4)"
                     value={admissionDateForm}
                     onChangeText={setAdmissionDateForm}
-                    className="flex-1 text-white text-xs p-0"
+                    className="flex-1 text-white text-sm font-medium py-2 pr-1"
                   />
-                  <Calendar size={14} color={primaryColor} />
+                  <Pressable
+                    onPress={() => openCalendarFor('admissionDate')}
+                    className={`p-2 rounded-lg ${isSuperAdmin ? 'bg-[#f0c110]/20' : 'bg-[#00f1a1]/20'} active:scale-95`}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Calendar size={18} color={primaryColor} />
+                  </Pressable>
                 </View>
               </View>
             </View>
@@ -360,13 +498,13 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
             {/* Student Status Dropdown (Shown in Edit Mode below Date of Birth, matching web app) */}
             {isEdit && (
               <View className="mb-6">
-                <Text className="text-white/70 text-xs mb-1.5 font-semibold">Student Status</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Student Status</Text>
                 <Pressable
                   onPress={() => setShowStatusPicker(!showStatusPicker)}
-                  className="bg-white/5 border border-white/15 rounded-xl px-3.5 py-3 flex-row justify-between items-center active:bg-white/10"
+                  className="bg-white/5 border border-white/15 rounded-xl px-4 py-3.5 flex-row justify-between items-center active:bg-white/10"
                 >
-                  <Text className="text-white text-sm font-semibold">{statusForm === 'Left' ? 'Left (Dropout)' : statusForm}</Text>
-                  <ChevronDown size={14} color={primaryColor} />
+                  <Text className="text-white text-sm font-bold">{statusForm === 'Left' ? 'Left (Dropout)' : statusForm}</Text>
+                  <ChevronDown size={16} color={primaryColor} />
                 </Pressable>
 
                 {showStatusPicker && (
@@ -384,13 +522,13 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
                             setStatusForm(opt.val as any);
                             setShowStatusPicker(false);
                           }}
-                          className={`px-3 py-2.5 rounded-lg flex-row items-center justify-between ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110]/20' : 'bg-[#00f1a1]/20') : 'active:bg-white/5'
+                          className={`px-3.5 py-3 rounded-lg flex-row items-center justify-between ${isSelected ? (isSuperAdmin ? 'bg-[#f0c110]/20' : 'bg-[#00f1a1]/20') : 'active:bg-white/5'
                             }`}
                         >
-                          <Text className={`text-xs ${isSelected ? `${primaryTextClass} font-bold` : 'text-white/80 font-medium'}`}>
+                          <Text className={`text-sm ${isSelected ? `${primaryTextClass} font-bold` : 'text-white/80 font-semibold'}`}>
                             {opt.label}
                           </Text>
-                          {isSelected && <Check size={14} color={primaryColor} />}
+                          {isSelected && <Check size={16} color={primaryColor} />}
                         </Pressable>
                       );
                     })}
@@ -400,235 +538,243 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
             )}
 
             {/* SECTION 2: Parent / Guardian Details */}
-            <Text className={`${primaryTextClass} text-xs font-bold tracking-wider uppercase mb-3 pb-1 border-b ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
+            <Text className={`${primaryTextClass} text-sm font-extrabold tracking-wider uppercase mb-4 pb-2 border-b ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
               2. Parent / Guardian Details
             </Text>
 
             {/* Father's Info */}
-            <View className="flex-row mb-3" style={{ gap: 8 }}>
+            <View className="flex-row mb-4" style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Father's Name <Text className="text-[#ff516a]">*</Text></Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Father's Name <Text className="text-[#ff516a]">*</Text></Text>
                 <TextInput
                   placeholder="Father's name"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={fatherName}
                   onChangeText={setFatherName}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Father's Mobile</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Father's Mobile</Text>
                 <TextInput
                   placeholder="Father's phone"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   keyboardType="phone-pad"
                   value={fatherMobile}
                   onChangeText={setFatherMobile}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Father's Occupation</Text>
-                <TextInput
-                  placeholder="e.g. Business"
-                  placeholderTextColor="rgba(255,255,255,0.4)"
-                  value={fatherOccupation}
-                  onChangeText={setFatherOccupation}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
             </View>
 
+            <View className="mb-4">
+              <Text className="text-white/80 text-sm mb-1.5 font-bold">Father's Occupation</Text>
+              <TextInput
+                placeholder="e.g. Business"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={fatherOccupation}
+                onChangeText={setFatherOccupation}
+                className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
+              />
+            </View>
+
             {/* Mother's Info */}
-            <View className="flex-row mb-3" style={{ gap: 8 }}>
+            <View className="flex-row mb-4" style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Mother's Name</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Mother's Name</Text>
                 <TextInput
                   placeholder="Mother's name"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={motherName}
                   onChangeText={setMotherName}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Mother's Mobile</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Mother's Mobile</Text>
                 <TextInput
                   placeholder="Mother's phone"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   keyboardType="phone-pad"
                   value={motherMobile}
                   onChangeText={setMotherMobile}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
+            </View>
+
+            <View className="flex-row mb-4" style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Mother's Occupation</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Mother's Occupation</Text>
                 <TextInput
                   placeholder="e.g. Teacher"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={motherOccupation}
                   onChangeText={setMotherOccupation}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
-                />
-              </View>
-            </View>
-
-            {/* Student/Guardian Mobile */}
-            <View className="mb-3">
-              <Text className="text-white/70 text-xs mb-1 font-semibold">Student/Guardian Mobile Number</Text>
-              <TextInput
-                placeholder="e.g. 9876543210"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                keyboardType="phone-pad"
-                value={guardianMobile}
-                onChangeText={setGuardianMobile}
-                className="bg-white/5 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-xs"
-              />
-            </View>
-
-            {/* Address & Biometric Code */}
-            <View className="flex-row mb-3" style={{ gap: 10 }}>
-              <View className="flex-[1.5]">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Address</Text>
-                <TextInput
-                  placeholder="House no, Street, Area, City"
-                  placeholderTextColor="rgba(255,255,255,0.4)"
-                  multiline
-                  numberOfLines={2}
-                  value={address}
-                  onChangeText={setAddress}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3.5 py-2 text-xs"
-                  style={{ minHeight: 48 }}
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-white/70 text-xs mb-1 font-semibold">Biometric Code <HelpCircle size={10} color={primaryColor} /></Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Guardian Mobile</Text>
+                <TextInput
+                  placeholder="e.g. 9876543210"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  keyboardType="phone-pad"
+                  value={guardianMobile}
+                  onChangeText={setGuardianMobile}
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
+                />
+              </View>
+            </View>
+
+            {/* Address */}
+            <View className="mb-4">
+              <Text className="text-white/80 text-sm mb-1.5 font-bold">Address</Text>
+              <TextInput
+                placeholder="House no, Street, Area, City"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                multiline
+                numberOfLines={2}
+                value={address}
+                onChangeText={setAddress}
+                className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
+                style={{ minHeight: 56 }}
+              />
+            </View>
+
+            {/* Biometric Code & Aadhar Number */}
+            <View className="flex-row mb-6" style={{ gap: 12 }}>
+              <View className="flex-1">
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Biometric Code <HelpCircle size={12} color={primaryColor} /></Text>
                 <TextInput
                   placeholder="e.g. STU-1001"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={biometricCode}
                   onChangeText={setBiometricCode}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Aadhar Number</Text>
+                <TextInput
+                  placeholder="e.g. 123456789012"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  keyboardType="numeric"
+                  value={aadharNumber}
+                  onChangeText={setAadharNumber}
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
             </View>
 
-            {/* Aadhar Number */}
-            <View className="mb-6">
-              <Text className="text-white/70 text-xs mb-1 font-semibold">Aadhar Number</Text>
-              <TextInput
-                placeholder="e.g. 123456789012"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                keyboardType="numeric"
-                value={aadharNumber}
-                onChangeText={setAadharNumber}
-                className="bg-white/5 border border-white/15 rounded-xl text-white px-3.5 py-2.5 text-xs"
-              />
-            </View>
-
             {/* SECTION 3: Demographics & TC Details */}
-            <Text className={`${primaryTextClass} text-xs font-bold tracking-wider uppercase mb-3 pb-1 border-b ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
+            <Text className={`${primaryTextClass} text-sm font-extrabold tracking-wider uppercase mb-4 pb-2 border-b ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
               3. Demographics & TC Details
             </Text>
 
-            {/* Mother Tongue, Nationality, State */}
-            <View className="flex-row mb-3" style={{ gap: 8 }}>
+            {/* Mother Tongue & Nationality */}
+            <View className="flex-row mb-4" style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Mother Tongue</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Mother Tongue</Text>
                 <TextInput
                   placeholder="e.g. Telugu, Hindi"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={motherTongue}
                   onChangeText={setMotherTongue}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Nationality</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Nationality</Text>
                 <TextInput
                   placeholder="Indian"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={nationality}
                   onChangeText={setNationality}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
+            </View>
+
+            {/* State & Religion */}
+            <View className="flex-row mb-4" style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">State</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">State</Text>
                 <TextInput
                   placeholder="e.g. Telangana"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={stateForm}
                   onChangeText={setStateForm}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-3 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
-            </View>
-
-            {/* Religion, Caste, Sub Caste, TC Number */}
-            <View className="flex-row mb-6" style={{ gap: 8 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Religion</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Religion</Text>
                 <TextInput
                   placeholder="e.g. Hindu"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={religion}
                   onChangeText={setReligion}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-2.5 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
+            </View>
+
+            {/* Caste & Sub Caste */}
+            <View className="flex-row mb-4" style={{ gap: 12 }}>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Caste</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Caste</Text>
                 <TextInput
                   placeholder="e.g. OC, BC-B"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={caste}
                   onChangeText={setCaste}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-2.5 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">Sub Caste</Text>
+                <Text className="text-white/80 text-sm mb-1.5 font-bold">Sub Caste</Text>
                 <TextInput
                   placeholder="Sub Caste"
                   placeholderTextColor="rgba(255,255,255,0.4)"
                   value={subCaste}
                   onChangeText={setSubCaste}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-2.5 py-2 text-xs"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-white/70 text-[11px] mb-1 font-semibold">TC Number</Text>
-                <TextInput
-                  placeholder="TC Number"
-                  placeholderTextColor="rgba(255,255,255,0.4)"
-                  value={tcNumber}
-                  onChangeText={setTcNumber}
-                  className="bg-white/5 border border-white/15 rounded-xl text-white px-2.5 py-2 text-xs"
+                  className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
                 />
               </View>
             </View>
 
+            {/* TC Number */}
+            <View className="mb-6">
+              <Text className="text-white/80 text-sm mb-1.5 font-bold">TC Number</Text>
+              <TextInput
+                placeholder="TC Number"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={tcNumber}
+                onChangeText={setTcNumber}
+                className="bg-white/5 border border-white/15 rounded-xl text-white px-4 py-3 text-sm font-medium"
+              />
+            </View>
+
             {/* Action Buttons */}
-            <View className="flex-row pt-4 border-t border-white/10" style={{ gap: 10 }}>
+            <View className="flex-row pt-5 border-t border-white/10" style={{ gap: 12 }}>
               <Pressable
                 onPress={() => navigation.goBack()}
-                className="flex-1 bg-white/10 py-3.5 px-2 rounded-xl items-center justify-center active:bg-white/15"
+                className="flex-1 bg-white/10 py-4 px-3 rounded-xl items-center justify-center active:bg-white/15"
               >
-                <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#ffffff', fontWeight: '700', fontSize: 14 }}>
+                <Text numberOfLines={1} adjustsFontSizeToFit style={{ color: '#ffffff', fontWeight: '700', fontSize: 15 }}>
                   Cancel
                 </Text>
               </Pressable>
               <Pressable
                 onPress={handleSaveStudent}
                 disabled={isSaving}
-                className={`flex-1 ${primaryBtnClass} py-3.5 px-2 rounded-xl items-center justify-center shadow-lg active:scale-95 ${isSaving ? 'opacity-70' : ''}`}
+                className={`flex-1 ${primaryBtnClass} py-4 px-3 rounded-xl items-center justify-center shadow-lg active:scale-95 ${isSaving ? 'opacity-70' : ''}`}
               >
                 <Text
                   numberOfLines={1}
                   adjustsFontSizeToFit
-                  style={{ color: '#101415', fontWeight: '800', fontSize: 14 }}
+                  style={{ color: '#101415', fontWeight: '800', fontSize: 15 }}
                 >
                   {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Add Student"}
                 </Text>
@@ -638,6 +784,185 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
         </ScrollView>
       </View>
 
+      {/* Calendar Picker Modal */}
+      <Modal
+        visible={calendarModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCalendarModalVisible(false)}
+      >
+        <View className="flex-1 bg-black/80 items-center justify-center px-4">
+          <View className={`bg-[#101415] border p-5 rounded-3xl w-full max-w-sm ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-[#00f1a1]/40'}`}>
+            {/* Modal Header */}
+            <View className="flex-row items-center justify-between pb-3 mb-3 border-b border-white/10">
+              <View className="flex-row items-center" style={{ gap: 10 }}>
+                <View className={`w-9 h-9 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
+                  <Calendar size={18} color={primaryColor} />
+                </View>
+                <View>
+                  <Text className="text-white font-extrabold text-base">
+                    {calendarTargetField === 'dob' ? 'Date of Birth' : 'Admission Date'}
+                  </Text>
+                  <Text className="text-white/60 text-xs font-semibold">
+                    Select date on calendar
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={() => setCalendarModalVisible(false)}
+                className="w-8 h-8 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+              >
+                <X size={16} color="#ffffff" />
+              </Pressable>
+            </View>
+
+            {/* Month & Year Navigation Row */}
+            <View className="flex-row items-center justify-between mb-3 bg-white/5 p-2 rounded-2xl border border-white/10">
+              <Pressable
+                onPress={handlePrevMonth}
+                className="p-2 rounded-xl bg-white/10 active:bg-white/20"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <ChevronLeft size={18} color={primaryColor} />
+              </Pressable>
+
+              <Pressable
+                onPress={() => setShowYearPicker(!showYearPicker)}
+                className={`flex-row items-center px-3 py-1.5 rounded-xl ${showYearPicker ? (isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40') : 'bg-white/10'}`}
+                style={{ gap: 6 }}
+              >
+                <Text className="text-white font-extrabold text-sm">
+                  {MONTH_NAMES[calMonth]} {calYear}
+                </Text>
+                <ChevronDown size={14} color={primaryColor} />
+              </Pressable>
+
+              <Pressable
+                onPress={handleNextMonth}
+                className="p-2 rounded-xl bg-white/10 active:bg-white/20"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <ChevronRight size={18} color={primaryColor} />
+              </Pressable>
+            </View>
+
+            {/* Year Picker View (Fast Year Jump) */}
+            {showYearPicker ? (
+              <View className="mb-3">
+                <Text className="text-white/70 text-xs font-bold uppercase tracking-wider mb-2">Select Year</Text>
+                <ScrollView
+                  style={{ maxHeight: 180 }}
+                  contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 4 }}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {YEAR_OPTIONS.map(yr => {
+                    const isSelected = calYear === yr;
+                    return (
+                      <Pressable
+                        key={yr}
+                        onPress={() => {
+                          setCalYear(yr);
+                          setShowYearPicker(false);
+                        }}
+                        className={`px-3 py-2 rounded-xl ${isSelected ? primaryBtnClass : 'bg-white/10 active:bg-white/20'}`}
+                      >
+                        <Text className={`text-xs font-bold ${isSelected ? 'text-[#101415]' : 'text-white'}`}>
+                          {yr}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : (
+              <View {...calSwipeResponder.panHandlers}>
+                {/* Day of Week Headers */}
+                <View className="flex-row justify-between mb-2 px-1">
+                  {DAY_LABELS.map((dayLabel, idx) => (
+                    <View key={idx} style={{ width: '13.5%', alignItems: 'center' }}>
+                      <Text className="text-white/50 text-xs font-bold">{dayLabel}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Calendar Day Grid */}
+                <View className="flex-row flex-wrap justify-start mb-4">
+                  {calendarCells.map((dayNum, idx) => {
+                    if (dayNum === null) {
+                      return <View key={`empty-${idx}`} style={{ width: '14.28%', height: 36 }} />;
+                    }
+                    const isSelected = dayNum === calSelectedDay;
+                    const isToday =
+                      dayNum === new Date().getDate() &&
+                      calMonth === new Date().getMonth() &&
+                      calYear === new Date().getFullYear();
+
+                    return (
+                      <View key={`day-${dayNum}`} style={{ width: '14.28%', height: 38, alignItems: 'center', justifyContent: 'center' }}>
+                        <Pressable
+                          onPress={() => setCalSelectedDay(dayNum)}
+                          className={`w-8 h-8 rounded-xl items-center justify-center ${
+                            isSelected
+                              ? primaryBtnClass
+                              : isToday
+                              ? 'border border-white/40 bg-white/10'
+                              : 'active:bg-white/15'
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-bold ${
+                              isSelected
+                                ? 'text-[#101415]'
+                                : isToday
+                                ? primaryTextClass
+                                : 'text-white'
+                            }`}
+                          >
+                            {dayNum}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Selected Date Summary Display */}
+            <View className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 mb-3 flex-row items-center justify-between">
+              <Text className="text-white/60 text-xs font-medium">Selected Date:</Text>
+              <Text className={`${primaryTextClass} text-sm font-extrabold`}>
+                {String(calSelectedDay).padStart(2, '0')}-{String(calMonth + 1).padStart(2, '0')}-{calYear}
+              </Text>
+            </View>
+
+            {/* Modal Actions */}
+            <View className="flex-row pt-3 border-t border-white/10" style={{ gap: 10 }}>
+              <Pressable
+                onPress={handleSetToday}
+                className="bg-white/10 py-3 px-3 rounded-xl items-center justify-center active:bg-white/20"
+              >
+                <Text className="text-white font-bold text-xs">Today</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setCalendarModalVisible(false)}
+                className="flex-1 bg-white/10 py-3 px-3 rounded-xl items-center justify-center active:bg-white/20"
+              >
+                <Text className="text-white font-bold text-xs">Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => handleApplyCalendarDate()}
+                className={`flex-1 ${primaryBtnClass} py-3 px-3 rounded-xl items-center justify-center shadow-lg active:scale-95`}
+              >
+                <Text className="text-[#101415] font-extrabold text-xs">Apply Date</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Success Modal */}
       <Modal visible={successModalVisible} transparent animationType="fade">
         <View className="flex-1 bg-black/80 items-center justify-center px-6">
@@ -645,15 +970,15 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
             <View className={`w-16 h-16 rounded-full items-center justify-center mb-4 border ${primaryBadgeClass}`}>
               <CheckCircle2 size={32} color={primaryColor} />
             </View>
-            <Text className="text-white text-xl font-bold text-center mb-2">{isEdit ? "Student Updated!" : "Student Added!"}</Text>
-            <Text className="text-white/70 text-sm text-center mb-6">
-              Record for <Text className={`${primaryTextClass} font-bold`}>{firstName || 'Student'} {lastName}</Text> has been saved.
+            <Text className="text-white text-2xl font-extrabold text-center mb-2">{isEdit ? "Student Updated!" : "Student Added!"}</Text>
+            <Text className="text-white/80 text-base text-center mb-6 leading-6">
+              Record for <Text className={`${primaryTextClass} font-extrabold`}>{firstName || 'Student'} {lastName}</Text> has been saved.
             </Text>
             <Pressable
               onPress={handleFinish}
-              className={`${primaryBtnClass} py-3 px-8 rounded-xl w-full items-center shadow-lg`}
+              className={`${primaryBtnClass} py-3.5 px-8 rounded-xl w-full items-center shadow-lg active:scale-95`}
             >
-              <Text className="text-[#101415] font-bold text-base">View Student Directory</Text>
+              <Text className="text-[#101415] font-extrabold text-base">View Student Directory</Text>
             </Pressable>
           </View>
         </View>

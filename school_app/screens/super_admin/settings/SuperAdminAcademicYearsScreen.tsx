@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Modal,
   TextInput,
   BackHandler,
+  PanResponder,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import {
@@ -244,6 +245,28 @@ export const SuperAdminAcademicYearsScreen: React.FC = () => {
       setPickerMonth((m) => m + 1);
     }
   };
+
+  const calPrevMonthRef = useRef(handlePrevMonth);
+  const calNextMonthRef = useRef(handleNextMonth);
+  calPrevMonthRef.current = handlePrevMonth;
+  calNextMonthRef.current = handleNextMonth;
+
+  // Swipe gesture for Calendar Modal (Right-to-left = Next Month, Left-to-right = Prev Month)
+  const calSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -35) {
+          calNextMonthRef.current?.();
+        } else if (gestureState.dx > 35) {
+          calPrevMonthRef.current?.();
+        }
+      },
+    })
+  ).current;
 
   const handleSelectCalendarDate = (day: number) => {
     const dd = String(day).padStart(2, '0');
@@ -684,7 +707,7 @@ export const SuperAdminAcademicYearsScreen: React.FC = () => {
             </View>
 
             {/* 7-Column Calendar Days Grid */}
-            <View className="flex-row flex-wrap mb-4">
+            <View {...calSwipeResponder.panHandlers} className="flex-row flex-wrap mb-4">
               {calendarCells.map((dayNum, idx) => {
                 if (!dayNum) {
                   return <View key={idx} style={{ width: '14.28%', height: 34 }} />;
