@@ -163,7 +163,7 @@ export const SuperAdminSchoolProfileScreen: React.FC = () => {
         colors={['#1d2022', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header */}
@@ -175,19 +175,19 @@ export const SuperAdminSchoolProfileScreen: React.FC = () => {
               className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 items-center justify-center active:bg-white/20"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <ArrowLeft size={18} color="#ffe5a0" />
+              <ArrowLeft size={22} color="#ffe5a0" />
             </Pressable>
             <View className="flex-1">
-              <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg">
+              <Text numberOfLines={1} className="text-xl md:text-2xl font-extrabold text-white font-display-lg">
                 School Profile Configurations
               </Text>
-              <Text numberOfLines={1} className="text-[9px] uppercase tracking-widest text-[#ffe5a0] font-bold">
+              <Text numberOfLines={1} className="text-xs uppercase tracking-wider text-[#ffe5a0] font-bold mt-0.5">
                 PUBLIC INFORMATION & INTEGRATION KEYS
               </Text>
             </View>
           </View>
-          <View className="w-9 h-9 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
-            <Building2 size={18} color="#f0c110" />
+          <View className="w-10 h-10 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
+            <Building2 size={22} color="#f0c110" />
           </View>
         </BlurView>
 

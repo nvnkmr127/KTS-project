@@ -82,6 +82,7 @@ export const OTPVerifyScreen: React.FC<{ navigation: any; route: any }> = ({ nav
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       className="flex-1 bg-brand-darkNavy"
+      style={{ backgroundColor: '#0B0F19' }}
     >
       <ScrollView 
         contentContainerStyle={{
@@ -105,7 +106,7 @@ export const OTPVerifyScreen: React.FC<{ navigation: any; route: any }> = ({ nav
             accessibilityLabel="Go back"
             className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/10 active:opacity-60"
           >
-            <ArrowLeft size={20} color="#FFFFFF" />
+            <ArrowLeft size={22} color="#FFFFFF" />
           </Pressable>
           <Text className="text-white text-2xl font-bold ml-3.5">Security Verification</Text>
         </View>

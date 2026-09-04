@@ -63,7 +63,7 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
               className="w-10 h-10 -ml-1.5 items-center justify-center rounded-full active:bg-white/10 active:opacity-70"
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <ChevronLeft size={isSmallPhone ? 22 : 24} color={accentColor} />
+              <ChevronLeft size={24} color={accentColor} />
             </Pressable>
           )}
 
@@ -86,17 +86,15 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
             <Text 
               numberOfLines={1} 
               adjustsFontSizeToFit 
-              minimumFontScale={0.85}
-              className={`font-bold text-white ${
-                isSmallPhone ? 'text-sm' : subtitle ? 'text-base md:text-lg' : 'text-sm md:text-base'
-              } tracking-tight`}
+              minimumFontScale={0.9}
+              className="font-extrabold text-white text-lg md:text-xl tracking-tight"
             >
               {title}
             </Text>
             {subtitle && (
               <Text 
                 numberOfLines={1} 
-                className={`text-[8.5px] md:text-[9.5px] uppercase tracking-[0.12em] font-bold ${
+                className={`text-xs uppercase tracking-wider font-bold mt-0.5 ${
                   isSuperAdmin ? 'text-[#ffe5a0]' : 'text-[#00f1a1]'
                 }`}
               >
@@ -118,7 +116,7 @@ export const AdminStaffHeader: React.FC<AdminStaffHeaderProps> = ({
             className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative active:bg-white/15"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Bell size={18} color={primaryColor} />
+            <Bell size={22} color={primaryColor} />
             {unreadCount > 0 && (
               <View className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#ff516a] rounded-full items-center justify-center shadow-[0_0_6px_rgba(255,81,106,0.8)]" />
             )}

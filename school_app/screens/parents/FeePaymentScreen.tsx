@@ -91,7 +91,7 @@ export const FeePaymentScreen: React.FC = () => {
         colors={['#0E0F26', '#121330']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header */}
@@ -107,11 +107,11 @@ export const FeePaymentScreen: React.FC = () => {
             className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <ChevronLeft size={20} color="#818CF8" />
+            <ChevronLeft size={24} color="#818CF8" />
           </Pressable>
           <View className="flex-1">
-            <Text numberOfLines={1} className="text-white text-base md:text-lg font-bold font-headline-md">Good Morning, Ramesh 👋</Text>
-            <Text numberOfLines={1} className="text-white/50 text-xs font-semibold mt-0.5">
+            <Text numberOfLines={1} className="text-white text-lg md:text-xl font-extrabold font-headline-md">Good Morning, Ramesh 👋</Text>
+            <Text numberOfLines={1} className="text-white/70 text-xs font-bold mt-0.5">
               {currentChild.name}'s Fees | Class {currentChild.class.replace('Grade ', '')} | 2025-26
             </Text>
           </View>
@@ -120,7 +120,7 @@ export const FeePaymentScreen: React.FC = () => {
           className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Bell size={20} color="#5E5CE6" />
+          <Bell size={22} color="#5E5CE6" />
         </Pressable>
       </View>
 

@@ -68,7 +68,7 @@ export const GuestHeader: React.FC<GuestHeaderProps> = ({ title, showBack = fals
             style={styles.settingsButton}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Settings size={20} color="#8ed5ff" />
+            <Settings size={22} color="#8ed5ff" />
           </Pressable>
         </View>
       </View>
@@ -89,14 +89,14 @@ export const GuestHeader: React.FC<GuestHeaderProps> = ({ title, showBack = fals
             onPress={() => {}}
           >
             {/* Layer 1: Dark blur base matching guest screen tone */}
-            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
 
             {/* Layer 2: Sky-blue top glow — matches guest header/stat card accents */}
             <LinearGradient
               colors={['rgba(56, 189, 248, 0.18)', 'rgba(13, 27, 42, 0)', 'rgba(13, 27, 42, 0)']}
               start={{ x: 0.5, y: 0 }}
               end={{ x: 0.5, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               pointerEvents="none"
             />
 
@@ -105,7 +105,7 @@ export const GuestHeader: React.FC<GuestHeaderProps> = ({ title, showBack = fals
               colors={['rgba(142, 213, 255, 0.07)', 'rgba(142, 213, 255, 0)', 'rgba(142, 213, 255, 0)']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               pointerEvents="none"
             />
 
@@ -194,8 +194,8 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#e0e3e5',
     marginLeft: 4,
     flex: 1,

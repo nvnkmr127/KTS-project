@@ -119,7 +119,7 @@ export const MessagingScreen: React.FC = () => {
         colors={['#0E0F26', '#121330']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Main Title Header Bar */}

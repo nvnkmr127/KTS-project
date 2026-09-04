@@ -153,7 +153,7 @@ export const AdminActivityLogScreen: React.FC<any> = ({ navigation: propNavigati
         colors={['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <AdminStaffHeader

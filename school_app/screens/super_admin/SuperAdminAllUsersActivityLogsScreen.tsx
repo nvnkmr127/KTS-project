@@ -275,7 +275,7 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
         colors={['#1d2022', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header */}
@@ -286,8 +286,8 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
               <History size={22} color="#f0c110" />
             </View>
             <View>
-              <Text className="text-white text-xl font-extrabold">Users Activity Logs</Text>
-              <Text className="text-[#ffe5a0] text-xs font-bold tracking-widest uppercase mt-0.5">ALL USERS AUDIT STREAM</Text>
+              <Text className="text-white text-xl md:text-2xl font-extrabold">Users Activity Logs</Text>
+              <Text className="text-[#ffe5a0] text-xs font-bold tracking-wider uppercase mt-0.5">ALL USERS AUDIT STREAM</Text>
             </View>
           </View>
 
@@ -295,7 +295,7 @@ export const SuperAdminAllUsersActivityLogsScreen: React.FC = () => {
             onPress={handleExport}
             className="flex-row items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#f0c110] active:scale-95 shadow-md shadow-[#f0c110]/30"
           >
-            <Download size={16} color="#101415" />
+            <Download size={18} color="#101415" />
             <Text className="text-[#101415] text-xs md:text-sm font-black uppercase">Export</Text>
           </Pressable>
         </BlurView>

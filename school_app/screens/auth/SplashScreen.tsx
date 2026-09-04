@@ -24,7 +24,7 @@ export const SplashScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   return (
-    <View className="flex-1 justify-center items-center bg-brand-darkNavy">
+    <View className="flex-1 justify-center items-center bg-brand-darkNavy" style={{ backgroundColor: '#0B0F19' }}>
       <Animated.View style={logoStyle} className="items-center justify-center">
         <View className="p-6 bg-white/10 rounded-3xl border border-white/20 shadow-2xl">
           <Shield size={64} color="#FFFFFF" strokeWidth={1.5} />

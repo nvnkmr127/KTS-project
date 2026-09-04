@@ -702,7 +702,7 @@ export const AnalyticsDashboardScreen: React.FC = () => {
         colors={['#1d2022', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header */}

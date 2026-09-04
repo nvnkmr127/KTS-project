@@ -134,7 +134,7 @@ export const SuperAdminDashboard: React.FC = () => {
         colors={['#1d2022', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header with Custom Glow Shadow */}
@@ -151,8 +151,8 @@ export const SuperAdminDashboard: React.FC = () => {
               <School size={22} color="#241a00" />
             </View>
             <View className="flex-1">
-              <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg">EduVision</Text>
-              <Text numberOfLines={1} className="text-[9px] uppercase tracking-widest text-[#d1c5ac]">Super Admin Terminal</Text>
+              <Text numberOfLines={1} className="text-xl md:text-2xl font-extrabold text-white font-display-lg">EduVision</Text>
+              <Text numberOfLines={1} className="text-xs uppercase tracking-wider font-bold text-[#d1c5ac] mt-0.5">Super Admin Terminal</Text>
             </View>
           </Pressable>
 
@@ -163,7 +163,7 @@ export const SuperAdminDashboard: React.FC = () => {
               className="w-10 h-10 rounded-full bg-red-600 items-center justify-center active:scale-95 shadow-[0_0_15px_rgba(220,38,38,0.6)]"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <AlertTriangle size={18} color="#FFF" />
+              <AlertTriangle size={20} color="#FFF" />
             </Pressable>
 
             <Pressable 
@@ -171,7 +171,7 @@ export const SuperAdminDashboard: React.FC = () => {
               className="w-10 h-10 rounded-full bg-white/10 border border-white/15 items-center justify-center active:bg-white/20 active:scale-95 relative"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <Bell size={18} color="#ffe5a0" />
+              <Bell size={22} color="#ffe5a0" />
               {/* Notification Active Dot Badge */}
               {unreadCount > 0 && (
                 <View className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#f0c110] shadow-[0_0_6px_#f0c110]" />

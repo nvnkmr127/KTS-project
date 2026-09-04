@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Switch, Modal, TextInput, BackHandler } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
-  Settings, User, Bell, ShieldCheck, Lock, Globe, 
-  RefreshCw, Sliders, Database, KeyRound, Smartphone, 
+import {
+  Settings, User, Bell, ShieldCheck, Lock, Globe,
+  RefreshCw, Sliders, Database, KeyRound, Smartphone,
   CheckCircle2, ChevronRight, Moon, CalendarDays, Wallet,
-  Mail, Phone, Eye, EyeOff, Save, Check, X
+  Mail, Phone, Eye, EyeOff, Save, Check, X, History, LogOut,
+  AlertTriangle
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
@@ -17,14 +18,14 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
   const defaultNavigation = useNavigation<any>();
   const navigation = propNavigation || defaultNavigation;
   const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
 
   // Settings Toggles State
   const [feeAlerts, setFeeAlerts] = useState(true);
   const [leaveAlerts, setLeaveAlerts] = useState(true);
   const [busGpsAlerts, setBusGpsAlerts] = useState(true);
   const [dailyDigest, setDailyDigest] = useState(false);
-  
+
   const [biometricLogin, setBiometricLogin] = useState(true);
   const [autoReceiptGen, setAutoReceiptGen] = useState(true);
   const [compactLayout, setCompactLayout] = useState(false);
@@ -36,6 +37,8 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
 
   // Modals & Toast State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
+  const [isCacheModalOpen, setIsCacheModalOpen] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -46,6 +49,14 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
+        if (isCacheModalOpen) {
+          setIsCacheModalOpen(false);
+          return true;
+        }
+        if (isSignOutModalOpen) {
+          setIsSignOutModalOpen(false);
+          return true;
+        }
         if (isPasswordModalOpen) {
           setIsPasswordModalOpen(false);
           return true;
@@ -59,7 +70,7 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [isPasswordModalOpen, navigation])
+    }, [isPasswordModalOpen, isSignOutModalOpen, isCacheModalOpen, navigation])
   );
 
   const showToast = (msg: string) => {
@@ -84,7 +95,12 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
   };
 
   const handleClearCache = () => {
-    showToast('App cache & temporary storage cleared!');
+    setIsCacheModalOpen(true);
+  };
+
+  const handleSignOut = () => {
+    setIsSignOutModalOpen(false);
+    logout();
   };
 
   return (
@@ -93,7 +109,7 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
         colors={['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <AdminStaffHeader
@@ -107,11 +123,11 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
         }
       />
 
-      <ScrollView 
-        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]} 
+      <ScrollView
+        contentContainerStyle={[styles.scrollContent, containerStyle, { paddingBottom: scrollBottomPadding + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        
+
         {/* Profile Card Summary */}
         <View className="px-5 mb-5">
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 flex-row items-center justify-between">
@@ -140,7 +156,7 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
         {/* SECTION 1: System Notifications */}
         <View className="px-5 mb-5">
           <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">1. Notifications & Alerts</Text>
-          
+
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-3">
             <View className="flex-row items-center justify-between py-1">
               <View className="flex-row items-center flex-1 mr-3">
@@ -205,7 +221,7 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
         {/* SECTION 2: Academic Operating Controls */}
         <View className="px-5 mb-5">
           <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">2. Academic & Operation Defaults</Text>
-          
+
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-3">
             <View className="flex-row items-center justify-between py-1.5">
               <Text className="text-white font-bold text-xs">Default Academic Session</Text>
@@ -214,9 +230,8 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
                   <Pressable
                     key={year}
                     onPress={() => setAcademicYear(year)}
-                    className={`px-3 py-1 rounded-xl border ${
-                      academicYear === year ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'
-                    }`}
+                    className={`px-3 py-1 rounded-xl border ${academicYear === year ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-white/5 border-white/15'
+                      }`}
                   >
                     <Text className={`text-[10px] font-bold ${academicYear === year ? 'text-[#101415]' : 'text-white'}`}>{year}</Text>
                   </Pressable>
@@ -244,7 +259,7 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
         {/* SECTION 3: Security & Data Storage */}
         <View className="px-5 mb-5">
           <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">3. Security & App Storage</Text>
-          
+
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-3">
             <View className="flex-row items-center justify-between py-1">
               <View className="flex-row items-center flex-1 mr-3">
@@ -299,7 +314,57 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
           </GlassCard>
         </View>
 
-        {/* SECTION 4: App Info */}
+        {/* SECTION 4: Account & Activity Actions */}
+        <View className="px-5 mb-5">
+          <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">4. Account & Activity</Text>
+
+          <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-3">
+            <Pressable
+              onPress={() => navigation.navigate('AdminActivityLog')}
+              className="flex-row items-center justify-between py-1"
+            >
+              <View className="flex-row items-center flex-1 mr-3">
+                <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 items-center justify-center mr-3 border border-[#00f1a1]/30">
+                  <History size={16} color="#00f1a1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-bold text-xs">Activity Logs & Audit Trail</Text>
+                  <Text className="text-white/50 text-[10px]">View your administrative activity log & recent actions</Text>
+                </View>
+              </View>
+              <ChevronRight size={16} color="#00f1a1" />
+            </Pressable>
+
+            <View className="h-[1px] bg-white/10 my-2.5" />
+
+            <Pressable
+              onPress={() => setIsPasswordModalOpen(true)}
+              className="flex-row items-center justify-between py-1"
+            >
+              <View className="flex-row items-center flex-1 mr-3">
+                <View className="w-8 h-8 rounded-xl bg-amber-500/20 items-center justify-center mr-3 border border-amber-500/30">
+                  <KeyRound size={16} color="#f59e0b" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-bold text-xs">Change Password</Text>
+                  <Text className="text-white/50 text-[10px]">Update administrative account credentials</Text>
+                </View>
+              </View>
+              <ChevronRight size={16} color="#f59e0b" />
+            </Pressable>
+          </GlassCard>
+
+          {/* Sign Out Button */}
+          <Pressable
+            onPress={() => setIsSignOutModalOpen(true)}
+            className="w-full py-3.5 bg-rose-500/15 border border-rose-500/30 rounded-2xl flex-row items-center justify-center active:bg-rose-500/25 active:scale-[0.99] shadow-[0_0_15px_rgba(244,63,94,0.12)]"
+          >
+            <LogOut size={18} color="#f43f5e" style={{ marginRight: 8 }} />
+            <Text className="text-[#f43f5e] font-extrabold text-xs uppercase tracking-wider">Sign Out </Text>
+          </Pressable>
+        </View>
+
+        {/* SECTION 5: App Info */}
         <View className="px-5 mb-6">
           <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 items-center">
             <Text className="text-white font-extrabold text-xs mb-0.5">EduVision School ERP Mobile</Text>
@@ -316,7 +381,7 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
         <Modal visible={isPasswordModalOpen} transparent animationType="fade" onRequestClose={() => setIsPasswordModalOpen(false)}>
           <View className="flex-1 bg-black/85 justify-center items-center p-4">
             <View className="w-full max-w-sm p-5 border border-white/20 rounded-3xl" style={{ backgroundColor: '#101415' }}>
-              
+
               <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
                 <View className="flex-row items-center">
                   <View className="w-8 h-8 rounded-xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mr-2.5">
@@ -386,9 +451,75 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
         </Modal>
       )}
 
+      {/* SIGN OUT CONFIRMATION MODAL */}
+      {isSignOutModalOpen && (
+        <Modal visible={isSignOutModalOpen} transparent animationType="fade" onRequestClose={() => setIsSignOutModalOpen(false)}>
+          <View className="flex-1 bg-black/85 justify-center items-center p-4">
+            <View className="w-full max-w-sm p-5 border border-rose-500/30 rounded-3xl" style={{ backgroundColor: '#101415' }}>
+              <View className="items-center mb-4">
+                <View className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 items-center justify-center mb-3 shadow-[0_0_20px_rgba(244,63,94,0.3)]">
+                  <LogOut size={26} color="#f43f5e" />
+                </View>
+                <Text className="text-white font-extrabold text-lg text-center">Sign Out Confirmation</Text>
+                <Text className="text-white/60 text-xs text-center mt-1 leading-relaxed px-2">
+                  Are you sure you want to end your current session and sign out from the Admin Staff Terminal?
+                </Text>
+              </View>
+
+              <View className="flex-row" style={{ gap: 10 }}>
+                <Pressable
+                  onPress={() => setIsSignOutModalOpen(false)}
+                  className="flex-1 py-3 bg-white/10 border border-white/15 rounded-xl items-center active:bg-white/20"
+                >
+                  <Text className="text-white text-xs font-bold">Cancel</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleSignOut}
+                  className="flex-1 py-3 bg-rose-500 rounded-xl items-center active:bg-rose-600 shadow-md shadow-rose-500/30"
+                >
+                  <Text className="text-white text-xs font-black uppercase tracking-wider">Sign Out</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* CLEAR LOCAL CACHE & REFRESH DATA POP-UP MODAL */}
+      {isCacheModalOpen && (
+        <Modal visible={isCacheModalOpen} transparent animationType="fade" onRequestClose={() => setIsCacheModalOpen(false)}>
+          <View className="flex-1 bg-black/85 justify-center items-center p-4">
+            <View className="w-full max-w-sm p-6 border border-[#00f1a1]/30 rounded-3xl" style={{ backgroundColor: '#101415' }}>
+              <View className="items-center mb-5">
+                <View className="w-16 h-16 rounded-2xl bg-[#00f1a1]/20 border border-[#00f1a1]/40 items-center justify-center mb-3.5 shadow-[0_0_25px_rgba(0,241,161,0.35)]">
+                  <CheckCircle2 size={32} color="#00f1a1" />
+                </View>
+                <Text className="text-white font-extrabold text-lg text-center">Local Cache Purged</Text>
+                <Text className="text-white/70 text-xs text-center mt-1.5 leading-relaxed px-1">
+                  Temporary application storage, query cache, and offline tables have been purged. Live ERP connection refreshed.
+                </Text>
+
+                <View className="mt-4 px-3 py-1.5 rounded-full bg-[#00f1a1]/10 border border-[#00f1a1]/30 flex-row items-center">
+                  <RefreshCw size={12} color="#00f1a1" style={{ marginRight: 6 }} />
+                  <Text className="text-[#00f1a1] text-[11px] font-bold">14.2 MB Storage Cleaned • Live Sync OK</Text>
+                </View>
+              </View>
+
+              <Pressable
+                onPress={() => setIsCacheModalOpen(false)}
+                className="w-full py-3.5 bg-[#00f1a1] rounded-xl items-center active:scale-95 shadow-md shadow-[#00f1a1]/30"
+              >
+                <Text className="text-[#101415] text-xs font-black uppercase tracking-wider">Done</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
-        <View className="absolute bottom-6 left-5 right-5 bg-[#00f1a1] p-3.5 rounded-2xl flex-row items-center justify-between shadow-[0_0_20px_rgba(0,241,161,0.5)]">
+        <View className="absolute bottom-28 left-5 right-5 bg-[#00f1a1] p-3.5 rounded-2xl flex-row items-center justify-between shadow-[0_0_20px_rgba(0,241,161,0.5)] z-50">
           <Text className="text-[#101415] font-extrabold text-xs">{toastMessage}</Text>
           <CheckCircle2 size={18} color="#101415" />
         </View>

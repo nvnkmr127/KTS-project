@@ -9,10 +9,10 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
-import { 
-  Users, Banknote, CalendarDays, Bus, 
-  Search, UserSquare2, Wallet, CalendarRange, 
-  FileEdit, ClipboardCheck, ArrowLeftRight, 
+import {
+  Users, Banknote, CalendarDays, Bus,
+  Search, UserSquare2, Wallet, CalendarRange,
+  FileEdit, ClipboardCheck, ArrowLeftRight,
   Megaphone, UserPlus, Phone, MessageCircle, X, Check,
   ShieldCheck, Bell, UserCheck, BookOpen, TrendingUp,
   GraduationCap, Tag, Palmtree, CalendarOff, BarChart2, Layers,
@@ -52,6 +52,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   const [refreshing, setRefreshing] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showSidebarModal, setShowSidebarModal] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [notificationFilter, setNotificationFilter] = useState<'All' | 'Fees' | 'Leaves' | 'System' | 'Bus'>('All');
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
 
@@ -77,6 +78,10 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
+        if (showSignOutModal) {
+          setShowSignOutModal(false);
+          return true;
+        }
         if (showSidebarModal) {
           setShowSidebarModal(false);
           return true;
@@ -90,7 +95,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [showSidebarModal, showNotificationModal])
+    }, [showSidebarModal, showNotificationModal, showSignOutModal])
   );
 
   const fetchLiveDashboardData = async () => {
@@ -171,8 +176,13 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
-  const handleSignOut = () => {
+  const handleOpenSignOutModal = () => {
     setShowSidebarModal(false);
+    setShowSignOutModal(true);
+  };
+
+  const handleConfirmSignOut = () => {
+    setShowSignOutModal(false);
     logout();
   };
 
@@ -209,7 +219,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
     { title: 'Recycle Bin', icon: <Trash2 size={24} color={primaryColor} />, route: 'RecycleBin' },
   ];
 
-  const filteredNotifications = notifications.filter(n => 
+  const filteredNotifications = notifications.filter(n =>
     notificationFilter === 'All' || n.category === notificationFilter
   );
 
@@ -219,9 +229,9 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
         colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
-      <AdminStaffHeader 
+      <AdminStaffHeader
         onIconPress={() => setShowSidebarModal(true)}
         title="EduVision"
         subtitle={isSuperAdmin ? "Super Admin Terminal" : "Admin Staff Terminal"}
@@ -231,11 +241,11 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
           </View>
         }
         rightAction={
-          <Pressable 
+          <Pressable
             onPress={() => setShowNotificationModal(true)}
             className="w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center relative active:bg-white/10"
           >
-            <Bell size={18} color={primaryColor} />
+            <Bell size={22} color={primaryColor} />
             {unreadCount > 0 && (
               <View className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#ff516a] rounded-full items-center justify-center shadow-[0_0_6px_rgba(255,81,106,0.8)]" />
             )}
@@ -243,12 +253,12 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
         }
       />
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           containerStyle,
           { paddingBottom: scrollBottomPadding + 24 }
-        ]} 
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={primaryColor} />
@@ -256,22 +266,24 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
       >
         {/* Welcome Section */}
         <View className="mb-6 px-5">
-          <Text className="text-white/90 text-xl font-bold mb-1">Welcome, {user?.name || 'Sarah'}</Text>
+          <Text className="text-white/90 text-xl font-bold mb-1">
+            Welcome, <Text className={primaryTextClass}>{user?.name || 'Sarah'}</Text>
+          </Text>
           <Text className="text-white/60 text-sm">Good morning! Here's the live system overview.</Text>
         </View>
 
         {/* Stats Grid */}
         <View className="flex-row mb-3 px-5" style={{ gap: 12 }}>
-          <AdminStatCard 
-            title="STUDENTS" 
-            value={stats.studentsCount} 
+          <AdminStatCard
+            title="STUDENTS"
+            value={stats.studentsCount}
             icon={<Users size={20} color={primaryColor} />}
             progress={0.65}
             onPress={() => navigation.navigate('StudentDirectory')}
           />
-          <AdminStatCard 
-            title="FEES DUE" 
-            value={stats.feesDue} 
+          <AdminStatCard
+            title="FEES DUE"
+            value={stats.feesDue}
             icon={<Banknote size={20} color={primaryColor} />}
             trend="Live database sync"
             onPress={() => navigation.navigate('FeeList')}
@@ -279,16 +291,16 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
         </View>
 
         <View className="flex-row mb-6 px-5" style={{ gap: 12 }}>
-          <AdminStatCard 
-            title="PENDING LEAVES" 
-            value={stats.pendingLeaves} 
+          <AdminStatCard
+            title="PENDING LEAVES"
+            value={stats.pendingLeaves}
             icon={<CalendarDays size={20} color={primaryColor} />}
             progress={0.25}
             onPress={() => navigation.navigate('AdminStaffLeaves')}
           />
-          <AdminStatCard 
-            title="ACTIVE BUSES" 
-            value={stats.activeBuses} 
+          <AdminStatCard
+            title="ACTIVE BUSES"
+            value={stats.activeBuses}
             icon={<Bus size={20} color={primaryColor} />}
             trend="GPS Live"
             onPress={() => navigation.navigate('AdminBusTracking')}
@@ -354,15 +366,15 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
       {showSidebarModal && (
         <Modal visible={showSidebarModal} transparent animationType="fade" onRequestClose={() => setShowSidebarModal(false)}>
           <View className="flex-1 bg-black/80 flex-row">
-            <View 
-              className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-white/15" 
-              style={{ 
+            <View
+              className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-white/15"
+              style={{
                 backgroundColor: '#101415',
                 paddingTop: Math.max(insets.top, 20) + 8,
                 paddingBottom: Math.max(insets.bottom, 20) + 12,
               }}
             >
-              
+
               {/* Sidebar Header & Close */}
               <View>
                 <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5">
@@ -450,11 +462,11 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                 </Pressable>
 
                 <Pressable
-                  onPress={handleSignOut}
+                  onPress={handleOpenSignOutModal}
                   className="w-full py-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30"
                 >
                   <LogOut size={18} color="#ff516a" style={{ marginRight: 8 }} />
-                  <Text className="text-[#ff516a] font-extrabold text-xs uppercase tracking-wider">Sign Out</Text>
+                  <Text className="text-[#ff516a] font-extrabold text-xs uppercase tracking-wider">Sign Out </Text>
                 </Pressable>
               </View>
 
@@ -469,17 +481,17 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
       {/* NOTIFICATION CARD MODAL (Top-Right Popover Below Bell Icon) */}
       {showNotificationModal && (
         <Modal visible={showNotificationModal} transparent animationType="fade" onRequestClose={() => setShowNotificationModal(false)}>
-          <Pressable 
+          <Pressable
             onPress={() => setShowNotificationModal(false)}
             style={{ paddingTop: headerPaddingTop + 4 }}
             className="flex-1 bg-black/60 px-4 items-end"
           >
-            <Pressable 
-              onPress={(e) => e.stopPropagation()} 
-              className={`w-[92%] max-w-sm p-4 border rounded-3xl shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-white/20'}`} 
+            <Pressable
+              onPress={(e: { stopPropagation: () => any; }) => e.stopPropagation()}
+              className={`w-[92%] max-w-sm p-4 border rounded-3xl shadow-2xl ${isSuperAdmin ? 'border-[#f0c110]/40' : 'border-white/20'}`}
               style={{ backgroundColor: '#101415', marginTop: 8 }}
             >
-              
+
               {/* Header Bar */}
               <View className="flex-row justify-between items-center pb-3 border-b border-white/10 mb-4">
                 <View className="flex-row items-center">
@@ -491,7 +503,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                     <Text className={`${primaryTextClass} text-[10px] font-bold`}>{unreadCount} Unread System Alerts</Text>
                   </View>
                 </View>
-                
+
                 <Pressable onPress={() => setShowNotificationModal(false)} className="p-1">
                   <X size={20} color="rgba(255,255,255,0.6)" />
                 </Pressable>
@@ -523,11 +535,10 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                   </View>
                 ) : (
                   filteredNotifications.map(n => (
-                    <View 
-                      key={n.id} 
-                      className={`p-3 rounded-2xl mb-2.5 border ${
-                        n.read ? 'bg-white/5 border-white/5' : primaryBadgeClass
-                      }`}
+                    <View
+                      key={n.id}
+                      className={`p-3 rounded-2xl mb-2.5 border ${n.read ? 'bg-white/5 border-white/5' : primaryBadgeClass
+                        }`}
                     >
                       <View className="flex-row justify-between items-start mb-1">
                         <Text className="text-white font-extrabold text-xs flex-1 mr-2">{n.title}</Text>
@@ -562,6 +573,49 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
         </Modal>
       )}
 
+      {/* SIGN OUT CONFIRMATION MODAL */}
+      {showSignOutModal && (
+        <Modal
+          visible={showSignOutModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowSignOutModal(false)}
+        >
+          <View className="flex-1 bg-black/85 justify-center items-center p-4">
+            <View
+              className="w-full max-w-sm p-5 border border-rose-500/30 rounded-3xl"
+              style={{ backgroundColor: '#101415' }}
+            >
+              <View className="items-center mb-4">
+                <View className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 items-center justify-center mb-3 shadow-[0_0_20px_rgba(244,63,94,0.3)]">
+                  <LogOut size={26} color="#f43f5e" />
+                </View>
+                <Text className="text-white font-extrabold text-lg text-center">Sign Out Confirmation</Text>
+                <Text className="text-white/60 text-xs text-center mt-1 leading-relaxed px-2">
+                  Are you sure you want to end your session and sign out from the {isSuperAdmin ? 'Super Admin' : 'Admin Staff'} Terminal?
+                </Text>
+              </View>
+
+              <View className="flex-row" style={{ gap: 10 }}>
+                <Pressable
+                  onPress={() => setShowSignOutModal(false)}
+                  className="flex-1 py-3 bg-white/10 border border-white/15 rounded-xl items-center active:bg-white/20"
+                >
+                  <Text className="text-white text-xs font-bold">Cancel</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleConfirmSignOut}
+                  className="flex-1 py-3 bg-rose-500 rounded-xl items-center active:bg-rose-600 shadow-md shadow-rose-500/30"
+                >
+                  <Text className="text-white text-xs font-black uppercase tracking-wider">Sign Out </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
     </View>
   );
 };
@@ -569,6 +623,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0d2a24',
   },
   scrollContent: {
     paddingTop: 16,

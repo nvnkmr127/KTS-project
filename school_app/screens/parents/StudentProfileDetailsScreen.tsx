@@ -72,7 +72,7 @@ export const ProfileScreen: React.FC = () => {
         colors={['#004d3d', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Top Header */}
@@ -88,15 +88,15 @@ export const ProfileScreen: React.FC = () => {
             className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <ChevronLeft size={20} color="#46f1c5" />
+            <ChevronLeft size={24} color="#46f1c5" />
           </Pressable>
-          <Text className="text-white text-lg font-bold font-headline-md">Student Profile</Text>
+          <Text className="text-white text-lg md:text-xl font-extrabold font-headline-md">Student Profile</Text>
         </View>
         <Pressable 
           className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Search size={18} color="#46f1c5" />
+          <Search size={22} color="#46f1c5" />
         </Pressable>
       </View>
 
@@ -302,7 +302,7 @@ export const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121414',
+    backgroundColor: '#0d2a24',
   },
   header: {
     paddingTop: Platform.OS === 'ios' ? 65 : 52,

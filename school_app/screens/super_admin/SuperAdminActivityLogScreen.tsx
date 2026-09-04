@@ -212,7 +212,7 @@ export const SuperAdminActivityLogScreen: React.FC<any> = ({ navigation: propNav
         colors={['#1d2022', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header */}
@@ -224,10 +224,10 @@ export const SuperAdminActivityLogScreen: React.FC<any> = ({ navigation: propNav
               className="w-10 h-10 rounded-full bg-white/10 border border-white/15 items-center justify-center active:scale-95"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <ChevronLeft size={22} color="#ffe5a0" />
+              <ChevronLeft size={24} color="#ffe5a0" />
             </Pressable>
             <View>
-              <Text className="text-white text-xl font-extrabold">My Activity Logs</Text>
+              <Text className="text-white text-xl md:text-2xl font-extrabold">My Activity Logs</Text>
               <Text className="text-[#ffe5a0] text-xs font-bold tracking-wider uppercase mt-0.5">SUPER ADMIN AUDIT TRAIL</Text>
             </View>
           </View>
@@ -236,7 +236,7 @@ export const SuperAdminActivityLogScreen: React.FC<any> = ({ navigation: propNav
             onPress={handleExport}
             className="flex-row items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[#f0c110] active:scale-95 shadow-md shadow-[#f0c110]/30"
           >
-            <Download size={16} color="#101415" />
+            <Download size={18} color="#101415" />
             <Text className="text-[#101415] text-xs md:text-sm font-black uppercase">Export</Text>
           </Pressable>
         </BlurView>

@@ -503,7 +503,7 @@ export const SuperAdminStaffDetailsScreen: React.FC = () => {
         colors={['#1d2022', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header matching Super Admin Dark Gold Luxury Theme */}
@@ -515,13 +515,13 @@ export const SuperAdminStaffDetailsScreen: React.FC = () => {
               className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 items-center justify-center active:bg-white/20 active:scale-95"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <ArrowLeft size={18} color="#ffe5a0" />
+              <ArrowLeft size={22} color="#ffe5a0" />
             </Pressable>
             <View className="flex-1">
-              <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg">
+              <Text numberOfLines={1} className="text-xl md:text-2xl font-extrabold text-white font-display-lg">
                 Faculty Profile
               </Text>
-              <Text numberOfLines={1} className="text-[9px] uppercase tracking-widest text-[#ffe5a0] font-bold">
+              <Text numberOfLines={1} className="text-xs uppercase tracking-wider text-[#ffe5a0] font-bold mt-0.5">
                 COMPREHENSIVE STAFF DOSSIER
               </Text>
             </View>
@@ -533,14 +533,14 @@ export const SuperAdminStaffDetailsScreen: React.FC = () => {
               className="w-10 h-10 rounded-xl bg-[#f0c110]/15 border border-[#f0c110]/30 items-center justify-center active:scale-95"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <Edit3 size={17} color="#f0c110" />
+              <Edit3 size={20} color="#f0c110" />
             </Pressable>
             <Pressable
               onPress={handleDeleteStaff}
               className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 items-center justify-center active:scale-95"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <Trash2 size={17} color="#ffb4ab" />
+              <Trash2 size={20} color="#ffb4ab" />
             </Pressable>
           </View>
         </BlurView>

@@ -86,7 +86,7 @@ export const RecycleBinScreen: React.FC<any> = ({ navigation }) => {
         colors={['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <AdminStaffHeader

@@ -158,7 +158,7 @@ export const BusTrackingScreen: React.FC = () => {
 
         <LinearGradient
           colors={['rgba(13, 27, 42, 0.4)', '#0E0F26']}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
       </View>
@@ -182,15 +182,15 @@ export const BusTrackingScreen: React.FC = () => {
             />
           </Pressable>
           <View className="flex-1">
-            <Text className="text-white/70 text-xs font-semibold">Good Morning,</Text>
-            <Text numberOfLines={1} className="text-white text-base md:text-lg font-bold font-headline-md">{user?.name || 'Ramesh'} 👋</Text>
+            <Text className="text-white/80 text-xs font-bold">Good Morning,</Text>
+            <Text numberOfLines={1} className="text-white text-lg md:text-xl font-extrabold font-headline-md">{user?.name || 'Ramesh'} 👋</Text>
           </View>
         </View>
         <Pressable 
           className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Bell size={20} color="#5E5CE6" />
+          <Bell size={22} color="#5E5CE6" />
         </Pressable>
       </View>
 
@@ -234,16 +234,16 @@ export const BusTrackingScreen: React.FC = () => {
         className="overflow-hidden"
       >
         {/* Glow Background Layer */}
-        <View style={[StyleSheet.absoluteFillObject, { zIndex: -2 }]}>
+        <View style={[StyleSheet.absoluteFill, { zIndex: -2 }]}>
           {/* Base Dark Background (Translucent to let map show through) */}
-          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(19, 19, 26, 0.35)' }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(19, 19, 26, 0.35)' }]} />
 
           {/* Horizontal Glow Gradient */}
           <LinearGradient
             colors={['rgba(94, 92, 230, 0.18)', 'rgba(19, 19, 26, 0)', 'rgba(34, 197, 94, 0.22)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
 
           {/* Vertical Glow Gradient (fading glows out towards the bottom) */}
@@ -251,11 +251,11 @@ export const BusTrackingScreen: React.FC = () => {
             colors={['transparent', 'rgba(19, 19, 26, 0.35)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 0.85 }}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
         </View>
 
-        <BlurView intensity={95} tint="dark" style={[StyleSheet.absoluteFillObject, { zIndex: -1 }]} />
+        <BlurView intensity={95} tint="dark" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} />
         {/* Frosted Glass Highlight */}
         <LinearGradient
           colors={[
@@ -265,7 +265,7 @@ export const BusTrackingScreen: React.FC = () => {
           ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
 
         {/* Handle */}
@@ -488,7 +488,7 @@ export const BusTrackingScreen: React.FC = () => {
         onRequestClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
       >
         <View style={styles.alertOverlay}>
-          <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFillObject} />
+          <BlurView intensity={95} tint="dark" style={StyleSheet.absoluteFill} />
           <View 
             style={[styles.glassCard, styles.alertCard]}
             className="w-[85%] max-w-[340px] p-6 border border-white/10 items-center"

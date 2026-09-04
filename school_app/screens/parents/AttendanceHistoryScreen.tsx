@@ -124,7 +124,7 @@ export const AttendanceHistoryScreen: React.FC = () => {
         colors={['#0E0F26', '#121330']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header - Matching other screens pattern */}
@@ -151,19 +151,19 @@ export const AttendanceHistoryScreen: React.FC = () => {
               className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <ChevronLeft size={20} color="#818CF8" />
+              <ChevronLeft size={24} color="#818CF8" />
             </Pressable>
           )}
           <View>
-            <Text className="text-white/70 text-xs font-semibold">Parent Profile</Text>
-            <Text numberOfLines={1} className="text-white text-base md:text-lg font-bold font-headline-md">Good Morning, {user?.name || 'Ramesh'} 👋</Text>
+            <Text className="text-white/80 text-xs font-bold">Parent Profile</Text>
+            <Text numberOfLines={1} className="text-white text-lg md:text-xl font-extrabold font-headline-md">Good Morning, {user?.name || 'Ramesh'} 👋</Text>
           </View>
         </View>
         <Pressable 
           className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Bell size={20} color="#5E5CE6" />
+          <Bell size={22} color="#5E5CE6" />
         </Pressable>
       </View>
 
@@ -177,13 +177,13 @@ export const AttendanceHistoryScreen: React.FC = () => {
         {/* Attendance Warning Card - Frosted Glass */}
         <View className="px-5 mb-5">
           <View style={styles.warningCard} className="overflow-hidden relative">
-            <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFillObject, { zIndex: -1 }]} />
+            <BlurView intensity={80} tint="dark" style={[StyleSheet.absoluteFill, { zIndex: -1 }]} />
             {/* Subtle error tint overlay */}
             <LinearGradient
               colors={['rgba(251, 113, 133, 0.08)', 'rgba(251, 113, 133, 0.03)']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
             />
             <View className="p-5 flex-row items-center gap-4">
               <View className="w-12 h-12 rounded-full bg-[#351A2C] border border-[#592C4D] flex items-center justify-center flex-shrink-0">

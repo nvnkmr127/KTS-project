@@ -108,7 +108,7 @@ export const SchoolFacilitiesScreen: React.FC = () => {
         colors={['#1a2a3a', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <GuestHeader

@@ -622,7 +622,7 @@ export const SuperAdminWebhookManagementScreen: React.FC = () => {
         colors={['#1d2022', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Header */}
@@ -634,19 +634,19 @@ export const SuperAdminWebhookManagementScreen: React.FC = () => {
               className="w-11 h-11 rounded-2xl bg-white/10 border border-white/15 items-center justify-center active:bg-white/20"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <ArrowLeft size={20} color="#ffe5a0" />
+              <ArrowLeft size={22} color="#ffe5a0" />
             </Pressable>
             <View className="flex-1">
               <Text numberOfLines={1} className="text-xl md:text-2xl font-bold text-white font-display-lg">
                 Webhook Management
               </Text>
-              <Text numberOfLines={1} className="text-[10px] uppercase tracking-widest text-[#ffe5a0] font-bold mt-0.5">
+              <Text numberOfLines={1} className="text-xs uppercase tracking-wider text-[#ffe5a0] font-bold mt-0.5">
                 MANAGE REAL-TIME NOTIFICATIONS TO EXTERNAL SYSTEMS
               </Text>
             </View>
           </View>
           <View className="w-11 h-11 rounded-2xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
-            <Globe size={20} color="#f0c110" />
+            <Globe size={22} color="#f0c110" />
           </View>
         </BlurView>
 

@@ -68,7 +68,7 @@ export const EnquiryFormScreen: React.FC = () => {
         colors={['#1a2a3a', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <GuestHeader title="Apply Now" showBack />
@@ -222,7 +222,7 @@ export const EnquiryFormScreen: React.FC = () => {
             />
             <LinearGradient
               colors={['transparent', 'rgba(16,20,21,0.85)', '#101415']}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
             />
           </View>
           <View className="px-5 -mt-24">

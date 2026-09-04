@@ -219,6 +219,7 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       className="flex-1 bg-brand-darkNavy"
+      style={{ backgroundColor: '#0B0F19' }}
     >
       <ScrollView 
         contentContainerStyle={{

@@ -47,7 +47,7 @@ export const GuestDashboard: React.FC = () => {
         colors={['#1a2a3a', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Decorative Glow */}
@@ -94,7 +94,7 @@ export const GuestDashboard: React.FC = () => {
           />
           <LinearGradient 
             colors={['rgba(16,20,21,0)', 'rgba(16,20,21,0.6)', '#101415']}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           
           <View className="relative z-10 px-5 gap-5 mt-10 md:mt-16">
@@ -191,13 +191,13 @@ export const GuestDashboard: React.FC = () => {
               <View key={idx} style={styles.statGlowWrapper}>
                 {/* === Exact same glass recipe as the dropdown === */}
                 {/* Layer 1: Dark blur base */}
-                <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFillObject} />
+                <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
                 {/* Layer 2: Sky-blue top glow */}
                 <LinearGradient
                   colors={['rgba(56, 189, 248, 0.22)', 'rgba(13, 27, 42, 0)', 'rgba(13, 27, 42, 0)']}
                   start={{ x: 0.5, y: 0 }}
                   end={{ x: 0.5, y: 1 }}
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                   pointerEvents="none"
                 />
                 {/* Layer 3: Diagonal specular sheen */}
@@ -205,7 +205,7 @@ export const GuestDashboard: React.FC = () => {
                   colors={['rgba(142, 213, 255, 0.10)', 'rgba(142, 213, 255, 0)', 'rgba(142, 213, 255, 0)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={StyleSheet.absoluteFillObject}
+                  style={StyleSheet.absoluteFill}
                   pointerEvents="none"
                 />
                 {/* Content */}

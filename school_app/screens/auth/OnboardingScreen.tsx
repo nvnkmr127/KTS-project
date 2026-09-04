@@ -51,7 +51,7 @@ export const OnboardingScreen: React.FC<{ navigation: any }> = ({ navigation }) 
   const ActiveIcon = slides[activeIdx].icon;
 
   return (
-    <View className="flex-1 bg-brand-darkNavy">
+    <View className="flex-1 bg-brand-darkNavy" style={{ backgroundColor: '#0B0F19' }}>
       <ScrollView 
         contentContainerStyle={{ 
           flexGrow: 1, 

@@ -150,7 +150,7 @@ export const AssignFeeStructureScreen: React.FC = () => {
         colors={['#1d2022', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Top App Header */}
@@ -159,14 +159,14 @@ export const AssignFeeStructureScreen: React.FC = () => {
           <View className="flex-row items-center gap-3 flex-1 mr-2">
             <Pressable 
               onPress={() => navigation.goBack()} 
-              className="p-1 active:scale-95"
+              className="w-10 h-10 rounded-full bg-white/10 border border-white/15 items-center justify-center active:scale-95"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
               <ChevronLeft size={24} color="#ffe5a0" />
             </Pressable>
             <View className="flex-1">
-              <Text numberOfLines={1} className="text-lg md:text-xl font-bold text-white font-display-lg">Assign Fee Structure</Text>
-              <Text numberOfLines={1} className="text-[9px] uppercase tracking-widest text-[#d1c5ac]">ACADEMIC SESSION 2025-26</Text>
+              <Text numberOfLines={1} className="text-xl md:text-2xl font-extrabold text-white font-display-lg">Assign Fee Structure</Text>
+              <Text numberOfLines={1} className="text-xs uppercase tracking-wider text-[#ffe5a0] font-bold mt-0.5">ACADEMIC SESSION 2025-26</Text>
             </View>
           </View>
         </BlurView>

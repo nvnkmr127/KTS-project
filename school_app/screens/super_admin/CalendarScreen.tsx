@@ -26,12 +26,12 @@ export const CalendarScreen: React.FC<{ navigation: any }> = ({ navigation }) =>
       <View className="flex-row items-center mb-6">
         <Pressable 
           onPress={() => navigation.goBack()} 
-          className="p-3 bg-white/5 border border-white/10 rounded-2xl active:scale-95"
+          className="w-10 h-10 items-center justify-center bg-white/5 border border-white/10 rounded-2xl active:scale-95"
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <ArrowLeft size={20} color="#FFFFFF" />
+          <ArrowLeft size={22} color="#FFFFFF" />
         </Pressable>
-        <Text numberOfLines={1} className="text-white text-lg md:text-xl font-bold ml-4 flex-1">Academy Calendar</Text>
+        <Text numberOfLines={1} className="text-white text-xl md:text-2xl font-extrabold ml-4 flex-1">Academy Calendar</Text>
       </View>
 
       <Text className="text-white/80 text-sm font-semibold mb-3 ml-1">Key Events & Milestones</Text>

@@ -1,9 +1,20 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuthStore } from '../store/useAuthStore';
 import { CustomTabBar } from '../components/CustomTabBar';
+
+const appDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: '#0d2a24',
+    card: '#0d2a24',
+    text: '#ffffff',
+    border: 'rgba(255, 255, 255, 0.1)',
+  },
+};
 
 // Icons
 import { 
@@ -111,7 +122,7 @@ const getTabOptions = (icon: any, activeColor: string, title?: string) => ({
 
 // Role-Specific Tab Navigators
 const SuperAdminTabs = () => (
-  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ tabBarHideOnKeyboard: true }}>
+  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#101415' } }}>
     <Tab.Screen name="Dashboard" component={SuperAdminDashboard} options={getTabOptions(Home, '#f0c110')} />
     <Tab.Screen name="Analytics" component={AnalyticsDashboardScreen} options={getTabOptions(BarChart, '#f0c110')} />
     <Tab.Screen name="Users" component={UserManagementScreen} options={getTabOptions(Users, '#f0c110')} />
@@ -122,17 +133,18 @@ const SuperAdminTabs = () => (
 );
 
 const AdminStaffTabs = () => (
-  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ tabBarHideOnKeyboard: true }}>
-    <Tab.Screen name="Dashboard" component={AdminStaffDashboard} options={getTabOptions(Home, '#46f1c5')} />
-    <Tab.Screen name="Students" component={StudentDirectoryScreen} options={getTabOptions(Users, '#46f1c5')} />
-    <Tab.Screen name="Fees" component={FeeCollectionScreen} options={getTabOptions(Banknote, '#46f1c5')} />
-    <Tab.Screen name="Schedule" component={ExamScheduleScreen} options={getTabOptions(Calendar, '#46f1c5')} />
-    <Tab.Screen name="Config" component={AdminAlertConfigurationScreen} options={getTabOptions(Sliders, '#46f1c5', 'Config')} />
+  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#0d2a24' } }}>
+    <Tab.Screen name="Dashboard" component={AdminStaffDashboard} options={getTabOptions(Home, '#00f1a1')} />
+    <Tab.Screen name="Students" component={StudentDirectoryScreen} options={getTabOptions(Users, '#00f1a1')} />
+    <Tab.Screen name="Fees" component={FeeCollectionScreen} options={getTabOptions(Banknote, '#00f1a1')} />
+    <Tab.Screen name="Schedule" component={ExamScheduleScreen} options={getTabOptions(Calendar, '#00f1a1')} />
+    <Tab.Screen name="Config" component={AdminAlertConfigurationScreen} options={getTabOptions(Sliders, '#00f1a1', 'Config')} />
+    <Tab.Screen name="Settings" component={AdminStaffSettingsScreen} options={getTabOptions(Settings, '#00f1a1', 'Settings')} />
   </Tab.Navigator>
 );
 
 const TeacherTabs = () => (
-  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ tabBarHideOnKeyboard: true }}>
+  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#0d0d12' } }}>
     <Tab.Screen name="Dashboard" component={TeacherDashboard} options={getTabOptions(Home, '#ddb7ff')} />
     <Tab.Screen name="Attendance" component={AttendanceMarkingScreen} options={getTabOptions(ClipboardCheck, '#ddb7ff')} />
     <Tab.Screen name="DailyDiary" component={DailyDiaryScreen} options={getTabOptions(FileText, '#ddb7ff', 'Daily Diary')} />
@@ -143,7 +155,7 @@ const TeacherTabs = () => (
 );
 
 const ParentTabs = () => (
-  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ tabBarHideOnKeyboard: true }}>
+  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#0A0A1F' } }}>
     <Tab.Screen name="Dashboard" component={ParentDashboard} options={getTabOptions(Home, '#5E5CE6')} />
     <Tab.Screen name="Attendance" component={AttendanceHistoryScreen} options={getTabOptions(Calendar, '#5E5CE6')} />
     <Tab.Screen name="Academics" component={ReportCardScreen} options={getTabOptions(GraduationCap, '#10B981')} />
@@ -184,7 +196,13 @@ const RoleStackComponent = () => {
   }
 
   return (
-    <AppStack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
+    <AppStack.Navigator 
+      screenOptions={{ 
+        headerShown: false, 
+        contentStyle: { backgroundColor: user?.role === 'super_admin' ? '#101415' : user?.role === 'admin_staff' ? '#0d2a24' : '#101415' } 
+      }} 
+      initialRouteName={initialRoute}
+    >
       <AppStack.Screen name={initialRoute} component={mainComponent} />
       <AppStack.Screen name="Splash" component={SplashScreen} />
       {/* Remaining Feature Screens */}
@@ -278,8 +296,13 @@ export const AppNavigator: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
 
   return (
-    <NavigationContainer>
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+    <NavigationContainer theme={appDarkTheme}>
+      <RootStack.Navigator 
+        screenOptions={{ 
+          headerShown: false, 
+          contentStyle: { backgroundColor: '#0d2a24' } 
+        }}
+      >
         {!isAuthenticated ? (
           <>
             <RootStack.Screen name="Splash" component={SplashScreen} />

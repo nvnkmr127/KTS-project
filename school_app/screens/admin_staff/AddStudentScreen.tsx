@@ -179,7 +179,7 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
         colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <AdminStaffHeader
@@ -665,6 +665,7 @@ export const AddStudentScreen: React.FC<any> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0d2a24',
   },
   scrollContent: {
     paddingTop: 16,

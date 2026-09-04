@@ -156,7 +156,7 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
         colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <AdminStaffHeader

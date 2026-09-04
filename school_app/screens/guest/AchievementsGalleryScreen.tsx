@@ -69,7 +69,7 @@ export const AchievementsGalleryScreen: React.FC = () => {
         colors={['#1a2a3a', '#101415']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       <GuestHeader 
@@ -123,7 +123,7 @@ export const AchievementsGalleryScreen: React.FC = () => {
               />
               <LinearGradient
                 colors={['transparent', 'rgba(15,23,42,0.7)']}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
               />
             </View>
 
@@ -183,7 +183,7 @@ export const AchievementsGalleryScreen: React.FC = () => {
               />
               <LinearGradient
                 colors={['transparent', 'rgba(16,20,21,0.5)']}
-                style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
+                style={[StyleSheet.absoluteFill, { borderRadius: 20 }]}
               />
               {/* Score Badge */}
               <View style={styles.scoreBadge}>

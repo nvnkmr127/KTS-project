@@ -53,7 +53,7 @@ export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) =
         colors={['#0E0F26', '#121330']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
 
       {/* Top App Bar */}
@@ -75,15 +75,15 @@ export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) =
             />
           </Pressable>
           <View className="flex-1">
-            <Text className="text-white/70 text-xs font-semibold">Good Morning,</Text>
-            <Text numberOfLines={1} className="text-white text-base md:text-lg font-bold font-headline-md">{user.name} 👋</Text>
+            <Text className="text-white/80 text-xs font-bold">Good Morning,</Text>
+            <Text numberOfLines={1} className="text-white text-lg md:text-xl font-extrabold font-headline-md">{user.name} 👋</Text>
           </View>
         </View>
         <Pressable 
           className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-          <Bell size={20} color="#5E5CE6" />
+          <Bell size={22} color="#5E5CE6" />
         </Pressable>
       </View>
 
@@ -269,7 +269,7 @@ export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) =
               />
               <LinearGradient
                 colors={['transparent', '#0E0F26']}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
               />
               <View className="absolute bottom-3 left-3 flex-row items-center gap-2">
                 <View className="w-2.5 h-2.5 bg-[#10B981] rounded-full" />

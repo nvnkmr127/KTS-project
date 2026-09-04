@@ -107,15 +107,15 @@ export const DailyDiaryScreen: React.FC = () => {
               <View className="absolute bottom-0 right-0 w-3 h-3 bg-[#00f1a1] rounded-full border-2 border-[#0d0d12]" />
             </View>
             <View className="ml-3 flex-1">
-              <Text numberOfLines={1} className="text-[#ddb7ff] text-lg md:text-xl font-bold">Teacher Daily Diary</Text>
-              <Text numberOfLines={1} className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">Live Admin Sync Active</Text>
+              <Text numberOfLines={1} className="text-[#ddb7ff] text-xl font-extrabold">Teacher Daily Diary</Text>
+              <Text numberOfLines={1} className="text-white/70 text-xs font-bold tracking-wider uppercase mt-0.5">Live Admin Sync Active</Text>
             </View>
           </View>
           <Pressable 
             className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center border border-white/10"
             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           >
-            <Bell size={20} color="#fff" />
+            <Bell size={22} color="#fff" />
           </Pressable>
         </BlurView>
         

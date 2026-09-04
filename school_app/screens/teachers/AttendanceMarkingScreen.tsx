@@ -158,7 +158,7 @@ export const AttendanceMarkingScreen: React.FC = () => {
     <View style={styles.container}>
       <LinearGradient
         colors={['#170c2a', '#0b0516']}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       {/* Header */}
       <View style={{ zIndex: 50 }}>
@@ -183,13 +183,13 @@ export const AttendanceMarkingScreen: React.FC = () => {
               <View className="absolute bottom-0 right-0 w-3 h-3 bg-[#00f1a1] rounded-full border-2 border-[#0d0d12]" />
             </View>
             <View className="ml-3 flex-1">
-              <Text numberOfLines={1} className="text-[#ddb7ff] text-lg md:text-xl font-bold">Attendance Allotment</Text>
-              <Text numberOfLines={1} className="text-white/50 text-xs font-semibold tracking-wider uppercase mt-0.5">Teacher Login Directory</Text>
+              <Text numberOfLines={1} className="text-[#ddb7ff] text-xl font-extrabold">Attendance Allotment</Text>
+              <Text numberOfLines={1} className="text-white/70 text-xs font-bold tracking-wider uppercase mt-0.5">Teacher Login Directory</Text>
             </View>
           </View>
           
           <Pressable className="w-10 h-10 rounded-xl items-center justify-center bg-white/5 border border-white/10">
-            <Bell size={20} color="#fff" />
+            <Bell size={22} color="#fff" />
           </Pressable>
         </BlurView>
 
