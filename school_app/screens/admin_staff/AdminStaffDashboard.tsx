@@ -10,7 +10,7 @@ import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
 import {
-  Users, Banknote, CalendarDays, Bus,
+  Users, Banknote, CalendarDays, Calendar, Bus,
   Search, UserSquare2, Wallet, CalendarRange,
   FileEdit, ClipboardCheck, ArrowLeftRight,
   Megaphone, UserPlus, Phone, MessageCircle, X, Check,
@@ -59,7 +59,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   const [stats, setStats] = useState({
     studentsCount: '1,248',
     feesDue: '₹2.3L',
-    pendingLeaves: '5',
+    staffOnLeave: '4',
     activeBuses: '8',
   });
 
@@ -69,10 +69,14 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
     { id: 3, initials: 'KP', name: 'Kevin Peters', classInfo: '12-C', amount: '₹8,900', color: 'bg-emerald-950/40 text-emerald-400' },
   ]);
 
-  const [leaveRequests, setLeaveRequests] = useState([
-    { id: 1, name: 'Mrs. Anita Sharma', type: 'Sick Leave', date: '24 Oct - 26 Oct' },
-    { id: 2, name: 'Mr. Rajesh Kumar', type: 'Casual Leave', date: '25 Oct' },
-  ]);
+  const INITIAL_ON_LEAVE_STAFF = [
+    { id: '1', name: 'Dr. Julian Vance', role: 'Senior Faculty', type: 'Medical Leave', date: '08 Sep - 11 Sep', days: '4 Days', startDate: '2026-09-08', status: 'On Leave' },
+    { id: '2', name: 'Prof. Michael Chen', role: 'Department Head', type: 'Casual Leave', date: '09 Sep - 10 Sep', days: '2 Days', startDate: '2026-09-09', status: 'On Leave' },
+    { id: '3', name: 'Mrs. Sunita Rao', role: 'Mathematics Teacher', type: 'Annual Leave', date: '14 Sep - 18 Sep', days: '5 Days', startDate: '2026-09-14', status: 'Scheduled' },
+    { id: '4', name: 'Mr. Ramesh Yadav', role: 'Accounts Faculty', type: 'Duty Leave', date: '21 Sep - 23 Sep', days: '3 Days', startDate: '2026-09-21', status: 'Scheduled' },
+  ];
+
+  const [onLeaveStaff, setOnLeaveStaff] = useState(INITIAL_ON_LEAVE_STAFF);
 
   // Safe BackHandler effect
   useFocusEffect(
@@ -121,26 +125,40 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
         }
       }
 
-      // 3. Fetch Leaves
+      // 3. Fetch Leaves (Filter approved / on-leave staff sorted latest to future dates)
       const leaves = await api.getResources('leaves');
       if (Array.isArray(leaves)) {
-        const pending = leaves.filter((l: any) => l.status === 'pending' || l.status === 'Pending');
+        const approvedLeaves = leaves.filter((l: any) => l.status === 'approved' || l.status === 'Approved' || l.status === 'active');
+        const sortedLeaves = approvedLeaves.sort((a: any, b: any) => {
+          const dateA = new Date(a.start_date || a.createdAt || Date.now()).getTime();
+          const dateB = new Date(b.start_date || b.createdAt || Date.now()).getTime();
+          return dateA - dateB;
+        });
+
+        const staffOnLeaveCount = String(approvedLeaves.length > 0 ? approvedLeaves.length : INITIAL_ON_LEAVE_STAFF.length);
         setStats(prev => ({
           ...prev,
           studentsCount: studentCountStr,
-          pendingLeaves: String(pending.length),
+          staffOnLeave: staffOnLeaveCount,
         }));
 
-        if (pending.length > 0) {
-          setLeaveRequests(pending.slice(0, 3).map((l: any, idx: number) => ({
-            id: l.id || idx,
+        if (sortedLeaves.length > 0) {
+          setOnLeaveStaff(sortedLeaves.slice(0, 4).map((l: any, idx: number) => ({
+            id: String(l.id || idx),
             name: l.applicant_name || l.user_name || l.staff_name || 'Staff Member',
-            type: l.leave_type || l.type || 'Leave',
-            date: l.start_date ? `${l.start_date} - ${l.end_date || l.start_date}` : 'Today'
+            role: l.designation || l.department || 'Faculty',
+            type: l.leave_type || l.type || 'Approved Leave',
+            date: l.start_date ? `${l.start_date} - ${l.end_date || l.start_date}` : '08 Sep - 11 Sep',
+            days: l.days ? `${l.days} Days` : '1 Day',
+            startDate: l.start_date || '2026-09-08',
+            status: 'On Leave',
           })));
+        } else {
+          setOnLeaveStaff(INITIAL_ON_LEAVE_STAFF);
         }
       } else {
-        setStats(prev => ({ ...prev, studentsCount: studentCountStr }));
+        setStats(prev => ({ ...prev, studentsCount: studentCountStr, staffOnLeave: String(INITIAL_ON_LEAVE_STAFF.length) }));
+        setOnLeaveStaff(INITIAL_ON_LEAVE_STAFF);
       }
 
       // 4. Fetch Live Notifications
@@ -307,10 +325,10 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
 
         <View className="flex-row mb-6 px-5" style={{ gap: 12 }}>
           <AdminStatCard
-            title="PENDING LEAVES"
-            value={stats.pendingLeaves}
-            icon={<CalendarDays size={20} color={primaryColor} />}
-            progress={0.25}
+            title="STAFF ON LEAVE"
+            value={stats.staffOnLeave || '4'}
+            icon={<CalendarOff size={20} color={primaryColor} />}
+            progress={0.35}
             onPress={() => navigation.navigate('AdminStaffLeaves')}
           />
           <AdminStatCard
@@ -356,20 +374,35 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
           ))}
         </View>
 
-        {/* Staff Leave Requests */}
+        {/* Staff On Leave Section (Read Mode - Sorted Latest to Future Dates) */}
         <View className="mb-6 px-5">
-          <Text className="text-white/80 text-sm font-bold uppercase tracking-wider mb-3">Recent Leave Approvals</Text>
-          {leaveRequests.map((item) => (
-            <GlassCard key={item.id} className="p-3 mb-2 bg-[#101415]/90 border-white/10" intensity="low">
-              <View className="flex-row justify-between items-center">
-                <View>
-                  <Text className="text-white font-bold text-sm">{item.name}</Text>
-                  <Text className="text-white/50 text-xs">{item.type} • {item.date}</Text>
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-white/80 text-sm font-bold uppercase tracking-wider">Staff On Leave (Current & Future)</Text>
+            <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')}>
+              <Text className={`${primaryTextClass} text-xs font-bold`}>View Roster</Text>
+            </Pressable>
+          </View>
+          {onLeaveStaff.map((item) => (
+            <GlassCard key={item.id} className="p-3.5 mb-2.5 bg-[#101415]/90 border-white/10" intensity="low">
+              <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className="flex-row justify-between items-center">
+                <View className="flex-1 mr-2">
+                  <View className="flex-row items-center flex-wrap">
+                    <Text className="text-white font-extrabold text-sm mr-2">{item.name}</Text>
+                    <View className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
+                      <Text className="text-emerald-400 text-[10px] font-bold uppercase">{item.status}</Text>
+                    </View>
+                  </View>
+                  <Text className="text-white/50 text-xs mt-1 font-medium">{item.role} • {item.type}</Text>
                 </View>
-                <Pressable onPress={() => navigation.navigate('AdminStaffLeaves')} className={`p-2 rounded-xl ${primaryBadgeClass}`}>
-                  <Check size={16} color={primaryColor} />
-                </Pressable>
-              </View>
+
+                <View className="items-end">
+                  <View className="flex-row items-center bg-white/5 border border-white/10 px-2.5 py-1 rounded-xl">
+                    <Calendar size={12} color={primaryColor} style={{ marginRight: 4 }} />
+                    <Text className="text-white text-xs font-bold">{item.date}</Text>
+                  </View>
+                  <Text className={`${primaryTextClass} text-[11px] font-extrabold mt-1`}>{item.days}</Text>
+                </View>
+              </Pressable>
             </GlassCard>
           ))}
         </View>
