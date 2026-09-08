@@ -137,12 +137,12 @@ export const DailyDiaryScreen: React.FC = () => {
         {/* Title */}
         <View className="mb-5">
           <Text className="text-white text-2xl font-extrabold tracking-tight mb-1">Submit Period Diary Entry</Text>
-          <Text className="text-[#A1A1AA] text-xs">Record classroom progress to notify parents & Admin Staff.</Text>
+          <Text className="text-[#A1A1AA] text-sm">Record classroom progress to notify parents & Admin Staff.</Text>
         </View>
 
         {/* Class Selection Ribbon */}
         <View className="mb-4">
-          <Text className="text-[#EABFFF] text-[10px] font-bold tracking-widest uppercase mb-2">Select Allotted Class Section</Text>
+          <Text className="text-[#EABFFF] text-[12px] font-bold tracking-widest uppercase mb-2">Select Allotted Class Section</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row" style={{ gap: 8 }}>
               {CLASSES_LIST.map(cls => {
@@ -153,7 +153,7 @@ export const DailyDiaryScreen: React.FC = () => {
                     onPress={() => setSelectedClass(cls)}
                     className={`px-4 py-2 rounded-xl border ${isSel ? 'bg-[#ddb7ff] border-[#ddb7ff]' : 'bg-[#2a1b4e]/80 border-[#ddb7ff]/20'}`}
                   >
-                    <Text className={`text-xs font-extrabold ${isSel ? 'text-[#150E22]' : 'text-[#ddb7ff]'}`}>
+                    <Text className={`text-sm font-extrabold ${isSel ? 'text-[#150E22]' : 'text-[#ddb7ff]'}`}>
                       Class {cls}
                     </Text>
                   </Pressable>
@@ -165,7 +165,7 @@ export const DailyDiaryScreen: React.FC = () => {
 
         {/* Period Selection Ribbon */}
         <View className="mb-5">
-          <Text className="text-[#EABFFF] text-[10px] font-bold tracking-widest uppercase mb-2">Select Period Slot</Text>
+          <Text className="text-[#EABFFF] text-[12px] font-bold tracking-widest uppercase mb-2">Select Period Slot</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row" style={{ gap: 8 }}>
               {PERIODS_LIST.map(p => {
@@ -176,7 +176,7 @@ export const DailyDiaryScreen: React.FC = () => {
                     onPress={() => setSelectedPeriod(p.num)}
                     className={`px-3.5 py-2 rounded-xl border ${isSel ? 'bg-[#00f1a1] border-[#00f1a1]' : 'bg-[#2a1b4e]/80 border-white/10'}`}
                   >
-                    <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
+                    <Text className={`text-sm font-bold ${isSel ? 'text-[#101415]' : 'text-white/70'}`}>
                       {p.label}
                     </Text>
                   </Pressable>
@@ -188,25 +188,25 @@ export const DailyDiaryScreen: React.FC = () => {
 
         {/* Form Inputs */}
         <View className="bg-[#1e1136] border border-white/10 rounded-3xl p-5 mb-6 shadow-lg">
-          <Text className="text-[#EABFFF] text-[10px] font-bold tracking-widest uppercase mb-1.5">Subject *</Text>
+          <Text className="text-[#EABFFF] text-[12px] font-bold tracking-widest uppercase mb-1.5">Subject *</Text>
           <TextInput
             value={subjectInput}
             onChangeText={setSubjectInput}
             placeholder="e.g. Mathematics, Physics..."
             placeholderTextColor="#A1A1AA"
-            className="bg-[#120A1A] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-xs mb-4"
+            className="bg-[#120A1A] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm mb-4"
           />
 
-          <Text className="text-[#EABFFF] text-[10px] font-bold tracking-widest uppercase mb-1.5">Topic / Lesson Title *</Text>
+          <Text className="text-[#EABFFF] text-[12px] font-bold tracking-widest uppercase mb-1.5">Topic / Lesson Title *</Text>
           <TextInput
             value={topicInput}
             onChangeText={setTopicInput}
             placeholder="e.g. Quadratic Equations & Real Roots"
             placeholderTextColor="#A1A1AA"
-            className="bg-[#120A1A] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-xs mb-4 font-bold"
+            className="bg-[#120A1A] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm mb-4 font-bold"
           />
 
-          <Text className="text-[#EABFFF] text-[10px] font-bold tracking-widest uppercase mb-1.5">Classroom Coverage Summary *</Text>
+          <Text className="text-[#EABFFF] text-[12px] font-bold tracking-widest uppercase mb-1.5">Classroom Coverage Summary *</Text>
           <TextInput
             value={detailsInput}
             onChangeText={setDetailsInput}
@@ -215,16 +215,16 @@ export const DailyDiaryScreen: React.FC = () => {
             multiline
             numberOfLines={4}
             style={{ textAlignVertical: 'top' }}
-            className="bg-[#120A1A] border border-white/10 rounded-xl px-3.5 py-3 text-white text-xs leading-relaxed mb-4"
+            className="bg-[#120A1A] border border-white/10 rounded-xl px-3.5 py-3 text-white text-sm leading-relaxed mb-4"
           />
 
-          <Text className="text-[#EABFFF] text-[10px] font-bold tracking-widest uppercase mb-1.5">Assigned Homework / Practice</Text>
+          <Text className="text-[#EABFFF] text-[12px] font-bold tracking-widest uppercase mb-1.5">Assigned Homework / Practice</Text>
           <TextInput
             value={homeworkInput}
             onChangeText={setHomeworkInput}
             placeholder="e.g. Exercise 4.3 Questions 1 through 8"
             placeholderTextColor="#A1A1AA"
-            className="bg-[#120A1A] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-xs mb-5"
+            className="bg-[#120A1A] border border-white/10 rounded-xl px-3.5 py-2.5 text-white text-sm mb-5"
           />
 
           <Pressable
@@ -232,24 +232,24 @@ export const DailyDiaryScreen: React.FC = () => {
             className="bg-[#00f1a1] flex-row items-center justify-center py-3.5 rounded-2xl shadow-lg shadow-[#00f1a1]/30"
           >
             <Save size={18} color="#150E22" style={{ marginRight: 6 }} />
-            <Text className="text-[#150E22] font-extrabold text-xs uppercase tracking-wider">Publish Diary Entry</Text>
+            <Text className="text-[#150E22] font-extrabold text-sm uppercase tracking-wider">Publish Diary Entry</Text>
           </Pressable>
         </View>
 
         {/* Live Submitted Entries Log */}
-        <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">Live Submitted Entries ({diaryEntries.length})</Text>
+        <Text className="text-white/60 text-sm font-bold uppercase tracking-wider mb-3">Live Submitted Entries ({diaryEntries.length})</Text>
         {diaryEntries.map(e => (
           <View key={e.id} className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-4 mb-3">
             <View className="flex-row justify-between items-center mb-1.5">
               <View className="bg-[#ddb7ff]/20 border border-[#ddb7ff]/40 px-2.5 py-0.5 rounded-md">
-                <Text className="text-[#ddb7ff] text-[10px] font-bold">{e.className} • Period {e.periodNumber}</Text>
+                <Text className="text-[#ddb7ff] text-[12px] font-bold">{e.className} • Period {e.periodNumber}</Text>
               </View>
-              <Text className="text-[#00f1a1] text-[10px] font-bold">Submitted {e.submittedAt}</Text>
+              <Text className="text-[#00f1a1] text-[12px] font-bold">Submitted {e.submittedAt}</Text>
             </View>
 
-            <Text className="text-white text-sm font-extrabold">{e.subject}: {e.topicTitle}</Text>
-            <Text className="text-white/60 text-xs mt-1 leading-relaxed">{e.contentSummary}</Text>
-            <Text className="text-amber-400 text-xs font-bold mt-2">HW: {e.homework}</Text>
+            <Text className="text-white text-base font-extrabold">{e.subject}: {e.topicTitle}</Text>
+            <Text className="text-white/60 text-sm mt-1 leading-relaxed">{e.contentSummary}</Text>
+            <Text className="text-amber-400 text-sm font-bold mt-2">HW: {e.homework}</Text>
           </View>
         ))}
 

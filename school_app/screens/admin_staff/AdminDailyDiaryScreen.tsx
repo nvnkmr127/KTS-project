@@ -220,27 +220,27 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                 <View className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl items-center justify-center mb-1 ${primaryBadgeClass}`}>
                   <BookOpen size={15} color={primaryColor} />
                 </View>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[8.5px] sm:text-[9px] font-bold uppercase text-center">Diaries Submitted</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[11px] font-bold uppercase text-center">Diaries Submitted</Text>
                 <Text numberOfLines={1} className="text-white text-lg sm:text-xl font-extrabold mt-0.5">{classesSubmittedCount}</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit className={`${primaryTextClass} text-[8.5px] sm:text-[9px] font-semibold text-center mt-0.5`}>Out of {totalClasses} classes</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className={`${primaryTextClass} text-[10px] font-semibold text-center mt-0.5`}>Out of {totalClasses} classes</Text>
               </GlassCard>
 
               <GlassCard intensity="low" className="flex-1 p-2.5 sm:p-3.5 border-white/10 bg-[#101415]/80 items-center">
                 <View className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-sky-500/20 border border-sky-500/40 items-center justify-center mb-1">
                   <Send size={15} color="#38bdf8" />
                 </View>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[8.5px] sm:text-[9px] font-bold uppercase text-center">Messages Delivered</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[11px] font-bold uppercase text-center">Messages Delivered</Text>
                 <Text numberOfLines={1} className="text-white text-lg sm:text-xl font-extrabold mt-0.5">{classesSubmittedCount * 28}</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-sky-400 text-[8.5px] sm:text-[9px] font-semibold text-center mt-0.5">WhatsApp + SMS</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-sky-400 text-[10px] font-semibold text-center mt-0.5">WhatsApp + SMS</Text>
               </GlassCard>
 
               <GlassCard intensity="low" className="flex-1 p-2.5 sm:p-3.5 border-white/10 bg-[#101415]/80 items-center">
                 <View className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 items-center justify-center mb-1">
                   <Clock size={15} color="#f59e0b" />
                 </View>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[8.5px] sm:text-[9px] font-bold uppercase text-center">Pending</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-white/50 text-[11px] font-bold uppercase text-center">Pending</Text>
                 <Text numberOfLines={1} className="text-amber-400 text-lg sm:text-xl font-extrabold mt-0.5">{pendingClassesCount}</Text>
-                <Text numberOfLines={1} adjustsFontSizeToFit className="text-amber-300 text-[8.5px] sm:text-[9px] font-semibold text-center mt-0.5">Not yet updated</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit className="text-amber-300 text-[10px] font-semibold text-center mt-0.5">Not yet updated</Text>
               </GlassCard>
             </View>
 
@@ -270,7 +270,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                 </View>
               </View>
 
-              <Text className="text-white/40 text-[11px]">
+              <Text className="text-white/40 text-[13px]">
                 Select a class section to view period breakdown
               </Text>
             </View>
@@ -284,7 +284,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                   placeholderTextColor="rgba(255, 255, 255, 0.4)"
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  className="flex-1 text-white text-xs"
+                  className="flex-1 text-white text-sm"
                   style={{ paddingVertical: 0 }}
                 />
                 {searchQuery.length > 0 && (
@@ -313,20 +313,20 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
 
                           <View className="flex-1 min-w-0">
                             <View className="flex-row items-center flex-wrap" style={{ gap: 4 }}>
-                              <Text className="text-white font-extrabold text-sm" numberOfLines={1}>{cls.className}</Text>
+                              <Text className="text-white font-extrabold text-base" numberOfLines={1}>{cls.className}</Text>
                               {isNoSchedule ? (
-                                <Text className="text-white/40 text-[10px] italic">No Schedule</Text>
+                                <Text className="text-white/40 text-xs italic">No Schedule</Text>
                               ) : isFullySubmitted ? (
                                 <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass} flex-shrink-0`}>
-                                  <Text className={`${primaryTextClass} text-[9px] font-bold`}>Complete</Text>
+                                  <Text className={`${primaryTextClass} text-[10px] font-bold`}>Complete</Text>
                                 </View>
                               ) : (
                                 <View className="bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md flex-shrink-0">
-                                  <Text className="text-amber-400 text-[9px] font-bold">Pending</Text>
+                                  <Text className="text-amber-400 text-[10px] font-bold">Pending</Text>
                                 </View>
                               )}
                             </View>
-                            <Text className="text-white/60 text-[11px] mt-0.5" numberOfLines={1}>
+                            <Text className="text-white/60 text-xs mt-0.5" numberOfLines={1}>
                               {isNoSchedule ? 'No Schedule' : `${subCount} Teacher${subCount === 1 ? '' : 's'} Submitted`}
                             </Text>
                           </View>
@@ -336,7 +336,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                           <Text
                             numberOfLines={1}
                             adjustsFontSizeToFit
-                            className={`${primaryTextClass} text-xs font-bold mr-1`}
+                            className={`${primaryTextClass} text-sm font-bold mr-1`}
                             style={{ flexShrink: 0 }}
                           >
                             Click to view details
@@ -355,8 +355,8 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
           <View className="px-5">
             <View className="flex-row justify-between items-center mb-4">
               <View className="flex-1 mr-2">
-                <Text className="text-white font-extrabold text-base">Class {selectedClassDetail} Submissions</Text>
-                <Text className="text-white/50 text-[10.5px]">Timeline for Tuesday • {selectedDate}</Text>
+                <Text className="text-white font-extrabold text-lg">Class {selectedClassDetail} Submissions</Text>
+                <Text className="text-white/50 text-xs">Timeline for Tuesday • {selectedDate}</Text>
               </View>
 
               <Pressable
@@ -373,7 +373,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
               if (pt.isBreak) {
                 return (
                   <View key={idx} className="bg-white/5 border border-dashed border-white/20 p-3 rounded-2xl mb-3 items-center">
-                    <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">
+                    <Text className="text-white/60 text-sm font-bold uppercase tracking-wider">
                       {pt.breakLabel || 'SHORT BREAK'} ({pt.timeSlot})
                     </Text>
                   </View>
@@ -390,12 +390,12 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
               return (
                 <GlassCard key={idx} intensity="low" className="mb-3 p-3.5 border-white/10 bg-[#101415]/90">
                   <View className="flex-row items-center justify-between mb-1">
-                    <Text className={`${primaryTextClass} text-xs font-extrabold`}>
+                    <Text className={`${primaryTextClass} text-sm font-extrabold`}>
                       {pt.periodLabel} ({pt.timeSlot})
                     </Text>
                     {submittedEntry && (
                       <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
-                        <Text className={`${primaryTextClass} text-[9px] font-bold`}>Submitted {submittedEntry.submittedAt}</Text>
+                        <Text className={`${primaryTextClass} text-[10px] font-bold`}>Submitted {submittedEntry.submittedAt}</Text>
                       </View>
                     )}
                   </View>
@@ -403,27 +403,27 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                   {submittedEntry ? (
                     <View className="mt-1">
                       <View className="flex-row items-center">
-                        <Text className="text-white font-extrabold text-sm mr-2">{submittedEntry.subject}</Text>
-                        <Text className="text-white/60 text-xs">— {submittedEntry.teacherName}</Text>
+                        <Text className="text-white font-extrabold text-base mr-2">{submittedEntry.subject}</Text>
+                        <Text className="text-white/60 text-sm">— {submittedEntry.teacherName}</Text>
                       </View>
-                      <Text className="text-white/80 text-xs font-bold mt-1.5">{submittedEntry.topicTitle}</Text>
-                      <Text className="text-white/60 text-xs mt-1 leading-relaxed">{submittedEntry.contentSummary}</Text>
+                      <Text className="text-white/80 text-sm font-bold mt-1.5">{submittedEntry.topicTitle}</Text>
+                      <Text className="text-white/60 text-sm mt-1 leading-relaxed">{submittedEntry.contentSummary}</Text>
 
                       {submittedEntry.homework && (
                         <View className="bg-black/40 p-2.5 rounded-xl border border-white/5 mt-2.5">
-                          <Text className="text-amber-400 text-xs font-bold">Homework: <Text className="text-white/80 font-normal">{submittedEntry.homework}</Text></Text>
+                          <Text className="text-amber-400 text-sm font-bold">Homework: <Text className="text-white/80 font-normal">{submittedEntry.homework}</Text></Text>
                         </View>
                       )}
 
                       {submittedEntry.attachmentName && (
                         <View className="flex-row items-center mt-2">
                           <Paperclip size={12} color="#38bdf8" style={{ marginRight: 4 }} />
-                          <Text className="text-sky-400 text-[11px] font-semibold">{submittedEntry.attachmentName}</Text>
+                          <Text className="text-sky-400 text-xs font-semibold">{submittedEntry.attachmentName}</Text>
                         </View>
                       )}
                     </View>
                   ) : (
-                    <Text className="text-white/30 text-xs italic mt-1">No subject scheduled / Pending submission</Text>
+                    <Text className="text-white/30 text-sm italic mt-1">No subject scheduled / Pending submission</Text>
                   )}
                 </GlassCard>
               );

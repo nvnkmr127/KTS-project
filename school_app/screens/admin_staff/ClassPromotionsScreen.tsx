@@ -231,10 +231,10 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
         {/* Title Dashboard Section */}
         <View className="px-5 mb-4">
           <View className="flex-row items-center">
-            <GraduationCap size={20} color={primaryColor} style={{ marginRight: 8 }} />
-            <Text className="text-white font-extrabold text-lg">Student Promotion Dashboard</Text>
+            <GraduationCap size={22} color={primaryColor} style={{ marginRight: 8 }} />
+            <Text className="text-white font-extrabold text-xl">Student Promotion Dashboard</Text>
           </View>
-          <Text className="text-white/50 text-xs mt-0.5">
+          <Text className="text-white/60 text-sm mt-1 leading-relaxed">
             Promote students of the present class to the next class level for the upcoming academic year.
           </Text>
         </View>
@@ -245,23 +245,23 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/90">
             <View className="flex-row items-center mb-2.5">
               <View className="w-5 h-5 rounded-full bg-sky-500/20 border border-sky-400/40 items-center justify-center mr-1.5">
-                <Text className="text-sky-400 text-[10px] font-extrabold">1</Text>
+                <Text className="text-sky-400 text-xs font-extrabold">1</Text>
               </View>
-              <Text className="text-white/80 text-[10.5px] font-extrabold">Source Class / Batch</Text>
+              <Text className="text-white/90 text-xs font-extrabold">Source Class / Batch</Text>
             </View>
 
-            <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Academic Year</Text>
+            <Text className="text-white/50 text-[11px] uppercase font-bold mb-1">Academic Year</Text>
             <View className="bg-white/5 border border-white/15 rounded-xl px-2.5 py-1.5 mb-2.5">
-              <Text className="text-white text-xs font-bold">{currentAcademicYear}</Text>
+              <Text className="text-white text-sm font-bold">{currentAcademicYear}</Text>
             </View>
 
-            <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Class & Section</Text>
+            <Text className="text-white/50 text-[11px] uppercase font-bold mb-1">Class & Section</Text>
             <Pressable
               onPress={() => setShowSourceClassModal(true)}
               className={`border rounded-xl px-2.5 py-2 flex-row justify-between items-center ${isSuperAdmin ? 'bg-[#f0c110]/10 border-[#f0c110]/40' : 'bg-[#00f1a1]/10 border-[#00f1a1]/40'}`}
             >
-              <Text className={`${primaryTextClass} text-xs font-bold mr-1`} numberOfLines={1}>{sourceClass}</Text>
-              <ChevronDown size={14} color={primaryColor} />
+              <Text className={`${primaryTextClass} text-sm font-bold mr-1`} numberOfLines={1}>{sourceClass}</Text>
+              <ChevronDown size={16} color={primaryColor} />
             </Pressable>
           </GlassCard>
 
@@ -269,9 +269,9 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
           <GlassCard intensity="low" className="w-[48%] p-3.5 border-white/10 bg-[#101415]/90">
             <View className="flex-row items-center mb-2.5">
               <View className="w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-400/40 items-center justify-center mr-1.5">
-                <Text className={`${primaryTextClass} text-[10px] font-extrabold`}>2</Text>
+                <Text className={`${primaryTextClass} text-xs font-extrabold`}>2</Text>
               </View>
-              <Text className="text-white/80 text-[10.5px] font-extrabold">Destination Class / Batch</Text>
+              <Text className="text-white/90 text-xs font-extrabold">Destination Class / Batch</Text>
             </View>
 
             {isClass10Source ? (
@@ -280,29 +280,29 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
                 <View className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 items-center justify-center mb-2">
                   <GraduationCap size={20} color="#c084fc" />
                 </View>
-                <Text className="text-purple-300 font-extrabold text-xs text-center">Alumni Network</Text>
-                <Text className="text-white/50 text-[9.5px] text-center mt-0.5 leading-tight">
+                <Text className="text-purple-300 font-extrabold text-sm text-center">Alumni Network</Text>
+                <Text className="text-white/60 text-xs text-center mt-1 leading-tight">
                   Class 10 students graduate and join the Alumni directory.
                 </Text>
                 <View className="bg-purple-500/20 border border-purple-500/40 px-2.5 py-1 rounded-xl mt-2">
-                  <Text className="text-purple-300 text-[10px] font-extrabold">Graduates → Alumni</Text>
+                  <Text className="text-purple-300 text-xs font-extrabold">Graduates → Alumni</Text>
                 </View>
               </View>
             ) : (
               /* Standard Destination Class Card */
               <>
-                <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Upcoming Year</Text>
+                <Text className="text-white/50 text-[11px] uppercase font-bold mb-1">Upcoming Year</Text>
                 <View className="bg-white/5 border border-white/15 rounded-xl px-2.5 py-1.5 mb-2.5">
-                  <Text className="text-white text-xs font-bold">{upcomingAcademicYear}</Text>
+                  <Text className="text-white text-sm font-bold">{upcomingAcademicYear}</Text>
                 </View>
 
-                <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-1">Target Class & Section</Text>
+                <Text className="text-white/50 text-[11px] uppercase font-bold mb-1">Target Class & Section</Text>
                 <Pressable
                   onPress={() => setShowTargetClassModal(true)}
                   className="bg-sky-500/10 border border-sky-400/40 rounded-xl px-2.5 py-2 flex-row justify-between items-center"
                 >
-                  <Text className="text-sky-400 text-xs font-bold mr-1" numberOfLines={1}>{targetClass}</Text>
-                  <ChevronDown size={14} color="#38bdf8" />
+                  <Text className="text-sky-400 text-sm font-bold mr-1" numberOfLines={1}>{targetClass}</Text>
+                  <ChevronDown size={16} color="#38bdf8" />
                 </Pressable>
               </>
             )}
@@ -313,30 +313,30 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
         <View className="px-5 mb-4">
           <View className="bg-white/5 border border-white/10 p-3.5 rounded-2xl">
             <View className="flex-row items-center mb-1.5">
-              <Info size={14} color="#38bdf8" style={{ marginRight: 6 }} />
-              <Text className="text-white font-extrabold text-xs">Transition Rules:</Text>
+              <Info size={16} color="#38bdf8" style={{ marginRight: 6 }} />
+              <Text className="text-white font-extrabold text-sm">Transition Rules:</Text>
             </View>
             {isClass10Source ? (
               <>
-                <Text className="text-white/60 text-[11px] leading-relaxed">
+                <Text className="text-white/70 text-xs leading-relaxed">
                   • <Text className="text-purple-300 font-bold">Alumni</Text> graduates the student and registers them in the Alumni network automatically.
                 </Text>
-                <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
+                <Text className="text-white/70 text-xs leading-relaxed mt-1">
                   • <Text className="text-amber-400 font-bold">Retain</Text> assigns the student to the corresponding class level under the new year (keeps them in the same grade).
                 </Text>
-                <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
+                <Text className="text-white/70 text-xs leading-relaxed mt-1">
                   • <Text className="text-rose-400 font-bold">Left</Text> updates the student status to "Left" (for transfers or dropouts). They are excluded from future year lists.
                 </Text>
               </>
             ) : (
               <>
-                <Text className="text-white/60 text-[11px] leading-relaxed">
+                <Text className="text-white/70 text-xs leading-relaxed">
                   • <Text className={`${primaryTextClass} font-bold`}>Promote</Text> updates the student to the selected target batch under the upcoming year.
                 </Text>
-                <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
+                <Text className="text-white/70 text-xs leading-relaxed mt-1">
                   • <Text className="text-amber-400 font-bold">Retain</Text> assigns the student to the corresponding class level under the new year (keeps them in the same grade).
                 </Text>
-                <Text className="text-white/60 text-[11px] leading-relaxed mt-0.5">
+                <Text className="text-white/70 text-xs leading-relaxed mt-1">
                   • <Text className="text-rose-400 font-bold">Left</Text> updates the student status to "Left" (for transfers or dropouts). They are excluded from future year lists.
                 </Text>
               </>
@@ -353,41 +353,41 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
             {!isClass10Source && (
               <Pressable
                 onPress={() => handleSetAllAction('promote')}
-                className={`px-2.5 py-1 rounded-xl ${primaryBadgeClass}`}
+                className={`px-3 py-1.5 rounded-xl ${primaryBadgeClass}`}
               >
-                <Text className={`${primaryTextClass} text-[10.5px] font-extrabold`}>All Promote</Text>
+                <Text className={`${primaryTextClass} text-xs font-extrabold`}>All Promote</Text>
               </Pressable>
             )}
             <Pressable
               onPress={() => handleSetAllAction('retain')}
-              className="bg-amber-500/15 border border-amber-500/40 px-2.5 py-1 rounded-xl"
+              className="bg-amber-500/15 border border-amber-500/40 px-3 py-1.5 rounded-xl"
             >
-              <Text className="text-amber-400 text-[10.5px] font-extrabold">All Retain</Text>
+              <Text className="text-amber-400 text-xs font-extrabold">All Retain</Text>
             </Pressable>
             <Pressable
               onPress={() => handleSetAllAction('left')}
-              className="bg-rose-500/15 border border-rose-500/40 px-2.5 py-1 rounded-xl"
+              className="bg-rose-500/15 border border-rose-500/40 px-3 py-1.5 rounded-xl"
             >
-              <Text className="text-rose-400 text-[10.5px] font-extrabold">All Left</Text>
+              <Text className="text-rose-400 text-xs font-extrabold">All Left</Text>
             </Pressable>
           </View>
         </View>
 
         {/* Search Bar */}
         <View className="px-5 mb-4">
-          <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2 shadow-md">
-            <Search size={15} color={primaryColor} style={{ marginRight: 8 }} />
+          <View className="bg-[#101415] border border-white/15 rounded-2xl flex-row items-center px-3.5 py-2.5 shadow-md">
+            <Search size={16} color={primaryColor} style={{ marginRight: 8 }} />
             <TextInput
               placeholder="Search students..."
               placeholderTextColor="rgba(255, 255, 255, 0.4)"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 text-white text-xs"
+              className="flex-1 text-white text-sm"
               style={{ paddingVertical: 0 }}
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')}>
-                <X size={14} color="rgba(255, 255, 255, 0.5)" />
+                <X size={16} color="rgba(255, 255, 255, 0.5)" />
               </Pressable>
             )}
           </View>
@@ -399,20 +399,20 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
             <GlassCard key={st.id} intensity="low" className="mb-2.5 p-3.5 border-white/10 bg-[#101415]/90">
               <View className="flex-row justify-between items-center">
                 <View className="flex-1 mr-2">
-                  <View className="flex-row items-center">
-                    <Text className="text-white font-extrabold text-xs mr-1.5">{st.name}</Text>
-                    <Text className="text-white/40 text-[10px]">({st.gender})</Text>
+                  <View className="flex-row items-center flex-wrap">
+                    <Text className="text-white font-extrabold text-sm mr-1.5">{st.name}</Text>
+                    <Text className="text-white/50 text-xs">({st.gender})</Text>
                   </View>
                   <View className="flex-row items-center mt-1">
-                    <Text className="text-white/50 text-[10px] mr-3">Roll: {st.rollNo}</Text>
+                    <Text className="text-white/60 text-xs mr-3">Roll: {st.rollNo}</Text>
                     <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
-                      <Text className={`${primaryTextClass} text-[9px] font-bold`}>{st.status}</Text>
+                      <Text className={`${primaryTextClass} text-[11px] font-bold`}>{st.status}</Text>
                     </View>
                   </View>
                 </View>
 
                 {/* Transition Action Buttons */}
-                <View className="flex-row items-center" style={{ gap: 4 }}>
+                <View className="flex-row items-center" style={{ gap: 5 }}>
                   {isClass10Source ? (
                     /* Class 10: Alumni | Retain | Left */
                     <>
@@ -420,22 +420,22 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
                         onPress={() => handleStudentActionChange(st.id, 'alumni')}
                         className={`px-3 py-1.5 rounded-xl border flex-row items-center ${st.action === 'alumni' ? 'bg-purple-600 border-purple-500' : 'bg-white/5 border-white/15'}`}
                       >
-                        <GraduationCap size={12} color={st.action === 'alumni' ? '#ffffff' : '#c084fc'} style={{ marginRight: 3 }} />
-                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'alumni' ? 'text-white' : 'text-purple-300'}`}>Alumni</Text>
+                        <GraduationCap size={13} color={st.action === 'alumni' ? '#ffffff' : '#c084fc'} style={{ marginRight: 3 }} />
+                        <Text className={`text-xs font-extrabold ${st.action === 'alumni' ? 'text-white' : 'text-purple-300'}`}>Alumni</Text>
                       </Pressable>
 
                       <Pressable
                         onPress={() => handleStudentActionChange(st.id, 'retain')}
                         className={`px-2.5 py-1.5 rounded-xl border ${st.action === 'retain' ? 'bg-amber-500 border-amber-500' : 'bg-white/5 border-white/15'}`}
                       >
-                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'retain' ? 'text-[#101415]' : 'text-white/70'}`}>Retain</Text>
+                        <Text className={`text-xs font-extrabold ${st.action === 'retain' ? 'text-[#101415]' : 'text-white/80'}`}>Retain</Text>
                       </Pressable>
 
                       <Pressable
                         onPress={() => handleStudentActionChange(st.id, 'left')}
                         className={`px-2.5 py-1.5 rounded-xl border ${st.action === 'left' ? 'bg-rose-500 border-rose-500' : 'bg-white/5 border-white/15'}`}
                       >
-                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'left' ? 'text-white' : 'text-white/70'}`}>Left</Text>
+                        <Text className={`text-xs font-extrabold ${st.action === 'left' ? 'text-white' : 'text-white/80'}`}>Left</Text>
                       </Pressable>
                     </>
                   ) : (
@@ -445,22 +445,22 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
                         onPress={() => handleStudentActionChange(st.id, 'promote')}
                         className={`px-3 py-1.5 rounded-xl border flex-row items-center ${st.action === 'promote' ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                       >
-                        <TrendingUp size={12} color={st.action === 'promote' ? '#101415' : primaryColor} style={{ marginRight: 3 }} />
-                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'promote' ? 'text-[#101415]' : primaryTextClass}`}>Promote</Text>
+                        <TrendingUp size={13} color={st.action === 'promote' ? '#101415' : primaryColor} style={{ marginRight: 3 }} />
+                        <Text className={`text-xs font-extrabold ${st.action === 'promote' ? 'text-[#101415]' : primaryTextClass}`}>Promote</Text>
                       </Pressable>
 
                       <Pressable
                         onPress={() => handleStudentActionChange(st.id, 'retain')}
                         className={`px-2.5 py-1.5 rounded-xl border ${st.action === 'retain' ? 'bg-amber-500 border-amber-500' : 'bg-white/5 border-white/15'}`}
                       >
-                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'retain' ? 'text-[#101415]' : 'text-white/70'}`}>Retain</Text>
+                        <Text className={`text-xs font-extrabold ${st.action === 'retain' ? 'text-[#101415]' : 'text-white/80'}`}>Retain</Text>
                       </Pressable>
 
                       <Pressable
                         onPress={() => handleStudentActionChange(st.id, 'left')}
                         className={`px-2.5 py-1.5 rounded-xl border ${st.action === 'left' ? 'bg-rose-500 border-rose-500' : 'bg-white/5 border-white/15'}`}
                       >
-                        <Text className={`text-[10.5px] font-extrabold ${st.action === 'left' ? 'text-white' : 'text-white/70'}`}>Left</Text>
+                        <Text className={`text-xs font-extrabold ${st.action === 'left' ? 'text-white' : 'text-white/80'}`}>Left</Text>
                       </Pressable>
                     </>
                   )}
@@ -483,14 +483,14 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
             {isClass10Source ? (
               <>
                 <GraduationCap size={20} color="#ffffff" style={{ marginRight: 8 }} />
-                <Text className="text-white font-extrabold text-sm">
+                <Text className="text-white font-extrabold text-base">
                   Graduate to Alumni ({studentsList.length} students)
                 </Text>
               </>
             ) : (
               <>
                 <ArrowRight size={18} color="#101415" style={{ marginRight: 8 }} />
-                <Text className="text-[#101415] font-extrabold text-sm">
+                <Text className="text-[#101415] font-extrabold text-base">
                   Execute Promotion ({studentsList.length} students)
                 </Text>
               </>
@@ -506,9 +506,9 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
         <View className="flex-1 bg-black/80 justify-center items-center p-4">
           <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-[0_0_30px_rgba(240,193,16,0.3)]' : 'border-[#00f1a1]/40 shadow-[0_0_30px_rgba(0,241,161,0.3)]'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
-              <Text className="text-white font-bold text-base">Select Source Class Section</Text>
-              <Pressable onPress={() => setShowSourceClassModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
-                <X size={14} color="#ffffff" />
+              <Text className="text-white font-bold text-lg">Select Source Class Section</Text>
+              <Pressable onPress={() => setShowSourceClassModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                <X size={16} color="#ffffff" />
               </Pressable>
             </View>
 
@@ -522,7 +522,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
                       onPress={() => handleSelectSourceClass(cls)}
                       className={`w-[48%] py-3 rounded-xl border items-center ${isSel ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]') : 'bg-white/5 border-white/15'}`}
                     >
-                      <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
+                      <Text className={`text-sm font-bold ${isSel ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
                     </Pressable>
                   );
                 })}
@@ -538,11 +538,11 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
           <View className="bg-[#101415] border-2 border-sky-400/40 rounded-3xl w-full max-w-sm p-5 shadow-[0_0_30px_rgba(56,189,248,0.3)]">
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View>
-                <Text className="text-white font-bold text-base">Target Destination Class</Text>
-                <Text className="text-sky-400 text-[10px] font-semibold">Showing next grade options for {sourceClass}</Text>
+                <Text className="text-white font-bold text-lg">Target Destination Class</Text>
+                <Text className="text-sky-400 text-xs font-semibold mt-0.5">Showing next grade options for {sourceClass}</Text>
               </View>
-              <Pressable onPress={() => setShowTargetClassModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
-                <X size={14} color="#ffffff" />
+              <Pressable onPress={() => setShowTargetClassModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                <X size={16} color="#ffffff" />
               </Pressable>
             </View>
 
@@ -559,7 +559,7 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
                       }}
                       className={`w-full py-3 rounded-xl border items-center ${isSel ? 'bg-sky-400 border-sky-400' : 'bg-white/5 border-white/15'}`}
                     >
-                      <Text className={`text-xs font-bold ${isSel ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
+                      <Text className={`text-sm font-bold ${isSel ? 'text-[#101415]' : 'text-white'}`}>{cls}</Text>
                     </Pressable>
                   );
                 })}
@@ -581,10 +581,10 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
               )}
             </View>
 
-            <Text className="text-white text-lg font-extrabold text-center mb-1">
+            <Text className="text-white text-xl font-extrabold text-center mb-1">
               {isClass10Source ? 'Graduate Class 10 Students?' : 'Execute Student Promotions?'}
             </Text>
-            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">
+            <Text className="text-white/70 text-sm text-center mb-6 leading-relaxed px-2">
               {isClass10Source 
                 ? `Are you sure you want to graduate ${studentsList.length} Class 10 students into the Alumni directory for ${upcomingAcademicYear}?`
                 : `Are you sure you want to promote ${studentsList.length} students from ${sourceClass} to ${targetClass} for ${upcomingAcademicYear}?`}
@@ -592,13 +592,13 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
 
             <View className="flex-row w-full" style={{ gap: 10 }}>
               <Pressable onPress={() => setShowExecuteModal(false)} className="flex-1 py-3.5 rounded-xl bg-white/10 items-center">
-                <Text className="text-white font-bold text-xs">Cancel</Text>
+                <Text className="text-white font-bold text-sm">Cancel</Text>
               </Pressable>
               <Pressable 
                 onPress={handleConfirmPromotion} 
                 className={`flex-1 py-3.5 rounded-xl items-center ${isClass10Source ? 'bg-purple-600' : primaryBtnClass}`}
               >
-                <Text className={`font-extrabold text-xs ${isClass10Source ? 'text-white' : 'text-[#101415]'}`}>
+                <Text className={`font-extrabold text-sm ${isClass10Source ? 'text-white' : 'text-[#101415]'}`}>
                   {isClass10Source ? 'Graduate All' : 'Confirm Migration'}
                 </Text>
               </Pressable>
@@ -615,14 +615,14 @@ export const ClassPromotionsScreen: React.FC<any> = ({ navigation }) => {
               <CheckCircle2 size={28} color={primaryColor} />
             </View>
 
-            <Text className="text-white text-lg font-extrabold text-center mb-1">{toastData.title}</Text>
-            <Text className="text-white/70 text-xs text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
+            <Text className="text-white text-xl font-extrabold text-center mb-1">{toastData.title}</Text>
+            <Text className="text-white/70 text-sm text-center mb-6 leading-relaxed px-2">{toastData.message}</Text>
 
             <Pressable
               onPress={() => setToastData(prev => ({ ...prev, visible: false }))}
               className={`w-full py-3.5 rounded-xl ${primaryBtnClass} items-center shadow-lg`}
             >
-              <Text className="text-[#101415] font-extrabold text-sm">Got it</Text>
+              <Text className="text-[#101415] font-extrabold text-base">Got it</Text>
             </Pressable>
           </View>
         </View>
