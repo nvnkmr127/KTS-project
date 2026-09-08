@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
+import { resetToLogin } from '../navigation/navigationRef';
 
 export type UserRole = 'super_admin' | 'admin_staff' | 'teacher' | 'parent' | 'guest';
 
@@ -162,6 +163,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     api.logout().catch(() => {});
     set({ user: null, isAuthenticated: false, activeChildId: null });
+    resetToLogin();
   },
   setOnboarded: (val) => set({ isOnboarded: val }),
   switchChild: (childId) => set({ activeChildId: childId }),

@@ -13,6 +13,7 @@ import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
+import { resetToLogin } from '../../navigation/navigationRef';
 
 export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNavigation }) => {
   const defaultNavigation = useNavigation<any>();
@@ -101,6 +102,25 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
   const handleSignOut = () => {
     setIsSignOutModalOpen(false);
     logout();
+    try {
+      if (navigation?.getParent()) {
+        navigation.getParent()?.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      } else if (navigation?.reset) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      } else if (navigation?.navigate) {
+        navigation.navigate('Login');
+      } else {
+        resetToLogin();
+      }
+    } catch (_) {
+      resetToLogin();
+    }
   };
 
   return (

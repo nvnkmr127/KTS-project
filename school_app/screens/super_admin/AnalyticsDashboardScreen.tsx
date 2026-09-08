@@ -46,6 +46,7 @@ import Svg, { G, Circle, Path, Rect, Line, Text as SvgText } from 'react-native-
 import { GlassCard } from '../../components/GlassCard';
 import { useResponsive } from '../../utils/responsive';
 import { api } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 type AnalyticsSection = 'overview' | 'cohort' | 'staff' | 'student' | 'financial' | null;
 
@@ -58,51 +59,64 @@ interface AnalyticsMenuItem {
   accentColor: string;
 }
 
-const ANALYTICS_MENU_ITEMS: AnalyticsMenuItem[] = [
-  {
-    id: 'overview',
-    title: 'Overview',
-    subtitle: 'Term-wise fee collections, class attendance distributions & quick report exports',
-    badge: 'Core Audit',
-    icon: LayoutDashboard,
-    accentColor: '#ffe5a0',
-  },
-  {
-    id: 'cohort',
-    title: 'Cohort & YoY Collection',
-    subtitle: 'Year-over-year revenue comparisons, fee collection funnel & retention cohorts',
-    badge: 'Trends',
-    icon: TrendingUp,
-    accentColor: '#41eec2',
-  },
-  {
-    id: 'staff',
-    title: 'Staff Attendance Analytics',
-    subtitle: 'Faculty roster, department performance, presence rates & absence tracking',
-    badge: 'HR & Staff',
-    icon: Users,
-    accentColor: '#38bdf8',
-  },
-  {
-    id: 'student',
-    title: 'Student Data Report',
-    subtitle: 'Comprehensive student records, batch filtering, age & fee ledger status',
-    badge: 'Students',
-    icon: UserCheck,
-    accentColor: '#e0bdff',
-  },
-  {
-    id: 'financial',
-    title: 'Financial Forecasting',
-    subtitle: '6-month collection projections, outstanding recovery goals & model confidence',
-    badge: 'Projections',
-    icon: DollarSign,
-    accentColor: '#f0c110',
-  },
-];
+export const AnalyticsDashboardScreen: React.FC<{ navigation?: any; role?: 'super_admin' | 'admin_staff' }> = ({ navigation: propNavigation, role: propRole }) => {
+  const defaultNavigation = useNavigation<any>();
+  const navigation = propNavigation || defaultNavigation;
+  const { user } = useAuthStore();
+  const activeRole = propRole || user?.role || 'super_admin';
+  const isAdminStaff = activeRole === 'admin_staff';
 
-export const AnalyticsDashboardScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const primaryColor = isAdminStaff ? '#00f1a1' : '#f0c110';
+  const primaryLight = isAdminStaff ? '#00f1a1' : '#ffe5a0';
+  const primaryBadgeClass = isAdminStaff ? 'bg-[#00f1a1]/20 border border-[#00f1a1]/40' : 'bg-[#f0c110]/20 border border-[#f0c110]/40';
+  const primaryBtnClass = isAdminStaff ? 'bg-[#00f1a1]' : 'bg-[#f0c110]';
+  const primaryTextClass = isAdminStaff ? 'text-[#00f1a1]' : 'text-[#ffe5a0]';
+  const bgGradient = isAdminStaff ? (['#0d2a24', '#121414'] as const) : (['#1d2022', '#101415'] as const);
+  const containerBg = isAdminStaff ? '#0d2a24' : '#101415';
+
+  const analyticsMenuItems: AnalyticsMenuItem[] = useMemo(() => [
+    {
+      id: 'overview',
+      title: 'Overview',
+      subtitle: 'Term-wise fee collections, class attendance distributions & quick report exports',
+      badge: 'Core Audit',
+      icon: LayoutDashboard,
+      accentColor: isAdminStaff ? '#00f1a1' : '#ffe5a0',
+    },
+    {
+      id: 'cohort',
+      title: 'Cohort & YoY Collection',
+      subtitle: 'Year-over-year revenue comparisons, fee collection funnel & retention cohorts',
+      badge: 'Trends',
+      icon: TrendingUp,
+      accentColor: '#41eec2',
+    },
+    {
+      id: 'staff',
+      title: 'Staff Attendance Analytics',
+      subtitle: 'Faculty roster, department performance, presence rates & absence tracking',
+      badge: 'HR & Staff',
+      icon: Users,
+      accentColor: '#38bdf8',
+    },
+    {
+      id: 'student',
+      title: 'Student Data Report',
+      subtitle: 'Comprehensive student records, batch filtering, age & fee ledger status',
+      badge: 'Students',
+      icon: UserCheck,
+      accentColor: '#e0bdff',
+    },
+    {
+      id: 'financial',
+      title: 'Financial Forecasting',
+      subtitle: '6-month collection projections, outstanding recovery goals & model confidence',
+      badge: 'Projections',
+      icon: DollarSign,
+      accentColor: isAdminStaff ? '#00f1a1' : '#f0c110',
+    },
+  ], [isAdminStaff]);
+
   const { headerPaddingTop, scrollBottomPadding, containerStyle } = useResponsive();
 
   const [selectedSection, setSelectedSection] = useState<AnalyticsSection>(null);
@@ -695,16 +709,16 @@ export const AnalyticsDashboardScreen: React.FC = () => {
 
   // Header Title Helper
   const getHeaderTitle = () => {
-    if (!selectedSection) return 'Reports & Analytics';
-    const found = ANALYTICS_MENU_ITEMS.find((m) => m.id === selectedSection);
-    return found ? found.title : 'Reports & Analytics';
+    if (!selectedSection) return isAdminStaff ? 'Reports & Analytics Console' : 'Reports & Analytics';
+    const found = analyticsMenuItems.find((m) => m.id === selectedSection);
+    return found ? found.title : (isAdminStaff ? 'Reports & Analytics Console' : 'Reports & Analytics');
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: containerBg }]}>
       {/* Background Gradient */}
       <LinearGradient
-        colors={['#1d2022', '#101415']}
+        colors={bgGradient}
         start={{ x: 1, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -719,24 +733,24 @@ export const AnalyticsDashboardScreen: React.FC = () => {
               className="w-11 h-11 rounded-2xl bg-white/10 border border-white/15 items-center justify-center active:bg-white/20"
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
-              <ChevronLeft size={22} color="#ffe5a0" />
+              <ChevronLeft size={22} color={primaryLight} />
             </Pressable>
             <View className="flex-1">
               <Text numberOfLines={1} className="text-xl md:text-2xl font-bold text-white font-display-lg">
                 {getHeaderTitle()}
               </Text>
-              <Text numberOfLines={1} className="text-[10px] uppercase tracking-widest text-[#ffe5a0] font-bold mt-0.5">
+              <Text numberOfLines={1} className={`text-[10px] uppercase tracking-widest ${primaryTextClass} font-bold mt-0.5`}>
                 {selectedSection ? 'INSTITUTIONAL METRICS & AUDIT INTELLIGENCE' : 'SELECT REPORT MODULE'}
               </Text>
             </View>
           </View>
-          <View className="w-11 h-11 rounded-2xl bg-[#f0c110]/20 border border-[#f0c110]/40 items-center justify-center">
-            <BarChart2 size={20} color="#f0c110" />
+          <View className={`w-11 h-11 rounded-2xl items-center justify-center ${primaryBadgeClass}`}>
+            <BarChart2 size={20} color={primaryColor} />
           </View>
         </BlurView>
 
         <LinearGradient
-          colors={['rgba(245, 197, 24, 0.15)', 'transparent']}
+          colors={isAdminStaff ? ['rgba(0, 241, 161, 0.15)', 'transparent'] : ['rgba(245, 197, 24, 0.15)', 'transparent']}
           style={{ position: 'absolute', bottom: -15, left: 0, right: 0, height: 15 }}
           pointerEvents="none"
         />
@@ -748,7 +762,7 @@ export const AnalyticsDashboardScreen: React.FC = () => {
       >
         {loading ? (
           <View className="py-20 items-center justify-center">
-            <ActivityIndicator size="large" color="#f0c110" />
+            <ActivityIndicator size="large" color={primaryColor} />
             <Text className="text-white/60 text-xs font-bold mt-3">Aggregating database reports and analytics...</Text>
           </View>
         ) : selectedSection === null ? (
@@ -756,34 +770,34 @@ export const AnalyticsDashboardScreen: React.FC = () => {
           /* MAIN MENU: 5 PILLS LISTED ONE AFTER THE OTHER IN A COLUMN  */
           /* ========================================================= */
           <View className="px-5 mb-8 pt-6 md:pt-8" style={{ gap: 18 }}>
-            {ANALYTICS_MENU_ITEMS.map((item) => {
+            {analyticsMenuItems.map((item) => {
               const IconComp = item.icon;
               return (
                 <Pressable
                   key={item.id}
                   onPress={() => setSelectedSection(item.id)}
                   style={({ pressed }) => [
-                    pressed && { backgroundColor: 'rgba(240, 193, 16, 0.2)', transform: [{ scale: 0.98 }] },
+                    pressed && { backgroundColor: isAdminStaff ? 'rgba(0, 241, 161, 0.2)' : 'rgba(240, 193, 16, 0.2)', transform: [{ scale: 0.98 }] },
                   ]}
-                  className="flex-row items-center justify-between p-4 md:p-5 rounded-2xl bg-white/5 border border-white/10 active:border-[#f0c110]/40"
+                  className={`flex-row items-center justify-between p-4 md:p-5 rounded-2xl bg-white/5 border border-white/10 ${isAdminStaff ? 'active:border-[#00f1a1]/40' : 'active:border-[#f0c110]/40'}`}
                 >
                   <View className="flex-row items-center gap-3.5 flex-1 mr-3">
-                    <View className="w-12 h-12 rounded-2xl bg-[#f0c110]/15 border border-[#f0c110]/30 items-center justify-center shadow-sm">
+                    <View className={`w-12 h-12 rounded-2xl items-center justify-center shadow-sm ${isAdminStaff ? 'bg-[#00f1a1]/15 border border-[#00f1a1]/30' : 'bg-[#f0c110]/15 border border-[#f0c110]/30'}`}>
                       <IconComp size={22} color={item.accentColor} />
                     </View>
                     <View className="flex-1">
                       <Text className="text-white font-extrabold text-sm md:text-base">{item.title}</Text>
-                      <Text className="text-[#d1c5ac] text-xs mt-1 leading-relaxed" numberOfLines={2}>
+                      <Text className="text-white/60 text-xs mt-1 leading-relaxed" numberOfLines={2}>
                         {item.subtitle}
                       </Text>
                     </View>
                   </View>
 
                   <View className="flex-row items-center gap-2.5">
-                    <View className="px-2.5 py-1 rounded-xl bg-[#f0c110]/20 border border-[#f0c110]/40">
-                      <Text className="text-[#ffe5a0] text-[10.5px] font-black uppercase tracking-wider">{item.badge}</Text>
+                    <View className={`px-2.5 py-1 rounded-xl ${primaryBadgeClass}`}>
+                      <Text className={`${primaryTextClass} text-[10.5px] font-black uppercase tracking-wider`}>{item.badge}</Text>
                     </View>
-                    <ChevronRight size={18} color="#ffe5a0" />
+                    <ChevronRight size={18} color={primaryLight} />
                   </View>
                 </Pressable>
               );

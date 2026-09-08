@@ -184,6 +184,21 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   const handleConfirmSignOut = () => {
     setShowSignOutModal(false);
     logout();
+    try {
+      if (navigation?.getParent()) {
+        navigation.getParent()?.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      } else if (navigation?.reset) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      } else if (navigation?.navigate) {
+        navigation.navigate('Login');
+      }
+    } catch (_) {}
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;

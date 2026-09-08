@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
 import AppNavigator, { appDarkTheme } from './navigation/AppNavigator';
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './navigation/navigationRef';
 import "./global.css";
 
 // Configure Reanimated logger to disable strict mode warning during component renders
@@ -107,7 +108,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <NavigationContainer theme={appDarkTheme}>
+          <NavigationContainer ref={navigationRef} theme={appDarkTheme}>
             <ErrorBoundary>
               <AppNavigator />
             </ErrorBoundary>
