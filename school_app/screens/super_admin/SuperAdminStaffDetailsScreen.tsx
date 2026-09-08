@@ -1674,7 +1674,7 @@ export const SuperAdminStaffDetailsScreen: React.FC = () => {
                   <View>
                     <Text className="text-white font-bold text-base">Edit Staff Profile</Text>
                     <Text className="text-[#ffe5a0] text-[10px] uppercase tracking-wider font-bold">
-                      SUPER ADMIN EDIT CONSOLE
+                      SUPER ADMIN EDIT
                     </Text>
                   </View>
                 </View>

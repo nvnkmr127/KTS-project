@@ -124,7 +124,7 @@ export const SubstitutionManagementScreen: React.FC<any> = ({ navigation }) => {
 
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
-        title="Teacher Substitutions Console"
+        title="Teacher Substitutions"
         subtitle="Absenteeism Coverage & Period Allotment"
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>

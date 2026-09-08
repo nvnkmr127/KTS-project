@@ -197,7 +197,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
             ? () => navigation.goBack() 
             : undefined
         }
-        title={selectedClassDetail ? `Class ${selectedClassDetail} Submissions` : "Daily Diary Console"}
+        title={selectedClassDetail ? `Class ${selectedClassDetail} Submissions` : "Daily Diary"}
         subtitle={selectedClassDetail ? "Period-wise breakdown of scheduled teachers and diaries" : `ACADEMIC YEAR: ${selectedAcademicYear}`}
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>

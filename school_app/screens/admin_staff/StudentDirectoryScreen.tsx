@@ -649,7 +649,7 @@ export const StudentDirectoryScreen: React.FC = () => {
       {/* Header */}
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
-        title="Student Management Console"
+        title="Student Management"
         subtitle={isSuperAdmin ? "Super Admin Student Directory" : "Student Directory & Academic Enrollment"}
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>

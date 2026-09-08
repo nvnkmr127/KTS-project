@@ -308,7 +308,7 @@ export const AdminStaffLeavesScreen: React.FC<any> = ({ navigation }) => {
           <View className="bg-white/5 border border-white/10 rounded-2xl p-3 mt-3 flex-row items-center">
             <Info size={16} color={primaryColor} style={{ marginRight: 8 }} />
             <Text className="text-white/70 text-xs flex-1 font-medium leading-relaxed">
-              <Text className="text-white font-bold">Read-Only Mode:</Text> Leave applications and approvals are administered exclusively by the Super Admin Console.
+              <Text className="text-white font-bold">Read-Only Mode:</Text> Leave applications and approvals are administered exclusively by Super Admin.
             </Text>
           </View>
         </View>

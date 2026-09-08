@@ -162,7 +162,7 @@ export const AdminAlertConfigurationScreen: React.FC<any> = ({ navigation: propN
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
         title="Alert & Notification Center"
-        subtitle="Automated Reminders & Broadcast Console"
+        subtitle="Automated Reminders & Broadcasts"
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>
             <Bell size={20} color={primaryColor} />

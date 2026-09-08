@@ -247,7 +247,7 @@ export const AdminBusTrackingScreen: React.FC<any> = ({ navigation: propNavigati
 
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
-        title="Bus Fleet Tracking Console"
+        title="Bus Fleet Tracking"
         subtitle="Live GPS & Real-time Area Location"
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>

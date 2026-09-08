@@ -92,7 +92,7 @@ export const SuperAdminAdminConsoleScreen: React.FC = () => {
             </Pressable>
             <View className="flex-1">
               <Text numberOfLines={1} className="text-xl md:text-2xl font-extrabold text-white font-display-lg">Admin Operations</Text>
-              <Text numberOfLines={1} className="text-xs uppercase tracking-wider text-[#ffe5a0] font-bold mt-0.5">SUPER ADMIN CONSOLE</Text>
+              <Text numberOfLines={1} className="text-xs uppercase tracking-wider text-[#ffe5a0] font-bold mt-0.5">SUPER ADMIN</Text>
             </View>
           </View>
 

@@ -709,9 +709,9 @@ export const AnalyticsDashboardScreen: React.FC<{ navigation?: any; role?: 'supe
 
   // Header Title Helper
   const getHeaderTitle = () => {
-    if (!selectedSection) return isAdminStaff ? 'Reports & Analytics Console' : 'Reports & Analytics';
+    if (!selectedSection) return 'Reports & Analytics';
     const found = analyticsMenuItems.find((m) => m.id === selectedSection);
-    return found ? found.title : (isAdminStaff ? 'Reports & Analytics Console' : 'Reports & Analytics');
+    return found ? found.title : 'Reports & Analytics';
   };
 
   return (

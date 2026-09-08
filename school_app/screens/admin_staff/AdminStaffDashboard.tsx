@@ -432,7 +432,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                     </View>
                     <View>
                       <Text className="text-white font-extrabold text-sm">EduVision</Text>
-                      <Text className={`${primaryTextClass} text-[9px] font-bold`}>{isSuperAdmin ? "Super Admin Console" : "Admin Staff Portal"}</Text>
+                      <Text className={`${primaryTextClass} text-[9px] font-bold`}>{isSuperAdmin ? "Super Admin Portal" : "Admin Staff Portal"}</Text>
                     </View>
                   </View>
                   <Pressable onPress={() => setShowSidebarModal(false)} className="p-1">
@@ -451,7 +451,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
                   <Text className="text-white/50 text-xs text-center mt-0.5">{user?.email || 'sarah.jenkins@kts.edu.in'}</Text>
 
                   <View className={`px-3 py-1 rounded-xl mt-3 ${primaryBadgeClass}`}>
-                    <Text className={`${primaryTextClass} text-[10px] font-black uppercase`}>{isSuperAdmin ? "SUPER ADMIN CONSOLE" : "ADMIN STAFF CONSOLE"}</Text>
+                    <Text className={`${primaryTextClass} text-[10px] font-black uppercase`}>{isSuperAdmin ? "SUPER ADMIN" : "ADMIN STAFF"}</Text>
                   </View>
                 </View>
 

@@ -190,7 +190,7 @@ export const AssignFeeStructureScreen: React.FC = () => {
         {/* ERP Info & Summary Stats */}
         <View className="px-5 mb-6">
           <GlassCard className="p-5 border border-white/10" intensity="low">
-            <Text className="text-[#ffe5a0] font-bold text-sm mb-3">Finance Console Overview</Text>
+            <Text className="text-[#ffe5a0] font-bold text-sm mb-3">Finance Overview</Text>
             <View className="flex-row justify-between items-center">
               <View className="gap-1">
                 <Text className="text-white/40 text-[9px] font-bold uppercase tracking-wider">Projected Revenue</Text>

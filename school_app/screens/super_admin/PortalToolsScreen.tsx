@@ -161,7 +161,7 @@ export const PortalToolsScreen: React.FC = () => {
                 Portal Settings
               </Text>
               <Text numberOfLines={1} className="text-xs uppercase tracking-wider text-[#ffe5a0] font-bold mt-0.5">
-                SYSTEM CONFIGURATION CONSOLE
+                SYSTEM CONFIGURATIONS
               </Text>
             </View>
           </View>
@@ -195,7 +195,7 @@ export const PortalToolsScreen: React.FC = () => {
             <View className="flex-1 pr-2">
               <Text className="text-white font-bold text-base">{schoolName}</Text>
               <Text className="text-[#ffe5a0] text-[11px] font-extrabold uppercase tracking-wider mt-0.5">
-                Super Administrator Console
+                Super Administrator
               </Text>
               <Text className="text-white/40 text-[10px] font-mono mt-0.5">Session: {activeSession} • AES-256</Text>
             </View>

@@ -160,7 +160,7 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
               <View className="flex-1">
                 <Text className="text-white font-extrabold text-lg">{user?.name || 'Sarah Jenkins'}</Text>
                 <Text className="text-white/60 text-sm mt-0.5 font-medium">{user?.email || 'sarah.jenkins@kts.edu.in'}</Text>
-                <Text className="text-[#00f1a1] text-xs font-bold mt-1">Admin Staff Console • EMP-2026-88</Text>
+                <Text className="text-[#00f1a1] text-xs font-bold mt-1">Admin Staff • EMP-2026-88</Text>
               </View>
             </View>
 

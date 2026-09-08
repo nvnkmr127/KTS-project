@@ -649,7 +649,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 >
                   <View className="flex-row items-center">
                     <LayoutGrid size={18} color="#f0c110" style={{ marginRight: 10 }} />
-                    <Text className="text-[#ffe5a0] font-extrabold text-xs">Admin Operations Console</Text>
+                    <Text className="text-[#ffe5a0] font-extrabold text-xs">Admin Operations</Text>
                   </View>
                   <ChevronRight size={16} color="#f0c110" />
                 </Pressable>

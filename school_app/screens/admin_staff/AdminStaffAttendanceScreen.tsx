@@ -120,7 +120,7 @@ export const AdminStaffAttendanceScreen: React.FC<any> = ({ navigation }) => {
 
       <AdminStaffHeader
         onBackPress={navigation?.canGoBack && navigation.canGoBack() ? () => navigation.goBack() : undefined}
-        title="Staff Attendance Console"
+        title="Staff Attendance"
         subtitle="Biometric Logs & Daily Staff Roster"
         icon={
           <View className={`w-10 h-10 rounded-xl items-center justify-center ${primaryBadgeClass}`}>

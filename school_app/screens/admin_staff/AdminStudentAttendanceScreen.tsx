@@ -416,7 +416,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
           else if (viewLevel === 2) setViewLevel(1);
           else if (navigation?.canGoBack && navigation.canGoBack()) navigation.goBack();
         }}
-        title="Student Attendance Console"
+        title="Student Attendance"
         subtitle={
           viewLevel === 1 
             ? "Class Directory & Real-time Attendance" 
