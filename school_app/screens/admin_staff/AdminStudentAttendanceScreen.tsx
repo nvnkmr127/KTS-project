@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, BackHandler, PanResponder } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, TextInput, Modal, BackHandler } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from '@react-navigation/native';
 import {
   CheckCircle2, AlertCircle, ChevronRight, ArrowLeft, 
   School, AlertTriangle, ShieldCheck, ChevronLeft, Clock, Info, X
@@ -15,6 +14,8 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export interface ClassItemSummary {
   id: string;
@@ -51,6 +52,78 @@ export interface StudentAttendanceSummary {
   attendanceMap?: Record<number, 'present' | 'absent' | 'partial'>;
 }
 
+export interface PeriodDetail {
+  periodNumber: number;
+  time: string;
+  subject: string;
+  teacher: string;
+  room: string;
+  status: 'Present' | 'Absent';
+}
+
+const CLASS_TIMETABLE_PERIODS: Record<number, Omit<PeriodDetail, 'status'>[]> = {
+  0: [ // Sunday (Special Sessions & Mentorship)
+    { periodNumber: 1, time: '09:00 AM - 09:45 AM', subject: 'Mathematics Problem Solving', teacher: 'Mrs. Anita Sharma', room: 'Room 204' },
+    { periodNumber: 2, time: '09:45 AM - 10:30 AM', subject: 'Physics Doubt Clearing', teacher: 'Mr. Rajesh Kumar', room: 'Physics Lab' },
+    { periodNumber: 3, time: '10:45 AM - 11:30 AM', subject: 'Chemistry Revision', teacher: 'Dr. Meenakshi Sundaram', room: 'Chem Lab' },
+    { periodNumber: 4, time: '11:30 AM - 12:15 PM', subject: 'English Literature Workshop', teacher: 'Mrs. Priya Nambiar', room: 'Room 204' },
+    { periodNumber: 5, time: '01:15 PM - 02:00 PM', subject: 'Biology Seminar', teacher: 'Mr. Vikramaditya Singh', room: 'Bio Lab' },
+    { periodNumber: 6, time: '02:00 PM - 02:45 PM', subject: 'Computer Applications Lab', teacher: 'Mrs. Sarah Jenkins', room: 'Comp Lab' },
+    { periodNumber: 7, time: '02:45 PM - 03:30 PM', subject: 'Physical Fitness & Sports', teacher: 'Mr. Ramesh Varma', room: 'Sports Ground' },
+  ],
+  1: [ // Monday
+    { periodNumber: 1, time: '09:00 AM - 09:45 AM', subject: 'Mathematics', teacher: 'Mrs. Anita Sharma', room: 'Room 204' },
+    { periodNumber: 2, time: '09:45 AM - 10:30 AM', subject: 'Physics', teacher: 'Mr. Rajesh Kumar', room: 'Physics Lab' },
+    { periodNumber: 3, time: '10:45 AM - 11:30 AM', subject: 'Chemistry', teacher: 'Dr. Meenakshi Sundaram', room: 'Chem Lab' },
+    { periodNumber: 4, time: '11:30 AM - 12:15 PM', subject: 'English Literature', teacher: 'Mrs. Priya Nambiar', room: 'Room 204' },
+    { periodNumber: 5, time: '01:15 PM - 02:00 PM', subject: 'Biology', teacher: 'Mr. Vikramaditya Singh', room: 'Bio Lab' },
+    { periodNumber: 6, time: '02:00 PM - 02:45 PM', subject: 'Computer Science', teacher: 'Mrs. Sarah Jenkins', room: 'Comp Lab' },
+    { periodNumber: 7, time: '02:45 PM - 03:30 PM', subject: 'Physical Education', teacher: 'Mr. Ramesh Varma', room: 'Sports Ground' },
+  ],
+  2: [ // Tuesday
+    { periodNumber: 1, time: '09:00 AM - 09:45 AM', subject: 'Physics', teacher: 'Mr. Rajesh Kumar', room: 'Physics Lab' },
+    { periodNumber: 2, time: '09:45 AM - 10:30 AM', subject: 'Mathematics', teacher: 'Mrs. Anita Sharma', room: 'Room 204' },
+    { periodNumber: 3, time: '10:45 AM - 11:30 AM', subject: 'English Literature', teacher: 'Mrs. Priya Nambiar', room: 'Room 204' },
+    { periodNumber: 4, time: '11:30 AM - 12:15 PM', subject: 'Chemistry', teacher: 'Dr. Meenakshi Sundaram', room: 'Chem Lab' },
+    { periodNumber: 5, time: '01:15 PM - 02:00 PM', subject: 'Social Science', teacher: 'Mr. Vikramaditya Singh', room: 'Room 204' },
+    { periodNumber: 6, time: '02:00 PM - 02:45 PM', subject: 'Second Language', teacher: 'Mrs. Sunita Rao', room: 'Room 204' },
+    { periodNumber: 7, time: '02:45 PM - 03:30 PM', subject: 'Library & Research', teacher: 'Mrs. Priya Nambiar', room: 'Library' },
+  ],
+  3: [ // Wednesday
+    { periodNumber: 1, time: '09:00 AM - 09:45 AM', subject: 'Chemistry', teacher: 'Dr. Meenakshi Sundaram', room: 'Chem Lab' },
+    { periodNumber: 2, time: '09:45 AM - 10:30 AM', subject: 'Mathematics', teacher: 'Mrs. Anita Sharma', room: 'Room 204' },
+    { periodNumber: 3, time: '10:45 AM - 11:30 AM', subject: 'Biology', teacher: 'Mr. Vikramaditya Singh', room: 'Bio Lab' },
+    { periodNumber: 4, time: '11:30 AM - 12:15 PM', subject: 'Physics', teacher: 'Mr. Rajesh Kumar', room: 'Physics Lab' },
+    { periodNumber: 5, time: '01:15 PM - 02:00 PM', subject: 'Computer Applications', teacher: 'Mrs. Sarah Jenkins', room: 'Comp Lab' },
+    { periodNumber: 6, time: '02:00 PM - 02:45 PM', subject: 'English Literature', teacher: 'Mrs. Priya Nambiar', room: 'Room 204' },
+    { periodNumber: 7, time: '02:45 PM - 03:30 PM', subject: 'Art & Design', teacher: 'Mrs. Kavita Patel', room: 'Art Studio' },
+  ],
+  4: [ // Thursday
+    { periodNumber: 1, time: '09:00 AM - 09:45 AM', subject: 'Mathematics', teacher: 'Mrs. Anita Sharma', room: 'Room 204' },
+    { periodNumber: 2, time: '09:45 AM - 10:30 AM', subject: 'Physics', teacher: 'Mr. Rajesh Kumar', room: 'Physics Lab' },
+    { periodNumber: 3, time: '10:45 AM - 11:30 AM', subject: 'Social Science', teacher: 'Mr. Vikramaditya Singh', room: 'Room 204' },
+    { periodNumber: 4, time: '11:30 AM - 12:15 PM', subject: 'Chemistry', teacher: 'Dr. Meenakshi Sundaram', room: 'Chem Lab' },
+    { periodNumber: 5, time: '01:15 PM - 02:00 PM', subject: 'Second Language', teacher: 'Mrs. Sunita Rao', room: 'Room 204' },
+    { periodNumber: 6, time: '02:00 PM - 02:45 PM', subject: 'English Grammar', teacher: 'Mrs. Priya Nambiar', room: 'Room 204' },
+    { periodNumber: 7, time: '02:45 PM - 03:30 PM', subject: 'Sports & Athletics', teacher: 'Mr. Ramesh Varma', room: 'Sports Ground' },
+  ],
+  5: [ // Friday
+    { periodNumber: 1, time: '09:00 AM - 09:45 AM', subject: 'Biology', teacher: 'Mr. Vikramaditya Singh', room: 'Bio Lab' },
+    { periodNumber: 2, time: '09:45 AM - 10:30 AM', subject: 'Chemistry', teacher: 'Dr. Meenakshi Sundaram', room: 'Chem Lab' },
+    { periodNumber: 3, time: '10:45 AM - 11:30 AM', subject: 'Mathematics', teacher: 'Mrs. Anita Sharma', room: 'Room 204' },
+    { periodNumber: 4, time: '11:30 AM - 12:15 PM', subject: 'Physics', teacher: 'Mr. Rajesh Kumar', room: 'Physics Lab' },
+    { periodNumber: 5, time: '01:15 PM - 02:00 PM', subject: 'Computer Science', teacher: 'Mrs. Sarah Jenkins', room: 'Comp Lab' },
+    { periodNumber: 6, time: '02:00 PM - 02:45 PM', subject: 'Environmental Studies', teacher: 'Mrs. Anita Sharma', room: 'Room 204' },
+    { periodNumber: 7, time: '02:45 PM - 03:30 PM', subject: 'Club Activities / Debate', teacher: 'Mrs. Priya Nambiar', room: 'Auditorium' },
+  ],
+  6: [ // Saturday
+    { periodNumber: 1, time: '09:00 AM - 09:45 AM', subject: 'Mathematics Problem Solving', teacher: 'Mrs. Anita Sharma', room: 'Room 204' },
+    { periodNumber: 2, time: '09:45 AM - 10:30 AM', subject: 'Science Seminar', teacher: 'Mr. Rajesh Kumar', room: 'Physics Lab' },
+    { periodNumber: 3, time: '10:45 AM - 11:30 AM', subject: 'English Debating', teacher: 'Mrs. Priya Nambiar', room: 'Room 204' },
+    { periodNumber: 4, time: '11:30 AM - 12:15 PM', subject: 'Physical Fitness & Drill', teacher: 'Mr. Ramesh Varma', room: 'Sports Ground' },
+  ]
+};
+
 const MOCK_CLASSES: ClassItemSummary[] = [
   { id: 'c1', className: 'Class 1A', grade: 'Class 1', section: 'A', teacherName: 'Mrs. Anita Sharma', totalStudents: 32, presentToday: 30, absentToday: 2, todayAvg: 93.8 },
   { id: 'c2', className: 'Class 1B', grade: 'Class 1', section: 'B', teacherName: 'Mr. Rajesh Kumar', totalStudents: 30, presentToday: 28, absentToday: 2, todayAvg: 93.3 },
@@ -72,20 +145,14 @@ const MOCK_CLASSES: ClassItemSummary[] = [
 ];
 
 const MOCK_CLASS_STUDENTS: StudentAttendanceRecord[] = [
-  { id: 's1', name: 'B Sandeep Goud', initials: 'BS', rollNo: '123', totalLectures: 45, attended: 42, overallPct: 93.3, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'partial', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'absent', 12: 'present', 13: 'present', 14: 'present' } },
-  { id: 's2', name: 'Banda Teja Sri', initials: 'BT', rollNo: '124', totalLectures: 45, attended: 44, overallPct: 97.7, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present' } },
-  { id: 's3', name: 'Chandippa Sragvi', initials: 'CS', rollNo: '125', totalLectures: 45, attended: 40, overallPct: 88.8, attendanceMap: { 1: 'present', 2: 'absent', 3: 'present', 4: 'present', 5: 'present', 6: 'absent', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'absent', 14: 'present' } }
-];
-
-const MOCK_STUDENTS: StudentAttendanceSummary[] = [
-  { id: 'st_1', rollNo: '101', name: 'Arjun Reddy', initials: 'AR', className: 'Class 10 — A', totalLectures: 180, attended: 168, overallPct: 93.3 },
-  { id: 'st_2', rollNo: '102', name: 'Bhavana Patel', initials: 'BP', className: 'Class 10 — A', totalLectures: 180, attended: 176, overallPct: 97.7 },
-  { id: 'st_3', rollNo: '103', name: 'Charan Teja', initials: 'CT', className: 'Class 10 — A', totalLectures: 180, attended: 154, overallPct: 85.5 },
-  { id: 'st_4', rollNo: '104', name: 'Divya Sri', initials: 'DS', className: 'Class 10 — A', totalLectures: 180, attended: 172, overallPct: 95.5 },
-  { id: 'st_5', rollNo: '105', name: 'Eshwar Rao', initials: 'ER', className: 'Class 10 — A', totalLectures: 180, attended: 162, overallPct: 90.0 },
-  { id: 'st_6', rollNo: '106', name: 'Farhan Khan', initials: 'FK', className: 'Class 10 — A', totalLectures: 180, attended: 142, overallPct: 78.8 },
-  { id: 'st_7', rollNo: '107', name: 'Gowri Shankar', initials: 'GS', className: 'Class 10 — A', totalLectures: 180, attended: 175, overallPct: 97.2 },
-  { id: 'st_8', rollNo: '108', name: 'Harika Reddy', initials: 'HR', className: 'Class 10 — A', totalLectures: 180, attended: 169, overallPct: 93.8 }
+  { id: 's1', name: 'B Sandeep Goud', initials: 'BS', rollNo: '101', totalLectures: 45, attended: 42, overallPct: 93.3, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'partial', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'absent', 12: 'present', 13: 'present', 14: 'present', 15: 'present', 17: 'present', 18: 'absent', 19: 'present', 20: 'present', 21: 'present', 22: 'present', 24: 'present', 25: 'partial', 26: 'present', 27: 'present', 28: 'present', 29: 'present', 31: 'present' } },
+  { id: 's2', name: 'Banda Teja Sri', initials: 'BT', rollNo: '102', totalLectures: 45, attended: 44, overallPct: 97.7, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present', 15: 'present', 17: 'present', 18: 'present', 19: 'present', 20: 'present', 21: 'present', 22: 'present', 24: 'present', 25: 'present', 26: 'present', 27: 'present', 28: 'present', 29: 'present', 31: 'present' } },
+  { id: 's3', name: 'Chandippa Sragvi', initials: 'CS', rollNo: '103', totalLectures: 45, attended: 40, overallPct: 88.8, attendanceMap: { 1: 'present', 2: 'absent', 3: 'present', 4: 'present', 5: 'present', 6: 'absent', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'absent', 14: 'present', 15: 'present', 17: 'present', 18: 'absent', 19: 'present', 20: 'present', 21: 'present', 22: 'present', 24: 'present', 25: 'absent', 26: 'present', 27: 'present', 28: 'present', 29: 'present', 31: 'present' } },
+  { id: 's4', name: 'Arjun Reddy', initials: 'AR', rollNo: '104', totalLectures: 45, attended: 42, overallPct: 93.3, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'absent', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present', 15: 'present', 17: 'present', 18: 'absent', 19: 'present', 20: 'present', 21: 'present', 22: 'present', 24: 'present', 25: 'present', 26: 'present', 27: 'present', 28: 'present', 29: 'present', 31: 'present' } },
+  { id: 's5', name: 'Bhavana Patel', initials: 'BP', rollNo: '105', totalLectures: 45, attended: 44, overallPct: 97.7, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present', 15: 'present', 17: 'present', 18: 'present', 19: 'present', 20: 'present', 21: 'present', 22: 'present', 24: 'present', 25: 'present', 26: 'present', 27: 'present', 28: 'present', 29: 'present', 31: 'present' } },
+  { id: 's6', name: 'Charan Teja', initials: 'CT', rollNo: '106', totalLectures: 45, attended: 39, overallPct: 86.6, attendanceMap: { 1: 'present', 2: 'absent', 3: 'present', 4: 'partial', 5: 'absent', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'absent', 12: 'present', 13: 'present', 14: 'present', 15: 'present', 17: 'present', 18: 'absent', 19: 'present', 20: 'present', 21: 'present', 22: 'present', 24: 'present', 25: 'partial', 26: 'present', 27: 'present', 28: 'present', 29: 'present', 31: 'present' } },
+  { id: 's7', name: 'Divya Sri', initials: 'DS', rollNo: '107', totalLectures: 45, attended: 43, overallPct: 95.5, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'present', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present', 15: 'present', 17: 'present', 18: 'absent', 19: 'present', 20: 'present', 21: 'present', 22: 'present', 24: 'present', 25: 'present', 26: 'present', 27: 'present', 28: 'present', 29: 'present', 31: 'present' } },
+  { id: 's8', name: 'Eshwar Rao', initials: 'ER', rollNo: '108', totalLectures: 45, attended: 41, overallPct: 91.1, attendanceMap: { 1: 'present', 2: 'present', 3: 'present', 4: 'present', 5: 'absent', 6: 'present', 7: 'present', 8: 'present', 10: 'present', 11: 'present', 12: 'present', 13: 'present', 14: 'present', 15: 'present', 17: 'present', 18: 'present', 19: 'present', 20: 'present', 21: 'present', 22: 'present', 24: 'present', 25: 'partial', 26: 'present', 27: 'present', 28: 'present', 29: 'present', 31: 'present' } }
 ];
 
 export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
@@ -109,6 +176,10 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
   const [gridYear, setGridYear] = useState<number>(2026);
   const [modalViewDate, setModalViewDate] = useState<Date>(() => new Date(2026, 7, 4));
 
+  const daysInGridMonth = useMemo(() => {
+    return new Date(gridYear, gridMonth + 1, 0).getDate();
+  }, [gridYear, gridMonth]);
+
   const handlePrevGridMonth = () => {
     if (gridMonth === 0) {
       setGridMonth(11);
@@ -130,6 +201,9 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
     }
   };
 
+  // No auto-clamp effect here — setSelectedCalendarDay is only called on explicit user press
+  // and month navigation handlers guard against invalid days.
+
   const handlePrevModalMonth = () => {
     setModalViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   };
@@ -140,28 +214,6 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
     if (isCurrentOrFuture) return;
     setModalViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
-
-  const gridPrevMonthRef = useRef(handlePrevGridMonth);
-  const gridNextMonthRef = useRef(handleNextGridMonth);
-  gridPrevMonthRef.current = handlePrevGridMonth;
-  gridNextMonthRef.current = handleNextGridMonth;
-
-  // Swipe Gesture Responder for Calendar Month Grid (Right-to-Left: Next Month, Left-to-Right: Previous Month)
-  const gridSwipeResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 15;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -35) {
-          gridNextMonthRef.current?.();
-        } else if (gestureState.dx > 35) {
-          gridPrevMonthRef.current?.();
-        }
-      },
-    })
-  ).current;
 
   const calendarGridCells = useMemo(() => {
     const firstDayOfWeek = new Date(gridYear, gridMonth, 1).getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
@@ -193,33 +245,115 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
     return cells;
   }, [gridMonth, gridYear, selectedStudent]);
 
-  // Handle Hardware Back Button & System Back Gesture (matching chevron left behavior)
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        if (showDatePickerModal) {
-          setShowDatePickerModal(false);
-          return true;
-        }
-        if (viewLevel === 3) {
-          setViewLevel(2);
-          return true;
-        }
-        if (viewLevel === 2) {
-          setViewLevel(1);
-          return true;
-        }
-        if (navigation?.canGoBack && navigation.canGoBack()) {
-          navigation.goBack();
-          return true;
-        }
-        return false;
-      };
+  // Selected Date Period Breakdown Calculation
+  const selectedDatePeriods = useMemo(() => {
+    try {
+      if (!selectedStudent || !selectedCalendarDay) {
+        const fallbackTemplate = CLASS_TIMETABLE_PERIODS[1] || [];
+        return {
+          dayName: 'Tuesday',
+          formattedDate: `${MONTH_NAMES[gridMonth] || 'August'} ${selectedCalendarDay || 1}, ${gridYear}`,
+          isSunday: false,
+          status: 'present' as const,
+          periods: fallbackTemplate.map(tp => ({ ...tp, status: 'Present' as const })),
+          presentCount: fallbackTemplate.length,
+          totalCount: fallbackTemplate.length,
+        };
+      }
 
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => subscription.remove();
-    }, [viewLevel, showDatePickerModal, navigation])
-  );
+      const dateObj = new Date(gridYear, gridMonth, selectedCalendarDay);
+      const dayOfWeek = isNaN(dateObj.getTime()) ? 1 : dateObj.getDay(); // 0 = Sun, 1 = Mon, ...
+      const dayName = DAY_NAMES[dayOfWeek] || 'Day';
+      const monthName = MONTH_NAMES[gridMonth] || 'August';
+      const formattedDate = `${dayName}, ${monthName} ${selectedCalendarDay}, ${gridYear}`;
+
+      let dayStatus: 'present' | 'absent' | 'partial' = selectedStudent.attendanceMap?.[selectedCalendarDay] || 'present';
+      if (!selectedStudent.attendanceMap?.[selectedCalendarDay]) {
+        if (dayOfWeek === 0) {
+          // Default Sunday status: absent / weekend off
+          dayStatus = 'absent';
+        } else if ((selectedCalendarDay + gridMonth) % 9 === 0 || selectedCalendarDay === 5 || selectedCalendarDay === 18) {
+          dayStatus = 'absent';
+        } else if ((selectedCalendarDay + gridMonth) % 6 === 0 || selectedCalendarDay === 12 || selectedCalendarDay === 25) {
+          dayStatus = 'partial';
+        } else {
+          dayStatus = 'present';
+        }
+      }
+
+      const templatePeriods = CLASS_TIMETABLE_PERIODS[dayOfWeek] || CLASS_TIMETABLE_PERIODS[1] || [];
+
+      let presentCount = 0;
+      const periods: PeriodDetail[] = templatePeriods.map((tp, idx) => {
+        let pStatus: 'Present' | 'Absent' = 'Present';
+        if (dayStatus === 'absent') {
+          pStatus = 'Absent';
+        } else if (dayStatus === 'partial') {
+          // Morning periods Present, Afternoon periods Absent
+          pStatus = idx < 3 ? 'Present' : 'Absent';
+        } else {
+          pStatus = 'Present';
+        }
+
+        if (pStatus === 'Present') {
+          presentCount++;
+        }
+
+        return {
+          ...tp,
+          status: pStatus,
+        };
+      });
+
+      return {
+        dayName,
+        formattedDate,
+        isSunday: dayOfWeek === 0,
+        status: dayStatus,
+        periods,
+        presentCount,
+        totalCount: periods.length,
+      };
+    } catch (e) {
+      console.error('Error calculating selectedDatePeriods:', e);
+      const fallback = CLASS_TIMETABLE_PERIODS[1] || [];
+      return {
+        dayName: 'Monday',
+        formattedDate: `Selected Day ${selectedCalendarDay}, ${gridYear}`,
+        isSunday: false,
+        status: 'present' as const,
+        periods: fallback.map(tp => ({ ...tp, status: 'Present' as const })),
+        presentCount: fallback.length,
+        totalCount: fallback.length,
+      };
+    }
+  }, [gridYear, gridMonth, selectedCalendarDay, selectedStudent]);
+
+  // Handle Hardware Back Button & System Back Gesture (matching chevron left behavior)
+  useEffect(() => {
+    const onBackPress = () => {
+      if (showDatePickerModal) {
+        setShowDatePickerModal(false);
+        return true;
+      }
+      if (viewLevel === 3) {
+        setViewLevel(2);
+        return true;
+      }
+      if (viewLevel === 2) {
+        setViewLevel(1);
+        return true;
+      }
+      if (navigation?.canGoBack && navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [viewLevel, showDatePickerModal, navigation]);
 
   // Overall School Stats
   const overallStats = useMemo(() => {
@@ -307,43 +441,43 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
           <View className="px-5 mb-4">
             <GlassCard intensity="low" className={`p-4 border bg-[#101415]/90 rounded-2xl ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-[#00f1a1]/20'}`}>
               <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-3">
-                <View>
+                <View className="flex-1 mr-2">
                   <Text className="text-white font-extrabold text-base">School Attendance Overview</Text>
-                  <Text className="text-white/50 text-xs">Real-time attendance telemetry for today ({selectedDate})</Text>
+                  <Text className="text-white/60 text-xs mt-0.5">Real-time attendance telemetry for today ({selectedDate})</Text>
                 </View>
                 <Pressable
                   onPress={() => setShowDatePickerModal(true)}
                   className={`px-3 py-1.5 rounded-xl border flex-row items-center ${isSuperAdmin ? 'bg-[#f0c110]/15 border-[#f0c110]/40' : 'bg-[#00f1a1]/15 border-[#00f1a1]/40'}`}
                 >
-                  <Clock size={12} color={primaryColor} style={{ marginRight: 4 }} />
-                  <Text className={`${primaryTextClass} text-xs font-bold`}>{selectedDate}</Text>
+                  <Clock size={14} color={primaryColor} style={{ marginRight: 6 }} />
+                  <Text className={`${primaryTextClass} text-sm font-bold`}>{selectedDate}</Text>
                 </Pressable>
               </View>
 
               {/* 4 Stats Grid */}
               <View className="flex-row justify-between" style={{ gap: 8 }}>
                 <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5 items-center">
-                  <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-0.5">Total Classes</Text>
-                  <Text className="text-white text-base font-extrabold">{overallStats.totalSecs}</Text>
-                  <Text className="text-white/50 text-[9px]">Sections</Text>
+                  <Text className="text-white/50 text-xs uppercase font-black mb-0.5">Classes</Text>
+                  <Text className="text-white text-lg font-black font-mono">{overallStats.totalSecs}</Text>
+                  <Text className="text-white/60 text-xs font-semibold">Sections</Text>
                 </View>
 
                 <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5 items-center">
-                  <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-0.5">Total Students</Text>
-                  <Text className="text-sky-400 text-base font-extrabold">{overallStats.totalStuds}</Text>
-                  <Text className="text-white/50 text-[9px]">Enrolled</Text>
+                  <Text className="text-white/50 text-xs uppercase font-black mb-0.5">Total</Text>
+                  <Text className="text-sky-400 text-lg font-black font-mono">{overallStats.totalStuds}</Text>
+                  <Text className="text-white/60 text-xs font-semibold">Enrolled</Text>
                 </View>
 
                 <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5 items-center">
-                  <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-0.5">Present Today</Text>
-                  <Text className={`${primaryTextClass} text-base font-extrabold`}>{overallStats.totalPresent}</Text>
-                  <Text className="text-white/50 text-[9px]">{overallStats.avgPct}% Avg</Text>
+                  <Text className="text-white/50 text-xs uppercase font-black mb-0.5">Present</Text>
+                  <Text className={`${primaryTextClass} text-lg font-black font-mono`}>{overallStats.totalPresent}</Text>
+                  <Text className="text-white/60 text-xs font-semibold">{overallStats.avgPct}%</Text>
                 </View>
 
                 <View className="flex-1 bg-black/40 p-2.5 rounded-xl border border-white/5 items-center">
-                  <Text className="text-white/40 text-[9.5px] uppercase font-bold mb-0.5">Absent Today</Text>
-                  <Text className="text-rose-400 text-base font-extrabold">{overallStats.totalAbsent}</Text>
-                  <Text className="text-white/50 text-[9px]">Requires Alert</Text>
+                  <Text className="text-white/50 text-xs uppercase font-black mb-0.5">Absent</Text>
+                  <Text className="text-rose-400 text-lg font-black font-mono">{overallStats.totalAbsent}</Text>
+                  <Text className="text-rose-400/80 text-xs font-semibold">Alert</Text>
                 </View>
               </View>
             </GlassCard>
@@ -357,17 +491,17 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
               <View className="flex-row justify-between items-center">
                 <View className="flex-row items-center flex-1 mr-2">
                   <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
-                    <Text className={`${primaryTextClass} font-extrabold text-base`}>{selectedClass.className.replace('Class ', '')}</Text>
+                    <Text className={`${primaryTextClass} font-black text-base`}>{selectedClass.className.replace('Class ', '')}</Text>
                   </View>
                   <View className="flex-1">
                     <Text className="text-white font-extrabold text-base">{selectedClass.className}</Text>
-                    <Text className="text-white/50 text-xs mt-0.5">Class Teacher: {selectedClass.teacherName}</Text>
+                    <Text className="text-white/60 text-sm mt-0.5">Class Teacher: {selectedClass.teacherName}</Text>
                   </View>
                 </View>
 
                 <View className="items-end">
-                  <Text className={`${primaryTextClass} text-base font-extrabold`}>{selectedClass.todayAvg}%</Text>
-                  <Text className="text-white/50 text-[10px]">Today Avg</Text>
+                  <Text className={`${primaryTextClass} text-lg font-black font-mono`}>{selectedClass.todayAvg}%</Text>
+                  <Text className="text-white/60 text-xs font-semibold">Today Avg</Text>
                 </View>
               </View>
             </GlassCard>
@@ -381,22 +515,22 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
               <View className="flex-row justify-between items-center">
                 <View className="flex-row items-center flex-1 mr-2">
                   <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
-                    <Text className={`${primaryTextClass} font-extrabold text-base`}>{selectedStudent.initials}</Text>
+                    <Text className={`${primaryTextClass} font-black text-base`}>{selectedStudent.initials}</Text>
                   </View>
                   <View className="flex-1">
                     <View className="flex-row items-center">
                       <Text className="text-white font-extrabold text-base mr-2">{selectedStudent.name}</Text>
                       <View className="bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 rounded-md">
-                        <Text className="text-sky-300 text-[9.5px] font-bold">Roll #{selectedStudent.rollNo}</Text>
+                        <Text className="text-sky-300 text-xs font-bold">Roll #{selectedStudent.rollNo}</Text>
                       </View>
                     </View>
-                    <Text className="text-white/50 text-xs mt-0.5">{selectedClass?.className || 'Class 10A'} • Attended: {selectedStudent.attended}/{selectedStudent.totalLectures} Days</Text>
+                    <Text className="text-white/60 text-xs mt-1">{selectedClass?.className || 'Class 10A'} • Attended: {selectedStudent.attended}/{selectedStudent.totalLectures} Days</Text>
                   </View>
                 </View>
 
                 <View className="items-end">
-                  <Text className={`${primaryTextClass} text-lg font-extrabold`}>{selectedStudent.overallPct}%</Text>
-                  <Text className="text-white/50 text-[10px]">Overall Rate</Text>
+                  <Text className={`${primaryTextClass} text-xl font-black font-mono`}>{selectedStudent.overallPct}%</Text>
+                  <Text className="text-white/60 text-xs font-semibold">Overall Rate</Text>
                 </View>
               </View>
             </GlassCard>
@@ -407,7 +541,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
         {viewLevel === 1 && (
           <View className="px-5">
             <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Class Directory ({filteredClasses.length})</Text>
+              <Text className="text-white/70 text-xs font-black uppercase tracking-wider">Class Directory ({filteredClasses.length})</Text>
             </View>
 
             {filteredClasses.map((item) => (
@@ -417,27 +551,27 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 className={`mb-3.5 p-4 rounded-2xl border bg-[#101415]/90 flex-row items-center justify-between active:scale-[0.98] ${isSuperAdmin ? 'border-[#f0c110]/30' : 'border-white/10'}`}
               >
                 <View className="flex-row items-center flex-1 mr-2 min-w-0">
-                  <View className={`w-11 h-11 rounded-2xl items-center justify-center mr-3 flex-shrink-0 ${primaryBadgeClass}`}>
-                    <Text className={`${primaryTextClass} font-extrabold text-sm`}>{item.className.replace('Class ', '')}</Text>
+                  <View className={`w-12 h-12 rounded-2xl items-center justify-center mr-3 flex-shrink-0 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} font-black text-base`}>{item.className.replace('Class ', '')}</Text>
                   </View>
 
                   <View className="flex-1 min-w-0">
-                    <Text className="text-white font-extrabold text-sm" numberOfLines={1}>{item.className}</Text>
-                    <Text className="text-white/50 text-xs mt-0.5" numberOfLines={1}>{item.teacherName}</Text>
-                    <View className="flex-row items-center flex-wrap mt-1.5" style={{ gap: 6 }}>
-                      <Text className="text-white/60 text-[11px] font-medium">Students: <Text className="text-white font-bold">{item.totalStudents}</Text></Text>
-                      <Text className="text-emerald-400 text-[11px] font-medium">Present: <Text className="font-bold">{item.presentToday}</Text></Text>
-                      <Text className="text-rose-400 text-[11px] font-medium">Absent: <Text className="font-bold">{item.absentToday}</Text></Text>
+                    <Text className="text-white font-extrabold text-base" numberOfLines={1}>{item.className}</Text>
+                    <Text className="text-white/60 text-xs mt-0.5 font-medium" numberOfLines={1}>{item.teacherName}</Text>
+                    <View className="flex-row items-center flex-wrap mt-1.5" style={{ gap: 8 }}>
+                      <Text className="text-white/70 text-xs font-medium">Students: <Text className="text-white font-bold">{item.totalStudents}</Text></Text>
+                      <Text className="text-emerald-400 text-xs font-medium">Present: <Text className="font-bold">{item.presentToday}</Text></Text>
+                      <Text className="text-rose-400 text-xs font-medium">Absent: <Text className="font-bold">{item.absentToday}</Text></Text>
                     </View>
                   </View>
                 </View>
 
                 <View className="items-end flex-shrink-0">
                   <View className="flex-row items-center mb-1">
-                    <Text className={`${primaryTextClass} font-extrabold text-sm mr-1`}>{item.todayAvg}%</Text>
-                    <ChevronRight size={12} color={primaryColor} />
+                    <Text className={`${primaryTextClass} font-black text-base font-mono mr-1`}>{item.todayAvg}%</Text>
+                    <ChevronRight size={14} color={primaryColor} />
                   </View>
-                  <Text className="text-white/40 text-[9.5px]">Attendance</Text>
+                  <Text className="text-white/50 text-xs font-semibold">Attendance</Text>
                 </View>
               </Pressable>
             ))}
@@ -448,28 +582,28 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
         {viewLevel === 2 && (
           <View className="px-5">
             <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-white/60 text-xs font-bold uppercase tracking-wider">Student Roster ({filteredStudents.length})</Text>
+              <Text className="text-white/70 text-xs font-black uppercase tracking-wider">Student Roster ({filteredStudents.length})</Text>
             </View>
 
             {filteredStudents.map((stud) => (
               <Pressable
                 key={stud.id}
                 onPress={() => handleSelectStudent(stud)}
-                className="mb-3 p-3.5 rounded-2xl border border-white/10 bg-[#101415]/90 flex-row items-center justify-between active:scale-[0.98]"
+                className="mb-3 p-4 rounded-2xl border border-white/10 bg-[#101415]/90 flex-row items-center justify-between active:scale-[0.98]"
               >
                 <View className="flex-row items-center flex-1 mr-3">
-                  <View className={`w-10 h-10 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
-                    <Text className={`${primaryTextClass} font-extrabold text-xs`}>{stud.initials}</Text>
+                  <View className={`w-11 h-11 rounded-2xl items-center justify-center mr-3 ${primaryBadgeClass}`}>
+                    <Text className={`${primaryTextClass} font-black text-sm`}>{stud.initials}</Text>
                   </View>
                   <View className="flex-1">
-                    <Text className="text-white font-bold text-sm">{stud.name}</Text>
-                    <Text className="text-white/40 text-[11px]">Roll #{stud.rollNo} • Attended {stud.attended}/{stud.totalLectures} Days</Text>
+                    <Text className="text-white font-extrabold text-base">{stud.name}</Text>
+                    <Text className="text-white/60 text-xs mt-0.5 font-medium">Roll #{stud.rollNo} • Attended {stud.attended}/{stud.totalLectures} Days</Text>
                   </View>
                 </View>
 
                 <View className="items-end">
-                  <Text className={`${primaryTextClass} text-xs font-extrabold`}>{stud.overallPct}%</Text>
-                  <Text className="text-white/40 text-[9.5px]">Overall Rate</Text>
+                  <Text className={`${primaryTextClass} text-base font-black font-mono`}>{stud.overallPct}%</Text>
+                  <Text className="text-white/50 text-xs font-semibold">Overall Rate</Text>
                 </View>
               </Pressable>
             ))}
@@ -482,33 +616,33 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
             <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-4">
               {/* Header with Legend */}
               <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-3">
-                <Text className="text-white font-extrabold text-sm">Monthly Attendance Grid</Text>
-                <View className="flex-row items-center" style={{ gap: 8 }}>
+                <Text className="text-white font-extrabold text-base">Monthly Attendance Grid</Text>
+                <View className="flex-row items-center" style={{ gap: 10 }}>
                   <View className="flex-row items-center">
-                    <View className={`w-2 h-2 rounded-full mr-1 ${isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]'}`} />
-                    <Text className="text-white/60 text-[9px]">Present</Text>
+                    <View className={`w-2.5 h-2.5 rounded-full mr-1.5 ${isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]'}`} />
+                    <Text className="text-white/70 text-xs font-bold">Present</Text>
                   </View>
                   <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-amber-400 mr-1" />
-                    <Text className="text-white/60 text-[9px]">Partial</Text>
+                    <View className="w-2.5 h-2.5 rounded-full bg-amber-400 mr-1.5" />
+                    <Text className="text-white/70 text-xs font-bold">Partial</Text>
                   </View>
                   <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-rose-500 mr-1" />
-                    <Text className="text-white/60 text-[9px]">Absent</Text>
+                    <View className="w-2.5 h-2.5 rounded-full bg-rose-500 mr-1.5" />
+                    <Text className="text-white/70 text-xs font-bold">Absent</Text>
                   </View>
                   <View className="flex-row items-center">
-                    <View className="w-2 h-2 rounded-full bg-white/40 mr-1" />
-                    <Text className="text-white/40 text-[9px]">Off/Sun</Text>
+                    <View className="w-2.5 h-2.5 rounded-full bg-white/40 mr-1.5" />
+                    <Text className="text-white/50 text-xs font-bold">Off</Text>
                   </View>
                 </View>
               </View>
 
               {/* Month Navigation */}
               <View className="flex-row justify-between items-center mb-4">
-                <Pressable onPress={handlePrevGridMonth} className="p-1.5 rounded-lg bg-white/5 border border-white/10 active:bg-white/15">
-                  <ChevronLeft size={16} color={primaryColor} />
+                <Pressable onPress={handlePrevGridMonth} className="p-2 rounded-xl bg-white/5 border border-white/10 active:bg-white/15">
+                  <ChevronLeft size={18} color={primaryColor} />
                 </Pressable>
-                <Text className="text-white font-bold text-xs">{MONTH_NAMES[gridMonth]} {gridYear}</Text>
+                <Text className="text-white font-extrabold text-sm">{MONTH_NAMES[gridMonth]} {gridYear}</Text>
                 {(() => {
                   const today = new Date();
                   const isCurrentOrFuture = gridYear > today.getFullYear() || (gridYear === today.getFullYear() && gridMonth >= today.getMonth());
@@ -516,20 +650,20 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     <Pressable
                       onPress={handleNextGridMonth}
                       disabled={isCurrentOrFuture}
-                      className={`p-1.5 rounded-lg bg-white/5 border border-white/10 ${isCurrentOrFuture ? 'opacity-25' : 'active:bg-white/15'}`}
+                      className={`p-2 rounded-xl bg-white/5 border border-white/10 ${isCurrentOrFuture ? 'opacity-25' : 'active:bg-white/15'}`}
                     >
-                      <ChevronRight size={16} color={primaryColor} />
+                      <ChevronRight size={18} color={primaryColor} />
                     </Pressable>
                   );
                 })()}
               </View>
 
-              {/* Swipeable Calendar Grid Container (Swipe Left/Right to change months) */}
-              <View {...gridSwipeResponder.panHandlers}>
+              {/* Calendar Grid Container */}
+              <View>
                 {/* Days Header Row */}
                 <View className="flex-row justify-between mb-2">
                   {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
-                    <Text key={d} className={`w-[14.28%] text-center text-[9.5px] font-bold uppercase ${i === 0 ? 'text-rose-400/80' : 'text-white/40'}`}>{d}</Text>
+                    <Text key={d} className={`w-[14.28%] text-center text-xs font-black uppercase ${i === 0 ? 'text-rose-400' : 'text-white/50'}`}>{d}</Text>
                   ))}
                 </View>
 
@@ -539,7 +673,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     if (item.day === null) {
                       return (
                         <View key={`pad_${idx}`} className="w-[14.28%] p-1">
-                          <View className="h-10 border border-transparent rounded-xl" />
+                          <View className="h-11 border border-transparent rounded-xl" />
                         </View>
                       );
                     }
@@ -547,11 +681,10 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     const dayNum = item.day;
                     const status = item.status;
                     const isSelected = selectedCalendarDay === dayNum;
-
-                    const now = new Date();
-                    now.setHours(23, 59, 59, 999);
+                    const today = new Date();
                     const cellDate = new Date(gridYear, gridMonth, dayNum);
-                    const isFuture = cellDate > now;
+                    today.setHours(23, 59, 59, 999);
+                    const isFuture = cellDate > today;
 
                     let bgStyle = primaryBadgeClass;
                     let textStyle = primaryTextClass;
@@ -563,7 +696,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                       textStyle = 'text-rose-400';
                     } else if (status === 'off') {
                       bgStyle = 'bg-white/5 border-white/10';
-                      textStyle = 'text-white/30';
+                      textStyle = 'text-white/40';
                     }
 
                     return (
@@ -571,9 +704,14 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                         <Pressable
                           disabled={isFuture}
                           onPress={() => {
-                            if (!isFuture) setSelectedCalendarDay(dayNum);
+                            if (!isFuture) {
+                              setSelectedCalendarDay(dayNum);
+                              const dayStr = String(dayNum).padStart(2, '0');
+                              const monthStr = String(gridMonth + 1).padStart(2, '0');
+                              setSelectedDate(`${dayStr}-${monthStr}-${gridYear}`);
+                            }
                           }}
-                          className={`h-10 rounded-xl items-center justify-center border ${
+                          className={`h-11 rounded-xl items-center justify-center border ${
                             isFuture
                               ? 'opacity-20 bg-white/5 border-transparent'
                               : isSelected 
@@ -581,7 +719,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                               : bgStyle
                           }`}
                         >
-                          <Text className={`text-xs font-bold ${isFuture ? 'text-white/30' : isSelected ? 'text-white' : textStyle}`}>
+                          <Text className={`text-sm font-black ${isFuture ? 'text-white/30' : isSelected ? 'text-white' : textStyle}`}>
                             {dayNum}
                           </Text>
                         </Pressable>
@@ -593,31 +731,101 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
             </GlassCard>
 
             {/* Bottom Section: Period-Wise Breakdown for Selected Date */}
-            <GlassCard intensity="low" className="p-4 border-white/10 bg-[#101415]/90 mb-4">
-              <View className="flex-row items-center mb-3">
-                <Clock size={14} color={primaryColor} style={{ marginRight: 6 }} />
-                <Text className="text-white text-xs font-bold">
-                  Period-wise breakdown on Aug {selectedCalendarDay}, 2026
-                </Text>
+            <GlassCard intensity="low" className={`p-4 border bg-[#101415]/90 mb-4 rounded-2xl ${isSuperAdmin ? 'border-[#f0c110]/25' : 'border-[#00f1a1]/25'}`}>
+              <View className="flex-row items-center justify-between border-b border-white/10 pb-3 mb-3">
+                <View className="flex-1 mr-2">
+                  <Text className="text-white text-base font-extrabold" numberOfLines={1}>
+                    {selectedDatePeriods.formattedDate}
+                  </Text>
+                  <Text className="text-white/60 text-xs mt-0.5 font-medium">
+                    {selectedClass?.className || 'Class 10A'} • Period Timetable Breakdown
+                  </Text>
+                </View>
+
+                {/* Overall Day Status Badge */}
+                {selectedDatePeriods.status === 'absent' ? (
+                  <View className="bg-rose-500/20 border border-rose-500/40 px-3 py-1.5 rounded-xl flex-row items-center">
+                    <AlertCircle size={14} color="#f43f5e" style={{ marginRight: 5 }} />
+                    <Text className="text-rose-400 text-xs font-black">
+                      {selectedDatePeriods.isSunday ? 'Sunday • Absent' : `Full Day Absent (0/${selectedDatePeriods.totalCount})`}
+                    </Text>
+                  </View>
+                ) : selectedDatePeriods.status === 'partial' ? (
+                  <View className="bg-amber-500/20 border border-amber-500/40 px-3 py-1.5 rounded-xl flex-row items-center">
+                    <Clock size={14} color="#fbbf24" style={{ marginRight: 5 }} />
+                    <Text className="text-amber-400 text-xs font-black">
+                      Partial ({selectedDatePeriods.presentCount}/{selectedDatePeriods.totalCount} Present)
+                    </Text>
+                  </View>
+                ) : (
+                  <View className="bg-emerald-500/20 border border-emerald-500/40 px-3 py-1.5 rounded-xl flex-row items-center">
+                    <CheckCircle2 size={14} color="#10B981" style={{ marginRight: 5 }} />
+                    <Text className="text-emerald-400 text-xs font-black">
+                      Full Day Present ({selectedDatePeriods.presentCount}/{selectedDatePeriods.totalCount})
+                    </Text>
+                  </View>
+                )}
               </View>
 
-              <View className="space-y-2">
-                {[
-                  { period: 'Period 1 (09:00 AM)', subject: 'Mathematics', status: 'Present', teacher: 'Mrs. Anita Sharma' },
-                  { period: 'Period 2 (10:00 AM)', subject: 'Physics', status: 'Present', teacher: 'Mr. Rajesh Kumar' },
-                  { period: 'Period 3 (11:15 AM)', subject: 'Chemistry', status: 'Present', teacher: 'Dr. Meenakshi' },
-                  { period: 'Period 4 (01:30 PM)', subject: 'English', status: 'Present', teacher: 'Mrs. Priya Nambiar' }
-                ].map((p, idx) => (
-                  <View key={idx} className="bg-white/5 p-2.5 rounded-xl border border-white/5 flex-row justify-between items-center mb-2">
-                    <View>
-                      <Text className="text-white font-bold text-xs">{p.subject}</Text>
-                      <Text className="text-white/40 text-[10px]">{p.period} • {p.teacher}</Text>
-                    </View>
-                    <View className="bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-md">
-                      <Text className="text-emerald-400 text-[9.5px] font-bold">{p.status}</Text>
-                    </View>
+              {/* Period List Items */}
+              <View style={{ gap: 8 }}>
+                {selectedDatePeriods.periods && selectedDatePeriods.periods.length > 0 ? (
+                  selectedDatePeriods.periods.map((p) => {
+                    const isPresent = p.status === 'Present';
+                    return (
+                      <View 
+                        key={p.periodNumber} 
+                        className={`p-3.5 rounded-xl border flex-row justify-between items-center ${
+                          isPresent 
+                            ? 'bg-emerald-950/15 border-emerald-500/20' 
+                            : 'bg-rose-950/15 border-rose-500/25'
+                        }`}
+                      >
+                        <View className="flex-row items-center flex-1 mr-3">
+                          <View 
+                            className={`w-9 h-9 rounded-xl items-center justify-center mr-3 ${
+                              isPresent 
+                                ? 'bg-emerald-500/20 border border-emerald-500/40' 
+                                : 'bg-rose-500/20 border border-rose-500/40'
+                            }`}
+                          >
+                            <Text className={`${isPresent ? 'text-emerald-400' : 'text-rose-400'} text-xs font-black font-mono`}>
+                              P{p.periodNumber}
+                            </Text>
+                          </View>
+
+                          <View className="flex-1">
+                            <Text className="text-white font-extrabold text-sm">{p.subject}</Text>
+                            <Text className="text-white/60 text-xs mt-0.5 font-medium">
+                              {p.time} • {p.teacher} • <Text className="text-white/40">{p.room}</Text>
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View 
+                          className={`px-3 py-1.5 rounded-xl border flex-row items-center ${
+                            isPresent 
+                              ? 'bg-emerald-500/20 border-emerald-500/40' 
+                              : 'bg-rose-500/20 border-rose-500/40'
+                          }`}
+                        >
+                          {isPresent ? (
+                            <CheckCircle2 size={13} color="#10B981" style={{ marginRight: 4 }} />
+                          ) : (
+                            <AlertCircle size={13} color="#f43f5e" style={{ marginRight: 4 }} />
+                          )}
+                          <Text className={`${isPresent ? 'text-emerald-400' : 'text-rose-400'} text-xs font-black`}>
+                            {p.status}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View className="p-4 rounded-xl bg-white/5 border border-white/10 items-center">
+                    <Text className="text-white/60 text-xs">No periods recorded for this date.</Text>
                   </View>
-                ))}
+                )}
               </View>
             </GlassCard>
           </View>
@@ -632,20 +840,20 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
           <View className={`bg-[#101415] border-2 rounded-3xl w-full max-w-sm p-5 ${isSuperAdmin ? 'border-[#f0c110]/40 shadow-2xl' : 'border-[#00f1a1]/40 shadow-2xl'}`}>
             <View className="flex-row justify-between items-center border-b border-white/10 pb-3 mb-4">
               <View className="flex-row items-center">
-                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
-                  <Clock size={16} color={primaryColor} />
+                <View className={`w-9 h-9 rounded-xl items-center justify-center mr-2.5 ${primaryBadgeClass}`}>
+                  <Clock size={18} color={primaryColor} />
                 </View>
-                <Text className="text-white font-bold text-base">Select Attendance Date</Text>
+                <Text className="text-white font-extrabold text-base">Select Attendance Date</Text>
               </View>
-              <Pressable onPress={() => setShowDatePickerModal(false)} className="w-7 h-7 rounded-full bg-white/10 items-center justify-center">
-                <X size={14} color="#ffffff" />
+              <Pressable onPress={() => setShowDatePickerModal(false)} className="w-8 h-8 rounded-full bg-white/10 items-center justify-center">
+                <X size={16} color="#ffffff" />
               </Pressable>
             </View>
 
             {/* Month Year Ribbon */}
-            <View className="flex-row justify-between items-center bg-white/5 p-2.5 rounded-2xl mb-3 border border-white/10">
-              <Pressable onPress={handlePrevModalMonth} className="p-1 border border-white/10 rounded-lg bg-white/5 active:bg-white/20">
-                <ChevronLeft size={16} color={primaryColor} />
+            <View className="flex-row justify-between items-center bg-white/5 p-3 rounded-2xl mb-3 border border-white/10">
+              <Pressable onPress={handlePrevModalMonth} className="p-1.5 border border-white/10 rounded-lg bg-white/5 active:bg-white/20">
+                <ChevronLeft size={18} color={primaryColor} />
               </Pressable>
               <Text className="text-white font-extrabold text-sm">
                 {modalViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
@@ -657,9 +865,9 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                   <Pressable
                     onPress={handleNextModalMonth}
                     disabled={isCurrentOrFuture}
-                    className={`p-1 border border-white/10 rounded-lg bg-white/5 ${isCurrentOrFuture ? 'opacity-25' : 'active:bg-white/20'}`}
+                    className={`p-1.5 border border-white/10 rounded-lg bg-white/5 ${isCurrentOrFuture ? 'opacity-25' : 'active:bg-white/20'}`}
                   >
-                    <ChevronRight size={16} color={primaryColor} />
+                    <ChevronRight size={18} color={primaryColor} />
                   </Pressable>
                 );
               })()}
@@ -669,7 +877,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
             <View className="flex-row mb-2">
               {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d, i) => (
                 <View key={i} style={{ width: '14.28%', alignItems: 'center' }}>
-                  <Text className="text-white/40 text-[9.5px] font-bold uppercase">{d}</Text>
+                  <Text className={`text-xs font-black uppercase ${i === 0 ? 'text-rose-400' : 'text-white/50'}`}>{d}</Text>
                 </View>
               ))}
             </View>
@@ -691,7 +899,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                 <View className="flex-row flex-wrap mb-4">
                   {cells.map((dayNum, idx) => {
                     if (!dayNum) {
-                      return <View key={idx} style={{ width: '14.28%', height: 36 }} />;
+                      return <View key={idx} style={{ width: '14.28%', height: 40 }} />;
                     }
 
                     const dayStr = String(dayNum).padStart(2, '0');
@@ -702,7 +910,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                     const isFuture = cellDate > now;
 
                     return (
-                      <View key={idx} style={{ width: '14.28%', height: 36, padding: 2 }}>
+                      <View key={idx} style={{ width: '14.28%', height: 40, padding: 2 }}>
                         <Pressable
                           disabled={isFuture}
                           onPress={() => {
@@ -720,7 +928,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
                               : 'bg-white/5 border-white/10 active:bg-white/20'
                           }`}
                         >
-                          <Text className={`text-xs font-bold ${isFuture ? 'text-white/30' : isSelected ? 'text-[#101415]' : 'text-white'}`}>
+                          <Text className={`text-sm font-black ${isFuture ? 'text-white/30' : isSelected ? 'text-[#101415]' : 'text-white'}`}>
                             {dayNum}
                           </Text>
                         </Pressable>
@@ -733,7 +941,7 @@ export const AdminStudentAttendanceScreen: React.FC<any> = ({ navigation }) => {
 
             <View className="flex-row border-t border-white/10 pt-3">
               <Pressable onPress={() => setShowDatePickerModal(false)} className="w-full py-3 rounded-xl bg-white/10 items-center active:bg-white/20">
-                <Text className="text-white font-bold text-xs">Close</Text>
+                <Text className="text-white font-extrabold text-sm">Close</Text>
               </Pressable>
             </View>
           </View>

@@ -182,6 +182,27 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setCustomAlert({ visible: true, title, message, type });
   };
 
+  const navigateToRole = (role: UserRole) => {
+    switch (role) {
+      case 'super_admin':
+        navigation.replace('SuperAdminHome');
+        break;
+      case 'admin_staff':
+        navigation.replace('AdminStaffHome');
+        break;
+      case 'teacher':
+        navigation.replace('TeacherHome');
+        break;
+      case 'parent':
+        navigation.replace('ParentHome');
+        break;
+      case 'guest':
+      default:
+        navigation.replace('GuestHome');
+        break;
+    }
+  };
+
   const onSubmit = async (data: LoginFormData) => {
     setLoading(true);
     setAuthError(null);
@@ -191,6 +212,9 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         const errorMsg = result.error || "Authentication failed. Please verify credentials.";
         setAuthError(errorMsg);
         showCustomAlert("Authentication Failed", errorMsg, 'error');
+      } else {
+        const currentUser = useAuthStore.getState().user;
+        navigateToRole(currentUser?.role || selectedRole);
       }
     } catch (err: any) {
       const errorMsg = err?.message || "An unexpected error occurred while contacting the server.";
@@ -206,6 +230,7 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setAuthError(null);
     await login('guest@eduvision.edu', 'guest', 'password123');
     setLoading(false);
+    navigateToRole('guest');
   };
 
   const handleQuickBypass = async () => {
@@ -213,6 +238,8 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     setAuthError(null);
     await login(currentRoleConfig.defaultEmail, selectedRole, currentRoleConfig.defaultPassword);
     setLoading(false);
+    const currentUser = useAuthStore.getState().user;
+    navigateToRole(currentUser?.role || selectedRole);
   };
 
   return (

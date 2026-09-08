@@ -2,8 +2,10 @@ import React, { useEffect } from 'react';
 import { View, Text } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Shield } from 'lucide-react-native';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export const SplashScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+  const { isAuthenticated, user, isOnboarded } = useAuthStore();
   const scale = useSharedValue(0.3);
   const opacity = useSharedValue(0);
 
@@ -17,11 +19,32 @@ export const SplashScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     opacity.value = withTiming(1, { duration: 1000 });
 
     const timer = setTimeout(() => {
-      navigation.replace('Onboarding');
+      if (isAuthenticated && user) {
+        switch (user.role) {
+          case 'super_admin':
+            navigation.replace('SuperAdminHome');
+            break;
+          case 'admin_staff':
+            navigation.replace('AdminStaffHome');
+            break;
+          case 'teacher':
+            navigation.replace('TeacherHome');
+            break;
+          case 'parent':
+            navigation.replace('ParentHome');
+            break;
+          case 'guest':
+          default:
+            navigation.replace('GuestHome');
+            break;
+        }
+      } else {
+        navigation.replace(isOnboarded ? 'Login' : 'Onboarding');
+      }
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isAuthenticated, user, isOnboarded, navigation]);
 
   return (
     <View className="flex-1 justify-center items-center bg-brand-darkNavy" style={{ backgroundColor: '#0B0F19' }}>
@@ -37,4 +60,5 @@ export const SplashScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 };
 
 export default SplashScreen;
+
 

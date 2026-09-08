@@ -3,7 +3,7 @@ import { View, StyleSheet, ViewStyle, Platform } from 'react-native';
 
 interface GlassCardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: ViewStyle | ViewStyle[];
   intensity?: 'low' | 'medium' | 'high';
   glowColor?: string;
   className?: string;
@@ -14,7 +14,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   style,
   intensity = 'medium',
   glowColor,
-  className
+  className,
 }) => {
   const getBackgroundColor = () => {
     switch (intensity) {
@@ -36,7 +36,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
           backgroundColor: getBackgroundColor(),
           shadowColor: glowColor || 'rgba(30, 58, 138, 0.25)',
         },
-        style
+        style,
       ]}
       className={className}
     >
@@ -54,7 +54,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 18,
     elevation: Platform.OS === 'android' ? 0 : 8,
-    overflow: 'hidden',
+    // overflow hidden blocks Pressable touch events on Android
+    overflow: Platform.OS === 'ios' ? 'hidden' : 'visible',
   },
 });
+
 export default GlassCard;

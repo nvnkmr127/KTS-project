@@ -1,11 +1,11 @@
 import React from 'react';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuthStore } from '../store/useAuthStore';
 import { CustomTabBar } from '../components/CustomTabBar';
 
-const appDarkTheme = {
+export const appDarkTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
@@ -106,8 +106,7 @@ import SchoolFacilitiesScreen from '../screens/guest/SchoolFacilitiesScreen';
 import AchievementsGalleryScreen from '../screens/guest/AchievementsGalleryScreen';
 import FeeStructureScreen from '../screens/guest/FeeStructureScreen';
 
-const RootStack = createNativeStackNavigator();
-const AppStack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const getTabOptions = (icon: any, activeColor: string, title?: string) => ({
@@ -165,157 +164,132 @@ const ParentTabs = () => (
   </Tab.Navigator>
 );
 
-const RoleStackComponent = () => {
-  const { user } = useAuthStore();
-  if (!user) return null;
-  
-  let initialRoute = "GuestHome";
-  let mainComponent: React.ComponentType<any> = GuestDashboard;
+export const AppNavigator: React.FC = () => {
+  const { isAuthenticated, user } = useAuthStore();
 
-  switch (user.role) {
-    case 'super_admin':
-      initialRoute = "SuperAdminHome";
-      mainComponent = SuperAdminTabs;
-      break;
-    case 'admin_staff':
-      initialRoute = "AdminStaffHome";
-      mainComponent = AdminStaffTabs;
-      break;
-    case 'teacher':
-      initialRoute = "TeacherHome";
-      mainComponent = TeacherTabs;
-      break;
-    case 'parent':
-      initialRoute = "ParentHome";
-      mainComponent = ParentTabs;
-      break;
-    case 'guest':
-      initialRoute = "GuestHome";
-      mainComponent = GuestDashboard; // Using Guest Dashboard stack directly (no tabs)
-      break;
-  }
+  const getInitialRoute = () => {
+    if (!isAuthenticated || !user) return "Splash";
+    switch (user.role) {
+      case 'super_admin':
+        return "SuperAdminHome";
+      case 'admin_staff':
+        return "AdminStaffHome";
+      case 'teacher':
+        return "TeacherHome";
+      case 'parent':
+        return "ParentHome";
+      case 'guest':
+      default:
+        return "GuestHome";
+    }
+  };
 
   return (
-    <AppStack.Navigator 
+    <Stack.Navigator 
       screenOptions={{ 
         headerShown: false, 
         contentStyle: { backgroundColor: user?.role === 'super_admin' ? '#101415' : user?.role === 'admin_staff' ? '#0d2a24' : '#101415' } 
       }} 
-      initialRouteName={initialRoute}
+      initialRouteName={getInitialRoute()}
     >
-      <AppStack.Screen name={initialRoute} component={mainComponent} />
-      <AppStack.Screen name="Splash" component={SplashScreen} />
-      {/* Remaining Feature Screens */}
-      <AppStack.Screen name="FeePayment" component={FeePaymentScreen} />
-      <AppStack.Screen name="ReportCard" component={ReportCardScreen} />
-      <AppStack.Screen name="BusTracking" component={BusTrackingScreen} />
-      <AppStack.Screen name="Messaging" component={MessagingScreen} />
-      <AppStack.Screen name="TeacherCommunication" component={MessagingScreen} />
-      <AppStack.Screen name="EnquiryLeads" component={EnquiryLeadsScreen} />
-      <AppStack.Screen name="StudentPerformance" component={StudentPerformanceScreen} />
-      <AppStack.Screen name="StudentDirectory" component={StudentDirectoryScreen} />
-      <AppStack.Screen name="Students" component={StudentDirectoryScreen} />
-      <AppStack.Screen name="SubstitutionManagement" component={SubstitutionManagementScreen} />
-      <AppStack.Screen name="LeaveApplication" component={LeaveApplicationScreen} />
-      <AppStack.Screen name="AnalyticsDashboard" component={AnalyticsDashboardScreen} />
-      <AppStack.Screen name="DailyDiary" component={DailyDiaryScreen} />
-      <AppStack.Screen name="HomeworkAssignments" component={HomeworkAssignmentsScreen} />
-      <AppStack.Screen name="AdmissionsInfo" component={AdmissionsInfoScreen} />
-      <AppStack.Screen name="AchievementsGallery" component={AchievementsGalleryScreen} />
-      <AppStack.Screen name="FeeCollection" component={FeeCollectionScreen} />
-      <AppStack.Screen name="FeeList" component={FeeCollectionScreen} />
-      <AppStack.Screen name="Fees" component={FeeCollectionScreen} />
-      <AppStack.Screen name="Analytics" component={AnalyticsDashboardScreen} />
-      <AppStack.Screen name="Users" component={UserManagementScreen} />
-      <AppStack.Screen name="Broadcast" component={NotificationCenterScreen} />
-      <AppStack.Screen name="FeeStructure" component={FeeStructureScreen} />
-      <AppStack.Screen name="EnquiryForm" component={EnquiryFormScreen} />
-      <AppStack.Screen name="TimetableBuilder" component={TimetableBuilderScreen} />
-      <AppStack.Screen name="SchoolFacilities" component={SchoolFacilitiesScreen} />
-      <AppStack.Screen name="AttendanceMarking" component={AttendanceMarkingScreen} />
-      <AppStack.Screen name="MarksEntry" component={MarksEntryScreen} />
-      <AppStack.Screen name="UserManagement" component={UserManagementScreen} />
-      <AppStack.Screen name="LeaveApprovals" component={LeaveApprovalsScreen} />
-      <AppStack.Screen name="ExamSchedule" component={ExamScheduleScreen} />
-      <AppStack.Screen name="SalaryExpenses" component={SalaryExpensesScreen} />
-      <AppStack.Screen name="PortalTools" component={PortalToolsScreen} />
-      <AppStack.Screen name="FacultyShowcase" component={FacultyShowcaseScreen} />
-      <AppStack.Screen name="AttendanceHistory" component={AttendanceHistoryScreen} />
-      <AppStack.Screen name="StudentProfileDetails" component={ProfileScreen} />
-      <AppStack.Screen name="AssignFeeStructure" component={AssignFeeStructureScreen} />
-      <AppStack.Screen name="AdminAlertConfiguration" component={AdminAlertConfigurationScreen} />
-      <AppStack.Screen 
+    {/* Authentication Flow */}
+    <Stack.Screen name="Splash" component={SplashScreen} />
+    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+    <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+    <Stack.Screen name="OTPVerify" component={OTPVerifyScreen} />
+
+      {/* Role Home Dashboards */}
+      <Stack.Screen name="SuperAdminHome" component={SuperAdminTabs} />
+      <Stack.Screen name="AdminStaffHome" component={AdminStaffTabs} />
+      <Stack.Screen name="TeacherHome" component={TeacherTabs} />
+      <Stack.Screen name="ParentHome" component={ParentTabs} />
+      <Stack.Screen name="GuestHome" component={GuestDashboard} />
+
+      {/* Feature Screens */}
+      <Stack.Screen name="FeePayment" component={FeePaymentScreen} />
+      <Stack.Screen name="ReportCard" component={ReportCardScreen} />
+      <Stack.Screen name="BusTracking" component={BusTrackingScreen} />
+      <Stack.Screen name="Messaging" component={MessagingScreen} />
+      <Stack.Screen name="TeacherCommunication" component={MessagingScreen} />
+      <Stack.Screen name="EnquiryLeads" component={EnquiryLeadsScreen} />
+      <Stack.Screen name="StudentPerformance" component={StudentPerformanceScreen} />
+      <Stack.Screen name="StudentDirectory" component={StudentDirectoryScreen} />
+      <Stack.Screen name="Students" component={StudentDirectoryScreen} />
+      <Stack.Screen name="SubstitutionManagement" component={SubstitutionManagementScreen} />
+      <Stack.Screen name="LeaveApplication" component={LeaveApplicationScreen} />
+      <Stack.Screen name="AnalyticsDashboard" component={AnalyticsDashboardScreen} />
+      <Stack.Screen name="DailyDiary" component={DailyDiaryScreen} />
+      <Stack.Screen name="HomeworkAssignments" component={HomeworkAssignmentsScreen} />
+      <Stack.Screen name="AdmissionsInfo" component={AdmissionsInfoScreen} />
+      <Stack.Screen name="AchievementsGallery" component={AchievementsGalleryScreen} />
+      <Stack.Screen name="FeeCollection" component={FeeCollectionScreen} />
+      <Stack.Screen name="FeeList" component={FeeCollectionScreen} />
+      <Stack.Screen name="Fees" component={FeeCollectionScreen} />
+      <Stack.Screen name="Analytics" component={AnalyticsDashboardScreen} />
+      <Stack.Screen name="Users" component={UserManagementScreen} />
+      <Stack.Screen name="Broadcast" component={NotificationCenterScreen} />
+      <Stack.Screen name="FeeStructure" component={FeeStructureScreen} />
+      <Stack.Screen name="EnquiryForm" component={EnquiryFormScreen} />
+      <Stack.Screen name="TimetableBuilder" component={TimetableBuilderScreen} />
+      <Stack.Screen name="SchoolFacilities" component={SchoolFacilitiesScreen} />
+      <Stack.Screen name="AttendanceMarking" component={AttendanceMarkingScreen} />
+      <Stack.Screen name="MarksEntry" component={MarksEntryScreen} />
+      <Stack.Screen name="UserManagement" component={UserManagementScreen} />
+      <Stack.Screen name="LeaveApprovals" component={LeaveApprovalsScreen} />
+      <Stack.Screen name="ExamSchedule" component={ExamScheduleScreen} />
+      <Stack.Screen name="SalaryExpenses" component={SalaryExpensesScreen} />
+      <Stack.Screen name="PortalTools" component={PortalToolsScreen} />
+      <Stack.Screen name="FacultyShowcase" component={FacultyShowcaseScreen} />
+      <Stack.Screen name="AttendanceHistory" component={AttendanceHistoryScreen} />
+      <Stack.Screen name="StudentProfileDetails" component={ProfileScreen} />
+      <Stack.Screen name="AssignFeeStructure" component={AssignFeeStructureScreen} />
+      <Stack.Screen name="AdminAlertConfiguration" component={AdminAlertConfigurationScreen} />
+      <Stack.Screen 
         name="AdminActivityLog" 
         component={user?.role === 'super_admin' ? SuperAdminActivityLogScreen : AdminActivityLogScreen} 
       />
-      <AppStack.Screen name="SuperAdminActivityLog" component={SuperAdminActivityLogScreen} />
-      <AppStack.Screen name="AdminStaffSettings" component={AdminStaffSettingsScreen} />
-      <AppStack.Screen name="ClassPromotions" component={ClassPromotionsScreen} />
-      <AppStack.Screen name="AlumniManagement" component={AlumniManagementScreen} />
-      <AppStack.Screen name="FeeCategory" component={FeeCategoryScreen} />
-      <AppStack.Screen name="HolidayCalendar" component={HolidayCalendarScreen} />
-      <AppStack.Screen name="AddStudent" component={AddStudentScreen} />
-      <AppStack.Screen name="RecycleBin" component={RecycleBinScreen} />
-      <AppStack.Screen name="ClassManagement" component={ClassManagementScreen} />
-      <AppStack.Screen name="AdminStudentAttendance" component={AdminStudentAttendanceScreen} />
-      <AppStack.Screen name="AdminDailyDiary" component={AdminDailyDiaryScreen} />
-      <AppStack.Screen name="AdminStaffLeaves" component={AdminStaffLeavesScreen} />
-      <AppStack.Screen name="AdminBusTracking" component={AdminBusTrackingScreen} />
-      <AppStack.Screen name="AdminReportsAnalytics" component={AdminReportsAnalyticsScreen} />
-      <AppStack.Screen 
+      <Stack.Screen name="SuperAdminActivityLog" component={SuperAdminActivityLogScreen} />
+      <Stack.Screen name="AdminStaffSettings" component={AdminStaffSettingsScreen} />
+      <Stack.Screen name="ClassPromotions" component={ClassPromotionsScreen} />
+      <Stack.Screen name="AlumniManagement" component={AlumniManagementScreen} />
+      <Stack.Screen name="FeeCategory" component={FeeCategoryScreen} />
+      <Stack.Screen name="HolidayCalendar" component={HolidayCalendarScreen} />
+      <Stack.Screen name="AddStudent" component={AddStudentScreen} />
+      <Stack.Screen name="RecycleBin" component={RecycleBinScreen} />
+      <Stack.Screen name="ClassManagement" component={ClassManagementScreen} />
+      <Stack.Screen name="AdminStudentAttendance" component={AdminStudentAttendanceScreen} />
+      <Stack.Screen name="AdminDailyDiary" component={AdminDailyDiaryScreen} />
+      <Stack.Screen name="AdminStaffLeaves" component={AdminStaffLeavesScreen} />
+      <Stack.Screen name="AdminBusTracking" component={AdminBusTrackingScreen} />
+      <Stack.Screen name="AdminReportsAnalytics" component={AdminReportsAnalyticsScreen} />
+      <Stack.Screen 
         name="StaffAttendance" 
         component={user?.role === 'super_admin' ? SuperAdminStaffAttendanceScreen : AdminStaffAttendanceScreen} 
       />
-      <AppStack.Screen name="StaffManagement" component={SuperAdminStaffManagementScreen} />
-      <AppStack.Screen name="SuperAdminStaffManagement" component={SuperAdminStaffManagementScreen} />
-      <AppStack.Screen name="StaffDetails" component={SuperAdminStaffDetailsScreen} />
-      <AppStack.Screen name="SuperAdminStaffDetails" component={SuperAdminStaffDetailsScreen} />
-      <AppStack.Screen name="SuperAdminStaffAttendance" component={SuperAdminStaffAttendanceScreen} />
-      <AppStack.Screen name="SalaryCategories" component={SuperAdminSalaryCategoriesScreen} />
-      <AppStack.Screen name="SuperAdminSalaryCategories" component={SuperAdminSalaryCategoriesScreen} />
-      <AppStack.Screen name="RolesPermissions" component={SuperAdminRolesPermissionsScreen} />
-      <AppStack.Screen name="SuperAdminRolesPermissions" component={SuperAdminRolesPermissionsScreen} />
-      <AppStack.Screen name="SuperAdminAdminConsole" component={SuperAdminAdminConsoleScreen} />
-      <AppStack.Screen name="AllUsersActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
-      <AppStack.Screen name="ActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
-      <AppStack.Screen name="SuperAdminAcademicYears" component={SuperAdminAcademicYearsScreen} />
-      <AppStack.Screen name="AcademicYears" component={SuperAdminAcademicYearsScreen} />
-      <AppStack.Screen name="SuperAdminSchoolProfile" component={SuperAdminSchoolProfileScreen} />
-      <AppStack.Screen name="SchoolProfile" component={SuperAdminSchoolProfileScreen} />
-      <AppStack.Screen name="SuperAdminWebhookManagement" component={SuperAdminWebhookManagementScreen} />
-      <AppStack.Screen name="WebhookManagement" component={SuperAdminWebhookManagementScreen} />
-      <AppStack.Screen name="SuperAdminSystemMaintenance" component={SuperAdminSystemMaintenanceScreen} />
-      <AppStack.Screen name="SystemMaintenance" component={SuperAdminSystemMaintenanceScreen} />
-      <AppStack.Screen name="SuperAdminBiometricIntegration" component={SuperAdminBiometricIntegrationScreen} />
-      <AppStack.Screen name="BiometricIntegration" component={SuperAdminBiometricIntegrationScreen} />
-    </AppStack.Navigator>
-  );
-};
-
-export const AppNavigator: React.FC = () => {
-  const { isAuthenticated } = useAuthStore();
-
-  return (
-    <NavigationContainer theme={appDarkTheme}>
-      <RootStack.Navigator 
-        screenOptions={{ 
-          headerShown: false, 
-          contentStyle: { backgroundColor: '#0d2a24' } 
-        }}
-      >
-        {!isAuthenticated ? (
-          <>
-            <RootStack.Screen name="Splash" component={SplashScreen} />
-            <RootStack.Screen name="Onboarding" component={OnboardingScreen} />
-            <RootStack.Screen name="Login" component={LoginScreen} />
-            <RootStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-            <RootStack.Screen name="OTPVerify" component={OTPVerifyScreen} />
-          </>
-        ) : (
-          <RootStack.Screen name="AppHome" component={RoleStackComponent} />
-        )}
-      </RootStack.Navigator>
-    </NavigationContainer>
+      <Stack.Screen name="StaffManagement" component={SuperAdminStaffManagementScreen} />
+      <Stack.Screen name="SuperAdminStaffManagement" component={SuperAdminStaffManagementScreen} />
+      <Stack.Screen name="StaffDetails" component={SuperAdminStaffDetailsScreen} />
+      <Stack.Screen name="SuperAdminStaffDetails" component={SuperAdminStaffDetailsScreen} />
+      <Stack.Screen name="SuperAdminStaffAttendance" component={SuperAdminStaffAttendanceScreen} />
+      <Stack.Screen name="SalaryCategories" component={SuperAdminSalaryCategoriesScreen} />
+      <Stack.Screen name="SuperAdminSalaryCategories" component={SuperAdminSalaryCategoriesScreen} />
+      <Stack.Screen name="RolesPermissions" component={SuperAdminRolesPermissionsScreen} />
+      <Stack.Screen name="SuperAdminRolesPermissions" component={SuperAdminRolesPermissionsScreen} />
+      <Stack.Screen name="SuperAdminAdminConsole" component={SuperAdminAdminConsoleScreen} />
+      <Stack.Screen name="AllUsersActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
+      <Stack.Screen name="ActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
+      <Stack.Screen name="SuperAdminAcademicYears" component={SuperAdminAcademicYearsScreen} />
+      <Stack.Screen name="AcademicYears" component={SuperAdminAcademicYearsScreen} />
+      <Stack.Screen name="SuperAdminSchoolProfile" component={SuperAdminSchoolProfileScreen} />
+      <Stack.Screen name="SchoolProfile" component={SuperAdminSchoolProfileScreen} />
+      <Stack.Screen name="SuperAdminWebhookManagement" component={SuperAdminWebhookManagementScreen} />
+      <Stack.Screen name="WebhookManagement" component={SuperAdminWebhookManagementScreen} />
+      <Stack.Screen name="SuperAdminSystemMaintenance" component={SuperAdminSystemMaintenanceScreen} />
+      <Stack.Screen name="SystemMaintenance" component={SuperAdminSystemMaintenanceScreen} />
+        <Stack.Screen name="SuperAdminBiometricIntegration" component={SuperAdminBiometricIntegrationScreen} />
+        <Stack.Screen name="BiometricIntegration" component={SuperAdminBiometricIntegrationScreen} />
+    </Stack.Navigator>
   );
 };
 

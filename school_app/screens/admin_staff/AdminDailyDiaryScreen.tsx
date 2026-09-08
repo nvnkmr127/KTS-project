@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, BackHandler, PanResponder } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
   BookOpen, Calendar, Search, Send, 
@@ -77,28 +76,26 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
 
   // Handle Hardware Back Button & System Back Gesture (matching chevron left behavior)
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        if (showDatePickerModal) {
-          setShowDatePickerModal(false);
-          return true;
-        }
-        if (selectedClassDetail) {
-          setSelectedClassDetail(null);
-          return true;
-        }
-        if (navigation?.canGoBack && navigation.canGoBack()) {
-          navigation.goBack();
-          return true;
-        }
-        return false;
-      };
+  useEffect(() => {
+    const onBackPress = () => {
+      if (showDatePickerModal) {
+        setShowDatePickerModal(false);
+        return true;
+      }
+      if (selectedClassDetail) {
+        setSelectedClassDetail(null);
+        return true;
+      }
+      if (navigation?.canGoBack && navigation.canGoBack()) {
+        navigation.goBack();
+        return true;
+      }
+      return false;
+    };
 
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => subscription.remove();
-    }, [selectedClassDetail, showDatePickerModal, navigation])
-  );
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [selectedClassDetail, showDatePickerModal, navigation]);
 
   // Filtered Class List
   const filteredClasses = ALL_CLASSES_LIST.filter(c => 
