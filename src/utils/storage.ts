@@ -203,7 +203,16 @@ async function deleteSettingFromDb(key: string) {
 Storage.prototype.setItem = function (key: string, value: string): void {
   originalSetItem.call(this, key, value);
 
-  if (EXCLUDED_KEYS.includes(key) || key.startsWith('kts_force_logout_')) {
+  if (
+    EXCLUDED_KEYS.includes(key) ||
+    key.startsWith('kts_force_logout_') ||
+    key.startsWith('_') ||
+    key.startsWith('__') ||
+    key.includes('cltk') ||
+    key.includes('sak') ||
+    key.includes('clarity') ||
+    key === 'kts_dashboard_activities'
+  ) {
     return;
   }
 
@@ -236,7 +245,16 @@ Storage.prototype.setItem = function (key: string, value: string): void {
 Storage.prototype.removeItem = function (key: string): void {
   originalRemoveItem.call(this, key);
 
-  if (EXCLUDED_KEYS.includes(key) || key.startsWith('kts_force_logout_')) {
+  if (
+    EXCLUDED_KEYS.includes(key) ||
+    key.startsWith('kts_force_logout_') ||
+    key.startsWith('_') ||
+    key.startsWith('__') ||
+    key.includes('cltk') ||
+    key.includes('sak') ||
+    key.includes('clarity') ||
+    key === 'kts_dashboard_activities'
+  ) {
     return;
   }
 

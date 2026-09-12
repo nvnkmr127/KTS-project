@@ -459,6 +459,13 @@ class GenericApiController extends Controller
             });
         } elseif ($resource === 'timetable') {
             $data = $data->map(function ($item) {
+                $scheduleDate = $item->schedule_date;
+                $dateStr = '2026-06-01';
+                if ($scheduleDate instanceof \Illuminate\Support\Carbon || $scheduleDate instanceof \DateTimeInterface) {
+                    $dateStr = $scheduleDate->format('Y-m-d');
+                } elseif (is_string($scheduleDate) && !empty($scheduleDate)) {
+                    $dateStr = substr($scheduleDate, 0, 10);
+                }
                 return [
                     'id' => $item->id,
                     'batch_name' => $item->batch ? $item->batch->name : '8A',
@@ -466,9 +473,9 @@ class GenericApiController extends Controller
                     'teacher' => $item->user ? $item->user->name : 'Staff',
                     'teacherId' => $item->user_id,
                     'room' => $item->classroom ? $item->classroom->name : 'Room 12',
-                    'period' => $item->time_slot_id - 1,
+                    'period' => $item->time_slot_id ? max(0, $item->time_slot_id - 1) : 0,
                     'day' => $item->day_of_week ?? 'Monday',
-                    'date' => $item->schedule_date ? $item->schedule_date->toDateString() : '2026-06-01',
+                    'date' => $dateStr,
                 ];
             });
         } elseif ($resource === 'students') {

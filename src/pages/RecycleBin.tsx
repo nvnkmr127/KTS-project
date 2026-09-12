@@ -9,6 +9,7 @@ import { Badge } from '../components/Badge';
 import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
 import { useDialog } from '../context/DialogContext';
+import { ActivityLogDetailPanel } from '../components/ActivityLogDetailPanel';
 
 interface DeletedStudent {
   id: string;
@@ -144,8 +145,20 @@ export function RecycleBin() {
     setLoadingActivityLogs(true);
     try {
       const res = await api.getActivityLogs({ recycled: 'true', limit: '500' });
-      const data = res.data ?? res ?? [];
-      setDeletedActivityLogs(data);
+      const raw = res.data ?? res ?? [];
+      const clean = (Array.isArray(raw) ? raw : []).filter((l: any) => {
+        const desc = (l.description || '').toLowerCase();
+        const st = (l.subject_type || '').toLowerCase();
+        return !desc.includes('system setting') &&
+               !desc.includes('batch subjects') &&
+               !desc.includes('batch_subjects') &&
+               !desc.includes('examinations exams') &&
+               !desc.includes('cltk') &&
+               !desc.includes('sak') &&
+               st !== 'setting' &&
+               st !== 'app\\models\\setting';
+      });
+      setDeletedActivityLogs(clean);
     } catch (err) {
       console.error('Error loading recycled activity logs:', err);
     } finally {
@@ -998,228 +1011,7 @@ function formatDescription(log: any): string {
 
 // RENDER ACTIVITY PROPERTIES IN HUMAN READABLE FORMAT
 function renderActivityProperties(log: any) {
-  const properties = log.properties;
-  const event = log.event;
-  const description = log.description;
-
-  if (!properties || Object.keys(properties).length === 0) return null;
-
-  const formatKey = (k: string) => {
-    return k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  };
-
-  const isAttendanceLog = 
-    properties.present_count !== undefined ||
-    (description && (
-      description === 'Student attendance records updated' ||
-      description.toLowerCase().includes('attendance')
-    )) ||
-    (properties.attributes && (properties.attributes.key === 'kts_student_attendance_records' || properties.attributes.key === 'kts student attendance records')) ||
-    (properties.old && (properties.old.key === 'kts_student_attendance_records' || properties.old.key === 'kts student attendance records'));
-
-  if (isAttendanceLog) {
-    let present: number | undefined = undefined;
-    let absent: number | undefined = undefined;
-
-    let oldArr: any[] = [];
-    let newArr: any[] = [];
-    
-    const parseValue = (val: any) => {
-      if (!val) return [];
-      try {
-        if (Array.isArray(val)) return val;
-        const parsed = JSON.parse(val);
-        if (Array.isArray(parsed)) return parsed;
-      } catch {}
-      return [];
-    };
-
-    newArr = parseValue(properties.attributes?.value || properties.value);
-    oldArr = parseValue(properties.old?.value);
-
-    if (newArr.length === 0 && oldArr.length === 0) {
-      for (const val of Object.values(properties)) {
-        const arr = parseValue(val);
-        if (arr.length > 0 && arr[0] && (arr[0].studentId || arr[0].status || arr[0].markedAt)) {
-          newArr = arr;
-          break;
-        }
-      }
-    }
-
-    if (newArr.length === 0 && oldArr.length === 0) {
-      const startIdxSquare = description ? description.indexOf('[') : -1;
-      const endIdxSquare = description ? description.lastIndexOf(']') : -1;
-      if (startIdxSquare !== -1 && endIdxSquare > startIdxSquare) {
-        const jsonStr = description.substring(startIdxSquare, endIdxSquare + 1);
-        newArr = parseValue(jsonStr);
-      }
-    }
-
-    if (newArr.length > 0) {
-      let maxMarkedAt = '';
-      newArr.forEach((r: any) => {
-        if (r && r.markedAt) {
-          if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
-            maxMarkedAt = r.markedAt;
-          }
-        }
-      });
-      const targetRecords = maxMarkedAt 
-        ? newArr.filter((r: any) => r && r.markedAt === maxMarkedAt)
-        : newArr;
-      present = targetRecords.filter(r => r.status === 'present').length;
-      absent = targetRecords.filter(r => r.status === 'absent').length;
-    } else if (oldArr.length > 0) {
-      let maxMarkedAt = '';
-      oldArr.forEach((r: any) => {
-        if (r && r.markedAt) {
-          if (!maxMarkedAt || r.markedAt > maxMarkedAt) {
-            maxMarkedAt = r.markedAt;
-          }
-        }
-      });
-      const targetRecords = maxMarkedAt 
-        ? oldArr.filter((r: any) => r && r.markedAt === maxMarkedAt)
-        : oldArr;
-      present = targetRecords.filter(r => r.status === 'present').length;
-      absent = targetRecords.filter(r => r.status === 'absent').length;
-    } else {
-      if (properties.present_count !== undefined) present = properties.present_count;
-      if (properties.absent_count !== undefined) absent = properties.absent_count;
-    }
-
-    if (present !== undefined || absent !== undefined) {
-      return (
-        <div className="mt-2 text-[11px] bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 text-[var(--tx2)]">
-          <div className="font-semibold text-[var(--tx)] text-[11.5px] border-b border-[var(--b)] pb-1.5 mb-1.5">
-            Attendance Allotment Summary
-          </div>
-          <div className="space-y-1">
-            <div className="flex justify-between sm:justify-start gap-2">
-              <span className="font-bold text-[var(--tx)] min-w-[120px]">Present:</span>
-              <span className="text-[var(--teal-tx)] font-semibold">{present ?? 0}</span>
-            </div>
-            <div className="flex justify-between sm:justify-start gap-2">
-              <span className="font-bold text-[var(--tx)] min-w-[120px]">Absent:</span>
-              <span className="text-[var(--red-tx)] font-semibold">{absent ?? 0}</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-  }
-
-  const isModelLog = 'attributes' in properties || 'old' in properties;
-  const excludeKeys = ['id', 'created_at', 'updated_at', 'password', 'password_confirmation', 'token', '_token', 'created_by', 'updated_by', 'academic_year_id', 'remember_token'];
-
-  if (isModelLog) {
-    const attributes = properties.attributes || {};
-    const old = properties.old || {};
-
-    if (event === 'updated' && Object.keys(old).length > 0) {
-      const changes = Object.keys(attributes)
-        .filter(key => !excludeKeys.includes(key))
-        .map(key => {
-          const oldVal = old[key];
-          const newVal = attributes[key];
-          if (oldVal !== newVal) {
-            return {
-              key,
-              old: formatVal(oldVal),
-              new: formatVal(newVal)
-            };
-          }
-          return null;
-        })
-        .filter(Boolean) as Array<{ key: string; old: string; new: string }>;
-
-      if (changes.length > 0) {
-        return (
-          <div className="mt-2 text-[11px] bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 space-y-1.5 text-[var(--tx2)]">
-            <div className="font-semibold text-[var(--tx)] text-[11.5px] border-b border-[var(--b)] pb-1.5 mb-1.5">Modified Fields</div>
-            {changes.map(ch => (
-              <div key={ch.key} className="flex flex-wrap gap-1 items-center">
-                <span className="font-bold text-[var(--tx)]">{formatKey(ch.key)}</span>
-                <span>changed from</span>
-                <code className="px-1.5 py-0.5 bg-[var(--surf3)] rounded font-mono text-[10px] text-rose-500 line-through">{ch.old}</code>
-                <span>to</span>
-                <code className="px-1.5 py-0.5 bg-[var(--surf3)] rounded font-mono text-[10px] text-emerald-500 font-semibold">{ch.new}</code>
-              </div>
-            ))}
-          </div>
-        );
-      }
-    }
-
-    const displayData = event === 'deleted' ? old : attributes;
-    const items = Object.entries(displayData)
-      .filter(([key]) => !excludeKeys.includes(key) && displayData[key] !== null)
-      .map(([key, val]) => ({
-        key,
-        value: formatVal(val)
-      }));
-
-    if (items.length > 0) {
-      return (
-        <div className="mt-2 text-[11px] bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 text-[var(--tx2)]">
-          <div className="font-semibold text-[var(--tx)] text-[11.5px] border-b border-[var(--b)] pb-1.5 mb-1.5">
-            {event === 'deleted' ? 'Deleted Record Details' : 'Record Details'}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-            {items.map(item => (
-              <div key={item.key} className="flex justify-between sm:justify-start gap-2 border-b border-[var(--b)]/40 pb-1 last:border-0">
-                <span className="font-bold text-[var(--tx)] min-w-[120px]">{formatKey(item.key)}:</span>
-                <span className="text-[var(--tx2)]">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
-  }
-
-  const renderDevice = (ua: string) => {
-    if (!ua) return 'Unknown Device';
-    if (ua.includes('Edg/')) return 'Edge Browser';
-    if (ua.includes('Chrome/')) return 'Chrome Browser';
-    if (ua.includes('Safari/') && ua.includes('Version/')) return 'Safari Browser';
-    if (ua.includes('Firefox/')) return 'Firefox Browser';
-    if (ua.includes('Mobile') || ua.includes('Android') || ua.includes('iPhone')) return 'Mobile Device';
-    return 'Web Browser';
-  };
-
-  const details = [];
-  if (properties.ip_address) details.push({ label: 'IP Address', value: properties.ip_address });
-  if (properties.user_agent) details.push({ label: 'Device', value: renderDevice(properties.user_agent) });
-  if (properties.method && properties.path) details.push({ label: 'API Route', value: `${properties.method} ${properties.path}` });
-  if (properties.status_code) details.push({ label: 'HTTP Status', value: String(properties.status_code) });
-  if (properties.input_keys && Array.isArray(properties.input_keys) && properties.input_keys.length > 0) {
-    details.push({ label: 'Parameters Modified', value: properties.input_keys.map(formatKey).join(', ') });
-  }
-
-  const standardKeys = ['ip_address', 'user_agent', 'method', 'path', 'status_code', 'url', 'input_keys'];
-  Object.entries(properties).forEach(([key, val]) => {
-    if (!standardKeys.includes(key) && val !== null && val !== undefined) {
-      details.push({ label: formatKey(key), value: formatVal(val) });
-    }
-  });
-
-  if (details.length > 0) {
-    return (
-      <div className="mt-2 text-[11px] bg-[var(--surf2)] border border-[var(--b)] rounded-xl p-3 text-[var(--tx2)]">
-        <div className="font-semibold text-[var(--tx)] text-[11.5px] border-b border-[var(--b)] pb-1.5 mb-1.5">Activity Details</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-          {details.map(d => (
-            <div key={d.label} className="flex justify-between sm:justify-start gap-2 border-b border-[var(--b)]/40 pb-1 last:border-0">
-              <span className="font-bold text-[var(--tx)] min-w-[120px]">{d.label}:</span>
-              <span className="text-[var(--tx2)] font-mono">{d.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+  if (!log) return null;
+  return <ActivityLogDetailPanel log={log} />;
 }
+

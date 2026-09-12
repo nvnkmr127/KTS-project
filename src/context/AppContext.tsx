@@ -424,7 +424,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Sync timetable
-        const timetableRes = await api.getResources('timetable').catch(() => []);
+        const timetableRes = await api.getResources('timetable', { silent: true } as any).catch(() => []);
         if (Array.isArray(timetableRes) && timetableRes.length > 0) {
           const dayMap: Record<string, string> = {
             '2026-06-01': 'Monday',

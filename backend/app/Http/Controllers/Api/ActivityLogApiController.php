@@ -10,6 +10,29 @@ use Illuminate\Support\Carbon;
 class ActivityLogApiController extends Controller
 {
     /**
+     * Helper to check if the user is an admin or has settings management permissions.
+     */
+    private function isAdmin($user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+        if ($user->can('manage settings')) {
+            return true;
+        }
+        if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['super-admin', 'admin', 'college-admin', 'Super Admin', 'Admin', 'College Admin'])) {
+            return true;
+        }
+        if (method_exists($user, 'hasRole') && ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin') || $user->hasRole('Admin') || $user->hasRole('Super Admin'))) {
+            return true;
+        }
+        if (isset($user->role) && in_array(strtolower($user->role), ['admin', 'super-admin', 'super admin', 'college-admin', 'college admin'])) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Display a listing of activity logs.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -27,7 +50,8 @@ class ActivityLogApiController extends Controller
             Activity::where('created_at', '<', Carbon::now()->subDays(60))->delete();
 
             $userMorphClass = (new \App\Models\User())->getMorphClass();
-            $query = Activity::query()->with('causer');
+            $query = Activity::query()->with(['causer', 'causer.roles']);
+            $query = $this->applyExclusions($query);
 
             // Apply recycle bin filtering
             if ($request->boolean('recycled')) {
@@ -40,7 +64,7 @@ class ActivityLogApiController extends Controller
             }
 
             // Apply role-based visibility
-            if ($user->can('manage settings')) {
+            if ($this->isAdmin($user)) {
                 // Admin can filter by causer_id (user_id parameter)
                 if ($request->filled('user_id')) {
                     $query->where('causer_id', $request->user_id);
@@ -110,6 +134,16 @@ class ActivityLogApiController extends Controller
 
             // Transform records
             $data = $logs->map(function ($log) {
+                $causer = $log->causer;
+                $causerRole = null;
+                if ($causer) {
+                    if (method_exists($causer, 'getRoleNames') && $causer->getRoleNames()->isNotEmpty()) {
+                        $causerRole = $causer->getRoleNames()->first();
+                    } elseif (isset($causer->role)) {
+                        $causerRole = $causer->role;
+                    }
+                }
+
                 return [
                     'id' => $log->id,
                     'description' => $log->description,
@@ -118,8 +152,9 @@ class ActivityLogApiController extends Controller
                     'subject_type' => $log->subject_type ? class_basename($log->subject_type) : null,
                     'subject_id' => $log->subject_id,
                     'causer_id' => $log->causer_id,
-                    'causer_name' => $log->causer?->name ?? 'System',
-                    'causer_email' => $log->causer?->email,
+                    'causer_name' => $causer?->name ?? 'System',
+                    'causer_email' => $causer?->email,
+                    'causer_role' => $causerRole,
                     'properties' => $log->properties,
                     'created_at' => $log->created_at ? Carbon::parse($log->created_at)->toIso8601String() : null,
                     'time_ago' => $log->created_at ? Carbon::parse($log->created_at)->diffForHumans() : null,
@@ -162,6 +197,7 @@ class ActivityLogApiController extends Controller
             $baseQuery = Activity::where('causer_id', $user->id)
                                  ->where('causer_type', $userMorphClass)
                                  ->where('created_at', '>=', Carbon::now()->subDays(30));
+            $baseQuery = $this->applyExclusions($baseQuery);
 
             $totalActions = (clone $baseQuery)->count();
 
@@ -238,14 +274,16 @@ class ActivityLogApiController extends Controller
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
 
-            if (!$user->can('manage settings')) {
+            if (!$this->isAdmin($user)) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
 
-            $results = Activity::selectRaw('causer_id, causer_type, COUNT(*) as action_count, MAX(created_at) as last_active')
+            $resultsQuery = Activity::selectRaw('causer_id, causer_type, COUNT(*) as action_count, MAX(created_at) as last_active')
                 ->whereNotNull('causer_type')
-                ->whereNotNull('causer_id')
-                ->groupBy('causer_id', 'causer_type')
+                ->whereNotNull('causer_id');
+            $resultsQuery = $this->applyExclusions($resultsQuery);
+
+            $results = $resultsQuery->groupBy('causer_id', 'causer_type')
                 ->orderBy('last_active', 'desc')
                 ->get();
 
@@ -287,7 +325,7 @@ class ActivityLogApiController extends Controller
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
 
-            $isAdmin = $user->can('manage settings');
+            $isAdmin = $this->isAdmin($user);
 
             $query = Activity::selectRaw("
                 DATE(created_at) as date,
@@ -298,6 +336,8 @@ class ActivityLogApiController extends Controller
                 SUM(CASE WHEN event='login' THEN 1 ELSE 0 END) as login_count
             ")
             ->where('created_at', '>=', Carbon::now()->subDays(30));
+
+            $query = $this->applyExclusions($query);
 
             if (!$isAdmin) {
                 $userMorphClass = (new \App\Models\User())->getMorphClass();
@@ -348,35 +388,71 @@ class ActivityLogApiController extends Controller
     public function clear(Request $request)
     {
         try {
+            @set_time_limit(180);
+            @ini_set('memory_limit', '512M');
+
             $user = auth('sanctum')->user();
             if (!$user) {
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
 
-            if (!$user->can('manage settings')) {
+            if (!$this->isAdmin($user)) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
 
-            // Move all active logs (< 30 days old) to recycle bin by setting created_at to 31 days ago
-            $activeLogs = Activity::where('created_at', '>=', Carbon::now()->subDays(30))->get();
+            $cutoff = Carbon::now()->subDays(30);
+            $targetDate = Carbon::now()->subDays(31);
+            $now = Carbon::now();
             $affected = 0;
-            foreach ($activeLogs as $log) {
-                $log->setCustomProperty('original_created_at', $log->created_at->toIso8601String());
-                $log->setCustomProperty('deleted_at', Carbon::now()->toIso8601String());
-                $log->created_at = Carbon::now()->subDays(31);
-                $log->save();
-                $affected++;
+
+            try {
+                $driver = \Illuminate\Support\Facades\DB::connection()->getDriverName();
+                if ($driver === 'mysql' || $driver === 'mariadb') {
+                    $affected = \Illuminate\Support\Facades\DB::update("
+                        UPDATE activity_log 
+                        SET properties = JSON_SET(
+                                CASE 
+                                    WHEN properties IS NULL OR properties = '' OR properties = 'null' THEN '{}'
+                                    ELSE properties 
+                                END,
+                                '$.original_created_at', DATE_FORMAT(created_at, '%Y-%m-%dT%T.000000Z'),
+                                '$.deleted_at', ?
+                            ),
+                            created_at = ?
+                        WHERE created_at >= ?
+                    ", [$now->toIso8601String(), $targetDate->toDateTimeString(), $cutoff->toDateTimeString()]);
+                } else {
+                    throw new \Exception("Fallback to Eloquent");
+                }
+            } catch (\Throwable $dbEx) {
+                // Fallback to chunked Eloquent update
+                $affected = 0;
+                Activity::where('created_at', '>=', $cutoff)
+                    ->chunkById(250, function ($logs) use (&$affected, $now, $targetDate) {
+                        foreach ($logs as $log) {
+                            $log->timestamps = false;
+                            $props = $log->properties ? (is_array($log->properties) ? $log->properties : (is_object($log->properties) && method_exists($log->properties, 'toArray') ? $log->properties->toArray() : [])) : [];
+                            $props['original_created_at'] = $log->created_at ? $log->created_at->toIso8601String() : $now->toIso8601String();
+                            $props['deleted_at'] = $now->toIso8601String();
+                            $log->properties = $props;
+                            $log->created_at = $targetDate;
+                            $log->saveQuietly();
+                            $affected++;
+                        }
+                    });
             }
 
             // Log the action itself after clearing
-            activity()
-                ->causedBy($user)
-                ->withProperties([
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                ])
-                ->event('deleted')
-                ->log('Cleared all active activity logs (moved to Recycle Bin)');
+            try {
+                activity()
+                    ->causedBy($user)
+                    ->withProperties([
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                    ])
+                    ->event('deleted')
+                    ->log('Cleared all active activity logs (moved to Recycle Bin)');
+            } catch (\Throwable $e) {}
 
             return response()->json([
                 'success' => true,
@@ -398,7 +474,7 @@ class ActivityLogApiController extends Controller
     {
         try {
             $user = auth('sanctum')->user();
-            if (!$user || !$user->can('manage settings')) {
+            if (!$user || !$this->isAdmin($user)) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
 
@@ -415,10 +491,11 @@ class ActivityLogApiController extends Controller
             }
 
             // Restore: set created_at back to original_created_at and remove properties
+            $log->timestamps = false;
             $log->created_at = Carbon::parse($originalCreatedAt);
             $log->forgetCustomProperty('original_created_at');
             $log->forgetCustomProperty('deleted_at');
-            $log->save();
+            $log->saveQuietly();
 
             return response()->json([
                 'success' => true,
@@ -439,7 +516,7 @@ class ActivityLogApiController extends Controller
     {
         try {
             $user = auth('sanctum')->user();
-            if (!$user || !$user->can('manage settings')) {
+            if (!$user || !$this->isAdmin($user)) {
                 return response()->json(['error' => 'Forbidden'], 403);
             }
 
@@ -450,10 +527,11 @@ class ActivityLogApiController extends Controller
 
             if ($is_active) {
                 // Move to recycle bin (set created_at to 31 days ago, saving original_created_at)
+                $log->timestamps = false;
                 $log->setCustomProperty('original_created_at', $log->created_at->toIso8601String());
                 $log->setCustomProperty('deleted_at', Carbon::now()->toIso8601String());
                 $log->created_at = Carbon::now()->subDays(31);
-                $log->save();
+                $log->saveQuietly();
 
                 return response()->json([
                     'success' => true,
@@ -474,5 +552,48 @@ class ActivityLogApiController extends Controller
                 'error' => 'Failed to delete activity log: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Exclude backend events, system setting and internal telemetry logs from query results.
+     */
+    private function applyExclusions($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('subject_type')
+              ->orWhere(function ($st) {
+                  $st->where('subject_type', '!=', 'App\\Models\\Setting')
+                     ->where('subject_type', '!=', 'Setting')
+                     ->where('subject_type', '!=', 'App\\Models\\Webhook')
+                     ->where('subject_type', '!=', 'Webhook')
+                     ->where('subject_type', '!=', 'App\\Models\\WebhookCall')
+                     ->where('subject_type', '!=', 'WebhookCall')
+                     ->where('subject_type', '!=', 'App\\Models\\ComponentPaymentItem')
+                     ->where('subject_type', '!=', 'ComponentPaymentItem');
+              });
+        })
+        ->where('log_name', '!=', 'webhook')
+        ->where('log_name', '!=', 'system')
+        ->where('description', 'not like', '%backend public%')
+        ->where('description', 'not like', '%Backend public%')
+        ->where('description', 'not like', '%backend/public%')
+        ->where('description', 'not like', '%componentpaymentitem%')
+        ->where('description', 'not like', '%component-payment-item%')
+        ->where('description', 'not like', '%system setting%')
+        ->where('description', 'not like', '%System setting%')
+        ->where('description', 'not like', '%kts biometric punches%')
+        ->where('description', 'not like', '%kts staff attendance%')
+        ->where('description', 'not like', '%kts staff members%')
+        ->where('description', 'not like', '%kts dashboard activities%')
+        ->where('description', 'not like', '%cltk%')
+        ->where('description', 'not like', '%sak%')
+        ->where('description', 'not like', '%kts staff access%')
+        ->where('description', 'not like', '%webhook%')
+        ->where('description', 'not like', '%Webhook%')
+        ->where('description', 'not like', '%backup%')
+        ->where('description', 'not like', '%cron%')
+        ->where('description', 'not like', 'Marked attendance on %')
+        ->where('description', 'not like', 'Updated attendance record on %')
+        ->where('description', 'not like', '%invalidate-cache%');
     }
 }

@@ -687,7 +687,7 @@ export const api = {
   },
 
   async clearActivityLogs() {
-    return request('/activity-logs/clear', { method: 'POST' });
+    return request('/activity-logs/clear', { method: 'POST', timeoutMs: 60000 });
   },
 
   async restoreActivityLog(id: string | number) {

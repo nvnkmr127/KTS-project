@@ -20,7 +20,8 @@ class LogUserAction
         if (($pos = strpos($path, '?')) !== false) {
             $path = substr($path, 0, $pos);
         }
-        $path = trim(str_replace('api/v1', '', $path), '/');
+        $path = preg_replace('/^(\/?backend)?(\/?public)?(\/?index\.php)?(\/?api\/v1)?(\/?api)?/i', '', $path);
+        $path = trim($path, '/');
 
         $idFromPath = null;
         if (preg_match('/\/(\d+)(?:\/|$)/', $path, $matches)) {
@@ -71,20 +72,43 @@ class LogUserAction
                     $excludedPaths = [
                         '/login', '/logout', '/ping', '/test', '/me', '/heartbeat',
                         '/webhook-calls', 'webhook-events', '/notifications/read',
-                        'mark-all-read', '/dashboard/my-activities', '/activity-logs'
+                        'mark-all-read', '/dashboard/my-activities', '/activity-logs',
+                        'invalidate-cache', 'attendance/invalidate-cache', 'cache', '/sync',
+                        'component-payment-items', 'componentpaymentitems', 'component_payment_items',
+                        'biometric-logs', 'biometric_logs', 'time-slots', 'time_slots'
                     ];
 
                     $shouldSkip = false;
                     foreach ($excludedPaths as $excluded) {
-                        if (str_contains($pathUri, $excluded)) {
+                        if (str_contains($pathUri, $excluded) || str_contains($path, $excluded)) {
                             $shouldSkip = true;
                             break;
+                        }
+                    }
+
+                    // Skip system settings updates unless it is student attendance records
+                    if (!$shouldSkip && str_contains($path, 'settings')) {
+                        $isAttendance = false;
+                        if ($request->input('key') === 'kts_student_attendance_records') {
+                            $isAttendance = true;
+                        } elseif ($idFromPath) {
+                            try {
+                                $setting = \App\Models\Setting::find($idFromPath);
+                                if ($setting && $setting->key === 'kts_student_attendance_records') {
+                                    $isAttendance = true;
+                                }
+                            } catch (\Throwable $e) {}
+                        }
+                        if (!$isAttendance) {
+                            $shouldSkip = true;
                         }
                     }
 
                     if (!$shouldSkip) {
                         $description = $this->buildDescription($request, $response, $preFetchedData);
                         $event = $this->methodToEvent($method);
+
+                        $inputData = $request->except(['password', 'password_confirmation', 'signing_secret', 'token', '_token', 'secret', 'photo', 'file']);
 
                         $properties = [
                             'method'      => $method,
@@ -93,21 +117,51 @@ class LogUserAction
                             'ip_address'  => $request->ip(),
                             'user_agent'  => $request->userAgent(),
                             'status_code' => $statusCode,
-                            'input_keys'  => array_keys($request->except(['password', 'password_confirmation', 'signing_secret', 'token', '_token'])),
+                            'attributes'  => $inputData,
+                            'input_keys'  => array_keys($inputData),
                         ];
 
+                        // Extract student fields if present
+                        if ($request->has('name') || $request->has('student_name') || $request->has('first_name')) {
+                            $properties['student_name'] = $request->input('name') ?? $request->input('student_name') ?? trim(($request->input('first_name') ?? '') . ' ' . ($request->input('last_name') ?? ''));
+                        } elseif (!empty($preFetchedData['name']) && str_contains($path, 'students')) {
+                            $properties['student_name'] = $preFetchedData['name'];
+                        } elseif ($request->has('student_id')) {
+                            try {
+                                $st = \App\Models\Student::find($request->input('student_id'));
+                                if ($st) {
+                                    $properties['student_name'] = $st->name;
+                                    $properties['admission_no'] = $st->admission_number ?? $st->admission_no;
+                                    $properties['pen'] = $st->student_pen_no ?? $st->pen;
+                                    $properties['father_name'] = $st->father_name;
+                                    $properties['mobile'] = $st->student_mobile ?? $st->father_mobile;
+                                }
+                            } catch (\Throwable $e) {}
+                        }
+                        if ($request->has('admission_number') || $request->has('admission_no')) {
+                            $properties['admission_no'] = $request->input('admission_number') ?? $request->input('admission_no');
+                        }
+                        if ($request->has('student_pen_no') || $request->has('pen')) {
+                            $properties['pen'] = $request->input('student_pen_no') ?? $request->input('pen');
+                        }
+                        if ($request->has('father_name')) {
+                            $properties['father_name'] = $request->input('father_name');
+                        }
+                        if ($request->has('student_mobile') || $request->has('father_mobile') || $request->has('phone') || $request->has('mobile')) {
+                            $properties['mobile'] = $request->input('student_mobile') ?? $request->input('father_mobile') ?? $request->input('phone') ?? $request->input('mobile');
+                        }
+                        if ($request->has('amount')) {
+                            $properties['amount'] = $request->input('amount');
+                        }
+                        if ($request->has('payment_method') || $request->has('payment_mode')) {
+                            $properties['payment_method'] = $request->input('payment_method') ?? $request->input('payment_mode');
+                        }
+                        if ($request->has('receipt_number') || $request->has('receipt_no')) {
+                            $properties['receipt_number'] = $request->input('receipt_number') ?? $request->input('receipt_no');
+                        }
+
                         if (str_contains($path, 'settings')) {
-                            $isAttendance = false;
-                            if ($request->input('key') === 'kts_student_attendance_records') {
-                                $isAttendance = true;
-                            } elseif ($idFromPath) {
-                                try {
-                                    $setting = \App\Models\Setting::find($idFromPath);
-                                    if ($setting && $setting->key === 'kts_student_attendance_records') {
-                                        $isAttendance = true;
-                                    }
-                                } catch (\Throwable $e) {}
-                            }
+                            $isAttendance = true;
 
                             if ($isAttendance && $request->has('value')) {
                                 try {
@@ -139,11 +193,13 @@ class LogUserAction
                             }
                         }
 
-                        activity()
-                            ->causedBy(auth('sanctum')->user())
-                            ->withProperties($properties)
-                            ->event($event)
-                            ->log($description);
+                        if (!empty($description)) {
+                            activity()
+                                ->causedBy(auth('sanctum')->user())
+                                ->withProperties($properties)
+                                ->event($event)
+                                ->log($description);
+                        }
                     }
                 }
             }
@@ -171,7 +227,8 @@ class LogUserAction
         if (($pos = strpos($path, '?')) !== false) {
             $path = substr($path, 0, $pos);
         }
-        $path = trim(str_replace('api/v1', '', $path), '/');
+        $path = preg_replace('/^(\/?backend)?(\/?public)?(\/?index\.php)?(\/?api\/v1)?(\/?api)?/i', '', $path);
+        $path = trim($path, '/');
         $method = $request->method();
 
         // Decode response data for dynamic names
@@ -188,11 +245,16 @@ class LogUserAction
             if (!empty($preFetchedData['name'])) {
                 return $preFetchedData['name'];
             }
+            $firstName = $request->input('first_name');
+            $lastName = $request->input('last_name');
+            $fullName = ($firstName || $lastName) ? trim(($firstName ?? '') . ' ' . ($lastName ?? '')) : '';
             return $responseData['name'] 
                 ?? $responseData['data']['name'] 
                 ?? $responseData['title'] 
                 ?? $responseData['data']['title']
                 ?? $request->input('name') 
+                ?? $request->input('student_name')
+                ?? ($fullName ?: null)
                 ?? $request->input('title') 
                 ?? '';
         };
@@ -206,7 +268,7 @@ class LogUserAction
         if (str_contains($path, 'logout'))           return 'Signed out';
         if (str_contains($path, 'login'))            return 'login success';
 
-        // Settings
+        // Settings (Only log student attendance if updated via settings resource)
         if (str_contains($path, 'settings')) {
             $settingName = '';
             if ($idFromPath) {
@@ -264,24 +326,9 @@ class LogUserAction
                 }
                 return 'Student attendance records updated';
             }
-            $val = $request->input('value');
-            $isJsonOrLong = false;
-            if (is_array($val) || is_object($val)) {
-                $isJsonOrLong = true;
-            } elseif (is_string($val)) {
-                $trimmed = trim($val);
-                if (str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[') || strlen($trimmed) > 100) {
-                    $isJsonOrLong = true;
-                }
-            }
-
-            if ($isJsonOrLong) {
-                return "Updated system setting '{$settingName}'";
-            }
-
-            $formattedVal = $this->formatValueForDescription($val);
-            $valStr = ($val !== null && $settingName !== 'biometric api key') ? " to '{$formattedVal}'" : "";
-            return "Updated system setting '{$settingName}'{$valStr}";
+            
+            // All other settings changes are ignored and should not be logged
+            return '';
         }
 
         // Students
@@ -300,12 +347,21 @@ class LogUserAction
 
         // Attendance
         if (str_contains($path, 'attendance')) {
+            if (str_contains($path, 'cache') || str_contains($path, 'invalidate')) {
+                return '';
+            }
             $date = $request->input('date') ?? $request->input('attendance_date') ?? now()->toDateString();
             $batchName = '';
             if ($request->has('batch_id')) {
                 try {
                     $batchName = \App\Models\Batch::find($request->input('batch_id'))?->name;
                 } catch (\Throwable $e) {}
+            } elseif ($request->has('class_name')) {
+                $batchName = $request->input('class_name');
+            }
+            if (!$batchName && !$request->has('student_id') && !$request->has('students')) {
+                // Skip logging generic empty attendance calls to prevent duplicates with kts_student_attendance_records
+                return '';
             }
             $target = $batchName ? " for {$batchName}" : "";
             if ($method === 'POST')  return "Marked attendance{$target} on {$date}";
@@ -497,7 +553,7 @@ class LogUserAction
             if ($method === 'POST')  return "Assigned homework{$target}";
             if ($method === 'PUT')   return "Updated homework{$target}";
         }
-        if (str_contains($path, 'daily-diary')) {
+        if (str_contains($path, 'daily-diar') || str_contains($path, 'dailydiar')) {
             $subjectName = '';
             if ($request->has('subject_id')) {
                 try {
@@ -509,8 +565,12 @@ class LogUserAction
                 try {
                     $batchName = \App\Models\Batch::find($request->input('batch_id'))?->name;
                 } catch (\Throwable $e) {}
+            } elseif ($request->has('batch_name')) {
+                $batchName = $request->input('batch_name');
             }
-            $target = ($subjectName && $batchName) ? " for {$subjectName} in Class {$batchName}" : "";
+            $target = ($subjectName && $batchName) ? " for {$subjectName} in Class {$batchName}" : ($batchName ? " for Class {$batchName}" : "");
+            if ($method === 'POST') return "Posted daily diary{$target}";
+            if ($method === 'DELETE') return "Deleted daily diary{$target}";
             return "Updated daily diary{$target}";
         }
         if (str_contains($path, 'promotions')) {
@@ -631,8 +691,23 @@ class LogUserAction
             'DELETE' => 'Deleted',
             default  => 'Performed action on',
         };
-        $cleanPath = trim(preg_replace('/resources\//', '', $path), '/');
-        $resource = ucfirst(str_replace(['-', '/'], ['', ' '], $cleanPath));
+        $cleanPath = trim(preg_replace('/^(backend|public|index\.php|api|v1|resources)[\/\s_-]*/i', '', $path), '/');
+        $cleanPath = preg_replace('/\/\d+.*$/', '', $cleanPath);
+        $resource = ucwords(str_replace(['-', '_', '/'], [' ', ' ', ' '], $cleanPath));
+
+        // Skip internal sub-entities and meaningless backend URL fragments
+        if (empty($resource) ||
+            stripos($resource, 'Backend') !== false ||
+            stripos($resource, 'Public') !== false ||
+            stripos($resource, 'Index Php') !== false ||
+            stripos($resource, 'Component Payment Item') !== false ||
+            stripos($resource, 'Componentpaymentitem') !== false ||
+            $resource === 'Payments' ||
+            $resource === 'Attendance'
+        ) {
+            return '';
+        }
+
         return "{$methodLabel} {$resource}";
     }
 

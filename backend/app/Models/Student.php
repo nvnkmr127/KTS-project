@@ -51,6 +51,7 @@ class Student extends Model
     // If you need to use student_id elsewhere, create a custom accessor
     protected $appends = ['student_id', 'is_active'];
 
+
     /**
      * Check if student is active
      */
@@ -891,20 +892,8 @@ class Student extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly([
-                'name',
-                'email',
-                'father_name',
-                'student_mobile',
-                'father_mobile',
-                'village',
-                'admission_date',
-                'batch_id',
-                'gender',
-                'status',
-                'dropout_date',
-                'dropout_reason', // Added dropout fields
-            ])
+            ->useLogName('student')
+            ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {

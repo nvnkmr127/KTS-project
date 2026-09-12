@@ -11,7 +11,43 @@ class ActivityLogController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Activity::with(['causer', 'subject']);
+        $query = Activity::with(['causer', 'subject'])
+            ->where(function ($q) {
+                $q->whereNull('subject_type')
+                  ->orWhere(function ($st) {
+                      $st->where('subject_type', '!=', 'App\\Models\\Setting')
+                         ->where('subject_type', '!=', 'Setting')
+                         ->where('subject_type', '!=', 'App\\Models\\Webhook')
+                         ->where('subject_type', '!=', 'Webhook')
+                         ->where('subject_type', '!=', 'App\\Models\\WebhookCall')
+                         ->where('subject_type', '!=', 'WebhookCall')
+                         ->where('subject_type', '!=', 'App\\Models\\ComponentPaymentItem')
+                         ->where('subject_type', '!=', 'ComponentPaymentItem');
+                  });
+            })
+            ->where('log_name', '!=', 'webhook')
+            ->where('log_name', '!=', 'system')
+            ->where('description', 'not like', '%backend public%')
+            ->where('description', 'not like', '%Backend public%')
+            ->where('description', 'not like', '%backend/public%')
+            ->where('description', 'not like', '%componentpaymentitem%')
+            ->where('description', 'not like', '%component-payment-item%')
+            ->where('description', 'not like', '%system setting%')
+            ->where('description', 'not like', '%System setting%')
+            ->where('description', 'not like', '%kts biometric punches%')
+            ->where('description', 'not like', '%kts staff attendance%')
+            ->where('description', 'not like', '%kts staff members%')
+            ->where('description', 'not like', '%kts dashboard activities%')
+            ->where('description', 'not like', '%cltk%')
+            ->where('description', 'not like', '%sak%')
+            ->where('description', 'not like', '%kts staff access%')
+            ->where('description', 'not like', '%webhook%')
+            ->where('description', 'not like', '%Webhook%')
+            ->where('description', 'not like', '%backup%')
+            ->where('description', 'not like', '%cron%')
+            ->where('description', 'not like', 'Marked attendance on %')
+            ->where('description', 'not like', 'Updated attendance record on %')
+            ->where('description', 'not like', '%invalidate-cache%');
 
         // Search functionality
         if ($request->filled('search')) {

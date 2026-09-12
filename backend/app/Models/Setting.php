@@ -13,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Setting extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory;
 
     /**
      * The table associated with the model.
@@ -93,50 +93,6 @@ class Setting extends Model
         static::saving(function ($setting) {
             $setting->handleEncryption();
         });
-    }
-
-    /**
-     * Activity log configuration
-     */
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['key', 'value', 'group', 'type'])
-            ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(function (string $eventName) {
-                if ($eventName === 'updated' && $this->key === 'kts_student_attendance_records') {
-                    return 'Student attendance records updated';
-                }
-                $settingKey = str_replace('_', ' ', $this->key);
-                
-                $value = $this->value;
-                $isJsonOrLong = false;
-                if (is_array($value) || is_object($value)) {
-                    $isJsonOrLong = true;
-                } elseif (is_string($value)) {
-                    $trimmed = trim($value);
-                    if (str_starts_with($trimmed, '{') || str_starts_with($trimmed, '[') || strlen($trimmed) > 100) {
-                        $isJsonOrLong = true;
-                    }
-                }
-
-                if ($isJsonOrLong) {
-                    return match($eventName) {
-                        'created' => "System setting '{$settingKey}' created",
-                        'updated' => "System setting '{$settingKey}' updated",
-                        'deleted' => "System setting '{$settingKey}' deleted",
-                        default => "System setting '{$settingKey}' {$eventName}",
-                    };
-                }
-
-                return match($eventName) {
-                    'created' => "System setting '{$settingKey}' created with value '{$this->value}'",
-                    'updated' => "System setting '{$settingKey}' updated to '{$this->value}'",
-                    'deleted' => "System setting '{$settingKey}' deleted",
-                    default => "System setting '{$settingKey}' {$eventName}",
-                };
-            });
     }
 
     /**
