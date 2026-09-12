@@ -1708,17 +1708,28 @@ class GenericApiController extends Controller
             // ── 3. EXAMS & SCHEDULES Sync ──────────────────────────────────
             if ($key === 'examinations_exams') {
                 \App\Models\Exam::query()->delete();
+                $seen = [];
                 foreach ($data as $item) {
-                    if (isset($item['name'])) {
-                        \App\Models\Exam::create([
-                            'id' => intval($item['id']),
-                            'name' => $item['name'],
-                            'subject' => $item['subject'] ?? null,
-                            'class' => $item['class'] ?? null,
-                            'exam_date' => $item['date'] ?? null,
+                    if (isset($item['name']) && !empty(trim($item['name']))) {
+                        $name = trim($item['name']);
+                        $date = trim($item['date'] ?? '');
+                        $cls = trim($item['class'] ?? 'All Classes');
+                        $sig = strtolower($name) . '|' . $date . '|' . strtolower($cls);
+                        if (isset($seen[$sig])) continue;
+                        $seen[$sig] = true;
+
+                        $insertData = [
+                            'name' => $name,
+                            'subject' => $item['subject'] ?? 'All Subjects',
+                            'class' => $cls,
+                            'exam_date' => $date ?: null,
                             'max_marks' => intval($item['maxMarks'] ?? 100),
                             'status' => $item['status'] ?? 'Upcoming',
-                        ]);
+                        ];
+                        if (isset($item['id']) && is_numeric($item['id']) && intval($item['id']) > 0) {
+                            $insertData['id'] = intval($item['id']);
+                        }
+                        \App\Models\Exam::create($insertData);
                     }
                 }
             }
@@ -1898,14 +1909,34 @@ class GenericApiController extends Controller
 
         // ── 3. EXAMS ─────────────────────────────────────────────────────
         if ($key === 'examinations_exams') {
+            $existing = \App\Models\Setting::where('key', 'examinations_exams')->first();
+            if ($existing && !empty($existing->value) && $existing->value !== '[]') {
+                $raw = json_decode($existing->value, true);
+                if (is_array($raw) && count($raw) > 0) {
+                    $seen = [];
+                    $deduped = [];
+                    foreach ($raw as $item) {
+                        if (!is_array($item) || empty($item['name'])) continue;
+                        $sig = strtolower(trim($item['name'])) . '|' . trim($item['date'] ?? '') . '|' . strtolower(trim($item['class'] ?? ''));
+                        if (isset($seen[$sig])) continue;
+                        $seen[$sig] = true;
+                        $deduped[] = $item;
+                    }
+                    return json_encode($deduped);
+                }
+            }
             $exams = \App\Models\Exam::all();
             $mapped = [];
+            $seen = [];
             foreach ($exams as $e) {
+                $sig = strtolower(trim($e->name)) . '|' . trim($e->exam_date ?? '') . '|' . strtolower(trim($e->class ?? ''));
+                if (isset($seen[$sig])) continue;
+                $seen[$sig] = true;
                 $mapped[] = [
                     'id' => (string)$e->id,
                     'name' => $e->name,
                     'subject' => $e->subject ?? 'All Subjects',
-                    'class' => $e->class ?? '8A',
+                    'class' => $e->class ?? 'All Classes',
                     'date' => $e->exam_date,
                     'maxMarks' => $e->max_marks,
                     'status' => $e->status,

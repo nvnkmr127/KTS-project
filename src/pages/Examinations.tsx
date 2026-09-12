@@ -140,6 +140,37 @@ export function sortAndFilterExamSubjects(subjects: string[]): string[] {
   });
 }
 
+export function deduplicateExams(examList: Exam[]): Exam[] {
+  if (!Array.isArray(examList)) return [];
+  const seenIds = new Set<string>();
+  const seenSignatures = new Set<string>();
+  const result: Exam[] = [];
+
+  for (const ex of examList) {
+    if (!ex) continue;
+    const idStr = ex.id ? String(ex.id).trim() : '';
+    const name = String(ex.name || '').trim();
+    if (!name || /^Examination\s+\d+$/i.test(name)) continue;
+
+    const date = String(ex.date || '').trim();
+    const cls = String(ex.class || 'All Classes').trim();
+
+    const fullSig = `${name.toLowerCase()}|${date}|${cls.toLowerCase()}`;
+    const nameDateSig = `${name.toLowerCase()}|${date}`;
+
+    if (idStr && seenIds.has(idStr)) continue;
+    if (seenSignatures.has(fullSig)) continue;
+    if (seenSignatures.has(nameDateSig)) continue;
+
+    if (idStr) seenIds.add(idStr);
+    seenSignatures.add(fullSig);
+    seenSignatures.add(nameDateSig);
+    result.push(ex);
+  }
+
+  return result;
+}
+
 function getSubjectsForClass(clsName: string): string[] {
   if (!clsName) {
     return sortAndFilterExamSubjects(['Telugu', 'Hindi', 'English', 'Maths', 'Science', 'Social']);
@@ -736,11 +767,11 @@ export function Examinations() {
           const cleaned = parsed.filter(
             (e: any) => e && e.id && !deletedIds.includes(String(e.id)) && !/^Examination\s+\d+$/i.test(String(e.name || ''))
           );
-          if (cleaned.length > 0) return cleaned;
+          if (cleaned.length > 0) return deduplicateExams(cleaned);
         }
       } catch { /* empty */ }
     }
-    return EXAMS;
+    return deduplicateExams(EXAMS);
   });
 
   const [examSearch, setExamSearch] = useState('');
@@ -797,7 +828,7 @@ export function Examinations() {
           }));
 
           setExams(prev => {
-            const next = [...parsedExams, ...prev];
+            const next = deduplicateExams([...parsedExams, ...prev]);
             localStorage.setItem('examinations_exams', JSON.stringify(next));
             saveSettingToDb('examinations_exams', next);
             return next;
@@ -871,22 +902,28 @@ export function Examinations() {
     }
   };
 
-  const filteredExams = exams.filter(e => {
-    const matchSearch = e.name.toLowerCase().includes(examSearch.toLowerCase());
-    const matchStatus = examStatusFilter === 'All' || e.status === examStatusFilter;
-    return matchSearch && matchStatus;
-  });
+  const uniqueExams = useMemo(() => deduplicateExams(exams), [exams]);
 
-  const sortedExams = [...filteredExams].sort((a, b) => {
-    if (!examSortField) return 0;
-    let valA = a[examSortField];
-    let valB = b[examSortField];
-    if (typeof valA === 'string') valA = valA.toLowerCase();
-    if (typeof valB === 'string') valB = valB.toLowerCase();
-    if (valA < valB) return examSortOrder === 'asc' ? -1 : 1;
-    if (valA > valB) return examSortOrder === 'asc' ? 1 : -1;
-    return 0;
-  });
+  const filteredExams = useMemo(() => {
+    return uniqueExams.filter(e => {
+      const matchSearch = (e.name || '').toLowerCase().includes(examSearch.toLowerCase());
+      const matchStatus = examStatusFilter === 'All' || e.status === examStatusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [uniqueExams, examSearch, examStatusFilter]);
+
+  const sortedExams = useMemo(() => {
+    return [...filteredExams].sort((a, b) => {
+      if (!examSortField) return 0;
+      let valA = a[examSortField];
+      let valB = b[examSortField];
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA < valB) return examSortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return examSortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredExams, examSortField, examSortOrder]);
 
   const [invigilations, setInvigilations] = useState<Invigilation[]>(() => {
 
@@ -1050,14 +1087,19 @@ export function Examinations() {
               maxMarks: Number(e.max_marks || e.maxMarks || 100),
               status: (e.status || 'Upcoming') as any,
             }));
-            const examMap = new Map<string, Exam>();
-            currentExams.forEach((ex) => examMap.set(String(ex.id), ex));
+            const existingSigs = new Set(
+              currentExams.map((e) => `${(e.name || '').toLowerCase().trim()}|${(e.date || '').trim()}`)
+            );
+            const existingIds = new Set(currentExams.map((e) => String(e.id)));
+
             directMapped.forEach((ex) => {
-              if (!examMap.has(String(ex.id))) {
-                examMap.set(String(ex.id), ex);
+              const sig = `${(ex.name || '').toLowerCase().trim()}|${(ex.date || '').trim()}`;
+              if (!existingIds.has(String(ex.id)) && !existingSigs.has(sig)) {
+                currentExams.push(ex);
+                existingIds.add(String(ex.id));
+                existingSigs.add(sig);
               }
             });
-            currentExams = Array.from(examMap.values());
           }
         } catch (e) {
           console.error('Error fetching direct exams table:', e);
@@ -1066,17 +1108,16 @@ export function Examinations() {
         // Clean currentExams:
         // - Remove dummy auto-generated exams matching /^Examination\s+\d+$/i
         // - Remove deleted exams
-        // - Deduplicate by ID
-        const seenExamIds = new Set<string>();
+        // - Deduplicate
         currentExams = currentExams.filter((e) => {
           if (!e || !e.id) return false;
           const idStr = String(e.id);
           if (deletedExamIds.includes(idStr)) return false;
           if (/^Examination\s+\d+$/i.test(String(e.name || ''))) return false;
-          if (seenExamIds.has(idStr)) return false;
-          seenExamIds.add(idStr);
           return true;
         });
+
+        currentExams = deduplicateExams(currentExams);
 
         if (currentExams.length === 0) {
           currentExams = DEFAULT_EXAMS;
@@ -1349,11 +1390,11 @@ export function Examinations() {
   };
 
   const marksExams = useMemo(() => {
-    return exams.filter((e) => isExamRelatedToClass(e, selectedMarksClass, schedules));
+    return deduplicateExams(exams.filter((e) => isExamRelatedToClass(e, selectedMarksClass, schedules)));
   }, [exams, selectedMarksClass, schedules]);
 
   const resultsExams = useMemo(() => {
-    return exams.filter((e) => isExamRelatedToClass(e, selectedClass, schedules));
+    return deduplicateExams(exams.filter((e) => isExamRelatedToClass(e, selectedClass, schedules)));
   }, [exams, selectedClass, schedules]);
 
   // Initialize and validate filter selections
@@ -1460,18 +1501,32 @@ export function Examinations() {
     loadBatchesAndStudents();
   }, []);
 
-  const handleCreateExam = () => {
+  const handleCreateExam = async () => {
     if (!createName || !createDate) return;
+
+    const classStr = selectedCreateClasses.join(', ');
+    const isDup = exams.some(
+      (e) =>
+        e.name.toLowerCase().trim() === createName.toLowerCase().trim() &&
+        e.date === createDate &&
+        (e.class === classStr || e.class === 'All Classes' || classStr === 'All Classes')
+    );
+    if (isDup) {
+      await alert('An exam with the same name, class, and date already exists.', 'Duplicate Exam');
+      return;
+    }
+
+    const newId = 'exam_' + Date.now();
     const newExam: Exam = {
-      id: String(exams.length + 1),
-      name: createName,
-      class: selectedCreateClasses.join(', '),
+      id: newId,
+      name: createName.trim(),
+      class: classStr,
       subject: createSubject,
       date: createDate,
       maxMarks: createMaxMarks,
       status: 'Upcoming',
     };
-    const updatedExams = [...exams, newExam];
+    const updatedExams = deduplicateExams([...exams, newExam]);
     setExams(updatedExams);
     localStorage.setItem('examinations_exams', JSON.stringify(updatedExams));
     saveSettingToDb('examinations_exams', updatedExams);
