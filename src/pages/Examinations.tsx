@@ -84,10 +84,66 @@ const GRADE_BADGE: Record<string, 'teal' | 'blue' | 'amber' | 'red' | 'purple'> 
 };
 
 const CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B'];
-const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'All Subjects'];
+const SUBJECTS = ['Telugu', 'Hindi', 'English', 'Mathematics', 'Science', 'Physics', 'Chemistry', 'Biology', 'Social Studies', 'GK', 'EVS', 'All Subjects'];
+
+export function isPhysicalEducationSubject(sub: string): boolean {
+  if (!sub) return false;
+  const s = String(sub).trim().toLowerCase();
+  if (s.includes('physical science')) return false;
+  return (
+    s === 'physical education' ||
+    s.includes('physical education') ||
+    s.startsWith('physical ed') ||
+    s === 'p.e.' ||
+    s === 'pe' ||
+    s === 'p.e' ||
+    s === 'pet' ||
+    s === 'p.e.t.' ||
+    s === 'p.e.t' ||
+    s === 'sports' ||
+    s === 'sport' ||
+    s === 'games' ||
+    s === 'game' ||
+    s === 'pt' ||
+    s === 'p.t.' ||
+    s === 'p.t' ||
+    s === 'gym'
+  );
+}
+
+export function getSubjectSortWeight(sub: string): number {
+  const s = String(sub).trim().toLowerCase();
+  if (s === 'telugu') return 1;
+  if (s === 'hindi') return 2;
+  if (s === 'english') return 3;
+  if (s === 'maths' || s === 'mathematics' || s === 'math') return 4;
+  if (s === 'science' || s === 'general science' || s === 'gen science') return 5;
+  if (s === 'physics' || s === 'physical science' || s === 'phy') return 6;
+  if (s === 'chemistry' || s === 'chem') return 7;
+  if (s === 'biology' || s === 'biological science' || s === 'natural science' || s === 'bio' || s === 'botany' || s === 'zoology' || s === 'ns') return 8;
+  if (s === 'social' || s === 'social studies' || s === 'social science' || s === 'sst') return 9;
+  if (s === 'gk' || s === 'g.k.' || s === 'g.k' || s === 'general knowledge') return 10;
+  if (s === 'evs' || s === 'e.v.s.' || s === 'e.v.s' || s === 'environmental studies' || s === 'environmental science' || s === 'environmental') return 11;
+  return 100;
+}
+
+export function sortAndFilterExamSubjects(subjects: string[]): string[] {
+  if (!Array.isArray(subjects)) return [];
+  const filtered = subjects.filter((sub) => sub && !isPhysicalEducationSubject(sub));
+  return filtered.sort((a, b) => {
+    const weightA = getSubjectSortWeight(a);
+    const weightB = getSubjectSortWeight(b);
+    if (weightA !== weightB) {
+      return weightA - weightB;
+    }
+    return a.localeCompare(b);
+  });
+}
 
 function getSubjectsForClass(clsName: string): string[] {
-  if (!clsName) return ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social'];
+  if (!clsName) {
+    return sortAndFilterExamSubjects(['Telugu', 'Hindi', 'English', 'Maths', 'Science', 'Social']);
+  }
   const cleanClass = clsName.replace(/^(Class|Grade)\s*/i, '').trim();
   const match = cleanClass.match(/^(\d+)/);
   const classNum = match ? match[1] : cleanClass;
@@ -105,16 +161,18 @@ function getSubjectsForClass(clsName: string): string[] {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return sortAndFilterExamSubjects(parsed);
+        }
       } catch { /* empty */ }
     }
   }
 
   // Fallback defaults matching Classes tab
-  if (classNum === '8') {
-    return ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social'];
+  if (classNum === '8' || classNum === '9' || classNum === '10') {
+    return sortAndFilterExamSubjects(['Telugu', 'Hindi', 'English', 'Maths', 'Physics', 'Chemistry', 'Biology', 'Social']);
   }
-  return ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS'];
+  return sortAndFilterExamSubjects(['Telugu', 'Hindi', 'English', 'Maths', 'Science', 'Social', 'EVS']);
 }
 
 const INITIAL_SCHEDULES_BY_EXAM: Record<string, Record<string, ClassExamSchedule>> = {
@@ -262,7 +320,7 @@ function ExamScheduleDesigner({
           const parsed = JSON.parse(res[0].value);
           if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
             localStorage.setItem(`batch_subjects_${cleanClass}`, res[0].value);
-            setDbSubjects(parsed);
+            setDbSubjects(sortAndFilterExamSubjects(parsed));
             return;
           }
         }
@@ -272,7 +330,7 @@ function ExamScheduleDesigner({
             const parsed = JSON.parse(resSecA[0].value);
             if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
               localStorage.setItem(`batch_subjects_${classId}A`, resSecA[0].value);
-              setDbSubjects(parsed);
+              setDbSubjects(sortAndFilterExamSubjects(parsed));
               return;
             }
           }
@@ -2938,7 +2996,7 @@ export function Examinations() {
                 </div>
                 <div><label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Subject *</label>
                   <select value={createSubject} onChange={(e) => setCreateSubject(e.target.value)} className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none">
-                    {['All Subjects', 'Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physics', 'Chemistry', 'Biology', 'EVS'].map((sub) => (
+                    {['All Subjects', 'Telugu', 'Hindi', 'English', 'Mathematics', 'Science', 'Physics', 'Chemistry', 'Biology', 'Social Studies', 'GK', 'EVS'].map((sub) => (
                       <option key={sub} value={sub}>{sub}</option>
                     ))}
                   </select>
