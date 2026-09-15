@@ -285,48 +285,8 @@ class LogUserAction
             }
             $settingName = $settingName ?: 'general';
             if (str_replace(' ', '_', $settingName) === 'kts_student_attendance_records') {
-                $classSection = '';
-                $sessionName = '';
-                $val = $request->input('value');
-                if ($val) {
-                    try {
-                        $records = json_decode($val, true);
-                        if (is_array($records) && count($records) > 0) {
-                            // Find maximum markedAt timestamp
-                            $maxMarkedAt = '';
-                            foreach ($records as $r) {
-                                if (isset($r['markedAt'])) {
-                                    if (empty($maxMarkedAt) || $r['markedAt'] > $maxMarkedAt) {
-                                        $maxMarkedAt = $r['markedAt'];
-                                    }
-                                }
-                            }
-                            
-                            // Find first record matching the maximum markedAt timestamp
-                            $targetRecord = null;
-                            foreach ($records as $r) {
-                                if (empty($maxMarkedAt) || (isset($r['markedAt']) && $r['markedAt'] === $maxMarkedAt)) {
-                                    $targetRecord = $r;
-                                    break;
-                                }
-                            }
-                            
-                            if ($targetRecord) {
-                                if (isset($targetRecord['className'])) {
-                                    $classSection = $targetRecord['className'];
-                                }
-                                if (isset($targetRecord['session'])) {
-                                    $sessionName = ($targetRecord['session'] === 'first_period') ? 'morning' : 'afternoon';
-                                }
-                            }
-                        }
-                    } catch (\Throwable $e) {}
-                }
-                
-                if ($classSection && $sessionName) {
-                    return "marked attendance for {$classSection} in {$sessionName}";
-                }
-                return 'Student attendance records updated';
+                // Handled with rich breakdown directly by controller and frontend
+                return '';
             }
             
             // All other settings changes are ignored and should not be logged

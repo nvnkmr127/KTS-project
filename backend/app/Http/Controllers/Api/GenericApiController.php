@@ -77,7 +77,7 @@ class GenericApiController extends Controller
      */
     private const TEACHER_WRITABLE_RESOURCES = [
         'homework', 'daily-diaries', 'leaves', 'settings',
-        'students', 'batches', 'timetable', 'alumni',
+        'students', 'batches', 'timetable', 'alumni', 'activity-logs',
     ];
 
     /**
@@ -100,7 +100,22 @@ class GenericApiController extends Controller
 
     private function isAdmin($user): bool
     {
-        return $user && ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin'));
+        if (!$user) {
+            return false;
+        }
+        if (method_exists($user, 'can') && $user->can('manage settings')) {
+            return true;
+        }
+        if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['super-admin', 'admin', 'college-admin', 'Super Admin', 'Admin', 'College Admin'])) {
+            return true;
+        }
+        if (method_exists($user, 'hasRole') && ($user->hasRole('super-admin') || $user->hasRole('admin') || $user->hasRole('college-admin') || $user->hasRole('Admin') || $user->hasRole('Super Admin'))) {
+            return true;
+        }
+        if (isset($user->role) && in_array(strtolower($user->role), ['admin', 'super-admin', 'super admin', 'college-admin', 'college admin'])) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -797,6 +812,26 @@ class GenericApiController extends Controller
         }
 
         $data = $request->all();
+
+        // Custom creation handler for activity-logs
+        if ($resource === 'activity-logs') {
+            $user = auth('sanctum')->user() ?? auth()->user();
+            if (!$user) {
+                $markedBy = $data['properties']['marked_by'] ?? null;
+                if ($markedBy) {
+                    $user = \App\Models\User::where('name', $markedBy)->first();
+                }
+                if (!$user) {
+                    $user = \App\Models\User::first();
+                }
+            }
+            $logItem = activity($data['log_name'] ?? 'attendance')
+                ->causedBy($user)
+                ->event($data['event'] ?? 'created')
+                ->withProperties($data['properties'] ?? [])
+                ->log($data['description'] ?? 'Marked student attendance');
+            return response()->json($logItem, 201);
+        }
 
         // Prevent settings duplicate entry / race conditions by using updateOrCreate on settings key
         if ($resource === 'settings') {
@@ -1777,8 +1812,34 @@ class GenericApiController extends Controller
                 $studentsByName = \App\Models\Student::pluck('id', 'name')->toArray();
                 $studentIds = \App\Models\Student::pluck('id')->flip()->toArray();
 
+                $classStats = [];
+
                 foreach ($data as $item) {
                     if (!isset($item['studentName']) || !isset($item['date'])) continue;
+
+                    $cls = $item['className'] ?? '8A';
+                    $sess = $item['session'] ?? 'first_period';
+                    $statKey = $cls . '|' . $item['date'] . '|' . $sess;
+                    if (!isset($classStats[$statKey])) {
+                        $classStats[$statKey] = [
+                            'class_name' => $cls,
+                            'date' => $item['date'],
+                            'session' => $sess,
+                            'present' => 0,
+                            'absent' => 0,
+                            'present_students' => [],
+                            'absent_students' => [],
+                            'marked_by' => $item['markedBy'] ?? 'Admin',
+                        ];
+                    }
+                    $st = strtolower($item['status'] ?? 'present');
+                    if ($st === 'present' || $st === 'late') {
+                        $classStats[$statKey]['present']++;
+                        $classStats[$statKey]['present_students'][] = $item['studentName'];
+                    } else {
+                        $classStats[$statKey]['absent']++;
+                        $classStats[$statKey]['absent_students'][] = $item['studentName'];
+                    }
 
                     $studentId = null;
                     if (isset($item['studentId']) && is_numeric($item['studentId']) && isset($studentIds[intval($item['studentId'])])) {
@@ -1829,6 +1890,42 @@ class GenericApiController extends Controller
                         'marked_at' => $item['markedAt'] ?? now(),
                         'academic_year_id' => $academicYearId,
                     ]);
+                }
+
+                // Backend fallback activity log if not already logged in last 15 seconds
+                try {
+                    $user = auth('sanctum')->user() ?? auth()->user();
+                    if (!$user) {
+                        $user = \App\Models\User::first();
+                    }
+                    $recentActivity = \Spatie\Activitylog\Models\Activity::where('log_name', 'attendance')
+                        ->where('created_at', '>=', \Carbon\Carbon::now()->subSeconds(15))
+                        ->first();
+                    if (!$recentActivity && count($classStats) > 0) {
+                        $latestClass = end($classStats);
+                        $sessLabel = ($latestClass['session'] ?? '') === 'first_period' ? 'morning' : 'afternoon';
+                        $causerName = $user ? $user->name : ($latestClass['marked_by'] ?? 'Admin');
+                        $desc = "{$causerName} marked {$sessLabel} attendance for Class {$latestClass['class_name']} ({$latestClass['present']} Present, {$latestClass['absent']} Absent).";
+                        activity('attendance')
+                            ->causedBy($user)
+                            ->event('updated')
+                            ->withProperties([
+                                'class_name' => $latestClass['class_name'],
+                                'batch_name' => $latestClass['class_name'],
+                                'session' => $latestClass['session'],
+                                'date' => $latestClass['date'],
+                                'attendance_date' => $latestClass['date'],
+                                'present_count' => $latestClass['present'],
+                                'absent_count' => $latestClass['absent'],
+                                'total_count' => $latestClass['present'] + $latestClass['absent'],
+                                'present_students' => $latestClass['present_students'],
+                                'absent_students' => $latestClass['absent_students'],
+                                'marked_by' => $causerName,
+                            ])
+                            ->log($desc);
+                    }
+                } catch (\Throwable $e) {
+                    \Log::warning('Attendance activity logging failed: ' . $e->getMessage());
                 }
             }
 

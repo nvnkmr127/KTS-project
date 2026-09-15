@@ -156,6 +156,29 @@ export function Attendance() {
       localStorage.setItem('kts_student_attendance_records', JSON.stringify(records));
       setAttendanceRecords(records);
       await saveSettingToDb('kts_student_attendance_records', JSON.stringify(records));
+
+      // Record Activity Log entry for bulk attendance
+      try {
+        const studentNames = students.filter(s => selectedStudentIds.includes(String(s.id))).map(s => s.name);
+        await api.createResource('activity-logs', {
+          log_name: 'attendance',
+          event: 'updated',
+          description: `Bulk marked attendance as ${status} for ${selectedStudentIds.length} students in Class ${selectedBatch.name}.`,
+          properties: {
+            class_name: selectedBatch.name,
+            batch_name: selectedBatch.name,
+            date: selectedDate,
+            attendance_date: selectedDate,
+            status: status,
+            count: selectedStudentIds.length,
+            students: studentNames,
+            marked_by: 'Admin',
+          }
+        });
+      } catch (logErr) {
+        console.warn('Failed to record bulk attendance activity log:', logErr);
+      }
+
       setSelectedStudentIds([]);
 
       // Reload batch percentages
@@ -185,6 +208,25 @@ export function Attendance() {
           localStorage.setItem('kts_student_attendance_records', JSON.stringify(filteredRecords));
           setAttendanceRecords(filteredRecords);
           await saveSettingToDb('kts_student_attendance_records', JSON.stringify(filteredRecords));
+
+          // Record Activity Log entry for bulk attendance deletion
+          try {
+            await api.createResource('activity-logs', {
+              log_name: 'attendance',
+              event: 'deleted',
+              description: `Deleted attendance records on ${selectedDate} for ${selectedStudentIds.length} students in Class ${selectedBatch.name}.`,
+              properties: {
+                class_name: selectedBatch.name,
+                batch_name: selectedBatch.name,
+                date: selectedDate,
+                attendance_date: selectedDate,
+                count: selectedStudentIds.length,
+                marked_by: 'Admin',
+              }
+            });
+          } catch (logErr) {
+            console.warn('Failed to record delete attendance activity log:', logErr);
+          }
         }
         setSelectedStudentIds([]);
         // Reload batch percentages
@@ -264,6 +306,25 @@ export function Attendance() {
           localStorage.setItem('kts_student_attendance_records', JSON.stringify(records));
           setAttendanceRecords(records);
           await saveSettingToDb('kts_student_attendance_records', JSON.stringify(records));
+
+          // Record Activity Log entry for Excel attendance import
+          try {
+            await api.createResource('activity-logs', {
+              log_name: 'attendance',
+              event: 'created',
+              description: `Imported attendance from Excel spreadsheet for ${count} students in Class ${selectedBatch.name}.`,
+              properties: {
+                class_name: selectedBatch.name,
+                batch_name: selectedBatch.name,
+                date: selectedDate,
+                attendance_date: selectedDate,
+                count: count,
+                marked_by: 'Excel Import',
+              }
+            });
+          } catch (logErr) {
+            console.warn('Failed to record Excel import activity log:', logErr);
+          }
 
           const response = await api.getBatchStudentPercentages(selectedBatch.id);
           if (response.success && response.data) {

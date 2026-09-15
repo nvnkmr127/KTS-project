@@ -46,33 +46,52 @@ class ActivityLogApiController extends Controller
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
 
-            // Auto delete logs older than 60 days
-            Activity::where('created_at', '<', Carbon::now()->subDays(60))->delete();
-
             $userMorphClass = (new \App\Models\User())->getMorphClass();
             $query = Activity::query()->with(['causer', 'causer.roles']);
             $query = $this->applyExclusions($query);
 
             // Apply recycle bin filtering
             if ($request->boolean('recycled')) {
-                // Recycle bin: 30 to 60 days old
-                $query->where('created_at', '>=', Carbon::now()->subDays(60))
-                      ->where('created_at', '<', Carbon::now()->subDays(30));
+                // Recycle bin: marked as deleted or in legacy recycle window
+                $query->where(function($q) {
+                    $q->whereNotNull('properties->deleted_at')
+                      ->orWhere(function($sub) {
+                          $sub->where('created_at', '>=', Carbon::now()->subDays(60))
+                              ->where('created_at', '<', Carbon::now()->subDays(30));
+                      });
+                });
             } else {
-                // Active logs: last 30 days
-                $query->where('created_at', '>=', Carbon::now()->subDays(30));
+                // Active logs: all historical and current logs not marked deleted
+                $query->whereNull('properties->deleted_at');
             }
 
             // Apply role-based visibility
             if ($this->isAdmin($user)) {
                 // Admin can filter by causer_id (user_id parameter)
                 if ($request->filled('user_id')) {
-                    $query->where('causer_id', $request->user_id);
+                    $targetUserId = $request->user_id;
+                    $targetUser = \App\Models\User::find($targetUserId);
+                    $query->where(function($q) use ($targetUserId, $targetUser) {
+                        $q->where('causer_id', $targetUserId);
+                        if ($targetUser) {
+                            $name = $targetUser->name;
+                            $q->orWhere('properties->marked_by', 'like', "%{$name}%")
+                              ->orWhere('properties->actor_name', 'like', "%{$name}%")
+                              ->orWhere('description', 'like', "%{$name}%");
+                        }
+                    });
                 }
             } else {
                 // Non-admin can only see their own activities
-                $query->where('causer_id', $user->id)
-                      ->where('causer_type', $userMorphClass);
+                $query->where(function($q) use ($user, $userMorphClass) {
+                    $q->where(function($sub) use ($user, $userMorphClass) {
+                        $sub->where('causer_id', $user->id)
+                            ->where('causer_type', $userMorphClass);
+                    })
+                    ->orWhere('properties->marked_by', 'like', "%{$user->name}%")
+                    ->orWhere('properties->actor_name', 'like', "%{$user->name}%")
+                    ->orWhere('description', 'like', "%{$user->name}%");
+                });
             }
 
             // Apply filters
@@ -264,6 +283,29 @@ class ActivityLogApiController extends Controller
                     }
                 }
 
+                $causerName = $causer?->name;
+                if (!$causerName) {
+                    if (!empty($properties['marked_by'])) {
+                        $causerName = $properties['marked_by'];
+                    } elseif (!empty($properties['actor_name']) && $properties['actor_name'] !== 'System') {
+                        $causerName = $properties['actor_name'];
+                    } elseif (preg_match('/^(Super Admin|Admin|[A-Za-z\s]+?)\s+(?:marked|registered|added|updated|created|deleted)/i', (string)$log->description, $m)) {
+                        $causerName = trim($m[1]);
+                    } else {
+                        $causerName = 'System';
+                    }
+                }
+
+                if (!$causerRole) {
+                    if (!empty($properties['actor_role']) && $properties['actor_role'] !== 'System') {
+                        $causerRole = $properties['actor_role'];
+                    } elseif ($causerName === 'Super Admin') {
+                        $causerRole = 'Super Admin';
+                    } elseif ($causerName === 'Admin') {
+                        $causerRole = 'Admin';
+                    }
+                }
+
                 return [
                     'id' => $log->id,
                     'description' => $log->description,
@@ -272,7 +314,7 @@ class ActivityLogApiController extends Controller
                     'subject_type' => $log->subject_type ? class_basename($log->subject_type) : null,
                     'subject_id' => $log->subject_id,
                     'causer_id' => $log->causer_id,
-                    'causer_name' => $causer?->name ?? 'System',
+                    'causer_name' => $causerName,
                     'causer_email' => $causer?->email,
                     'causer_role' => $causerRole,
                     'properties' => $properties,
@@ -298,6 +340,32 @@ class ActivityLogApiController extends Controller
     }
 
     /**
+     * Store a custom activity log.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function store(Request $request)
+    {
+        try {
+            $user = auth('sanctum')->user() ?? auth()->user();
+            $data = $request->all();
+            $logItem = activity($data['log_name'] ?? 'attendance')
+                ->causedBy($user)
+                ->event($data['event'] ?? 'created')
+                ->withProperties($data['properties'] ?? [])
+                ->log($data['description'] ?? 'Marked student attendance');
+
+            return response()->json($logItem, 201);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to record activity log: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Retrieve statistics for the currently authenticated user's own activity.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -313,10 +381,17 @@ class ActivityLogApiController extends Controller
 
             $userMorphClass = (new \App\Models\User())->getMorphClass();
 
-            // Base query for user's own activity (active logs only: last 30 days)
-            $baseQuery = Activity::where('causer_id', $user->id)
-                                 ->where('causer_type', $userMorphClass)
-                                 ->where('created_at', '>=', Carbon::now()->subDays(30));
+            // Base query for user's own activity (active logs without arbitrary 30-day cutoff)
+            $baseQuery = Activity::whereNull('properties->deleted_at')
+                                 ->where(function ($q) use ($user, $userMorphClass) {
+                                     $q->where(function($sub) use ($user, $userMorphClass) {
+                                         $sub->where('causer_id', $user->id)
+                                             ->where('causer_type', $userMorphClass);
+                                     })
+                                     ->orWhere('properties->marked_by', 'like', "%{$user->name}%")
+                                     ->orWhere('properties->actor_name', 'like', "%{$user->name}%")
+                                     ->orWhere('description', 'like', "%{$user->name}%");
+                                 });
             $baseQuery = $this->applyExclusions($baseQuery);
 
             $totalActions = (clone $baseQuery)->count();
@@ -400,7 +475,8 @@ class ActivityLogApiController extends Controller
 
             $resultsQuery = Activity::selectRaw('causer_id, causer_type, COUNT(*) as action_count, MAX(created_at) as last_active')
                 ->whereNotNull('causer_type')
-                ->whereNotNull('causer_id');
+                ->whereNotNull('causer_id')
+                ->whereNull('properties->deleted_at');
             $resultsQuery = $this->applyExclusions($resultsQuery);
 
             $results = $resultsQuery->groupBy('causer_id', 'causer_type')
@@ -432,7 +508,7 @@ class ActivityLogApiController extends Controller
     }
 
     /**
-     * Retrieve a summary of daily activity counts for the last 30 days.
+     * Retrieve a summary of daily activity counts.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
@@ -455,7 +531,7 @@ class ActivityLogApiController extends Controller
                 SUM(CASE WHEN event='deleted' THEN 1 ELSE 0 END) as deleted_count,
                 SUM(CASE WHEN event='login' THEN 1 ELSE 0 END) as login_count
             ")
-            ->where('created_at', '>=', Carbon::now()->subDays(30));
+            ->whereNull('properties->deleted_at');
 
             $query = $this->applyExclusions($query);
 
@@ -712,14 +788,6 @@ class ActivityLogApiController extends Controller
         ->where('description', 'not like', '%Webhook%')
         ->where('description', 'not like', '%backup%')
         ->where('description', 'not like', '%cron%')
-        ->where('description', 'not like', 'Marked attendance on %')
-        ->where('description', 'not like', 'Updated attendance record on %')
-        ->where('description', 'not like', 'Updated student:%')
-        ->where('description', 'not like', 'Added student:%')
-        ->where('description', 'not like', 'Deleted student:%')
-        ->where('description', 'not like', 'Updated staff profile:%')
-        ->where('description', 'not like', 'Added staff member:%')
-        ->where('description', 'not like', 'Removed staff member:%')
         ->where('description', 'not like', '%invalidate-cache%');
     }
 }

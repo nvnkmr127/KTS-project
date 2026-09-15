@@ -185,14 +185,16 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
 
   // 2. Attendance / Allot Attendance
   const isAttendance =
-    (rawDesc.includes('attendance') || subjectType.includes('attendance')) &&
+    (rawDesc.includes('attendance') || subjectType.includes('attendance') || log.log_name === 'attendance' || activity.category === 'ATTENDANCE') &&
     (properties.present_count !== undefined ||
       properties.absent_count !== undefined ||
+      properties.count !== undefined ||
       properties.student_name !== undefined ||
       properties.class_name !== undefined ||
       properties.batch_name !== undefined ||
       Array.isArray(properties.present_students) ||
       Array.isArray(properties.absent_students) ||
+      Array.isArray(properties.students) ||
       properties.attributes?.key === 'kts_student_attendance_records' ||
       properties.old?.key === 'kts_student_attendance_records');
 
@@ -707,6 +709,21 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
               <div className="flex flex-wrap gap-1.5">
                 {properties.present_students.map((st: any, i: number) => (
                   <span key={i} className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900/50">
+                    {typeof st === 'string' ? st : (st.name || st.student_name || `Roll ${st.roll_no}`)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {Array.isArray(properties.students) && properties.students.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-teal-200/50 dark:border-teal-900/40">
+              <span className="text-[11px] font-bold text-teal-800 dark:text-teal-300 block mb-1.5">
+                Affected Students List ({properties.students.length}):
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {properties.students.map((st: any, i: number) => (
+                  <span key={i} className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-teal-50 dark:bg-teal-950/50 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-900/50">
                     {typeof st === 'string' ? st : (st.name || st.student_name || `Roll ${st.roll_no}`)}
                   </span>
                 ))}

@@ -322,9 +322,16 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
       const data = rawData.filter((l: any) => {
         const desc = (l.description || '').toLowerCase();
         const st = (l.subject_type || '').toLowerCase();
-        const isDuplicateAttendance = /^marked attendance on \d{4}-\d{2}-\d{2}$/i.test(desc.trim()) ||
-                                      /^updated attendance record on \d{4}-\d{2}-\d{2}$/i.test(desc.trim()) ||
-                                      desc.includes('invalidate-cache');
+        const isProtectedCategory = l.log_name === 'attendance' ||
+                                    desc.includes('attendance') ||
+                                    desc.includes('student') ||
+                                    desc.includes('exam') ||
+                                    desc.includes('diary') ||
+                                    desc.includes('fee') ||
+                                    desc.includes('staff');
+        if (isProtectedCategory) {
+          return !desc.includes('invalidate-cache');
+        }
         const isBackendEvent = desc.includes('backend public') ||
                                desc.includes('backend/public') ||
                                desc.includes('componentpaymentitem') ||
@@ -333,8 +340,7 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                                st === 'app\\models\\componentpaymentitem' ||
                                st === 'webhookcall' ||
                                st === 'app\\models\\webhookcall';
-        return !isDuplicateAttendance &&
-               !isBackendEvent &&
+        return !isBackendEvent &&
                !desc.includes('system setting') &&
                !desc.includes('batch subjects') &&
                !desc.includes('batch_subjects') &&

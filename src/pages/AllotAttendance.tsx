@@ -479,6 +479,13 @@ export function AllotAttendance() {
         markedAt: timestamp
       }));
 
+      // Check if records already existed for this class, session, and date
+      const isEditing = attendanceRecords.some(
+        r => r.className.toLowerCase() === selectedClass.toLowerCase() &&
+          r.session === session &&
+          r.date === date
+      );
+
       // Filter out old records for the same class, session, and date
       const otherRecords = attendanceRecords.filter(
         r => !(r.className.toLowerCase() === selectedClass.toLowerCase() &&
@@ -494,6 +501,38 @@ export function AllotAttendance() {
         newValue: JSON.stringify(updatedRecords)
       }));
       await saveSettingToDb('kts_student_attendance_records', updatedRecords);
+
+      // Record Activity Log entry for attendance
+      try {
+        const presentStudents = classStudents.filter(s => (statusMap[s.id] || 'present') === 'present');
+        const absentStudents = classStudents.filter(s => statusMap[s.id] === 'absent');
+        const presentCountVal = presentStudents.length;
+        const absentCountVal = absentStudents.length;
+        const sessionLabel = session === 'first_period' ? 'morning' : 'afternoon';
+        const eventType = isEditing || isLocked || isFacultySubmitted ? 'updated' : 'created';
+        const actionDesc = `${user?.name || 'Admin'} ${eventType === 'updated' ? 'updated' : 'marked'} ${sessionLabel} attendance for Class ${selectedClass} (${presentCountVal} Present, ${absentCountVal} Absent).`;
+
+        await api.createResource('activity-logs', {
+          log_name: 'attendance',
+          event: eventType,
+          description: actionDesc,
+          properties: {
+            class_name: selectedClass,
+            batch_name: selectedClass,
+            session: session,
+            date: date,
+            attendance_date: date,
+            present_count: presentCountVal,
+            absent_count: absentCountVal,
+            total_count: classStudents.length,
+            present_students: presentStudents.map(s => s.name),
+            absent_students: absentStudents.map(s => s.name),
+            marked_by: markerName,
+          }
+        });
+      } catch (logErr) {
+        console.warn('Failed to record attendance activity log:', logErr);
+      }
 
       // Trigger cache invalidation so the changes show up in admin dashboards immediately
       try {

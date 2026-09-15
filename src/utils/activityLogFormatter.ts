@@ -307,7 +307,27 @@ export function formatAuditValue(value: any, fieldKey?: string): string {
 }
 
 export function getUserDisplayDetails(log: any): UserDisplayDetails {
-  const name = (log.causer_name || log.causer?.name || 'System').trim();
+  let name = (log.causer_name || log.causer?.name || '').trim();
+  
+  // If causer is System or empty, check metadata
+  if (!name || name.toLowerCase() === 'system') {
+    const props = log?.properties || {};
+    if (props.marked_by && props.marked_by.toLowerCase() !== 'system') {
+      name = props.marked_by;
+    } else if (props.actor_name && props.actor_name.toLowerCase() !== 'system') {
+      name = props.actor_name;
+    } else if (log?.description) {
+      const desc = String(log.description);
+      const m = desc.match(/^(Super Admin|Admin|[A-Za-z\s]+?)\s+(?:marked|registered|added|updated|created|deleted)/i);
+      if (m) {
+        name = m[1].trim();
+      }
+    }
+  }
+
+  if (!name || name.toLowerCase() === 'system') {
+    name = 'Super Admin';
+  }
   
   // Extract initials
   let initials = 'SA';
@@ -336,17 +356,16 @@ export function getUserDisplayDetails(log: any): UserDisplayDetails {
 
   // Derive role
   let role = log.causer_role || log.properties?.user_role || '';
-  if (!role) {
+  if (!role || role.toLowerCase() === 'system') {
     const lower = name.toLowerCase();
-    if (lower.includes('super admin') || lower.includes('superadmin')) role = 'Super Admin';
-    else if (lower.includes('admin')) role = 'Admin';
+    if (lower.includes('super admin') || lower.includes('superadmin')) role = 'super-admin';
+    else if (lower.includes('admin')) role = 'admin';
     else if (lower.includes('principal')) role = 'Principal';
     else if (lower.includes('teacher') || lower.includes('faculty')) role = 'Teacher';
     else if (lower.includes('accountant')) role = 'Accountant';
     else if (lower.includes('librarian')) role = 'Librarian';
     else if (lower.includes('support')) role = 'IT Support';
-    else if (name.toLowerCase() === 'system') role = 'System';
-    else role = 'Staff';
+    else role = 'super-admin';
   }
 
   return {
@@ -742,11 +761,14 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
   }
 
   // 3. Attendance (Must precede Student)
-  if (lowerDesc.includes('attendance') || subjectType.includes('attendance')) {
-    const classMatch = rawDesc.match(/for\s+([^in\s]+(?:\s+[^in\s]+)?)/i);
-    const targetClass = classMatch ? classMatch[1] : 'Class Attendance';
+  if (lowerDesc.includes('attendance') || subjectType.includes('attendance') || log.log_name === 'attendance') {
+    const classMatch = rawDesc.match(/for\s+Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i) ||
+                       rawDesc.match(/for\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i);
+    const targetClass = log.properties?.class_name ? `Class ${log.properties.class_name}` : (classMatch ? (classMatch[1].toLowerCase().startsWith('class') ? classMatch[1] : `Class ${classMatch[1]}`) : 'Class Attendance');
+    const isUpdate = event === 'updated' || lowerDesc.includes('updated') || lowerDesc.includes('edit');
+    const isDelete = event === 'deleted' || lowerDesc.includes('deleted');
     return {
-      title: 'Student Attendance Marked',
+      title: isDelete ? 'Attendance Record Deleted' : (isUpdate ? 'Student Attendance Updated' : 'Student Attendance Marked'),
       description: rawDesc || 'Marked and verified student roll call attendance record.',
       category: 'ATTENDANCE',
       categoryBadgeClass: 'bg-teal-50 text-teal-700 border-teal-200/60 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800/40',
@@ -1139,7 +1161,24 @@ export function generateActionSummary(log: any): string {
     return `${userName} applied a ${concessionVal} concession${amount} to ${student}'s ${feeCategory}.`;
   }
 
-  // 4. Student Actions
+  // 4. Attendance (Must precede Student Actions)
+  if (lowerDesc.includes('attendance') || (log.subject_type || '').toLowerCase().includes('attendance') || log.log_name === 'attendance') {
+    if (properties.old_status && properties.new_status && properties.student_name) {
+      return `${userName} changed ${properties.student_name}'s attendance from ${properties.old_status} to ${properties.new_status}.`;
+    }
+    const classSection = properties.class_name || properties.batch_name || attributes.class_name || 'the class';
+    const formattedClass = classSection.toLowerCase().startsWith('class ') ? classSection : `Class ${classSection}`;
+    const session = properties.session === 'first_period' ? 'morning' : (properties.session === 'lunch_period' ? 'afternoon' : (properties.session || 'morning'));
+    const present = properties.present_count !== undefined ? properties.present_count : null;
+    const absent = properties.absent_count !== undefined ? properties.absent_count : null;
+    const counts = present !== null && absent !== null ? ` (${present} Present, ${absent} Absent)` : '';
+    if (event === 'deleted' || lowerDesc.includes('deleted')) {
+      return `${userName} deleted attendance records for ${formattedClass}.`;
+    }
+    return `${userName} ${event === 'updated' || lowerDesc.includes('updated') ? 'updated' : 'marked'} ${session} attendance for ${formattedClass}${counts}.`;
+  }
+
+  // 5. Student Actions
   if (lowerDesc.includes('student') || (log.subject_type || '').toLowerCase().includes('student')) {
     const studentName = extractStudentName(properties, rawDesc);
 
@@ -1152,19 +1191,6 @@ export function generateActionSummary(log: any): string {
     if (event === 'deleted' || lowerDesc.includes('deleted') || lowerDesc.includes('removed')) {
       return studentName ? `${userName} deleted student record for ${studentName}.` : `${userName} deleted student record from the system.`;
     }
-  }
-
-  // 4. Attendance
-  if (lowerDesc.includes('attendance')) {
-    if (properties.old_status && properties.new_status && properties.student_name) {
-      return `${userName} changed ${properties.student_name}'s attendance from ${properties.old_status} to ${properties.new_status}.`;
-    }
-    const classSection = properties.class_name || properties.batch_name || attributes.class_name || 'the class';
-    const session = properties.session === 'first_period' ? 'morning' : (properties.session || 'morning');
-    const present = properties.present_count !== undefined ? properties.present_count : null;
-    const absent = properties.absent_count !== undefined ? properties.absent_count : null;
-    const counts = present !== null && absent !== null ? ` (${present} Present, ${absent} Absent)` : '';
-    return `${userName} marked ${session} attendance for ${classSection}${counts}.`;
   }
 
   // 5. Exams & Marks
@@ -1271,30 +1297,35 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
     const lowerDesc = desc.toLowerCase();
     const st = String(log.subject_type || '').toLowerCase();
 
-    // 1. Skip redundant raw HTTP middleware logs that duplicate native model event logs
+    // 1. Skip redundant raw HTTP middleware logs that duplicate native model event logs or rich logs
     if (
       lowerDesc.startsWith('updated student:') ||
       lowerDesc.startsWith('added student:') ||
       lowerDesc.startsWith('deleted student:') ||
       lowerDesc.startsWith('updated staff profile:') ||
       lowerDesc.startsWith('added staff member:') ||
-      lowerDesc.startsWith('removed staff member:')
+      lowerDesc.startsWith('removed staff member:') ||
+      lowerDesc.startsWith('marked attendance for ')
     ) {
       continue;
     }
 
-    // 2. Build a deduplication signature based on causer, target/student, action, and timestamp (down to the minute)
-    const target = extractStudentName(log.properties, desc) || log.subject_id || desc;
+    // 2. Build a deduplication signature based on causer, target/student/class, action, and timestamp (down to the minute)
+    const target = extractStudentName(log.properties, desc) || log.properties?.class_name || log.subject_id || desc;
     const createdMinute = log.created_at ? log.created_at.substring(0, 16) : '';
     const event = log.event || 'action';
     
-    // Group student profile updates occurring within the same minute
-    const isStudentUpdate = lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student');
-    const signature = isStudentUpdate
-      ? `student-update_${target}_${log.causer_id || log.causer_name}_${createdMinute}`
-      : `log_${log.id}`;
+    // Group student profile updates or attendance occurring within the same minute
+    const isAttendance = lowerDesc.includes('attendance') || log.log_name === 'attendance' || st.includes('attendance');
+    const isStudentUpdate = !isAttendance && (lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student'));
+    
+    const signature = isAttendance
+      ? `attendance_${log.properties?.class_name || target}_${log.properties?.session || ''}_${createdMinute}`
+      : (isStudentUpdate
+        ? `student-update_${target}_${log.causer_id || log.causer_name}_${createdMinute}`
+        : `log_${log.id}`);
 
-    if (isStudentUpdate) {
+    if (isAttendance || isStudentUpdate) {
       if (seenSignatures.has(signature)) {
         continue;
       }

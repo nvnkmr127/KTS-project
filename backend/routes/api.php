@@ -500,6 +500,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('v1')->group(functi
 
     // ── Activity Logs ────────────────────────────────────────────────────
     Route::get('/activity-logs', [App\Http\Controllers\Api\ActivityLogApiController::class, 'index']);
+    Route::post('/activity-logs', [App\Http\Controllers\Api\ActivityLogApiController::class, 'store']);
     Route::get('/activity-logs/my-stats', [App\Http\Controllers\Api\ActivityLogApiController::class, 'myStats']);
     Route::get('/activity-logs/users', [App\Http\Controllers\Api\ActivityLogApiController::class, 'users']);
     Route::get('/activity-logs/summary', [App\Http\Controllers\Api\ActivityLogApiController::class, 'summary']);

@@ -76,9 +76,7 @@ export function TeacherActivityLogs() {
       const clean = (Array.isArray(raw) ? raw : []).filter((l: any) => {
         const desc = (l.description || '').toLowerCase();
         const st = (l.subject_type || '').toLowerCase();
-        const isDuplicateAttendance = /^marked attendance on \d{4}-\d{2}-\d{2}$/i.test(desc.trim()) ||
-                                      /^updated attendance record on \d{4}-\d{2}-\d{2}$/i.test(desc.trim()) ||
-                                      desc.includes('invalidate-cache');
+        const isDuplicateAttendance = desc.includes('invalidate-cache');
         const isBackendEvent = desc.includes('backend public') ||
                                desc.includes('backend/public') ||
                                desc.includes('componentpaymentitem') ||
