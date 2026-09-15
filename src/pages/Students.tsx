@@ -871,6 +871,9 @@ export function Students() {
         tc_no: s.tc_no || '',
       }));
       setStudents(mapped);
+      try {
+        localStorage.setItem('kts_students', JSON.stringify(mapped));
+      } catch (e) {}
     } catch (err) {
       console.error('Error loading students:', err);
     } finally {
@@ -960,6 +963,8 @@ export function Students() {
       village: fd.get('address'),
       class: classVal,
       section: sectionVal,
+      class_name: classVal && sectionVal ? `Class ${classVal} - ${sectionVal}` : (classVal ? `Class ${classVal}` : null),
+      batch_name: classVal && sectionVal ? `${classVal}${sectionVal}` : (classVal || null),
       batch_id: batchId,
       status: statusVal === 'Active' ? 'active' : statusVal === 'Left' ? 'left' : 'transfer',
       biometric_employee_code: bio || null,

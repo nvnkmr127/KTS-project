@@ -10,6 +10,7 @@ import { KPICard } from '../components/KPICard';
 import { api } from '../services/api';
 import { useDialog } from '../context/DialogContext';
 import { ActivityLogDetailPanel } from '../components/ActivityLogDetailPanel';
+import { deduplicateActivityLogs } from '../utils/activityLogFormatter';
 
 interface DeletedStudent {
   id: string;
@@ -158,7 +159,7 @@ export function RecycleBin() {
                st !== 'setting' &&
                st !== 'app\\models\\setting';
       });
-      setDeletedActivityLogs(clean);
+      setDeletedActivityLogs(deduplicateActivityLogs(clean));
     } catch (err) {
       console.error('Error loading recycled activity logs:', err);
     } finally {

@@ -17,7 +17,8 @@ import {
   getUserDisplayDetails, 
   parseActivityDetails, 
   formatDateTime, 
-  parsePlatformInfo 
+  parsePlatformInfo,
+  deduplicateActivityLogs
 } from '../utils/activityLogFormatter';
 
 
@@ -343,9 +344,10 @@ export function Settings({ initialTab = 0 }: SettingsProps) {
                st !== 'setting' &&
                st !== 'app\\models\\setting';
       });
-      if (reset) setActivityLogs(data);
-      else setActivityLogs(prev => [...prev, ...data]);
-      setActivityTotal(res.total ?? data.length);
+      const deduplicated = deduplicateActivityLogs(data);
+      if (reset) setActivityLogs(deduplicated);
+      else setActivityLogs(prev => deduplicateActivityLogs([...prev, ...deduplicated]));
+      setActivityTotal(res.total ?? deduplicated.length);
     } catch (e) { console.error(e); }
     finally { setActivityLoading(false); }
   }

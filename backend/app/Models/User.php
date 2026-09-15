@@ -20,10 +20,23 @@ class User extends Authenticatable
 
     public function getActivitylogOptions(): LogOptions {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'status'])
+            ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $e) => "Staff account '{$this->name}' ({$this->email}) was {$e}");
+    }
+
+    public function tapActivity(\Spatie\Activitylog\Models\Activity $activity, string $eventName)
+    {
+        $request = request();
+        if ($request) {
+            $activity->setCustomProperty('ip_address', $request->ip());
+            $activity->setCustomProperty('user_agent', $request->userAgent());
+        }
+        $user = auth('sanctum')->user() ?? auth()->user();
+        if ($user) {
+            $activity->causer()->associate($user);
+        }
     }
 
     /**

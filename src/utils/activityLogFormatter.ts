@@ -199,6 +199,37 @@ export function isSensitiveKey(key: string): boolean {
   return SENSITIVE_KEYS.has(lower) || lower.includes('password') || lower.includes('token') || lower.includes('secret');
 }
 
+export function formatDateOnly(dateStr: any): string {
+  if (!dateStr || dateStr === 'Not set' || dateStr === '—' || dateStr === 'null' || dateStr === 'undefined') return '';
+  const str = String(dateStr).trim();
+  if (!str) return '';
+
+  // Match YYYY-MM-DD (optionally followed by T or space and time)
+  const matchIso = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+  if (matchIso) {
+    const [, yyyy, mm, dd] = matchIso;
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  // Match DD-MM-YYYY or DD/MM/YYYY
+  const matchDdMmYyyy = str.match(/^(\d{2})[-/](\d{2})[-/](\d{4})(?:[T\s].*)?$/);
+  if (matchDdMmYyyy) {
+    const [, dd, mm, yyyy] = matchDdMmYyyy;
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  // Fallback to Date parse
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const yyyy = parsed.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  return str;
+}
+
 export function formatAuditValue(value: any, fieldKey?: string): string {
   if (value === null || value === undefined || value === '') {
     return 'Not set';
@@ -237,8 +268,23 @@ export function formatAuditValue(value: any, fieldKey?: string): string {
       } catch {}
     }
 
-    // Number with currency context
     const keyLower = (fieldKey || '').toLowerCase();
+
+    // Date formatting (DOB, Admission Date, Start Date, End Date, etc.)
+    if (
+      keyLower === 'dob' ||
+      keyLower.includes('date_of_birth') ||
+      keyLower.includes('birth') ||
+      keyLower.includes('admission_date') ||
+      keyLower.includes('start_date') ||
+      keyLower.includes('end_date') ||
+      keyLower.includes('dropout_date')
+    ) {
+      const formattedDate = formatDateOnly(trimmed);
+      if (formattedDate) return formattedDate;
+    }
+
+    // Number with currency context
     if (!trimmed.startsWith('₹') && !isNaN(Number(trimmed)) && Number(trimmed) >= 0 && (keyLower.includes('amount') || keyLower.includes('salary') || keyLower.includes('fee') || keyLower.includes('price'))) {
       return `₹${Number(trimmed).toLocaleString('en-IN')}`;
     }
@@ -418,6 +464,211 @@ export function extractStudentName(properties: any, rawDesc?: string, fallbackTa
   }
 
   return null;
+}
+
+const KNOWN_BATCH_MAP: Record<string | number, string> = {
+  1: '8A',
+  2: '9B',
+  3: '10A',
+  4: '8C',
+  5: '1A',
+};
+
+/**
+ * Formats any class/batch string cleanly into standard "Class 8 - A" format
+ */
+export function formatClassSectionDisplay(rawStr: any): string {
+  if (!rawStr) return '—';
+  const str = String(rawStr).trim();
+  if (!str || str === '—' || str === 'null' || str === 'undefined' || str.toLowerCase() === 'not set') return '—';
+
+  // If already like "Class 8 - A" or "Class 8 - Section A"
+  if (/^class\s+/i.test(str)) {
+    const m = str.match(/^class\s+([A-Za-z0-9-]+)\s*[-/ ]?\s*(?:SECTION|SEC)?\s*([A-Za-z])$/i);
+    if (m) {
+      return `Class ${m[1]} - ${m[2].toUpperCase()}`;
+    }
+    return str;
+  }
+
+  // Match "8A", "9B", "10A", "10-A", "8-C", "LKGA", "PP1-A", "NURSERYA", "1A"
+  const match = str.match(/^([A-Za-z0-9-]+)\s*[-/ ]?\s*(?:SECTION|SEC)?\s*([A-Za-z])$/i);
+  if (match) {
+    const cls = match[1];
+    const sec = match[2].toUpperCase();
+    return `Class ${cls} - ${sec}`;
+  }
+
+  // If bare class e.g. "8", "10", "LKG", "UKG"
+  if (/^[A-Za-z0-9-]+$/.test(str)) {
+    return `Class ${str}`;
+  }
+
+  return str;
+}
+
+/**
+ * Finds student from localStorage cached student list by ID, Name, or Admission number
+ */
+export function findCachedStudent(properties: any, rawDesc?: string, fallbackTarget?: string | null): any | null {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('kts_students') : null;
+    if (!raw) return null;
+    const students: any[] = JSON.parse(raw);
+    if (!Array.isArray(students) || students.length === 0) return null;
+
+    const studentId = properties?.student_id || properties?.attributes?.student_id || properties?.attributes?.id;
+    if (studentId) {
+      const match = students.find(s => String(s.id) === String(studentId));
+      if (match) return match;
+    }
+
+    const name = extractStudentName(properties, rawDesc, fallbackTarget);
+    if (name) {
+      const lowerName = name.toLowerCase().trim();
+      const matchExact = students.find(s => (s.name || '').toLowerCase().trim() === lowerName);
+      if (matchExact) return matchExact;
+
+      const matchPartial = students.find(s => {
+        const sName = (s.name || '').toLowerCase().trim();
+        return sName.includes(lowerName) || lowerName.includes(sName);
+      });
+      if (matchPartial) return matchPartial;
+    }
+
+    const adm = properties?.admission_number || properties?.admission_no || properties?.enrollment_number;
+    if (adm) {
+      const matchAdm = students.find(s => (s.roll || s.enrollment_number || '').trim() === String(adm).trim());
+      if (matchAdm) return matchAdm;
+    }
+  } catch (e) {
+    // Ignore JSON errors
+  }
+  return null;
+}
+
+/**
+ * Robust extractor for Student/Log Class & Section
+ */
+export function extractClassSection(log: any, cachedStudent?: any): string {
+  if (!cachedStudent && log) {
+    cachedStudent = findCachedStudent(log.properties, log.description);
+  }
+  if (!log && !cachedStudent) return '—';
+  const properties = log?.properties || {};
+  const attributes = properties.attributes || {};
+  const old = properties.old || {};
+
+  // 1. Direct class_name / batch_name string
+  const directName =
+    properties.class_name ||
+    properties.batch_name ||
+    attributes.class_name ||
+    attributes.batch_name ||
+    old.class_name ||
+    old.batch_name ||
+    properties.batch?.name ||
+    attributes.batch?.name;
+
+  if (directName && typeof directName === 'string' && directName.trim() !== '') {
+    return formatClassSectionDisplay(directName);
+  }
+
+  // 2. Separate class & section properties
+  const cls = properties.class || attributes.class || old.class || cachedStudent?.class;
+  const sec = properties.section || attributes.section || old.section || cachedStudent?.section;
+  if (cls) {
+    return formatClassSectionDisplay(sec ? `${cls}${sec}` : String(cls));
+  }
+
+  // 3. Extract from description (e.g., "Rahul Kumar in Class 8-A" or "for Class 10A")
+  const desc = String(log?.description || '');
+  const matchClass =
+    desc.match(/(?:in|to|for|class)\s+Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i) ||
+    desc.match(/(?:in|to|for)\s+([0-9]+[A-Za-z])/i);
+  if (matchClass && matchClass[1]) {
+    return formatClassSectionDisplay(matchClass[1]);
+  }
+
+  // 4. Batch ID lookup
+  const batchId = properties.batch_id || attributes.batch_id || old.batch_id || cachedStudent?.batch_id;
+  if (batchId !== undefined && batchId !== null && batchId !== '') {
+    if (KNOWN_BATCH_MAP[batchId]) {
+      return formatClassSectionDisplay(KNOWN_BATCH_MAP[batchId]);
+    }
+  }
+
+  if (cachedStudent) {
+    if (cachedStudent.class && cachedStudent.section) {
+      return formatClassSectionDisplay(`${cachedStudent.class}${cachedStudent.section}`);
+    }
+    if (cachedStudent.class) {
+      return formatClassSectionDisplay(cachedStudent.class);
+    }
+  }
+
+  return '—';
+}
+
+/**
+ * Robust extractor for Student Admission Number / Enrollment Number
+ */
+export function extractAdmissionNo(log: any, cachedStudent?: any): string {
+  if (!cachedStudent && log) {
+    cachedStudent = findCachedStudent(log.properties, log.description);
+  }
+  if (!log && !cachedStudent) return '—';
+  const properties = log?.properties || {};
+  const attributes = properties.attributes || {};
+  const old = properties.old || {};
+
+  const val =
+    properties.admission_number ||
+    properties.admission_no ||
+    properties.enrollment_number ||
+    properties.roll_no ||
+    properties.roll ||
+    attributes.admission_number ||
+    attributes.admission_no ||
+    attributes.enrollment_number ||
+    attributes.roll_no ||
+    old.admission_number ||
+    old.admission_no ||
+    old.enrollment_number ||
+    cachedStudent?.roll ||
+    cachedStudent?.enrollment_number;
+
+  return val && val !== 'null' && val !== 'undefined' ? String(val) : '—';
+}
+
+/**
+ * Robust extractor for Student PEN Number
+ */
+export function extractPenNumber(log: any, cachedStudent?: any): string {
+  if (!cachedStudent && log) {
+    cachedStudent = findCachedStudent(log.properties, log.description);
+  }
+  if (!log && !cachedStudent) return '—';
+  const properties = log?.properties || {};
+  const attributes = properties.attributes || {};
+  const old = properties.old || {};
+
+  const val =
+    properties.pen ||
+    properties.pen_number ||
+    properties.student_pen_no ||
+    properties.permanent_education_number ||
+    attributes.pen ||
+    attributes.student_pen_no ||
+    attributes.pen_number ||
+    attributes.permanent_education_number ||
+    old.pen ||
+    old.student_pen_no ||
+    old.pen_number ||
+    cachedStudent?.student_pen_no ||
+    cachedStudent?.pen;
+
+  return val && val !== 'null' && val !== 'undefined' ? String(val) : '—';
 }
 
 export function parseActivityDetails(log: any): ActivityDisplayDetails {
@@ -1003,4 +1254,55 @@ export function generateActionSummary(log: any): string {
   // Fallback
   const cleanedDesc = sanitizeLogDescription(rawDesc);
   return `${userName} performed: ${cleanedDesc || 'action'}.`;
+}
+
+/**
+ * Deduplicate activity logs to guarantee a clean, single-entry stream
+ */
+export function deduplicateActivityLogs(logs: any[]): any[] {
+  if (!Array.isArray(logs) || logs.length === 0) return [];
+  
+  const result: any[] = [];
+  const seenSignatures = new Set<string>();
+
+  for (const log of logs) {
+    if (!log) continue;
+    const desc = String(log.description || '').trim();
+    const lowerDesc = desc.toLowerCase();
+    const st = String(log.subject_type || '').toLowerCase();
+
+    // 1. Skip redundant raw HTTP middleware logs that duplicate native model event logs
+    if (
+      lowerDesc.startsWith('updated student:') ||
+      lowerDesc.startsWith('added student:') ||
+      lowerDesc.startsWith('deleted student:') ||
+      lowerDesc.startsWith('updated staff profile:') ||
+      lowerDesc.startsWith('added staff member:') ||
+      lowerDesc.startsWith('removed staff member:')
+    ) {
+      continue;
+    }
+
+    // 2. Build a deduplication signature based on causer, target/student, action, and timestamp (down to the minute)
+    const target = extractStudentName(log.properties, desc) || log.subject_id || desc;
+    const createdMinute = log.created_at ? log.created_at.substring(0, 16) : '';
+    const event = log.event || 'action';
+    
+    // Group student profile updates occurring within the same minute
+    const isStudentUpdate = lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student');
+    const signature = isStudentUpdate
+      ? `student-update_${target}_${log.causer_id || log.causer_name}_${createdMinute}`
+      : `log_${log.id}`;
+
+    if (isStudentUpdate) {
+      if (seenSignatures.has(signature)) {
+        continue;
+      }
+      seenSignatures.add(signature);
+    }
+
+    result.push(log);
+  }
+
+  return result;
 }

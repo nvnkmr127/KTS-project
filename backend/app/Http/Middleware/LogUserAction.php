@@ -68,14 +68,16 @@ class LogUserAction
                 if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE']) && $statusCode < 400) {
                     $pathUri = $request->getRequestUri();
 
-                    // Check for excluded paths
+                    // Check for excluded paths (models that have native Spatie LogsActivity traits or system internal paths)
                     $excludedPaths = [
                         '/login', '/logout', '/ping', '/test', '/me', '/heartbeat',
                         '/webhook-calls', 'webhook-events', '/notifications/read',
                         'mark-all-read', '/dashboard/my-activities', '/activity-logs',
                         'invalidate-cache', 'attendance/invalidate-cache', 'cache', '/sync',
                         'component-payment-items', 'componentpaymentitems', 'component_payment_items',
-                        'biometric-logs', 'biometric_logs', 'time-slots', 'time_slots'
+                        'biometric-logs', 'biometric_logs', 'time-slots', 'time_slots',
+                        'students', 'resources/students',
+                        'users', 'resources/users', 'faculty', 'resources/faculty',
                     ];
 
                     $shouldSkip = false;
@@ -331,14 +333,10 @@ class LogUserAction
             return '';
         }
 
-        // Students
+        // Students (Handled natively by Student model LogsActivity trait for exact before/after diffs)
         if (str_contains($path, 'students')) {
-            $name = $getName();
-            $suffix = $name ? ": {$name}" : '';
-            if ($method === 'POST')   return 'Added student' . $suffix;
-            if ($method === 'PUT')    return 'Updated student' . $suffix;
-            if ($method === 'DELETE') return 'Deleted student' . $suffix;
             if (str_contains($path, 'import'))  return 'Imported students from file';
+            return '';
         }
 
         if (str_contains($path, 'dropout')) {
@@ -424,13 +422,9 @@ class LogUserAction
             return 'Sent payment reminders to parents';
         }
 
-        // Staff / Users
-        if (str_contains($path, 'users')) {
-            $name = $getName();
-            $suffix = $name ? ": {$name}" : '';
-            if ($method === 'POST')   return 'Added staff member' . $suffix;
-            if ($method === 'PUT')    return 'Updated staff profile' . $suffix;
-            if ($method === 'DELETE') return 'Removed staff member' . $suffix;
+        // Staff / Users (Handled natively by User model LogsActivity trait)
+        if (str_contains($path, 'users') || str_contains($path, 'faculty')) {
+            return '';
         }
         if (str_contains($path, 'roles')) {
             $user = '';

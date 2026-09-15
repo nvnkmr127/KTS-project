@@ -144,6 +144,126 @@ class ActivityLogApiController extends Controller
                     }
                 }
 
+                $properties = $log->properties ? (is_array($log->properties) ? $log->properties : (method_exists($log->properties, 'toArray') ? $log->properties->toArray() : (array)$log->properties)) : [];
+                if (
+                    ($log->subject_type && (str_contains($log->subject_type, 'Student') || $log->subject_type === 'Student')) ||
+                    ($log->log_name === 'student') ||
+                    (str_contains(strtolower($log->description ?? ''), 'student'))
+                ) {
+                    $student = null;
+                    if ($log->subject_id) {
+                        $student = \App\Models\Student::with('batch.course')->find($log->subject_id);
+                    }
+                    if (!$student) {
+                        $sId = $properties['student_id'] ?? $properties['attributes']['student_id'] ?? $properties['attributes']['id'] ?? $properties['old']['student_id'] ?? null;
+                        if ($sId) {
+                            $student = \App\Models\Student::with('batch.course')->find($sId);
+                        }
+                    }
+                    if (!$student) {
+                        $searchName = $properties['student_name'] ?? $properties['name'] ?? $properties['attributes']['name'] ?? $properties['attributes']['student_name'] ?? null;
+                        if (!$searchName && !empty($log->description)) {
+                            $desc = (string)$log->description;
+                            if (preg_match('/for\s+(?:student\s+)?([A-Za-z\s\.\-_]+?)(?:\.|$)/i', $desc, $m)) {
+                                $searchName = trim($m[1]);
+                            } elseif (preg_match('/registered new student\s+([A-Za-z\s\.\-_]+?)(?:\s+in|\.|$)/i', $desc, $m)) {
+                                $searchName = trim($m[1]);
+                            } elseif (preg_match('/student profile for\s+([A-Za-z\s\.\-_]+?)(?:\.|$)/i', $desc, $m)) {
+                                $searchName = trim($m[1]);
+                            } elseif (preg_match('/student:\s*([A-Za-z\s\.\-_]+)/i', $desc, $m)) {
+                                $searchName = trim($m[1]);
+                            }
+                        }
+                        if ($searchName && !in_array(strtolower($searchName), ['student', 'student record', 'record'])) {
+                            $student = \App\Models\Student::with('batch.course')->where('name', $searchName)->latest()->first();
+                            if (!$student) {
+                                $student = \App\Models\Student::with('batch.course')->where('name', 'like', "%{$searchName}%")->latest()->first();
+                            }
+                        }
+                    }
+
+                    if ($student) {
+                        if (empty($properties['student_name'])) {
+                            $properties['student_name'] = $student->name;
+                        }
+                        if (empty($properties['admission_number']) && empty($properties['enrollment_number'])) {
+                            $adm = $student->admission_number ?? $student->enrollment_number;
+                            $properties['admission_number'] = $adm;
+                            $properties['enrollment_number'] = $adm;
+                        }
+                        if (empty($properties['pen']) && empty($properties['student_pen_no']) && empty($properties['pen_number'])) {
+                            $penVal = $student->student_pen_no ?? $student->pen;
+                            $properties['pen'] = $penVal;
+                            $properties['pen_number'] = $penVal;
+                            $properties['student_pen_no'] = $penVal;
+                        }
+                        if (empty($properties['batch_name']) && empty($properties['class_name'])) {
+                            $batchName = $student->batch ? $student->batch->name : null;
+                            if ($batchName) {
+                                $properties['batch_name'] = $batchName;
+                                $properties['class_name'] = $batchName;
+                            }
+                        }
+                        if (empty($properties['father_name'])) {
+                            $properties['father_name'] = $student->father_name;
+                        }
+                        if (empty($properties['mobile']) && empty($properties['student_mobile']) && empty($properties['phone'])) {
+                            $properties['mobile'] = $student->student_mobile ?? $student->father_mobile;
+                            $properties['student_mobile'] = $student->student_mobile;
+                            $properties['father_mobile'] = $student->father_mobile;
+                        }
+                        if (empty($properties['gender'])) {
+                            $properties['gender'] = $student->gender;
+                        }
+                        if (empty($properties['dob']) && empty($properties['date_of_birth'])) {
+                            if ($student->dob) {
+                                try {
+                                    $properties['dob'] = \Carbon\Carbon::parse($student->dob)->format('d-m-Y');
+                                    $properties['date_of_birth'] = $properties['dob'];
+                                } catch (\Throwable $e) {
+                                    $properties['dob'] = (string)$student->dob;
+                                }
+                            }
+                        }
+                        if (empty($properties['mother_name'])) {
+                            $properties['mother_name'] = $student->mother_name;
+                        }
+                        if (empty($properties['village']) && empty($properties['address'])) {
+                            $properties['village'] = $student->village;
+                            $properties['address'] = $student->village;
+                        }
+                        if (empty($properties['status']) && empty($properties['attributes']['status'])) {
+                            $properties['status'] = $student->status;
+                        }
+                    }
+
+                    // Fallbacks from batch_id if still missing batch_name
+                    $batchId = $properties['batch_id'] ?? $properties['attributes']['batch_id'] ?? $properties['old']['batch_id'] ?? null;
+                    if ($batchId && empty($properties['batch_name']) && empty($properties['class_name'])) {
+                        $batch = \App\Models\Batch::find($batchId);
+                        if ($batch) {
+                            $properties['batch_name'] = $batch->name;
+                            $properties['class_name'] = $batch->name;
+                        }
+                    }
+
+                    if (empty($properties['admission_number']) && empty($properties['enrollment_number'])) {
+                        $admNo = $properties['attributes']['enrollment_number'] ?? $properties['attributes']['admission_number'] ?? $properties['old']['enrollment_number'] ?? null;
+                        if ($admNo) {
+                            $properties['admission_number'] = $admNo;
+                            $properties['enrollment_number'] = $admNo;
+                        }
+                    }
+                    if (empty($properties['pen']) && empty($properties['student_pen_no'])) {
+                        $pen = $properties['attributes']['student_pen_no'] ?? $properties['attributes']['pen'] ?? $properties['old']['student_pen_no'] ?? null;
+                        if ($pen) {
+                            $properties['pen'] = $pen;
+                            $properties['student_pen_no'] = $pen;
+                            $properties['pen_number'] = $pen;
+                        }
+                    }
+                }
+
                 return [
                     'id' => $log->id,
                     'description' => $log->description,
@@ -155,7 +275,7 @@ class ActivityLogApiController extends Controller
                     'causer_name' => $causer?->name ?? 'System',
                     'causer_email' => $causer?->email,
                     'causer_role' => $causerRole,
-                    'properties' => $log->properties,
+                    'properties' => $properties,
                     'created_at' => $log->created_at ? Carbon::parse($log->created_at)->toIso8601String() : null,
                     'time_ago' => $log->created_at ? Carbon::parse($log->created_at)->diffForHumans() : null,
                 ];
@@ -594,6 +714,12 @@ class ActivityLogApiController extends Controller
         ->where('description', 'not like', '%cron%')
         ->where('description', 'not like', 'Marked attendance on %')
         ->where('description', 'not like', 'Updated attendance record on %')
+        ->where('description', 'not like', 'Updated student:%')
+        ->where('description', 'not like', 'Added student:%')
+        ->where('description', 'not like', 'Deleted student:%')
+        ->where('description', 'not like', 'Updated staff profile:%')
+        ->where('description', 'not like', 'Added staff member:%')
+        ->where('description', 'not like', 'Removed staff member:%')
         ->where('description', 'not like', '%invalidate-cache%');
     }
 }

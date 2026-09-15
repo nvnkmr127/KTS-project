@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../services/api';
 import {
   Clock,
   Globe,
@@ -39,8 +40,13 @@ import {
   formatExactDateTime,
   formatFieldLabel,
   formatAuditValue,
+  formatDateOnly,
   generateActionSummary,
   extractStudentName,
+  extractClassSection,
+  extractAdmissionNo,
+  extractPenNumber,
+  findCachedStudent,
   isSensitiveKey,
   SYSTEM_METADATA_KEYS,
 } from '../utils/activityLogFormatter';
@@ -60,10 +66,11 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
   const subjectType = String(log.subject_type || '').toLowerCase();
   const attributes = properties.attributes || {};
   const old = properties.old || {};
-  const studentName = extractStudentName(properties, log.description, activity.target);
+  const cachedStudent = findCachedStudent(properties, log.description, activity.target);
+  const studentName = extractStudentName(properties, log.description, activity.target) || cachedStudent?.name;
 
   // Extract changed fields for updates (model diffs or top-level diffs)
-  const hasModelDiff = event === 'updated' && (Object.keys(old).length > 0 || Object.keys(attributes).length > 0);
+  const hasModelDiff = event === 'updated' && Object.keys(old).length > 0;
   const changedKeys: string[] = [];
 
   if (hasModelDiff) {
@@ -71,10 +78,17 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
     for (const key of allKeys) {
       if (
         !SYSTEM_METADATA_KEYS.has(key) &&
-        !isSensitiveKey(key) &&
-        attributes[key] !== old[key]
+        !isSensitiveKey(key)
       ) {
-        changedKeys.push(key);
+        const oldVal = old[key];
+        const newVal = attributes[key];
+        const oldFmt = formatAuditValue(oldVal, key);
+        const newFmt = formatAuditValue(newVal, key);
+
+        // Only include if formatted values actually differ and are not both 'Not set' / empty
+        if (oldFmt !== newFmt && !(oldFmt === 'Not set' && (newFmt === 'Not set' || newFmt === ''))) {
+          changedKeys.push(key);
+        }
       }
     }
   }
@@ -87,40 +101,87 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
     !rawDesc.includes('payment') &&
     !rawDesc.includes('concession');
 
-  // 10. Fee Management / Payments / Bus Fee / Student Fee Records
-  const isPayment =
-    (rawDesc.includes('payment') ||
-      subjectType.includes('payment') ||
-      properties.type === 'payment' ||
-      rawDesc.includes('student fee') ||
-      rawDesc.includes('fee structure') ||
-      rawDesc.includes('fee record') ||
-      (rawDesc.includes('fee') && !isFeeCategory)) &&
-    Boolean(
-      properties.amount !== undefined ||
-      properties.payment_method ||
-      properties.receipt_number ||
-      properties.receipt_no ||
-      properties.bus_fee ||
-      attributes.amount !== undefined ||
-      rawDesc.includes('fee')
-    );
-
+  // Concession Detection
   const isConcession =
     (rawDesc.includes('concession') || properties.type === 'concession') &&
     Boolean(properties.concession_amount !== undefined || properties.percentage !== undefined || properties.concession !== undefined || attributes.concession_amount !== undefined);
 
-  // 1. Student Management (Strictly non-fee student actions)
-  const isStudent =
-    !isPayment &&
+  // 10. Fee Management / Payments / Bus Fee / Student Fee Records
+  const isPayment =
     !isFeeCategory &&
     !isConcession &&
-    !rawDesc.includes('student fee') &&
-    !rawDesc.includes('fee') &&
-    (subjectType.includes('student') ||
+    (
+      subjectType.includes('payment') ||
+      subjectType.includes('feestructure') ||
+      properties.type === 'payment' ||
+      properties.type === 'fee' ||
+      rawDesc.includes('fee payment') ||
+      rawDesc.includes('payment recorded') ||
+      rawDesc.includes('payment of') ||
+      rawDesc.includes('collected fee') ||
+      Boolean(properties.receipt_number || properties.receipt_no || (properties.amount !== undefined && properties.payment_method))
+    );
+
+  // 1. Student Management (Student Profile & Admission Details)
+  const isStudent =
+    !isFeeCategory &&
+    !isConcession &&
+    (
+      log.log_name === 'student' ||
+      subjectType === 'student' ||
+      subjectType.includes('student') ||
+      rawDesc.includes('student profile') ||
+      rawDesc.includes('registered new student') ||
+      rawDesc.includes('student record') ||
+      rawDesc.includes('added student') ||
+      rawDesc.includes('updated student') ||
+      rawDesc.includes('deleted student') ||
       rawDesc.includes('student') ||
       properties.type === 'student' ||
-      Boolean(properties.admission_no || properties.admission_number || properties.pen || properties.pen_number || attributes.admission_no || attributes.pen));
+      activity.category === 'ADMISSIONS' ||
+      activity.category === 'STUDENTS' ||
+      Boolean(
+        properties.student_name ||
+        properties.admission_no ||
+        properties.admission_number ||
+        properties.enrollment_number ||
+        properties.pen ||
+        properties.pen_number ||
+        properties.student_pen_no ||
+        properties.father_name ||
+        attributes.student_name ||
+        attributes.admission_no ||
+        attributes.enrollment_number ||
+        attributes.pen ||
+        attributes.student_pen_no ||
+        attributes.father_name
+      )
+    ) &&
+    !(isPayment && properties.amount !== undefined && !properties.student_name && !attributes.name && !attributes.student_name);
+
+  // Live Student asynchronous lookup if missing profile details
+  const [liveStudent, setLiveStudent] = useState<any>(null);
+
+  useEffect(() => {
+    if (isStudent) {
+      const subjectId = log.subject_id || properties.student_id || attributes.student_id || attributes.id;
+      const targetName = studentName || (activity.target ? activity.target.replace(/^Student:\s*/i, '').trim() : '');
+      if (subjectId) {
+        api.getResource('students', subjectId).then(res => {
+          if (res && res.name) setLiveStudent(res);
+        }).catch(() => {});
+      } else if (targetName && targetName !== '—' && !['student', 'record', 'student record'].includes(targetName.toLowerCase())) {
+        api.getResources('students', { search: targetName }).then(res => {
+          if (Array.isArray(res) && res.length > 0) {
+            const found = res.find((s: any) => (s.name || '').toLowerCase().trim() === targetName.toLowerCase().trim()) || res[0];
+            if (found) setLiveStudent(found);
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [log.id, log.subject_id, isStudent, studentName]);
+
+  const student = liveStudent || cachedStudent;
 
   // 2. Attendance / Allot Attendance
   const isAttendance =
@@ -471,58 +532,80 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Student Name</span>
               <span className="font-bold text-slate-900 dark:text-white">
-                {studentName || '—'}
+                {properties.student_name || properties.name || attributes.student_name || attributes.name || studentName || student?.name || (activity.target ? activity.target.replace(/^Student:\s*/i, '') : '—')}
               </span>
             </div>
 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Admission Number</span>
               <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                {properties.admission_number || properties.admission_no || attributes.admission_number || attributes.admission_no || '—'}
+                {extractAdmissionNo(log, student)}
               </span>
             </div>
 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">PEN Number</span>
               <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-                {properties.pen || properties.pen_number || properties.permanent_education_number || attributes.pen || attributes.student_pen_no || attributes.pen_number || '—'}
+                {extractPenNumber(log, student)}
               </span>
             </div>
 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class & Section</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.class_name || properties.batch_name || attributes.class_name || attributes.batch_name || '—'}
+                {extractClassSection(log, student)}
               </span>
             </div>
 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Father's Name</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.father_name || attributes.father_name || '—'}
+                {properties.father_name || properties.parent || attributes.father_name || attributes.parent || old.father_name || student?.parent || student?.father_name || '—'}
               </span>
             </div>
 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Primary Mobile</span>
               <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                {properties.mobile || properties.phone || properties.father_mobile || properties.student_mobile || attributes.mobile || attributes.phone || attributes.student_mobile || '—'}
+                {properties.mobile || properties.student_mobile || properties.phone || properties.father_mobile || attributes.student_mobile || attributes.mobile || attributes.phone || attributes.father_mobile || old.mobile || old.phone || old.student_mobile || old.father_mobile || student?.phone || student?.student_mobile || student?.father_mobile || '—'}
               </span>
             </div>
 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Gender & DOB</span>
               <span className="font-medium text-slate-800 dark:text-slate-200">
-                {properties.gender || attributes.gender || '—'} {properties.dob || properties.date_of_birth || attributes.dob ? `(${properties.dob || properties.date_of_birth || attributes.dob})` : ''}
+                {properties.gender || attributes.gender || old.gender || student?.gender || '—'} {(() => {
+                  const rawDob = properties.dob || properties.date_of_birth || attributes.dob || attributes.date_of_birth || old.dob || old.date_of_birth || student?.dob;
+                  const formatted = formatDateOnly(rawDob);
+                  return formatted ? `(${formatted})` : '';
+                })()}
               </span>
             </div>
 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Current Status</span>
               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                {properties.status || attributes.status || 'Active'}
+                {properties.status || attributes.status || old.status || student?.status || 'Active'}
               </span>
             </div>
+
+            {(properties.mother_name || attributes.mother_name || properties.village || attributes.village || properties.address || attributes.address || student?.mother_name || student?.address || student?.village) && (
+              <>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Mother's Name</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {properties.mother_name || attributes.mother_name || old.mother_name || student?.mother_name || '—'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Address / Village</span>
+                  <span className="font-medium text-slate-800 dark:text-slate-200">
+                    {properties.village || properties.address || attributes.village || attributes.address || old.village || student?.address || student?.village || '—'}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -546,7 +629,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Attendance Date</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.date || properties.attendance_date || formatExactDateTime(log.created_at)}
+                {formatDateOnly(properties.date || properties.attendance_date) || formatExactDateTime(log.created_at)}
               </span>
             </div>
 
@@ -1253,7 +1336,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Attendance Date</span>
               <span className="font-bold text-slate-900 dark:text-white">
-                {properties.date || formatExactDateTime(log.created_at)}
+                {formatDateOnly(properties.date) || formatExactDateTime(log.created_at)}
               </span>
             </div>
 
@@ -1294,7 +1377,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Duration</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">
                 {(properties.start_date || properties.end_date || attributes.start_date)
-                  ? `${properties.start_date || attributes.start_date || '—'} to ${properties.end_date || attributes.end_date || '—'}`
+                  ? `${formatDateOnly(properties.start_date || attributes.start_date) || '—'} to ${formatDateOnly(properties.end_date || attributes.end_date) || '—'}`
                   : '—'}
               </span>
             </div>
@@ -1334,7 +1417,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
             <div>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Date(s)</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.date || properties.start_date || '—'}
+                {formatDateOnly(properties.date || properties.start_date) || '—'}
               </span>
             </div>
 

@@ -8,6 +8,7 @@ import {
   parseActivityDetails,
   parsePlatformInfo,
   formatDateTime,
+  deduplicateActivityLogs,
 } from '../utils/activityLogFormatter';
 
 interface ActivityEntry {
@@ -98,13 +99,14 @@ export function TeacherActivityLogs() {
                st !== 'app\\models\\setting';
       });
 
+      const deduplicated = deduplicateActivityLogs(clean);
       if (reset) {
-        setLogs(clean);
+        setLogs(deduplicated);
       } else {
-        setLogs(prev => [...prev, ...clean]);
+        setLogs(prev => deduplicateActivityLogs([...prev, ...deduplicated]));
       }
 
-      setTotalCount(logsRes.total ?? (reset ? clean.length : totalCount));
+      setTotalCount(logsRes.total ?? (reset ? deduplicated.length : totalCount));
       if (statsRes) {
         setStats(statsRes);
       }

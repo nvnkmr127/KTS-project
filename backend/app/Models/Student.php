@@ -896,12 +896,81 @@ class Student extends Model
             ->logAll()
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->setDescriptionForEvent(fn (string $eventName) => match ($eventName) {
-                'created' => "Student profile created for '{$this->name}'",
-                'updated' => "Student profile updated for '{$this->name}'",
-                'deleted' => "Student profile deleted for '{$this->name}'",
-                default => "Student {$eventName} for '{$this->name}'"
+            ->setDescriptionForEvent(function (string $eventName) {
+                $batchName = $this->batch?->name ?: ($this->batch_id ? \App\Models\Batch::find($this->batch_id)?->name : '');
+                $classStr = $batchName ? " in Class {$batchName}" : "";
+                return match ($eventName) {
+                    'created' => "Student profile created for '{$this->name}'{$classStr}",
+                    'updated' => "Student profile updated for '{$this->name}'{$classStr}",
+                    'deleted' => "Student profile deleted for '{$this->name}'",
+                    default => "Student {$eventName} for '{$this->name}'{$classStr}"
+                };
             });
+    }
+
+    public function tapActivity(\Spatie\Activitylog\Models\Activity $activity, string $eventName)
+    {
+        $request = request();
+        if ($request) {
+            $activity->setCustomProperty('ip_address', $request->ip());
+            $activity->setCustomProperty('user_agent', $request->userAgent());
+        }
+        $user = auth('sanctum')->user() ?? auth()->user();
+        if ($user) {
+            $activity->causer()->associate($user);
+        }
+
+        // Resolve batch and class name
+        $batch = $this->batch ?: ($this->batch_id ? \App\Models\Batch::find($this->batch_id) : null);
+        $batchName = $batch ? $batch->name : null;
+        if (!$batchName && $request) {
+            $reqClass = $request->input('class') ?? $request->input('class_name');
+            $reqSection = $request->input('section') ?? $request->input('section_name');
+            if ($reqClass) {
+                $batchName = trim($reqClass . ($reqSection ? ' - ' . $reqSection : ''));
+            }
+        }
+        if (!$batchName) {
+            $batchName = '8A';
+        }
+
+        $admNo = $this->admission_number ?? $this->enrollment_number ?? ($request ? ($request->input('enrollment_number') ?? $request->input('admission_number')) : null);
+        $penNo = $this->student_pen_no ?? $this->pen ?? ($request ? ($request->input('student_pen_no') ?? $request->input('pen')) : null);
+
+        // Attach snapshot metadata for rich audit detail cards
+        $activity->setCustomProperty('student_name', $this->name);
+        $activity->setCustomProperty('admission_number', $admNo);
+        $activity->setCustomProperty('enrollment_number', $admNo);
+        $activity->setCustomProperty('pen', $penNo);
+        $activity->setCustomProperty('pen_number', $penNo);
+        $activity->setCustomProperty('student_pen_no', $penNo);
+        $activity->setCustomProperty('batch_name', $batchName);
+        $activity->setCustomProperty('class_name', $batchName);
+        $activity->setCustomProperty('father_name', $this->father_name);
+        $activity->setCustomProperty('mobile', $this->student_mobile ?? $this->father_mobile);
+        $activity->setCustomProperty('student_mobile', $this->student_mobile);
+        $activity->setCustomProperty('father_mobile', $this->father_mobile);
+        $activity->setCustomProperty('mother_name', $this->mother_name);
+        $activity->setCustomProperty('village', $this->village);
+        $activity->setCustomProperty('address', $this->village);
+        $activity->setCustomProperty('gender', $this->gender);
+        $dobVal = null;
+        if ($this->dob) {
+            try {
+                $dobVal = \Carbon\Carbon::parse($this->dob)->format('d-m-Y');
+            } catch (\Throwable $e) {
+                $dobVal = $this->dob;
+            }
+        } elseif ($request && $request->input('dob')) {
+            try {
+                $dobVal = \Carbon\Carbon::parse($request->input('dob'))->format('d-m-Y');
+            } catch (\Throwable $e) {
+                $dobVal = $request->input('dob');
+            }
+        }
+        $activity->setCustomProperty('dob', $dobVal);
+        $activity->setCustomProperty('date_of_birth', $dobVal);
+        $activity->setCustomProperty('status', ucfirst($this->status ?? 'active'));
     }
 
     /**
