@@ -2082,7 +2082,7 @@ export function Examinations() {
     cleanRoll?: string,
     studentName?: string
   ): number | string | undefined => {
-    if (!marksRecord || !examId) return undefined;
+    if (!marksRecord) return undefined;
 
     // Normalize candidate student keys
     const cleanR = cleanRoll || (studentRoll ? studentRoll.replace(/^[0-9]+[A-Z]+-?/i, '') : undefined);
@@ -2109,7 +2109,7 @@ export function Examinations() {
       for (const row of marksRecord) {
         if (!row || typeof row !== 'object') continue;
         const rowExam = String(row.exam_id ?? row.examId ?? '');
-        if (!rowExam || (rowExam !== String(examId) && rowExam.replace(/^(exam|ex)[-_]/i, '') !== String(examId).replace(/^(exam|ex)[-_]/i, ''))) {
+        if (rowExam && examId && rowExam !== String(examId) && rowExam.replace(/^(exam|ex)[-_]/i, '') !== String(examId).replace(/^(exam|ex)[-_]/i, '')) {
           continue;
         }
         const rowRoll = String(row.roll ?? row.student_roll ?? row.studentId ?? row.student_id ?? row.id ?? '');
@@ -2173,7 +2173,7 @@ export function Examinations() {
       return undefined;
     };
 
-    // 1. Match specific exam ID or Exam Name ONLY
+    // 1. Match specific exam ID or Exam Name
     let examObj = marksRecord[examId] ?? marksRecord[String(examId)];
     if (!examObj) {
       const currentExamObj = Array.isArray(exams) ? exams.find((e) => e.id === examId) : undefined;
@@ -2191,7 +2191,20 @@ export function Examinations() {
     }
 
     if (examObj) {
-      return searchInExamContainer(examObj);
+      const found = searchInExamContainer(examObj);
+      if (found !== undefined) return found;
+    }
+
+    // 2. Search directly in root marksRecord
+    const rootFound = searchInExamContainer(marksRecord);
+    if (rootFound !== undefined) return rootFound;
+
+    // 3. Search in all child containers
+    for (const subContainer of Object.values(marksRecord)) {
+      if (subContainer && typeof subContainer === 'object') {
+        const anyFound = searchInExamContainer(subContainer);
+        if (anyFound !== undefined) return anyFound;
+      }
     }
 
     return undefined;
