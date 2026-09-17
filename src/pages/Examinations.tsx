@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, X, Award, TrendingUp, BookOpen, BarChart2, Calendar, ChevronLeft, ChevronRight, Trash2, ChevronDown, ChevronUp, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -1203,6 +1203,9 @@ export function Examinations() {
 
   const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number | string | null, studentId?: string) => {
     const effectiveId = examId || selectedMarksExamId || (marksExams[0]?.id ?? 'default_exam');
+    if (!effectiveId) return;
+    const targetExam = Array.isArray(exams) ? exams.find((e) => String(e.id) === String(effectiveId)) : undefined;
+    if (targetExam && targetExam.status === 'Upcoming') return;
     const cleanRoll = roll.replace(/^[0-9]+[A-Z]+-?/i, '');
 
     // Update draftMarks (pure React state — NOT saved to DB or localStorage)
@@ -1661,17 +1664,7 @@ export function Examinations() {
   };
 
   const isExamCompleted = (e: Exam, classSchedule?: ClassExamSchedule): boolean => {
-    if (!e) return false;
     if (e.status === 'Completed' || e.status === 'Results Published') return true;
-    if (e.status === 'Upcoming') {
-      if (e.date) {
-        const examDate = new Date(e.date + 'T23:59:59');
-        const today = new Date();
-        if (!isNaN(examDate.getTime()) && examDate > today) {
-          return false;
-        }
-      }
-    }
     if (e.date) {
       const examDate = new Date(e.date + 'T23:59:59');
       const today = new Date();
@@ -1705,13 +1698,13 @@ export function Examinations() {
   useEffect(() => {
     if (marksExams.length > 0) {
       if (!selectedMarksExamId || !marksExams.some((e) => e.id === selectedMarksExamId)) {
-        const firstCompleted = marksExams.find((e) => isExamCompleted(e, schedules[e.id]?.[selectedMarksClass]));
-        setSelectedMarksExamId(firstCompleted ? firstCompleted.id : marksExams[0].id);
+        const completedExam = marksExams.find((e) => e.status === 'Completed' || e.status === 'Results Published');
+        setSelectedMarksExamId(completedExam ? completedExam.id : marksExams[0].id);
       }
     } else {
       setSelectedMarksExamId('');
     }
-  }, [marksExams, selectedMarksExamId, selectedMarksClass, schedules]);
+  }, [marksExams, selectedMarksExamId]);
 
   useEffect(() => {
     if (resultsExams.length > 0) {
@@ -2120,10 +2113,8 @@ export function Examinations() {
       for (const row of marksRecord) {
         if (!row || typeof row !== 'object') continue;
         const rowExam = String(row.exam_id ?? row.examId ?? '');
-        const isExamMatch =
-          rowExam === String(examId) ||
-          rowExam.replace(/^(exam|ex)[-_]/i, '').trim().toLowerCase() === String(examId).replace(/^(exam|ex)[-_]/i, '').trim().toLowerCase();
-        if (!isExamMatch) {
+        if (!rowExam) continue;
+        if (rowExam !== String(examId) && rowExam.replace(/^(exam|ex)[-_]/i, '') !== String(examId).replace(/^(exam|ex)[-_]/i, '')) {
           continue;
         }
         const rowRoll = String(row.roll ?? row.student_roll ?? row.studentId ?? row.student_id ?? row.id ?? '');
@@ -2190,7 +2181,7 @@ export function Examinations() {
     // 1. Match specific exam ID or Exam Name strictly
     let examObj = marksRecord[examId] ?? marksRecord[String(examId)];
     if (!examObj) {
-      const currentExamObj = Array.isArray(exams) ? exams.find((e) => e.id === examId) : undefined;
+      const currentExamObj = Array.isArray(exams) ? exams.find((e) => String(e.id) === String(examId)) : undefined;
       const examName = currentExamObj?.name ? currentExamObj.name.toLowerCase().trim() : '';
       const cleanExamId = String(examId).replace(/^(exam|ex)[-_]/i, '').trim().toLowerCase();
       const matchExamKey = Object.keys(marksRecord).find((k) => {
@@ -2198,17 +2189,18 @@ export function Examinations() {
         if (kStr === String(examId).trim().toLowerCase()) return true;
         if (examName && kStr === examName) return true;
         const cleanK = kStr.replace(/^(exam|ex)[-_]/i, '');
-        if (cleanK === cleanExamId && cleanK !== '') return true;
+        if (cleanK && cleanExamId && cleanK === cleanExamId) return true;
         return false;
       });
       if (matchExamKey) examObj = marksRecord[matchExamKey];
     }
 
     if (examObj) {
-      return searchInExamContainer(examObj);
+      const found = searchInExamContainer(examObj);
+      if (found !== undefined) return found;
     }
 
-    // Do NOT search other exams! Return undefined if no marks for this specific exam.
+    // STRICT: Only return marks found under this specific exam container.
     return undefined;
   };
 
@@ -2516,15 +2508,6 @@ export function Examinations() {
   const subjectAverages = getSubjectAverages();
   const gradeDistribution = getGradeDistribution();
 
-  const selectedMarksExamObj = useMemo(() => {
-    return marksExams.find((e) => e.id === selectedMarksExamId) || exams.find((e) => e.id === selectedMarksExamId);
-  }, [marksExams, exams, selectedMarksExamId]);
-
-  const isCurrentMarksExamCompleted = useMemo(() => {
-    if (!selectedMarksExamObj) return false;
-    return isExamCompleted(selectedMarksExamObj, schedules[selectedMarksExamObj.id]?.[selectedMarksClass]);
-  }, [selectedMarksExamObj, schedules, selectedMarksClass]);
-
   const classAvg = metrics.classAvg;
 
   const tabs: { id: Tab; label: string }[] = [
@@ -2660,32 +2643,16 @@ export function Examinations() {
                 <div className="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0 items-center">
                   {exam.status === 'Completed' && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedMarksExamId(exam.id);
-                        if (exam.class && exam.class !== 'All Classes') {
-                          const firstCls = exam.class.split(',')[0]?.trim();
-                          if (firstCls) setSelectedMarksClass(firstCls);
-                        }
-                        setActiveTab('marks');
-                      }}
-                      className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium hover:opacity-90 active:scale-95 transition-all"
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium"
                     >
                       Enter Marks
                     </button>
                   )}
                   {exam.status === 'Results Published' && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedResultsExamId(exam.id);
-                        if (exam.class && exam.class !== 'All Classes') {
-                          const firstCls = exam.class.split(',')[0]?.trim();
-                          if (firstCls) setSelectedClass(firstCls);
-                        }
-                        setActiveTab('results');
-                      }}
-                      className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium hover:opacity-90 active:scale-95 transition-all"
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium"
                     >
                       View Results
                     </button>
@@ -2830,281 +2797,282 @@ export function Examinations() {
         </div>
       )}
 
-      {activeTab === 'marks' && canAccessMarks && (
-        <Card>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 border-b border-[var(--b)] pb-3">
-            <div>
-              <div className="text-[13.5px] font-bold text-[var(--tx)]">
-                {isAdmin ? 'Marks Preview' : 'Marks Entry'}
-              </div>
-              <div className="text-[11px] text-[var(--tx3)] mt-0.5">
-                {isAdmin ? 'Overall student results across all classes. Click any student row to view/edit subject-wise marks breakdown.' : 'View overall and subject-wise student marks.'}
-              </div>
-            </div>
-            <div className="flex gap-2 flex-wrap items-center">
-              {!isAdmin && !isTeacherAssignedToClass(selectedMarksClass) && (
-                <div className="p-2.5 bg-[var(--amber-bg)] border border-[var(--amber)]/30 rounded-lg text-[11px] text-[var(--amber-tx)] font-semibold flex items-center gap-1.5 shadow-sm">
-                  <AlertCircle size={13} />
-                  <span>Read-Only mode. (Assigned class teacher only)</span>
-                </div>
-              )}
-              <select
-                value={selectedMarksClass}
-                onChange={(e) => setSelectedMarksClass(e.target.value)}
-                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium"
-              >
-                {filteredClassList.map((c) => (
-                  <option key={c} value={c}>Class {c}</option>
-                ))}
-              </select>
-              <select
-                value={selectedMarksExamId}
-                onChange={(e) => setSelectedMarksExamId(e.target.value)}
-                disabled={marksExams.length === 0}
-                className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium disabled:opacity-50"
-              >
-                {marksExams.length === 0 ? (
-                  <option value="">No exams available</option>
-                ) : (
-                  marksExams.map((e) => {
-                    const completed = isExamCompleted(e, schedules[e.id]?.[selectedMarksClass]);
-                    return (
-                      <option key={e.id} value={e.id}>
-                        {e.name} {completed ? '• Completed' : '• Upcoming'}
-                      </option>
-                    );
-                  })
-                )}
-              </select>
-            </div>
-          </div>
+      {activeTab === 'marks' && canAccessMarks && (() => {
+        const currentMarksExam = exams.find((e) => String(e.id) === String(selectedMarksExamId));
+        const isUpcomingExam = currentMarksExam ? currentMarksExam.status === 'Upcoming' : false;
 
-          <div className="overflow-x-auto">
-            {marksExams.length === 0 ? (
-              <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
-                No exams available for Class {selectedMarksClass}.
+        return (
+          <Card>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4 border-b border-[var(--b)] pb-3">
+              <div>
+                <div className="text-[13.5px] font-bold text-[var(--tx)]">
+                  {isAdmin ? 'Marks Preview' : 'Marks Entry'}
+                </div>
+                <div className="text-[11px] text-[var(--tx3)] mt-0.5">
+                  {isAdmin ? 'Overall student results across all classes. Click any student row to view/edit subject-wise marks breakdown.' : 'View overall and subject-wise student marks.'}
+                </div>
               </div>
-            ) : !isCurrentMarksExamCompleted ? (
-              <div className="py-12 px-4 text-center max-w-lg mx-auto space-y-3.5">
-                <div className="w-14 h-14 rounded-2xl bg-[var(--blue-bg)] text-[var(--blue-tx)] flex items-center justify-center mx-auto shadow-sm border border-[var(--blue-tx)]/20">
-                  <Calendar size={24} />
-                </div>
-                <div>
-                  <div className="text-[14.5px] font-bold text-[var(--tx)]">
-                    Marks Entry Available After Exam Completion
+              <div className="flex gap-2 flex-wrap items-center">
+                {!isAdmin && !isTeacherAssignedToClass(selectedMarksClass) && (
+                  <div className="p-2.5 bg-[var(--amber-bg)] border border-[var(--amber)]/30 rounded-lg text-[11px] text-[var(--amber-tx)] font-semibold flex items-center gap-1.5 shadow-sm">
+                    <AlertCircle size={13} />
+                    <span>Read-Only mode. (Assigned class teacher only)</span>
                   </div>
-                  <div className="text-[12px] text-[var(--tx3)] mt-1.5 leading-relaxed">
-                    <span className="font-semibold text-[var(--tx)]">{selectedMarksExamObj?.name || 'This exam'}</span> is currently <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-[var(--blue-bg)] text-[var(--blue-tx)]">Upcoming</span>{selectedMarksExamObj?.date ? ` (Scheduled Date: ${formatDate(selectedMarksExamObj.date)})` : ''}.
-                    Marks entry and preview are only enabled once the exam is completed.
-                  </div>
+                )}
+                <select
+                  value={selectedMarksClass}
+                  onChange={(e) => setSelectedMarksClass(e.target.value)}
+                  className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium"
+                >
+                  {filteredClassList.map((c) => (
+                    <option key={c} value={c}>Class {c}</option>
+                  ))}
+                </select>
+                <select
+                  value={selectedMarksExamId}
+                  onChange={(e) => setSelectedMarksExamId(e.target.value)}
+                  disabled={marksExams.length === 0}
+                  className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium disabled:opacity-50"
+                >
+                  {marksExams.length === 0 ? (
+                    <option value="">No exams available</option>
+                  ) : (
+                    marksExams.map((e) => (
+                      <option key={e.id} value={e.id}>{e.name} {e.status ? `(${e.status})` : ''}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              {marksExams.length === 0 ? (
+                <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
+                  No examinations available for Class {selectedMarksClass}.
                 </div>
-                {isAdmin && selectedMarksExamObj && (
-                  <div className="pt-2">
+              ) : isUpcomingExam ? (
+                <div className="py-12 px-6 text-center flex flex-col items-center justify-center bg-[var(--surf2)]/30 rounded-2xl border border-[var(--b)] my-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[var(--amber-bg)] flex items-center justify-center text-[var(--amber-tx)] mb-3 border border-[var(--amber)]/25 shadow-sm">
+                    <Clock size={24} />
+                  </div>
+                  <div className="text-[14px] font-bold text-[var(--tx)] mb-1">
+                    Examination is Upcoming
+                  </div>
+                  <p className="text-[12px] text-[var(--tx3)] leading-relaxed max-w-md mb-4 text-center">
+                    Marks entry and marks preview are only available for completed examinations.
+                    <span className="font-semibold text-[var(--tx)]"> "{currentMarksExam?.name}"</span> is currently scheduled as <span className="font-semibold text-[var(--blue-tx)]">Upcoming</span>.
+                    Please conduct the exam and mark its status as <span className="font-semibold text-[var(--teal-tx)]">Completed</span> to enter and view student marks.
+                  </p>
+                  {isAdmin && (
                     <button
                       type="button"
                       onClick={async () => {
-                        const updated = exams.map((ex) => (ex.id === selectedMarksExamObj.id ? { ...ex, status: 'Completed' as const } : ex));
-                        setExams(updated);
-                        localStorage.setItem('examinations_exams', JSON.stringify(updated));
-                        await saveSettingToDb('examinations_exams', updated);
+                        if (!currentMarksExam) return;
+                        const next = exams.map((e) => String(e.id) === String(currentMarksExam.id) ? { ...e, status: 'Completed' as const } : e);
+                        setExams(next);
+                        localStorage.setItem('examinations_exams', JSON.stringify(next));
+                        await saveSettingToDb('examinations_exams', next);
+                        try {
+                          await api.updateResource('exams', currentMarksExam.id, { status: 'Completed' });
+                        } catch { /* empty */ }
                       }}
-                      className="px-3.5 py-1.5 bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/25 rounded-lg text-[12px] font-semibold hover:opacity-90 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+                      className="px-3.5 py-1.5 bg-[var(--blue)] text-white rounded-lg text-[11.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
                     >
-                      <CheckCircle2 size={14} />
-                      Mark Exam as Completed
+                      <CheckCircle2 size={13} />
+                      <span>Mark "{currentMarksExam?.name}" as Completed</span>
                     </button>
-                  </div>
-                )}
-              </div>
-            ) : studentsToShow.length === 0 ? (
-              <div className="text-center py-8 text-[12px] text-[var(--tx3)]">
-                No students found in Class {selectedMarksClass}.
-              </div>
-            ) : (
-              <table className="w-full border-collapse text-[12px] min-w-[680px]">
-                <thead>
-                  <tr className="border-b border-[var(--b)]">
-                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Student Name</th>
-                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Roll No</th>
-                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Max Marks</th>
-                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Marks Obtained</th>
-                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Percentage</th>
-                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Grade</th>
-                    <th className="text-[11px] font-semibold text-[var(--tx3)] text-right px-3 py-2.5">Subject Breakdown</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {studentsToShow.map((student) => {
-                    const detail = computeStudentMarksDetail(student.roll, student.idx, student.id, student.name);
-                    const isExpanded = !!expandedStudentRolls[student.roll];
-                    const avatarColor = getDynamicAvatarColor(student.init);
-                    const canEdit = isAdmin || isTeacherAssignedToClass(selectedMarksClass);
+                  )}
+                </div>
+              ) : studentsToShow.length === 0 ? (
+                <div className="text-center py-8 text-[12px] text-[var(--tx3)]">
+                  No students found in Class {selectedMarksClass}.
+                </div>
+              ) : (
+                <table className="w-full border-collapse text-[12px] min-w-[680px]">
+                  <thead>
+                    <tr className="border-b border-[var(--b)]">
+                      <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Student Name</th>
+                      <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Roll No</th>
+                      <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Max Marks</th>
+                      <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Marks Obtained</th>
+                      <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Percentage</th>
+                      <th className="text-[11px] font-semibold text-[var(--tx3)] text-left px-3 py-2.5">Grade</th>
+                      <th className="text-[11px] font-semibold text-[var(--tx3)] text-right px-3 py-2.5">Subject Breakdown</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {studentsToShow.map((student) => {
+                      const detail = computeStudentMarksDetail(student.roll, student.idx, student.id, student.name);
+                      const isExpanded = !!expandedStudentRolls[student.roll];
+                      const avatarColor = getDynamicAvatarColor(student.init);
+                      const canEdit = isAdmin || isTeacherAssignedToClass(selectedMarksClass);
 
-                    return (
-                      <Fragment key={student.roll}>
-                        <tr
-                          onClick={() => toggleStudentExpand(student.roll)}
-                          className={`border-b border-[var(--b)] transition-colors cursor-pointer ${isExpanded ? 'bg-[var(--surf2)] font-semibold' : 'hover:bg-[var(--surf2)]'
-                            }`}
-                        >
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-2.5">
-                              <Avatar initials={student.init} bg={avatarColor.bg} color={avatarColor.color} />
-                              <span className="font-bold text-[13px] text-[var(--tx)]">{student.name}</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-3 font-mono text-[11.5px] text-[var(--tx3)]">{student.roll}</td>
-                          <td className="px-3 py-3 text-[12px] text-[var(--tx3)]">{detail.totalMaxMarks}</td>
-                          <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.totalMarksObtainedDisplay}</td>
-                          <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.overallPctDisplay}</td>
-                          <td className="px-3 py-3">
-                            {detail.hasAnyMark ? (
-                              <Badge variant={detail.overallGrade === 'A+' ? 'purple' : detail.overallGrade === 'A' ? 'teal' : detail.overallGrade === 'B+' ? 'blue' : 'amber'}>
-                                {detail.overallGrade}
-                              </Badge>
-                            ) : (
-                              <span className="text-[12px] text-[var(--tx3)] font-medium">--</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-right">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleStudentExpand(student.roll);
-                              }}
-                              className="p-1.5 rounded-lg text-[var(--tx3)] hover:bg-[var(--surf3)] transition-colors cursor-pointer inline-flex items-center gap-1 text-[11px]"
-                              title="Toggle Subject Marks"
-                            >
-                              <span>{isExpanded ? 'Hide Subjects' : 'View Subjects'}</span>
-                              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                            </button>
-                          </td>
-                        </tr>
-
-                        {isExpanded && (
-                          <tr className="bg-[var(--surf2)] border-b border-[var(--b)]">
-                            <td colSpan={7} className="p-3.5">
-                              <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 shadow-sm space-y-3">
-                                <div className="flex items-center justify-between border-b border-[var(--b)] pb-2.5">
-                                   <div className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-2">
-                                    <BookOpen size={14} className="text-[var(--blue-tx)]" />
-                                    Subject-wise Marks for Class {selectedMarksClass} — <span className="text-[var(--blue-tx)]">{student.name}</span> (Roll: {student.roll})
-                                    {canEdit && (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleClearStudentMarks(student);
-                                        }}
-                                        className="ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 hover:opacity-90 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1"
-                                        title="Clear all subject marks"
-                                      >
-                                        Clear Marks
-                                      </button>
-                                    )}
-                                  </div>
-                                  <span className="text-[11px] text-[var(--tx3)] font-medium">
-                                    {isAdmin ? 'Admin Edit Mode: Adjust subject marks below' : isTeacherAssignedToClass(selectedMarksClass) ? 'Faculty Marks Entry Mode: Adjust subject marks below' : 'Read-Only Mode: Unassigned Class Teacher'}
-                                  </span>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                                  {detail.subjectBreakdown.map((subItem) => {
-                                    const canEditMarks = isAdmin || isTeacherAssignedToClass(selectedMarksClass);
-
-                                    return (
-                                      <div key={subItem.subject} className="p-3 bg-[var(--surf2)]/70 border border-[var(--b)] rounded-xl flex items-center justify-between gap-2">
-                                        <div>
-                                          <div className="text-[12px] font-bold text-[var(--tx)]">{subItem.subject}</div>
-                                          <div className="text-[10px] text-[var(--tx3)] mt-0.5">Max Marks: {subItem.maxMarks}</div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          {canEditMarks ? (
-                                            <input
-                                              type="number"
-                                              value={subItem.mark !== null ? subItem.mark : ''}
-                                              placeholder="--"
-                                              min={0}
-                                              max={subItem.maxMarks}
-                                              onClick={(e) => e.stopPropagation()}
-                                              onChange={(e) => {
-                                                const raw = e.target.value;
-                                                if (raw === '') {
-                                                  handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, null, student.id);
-                                                } else {
-                                                  let val = Number(raw);
-                                                  if (isNaN(val)) return;
-                                                  if (val > subItem.maxMarks) {
-                                                    val = subItem.maxMarks;
-                                                  }
-                                                  if (val < 0) {
-                                                    val = 0;
-                                                  }
-                                                  handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val, student.id);
-                                                }
-                                              }}
-                                              className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner placeholder:text-[var(--tx3)] placeholder:font-bold"
-                                            />
-                                          ) : (
-                                            <span className="font-bold text-[12.5px] text-[var(--tx)]">
-                                              {subItem.mark !== null ? subItem.mark : '--'}
-                                            </span>
-                                          )}
-                                          <span className="text-[11px] font-semibold text-[var(--tx2)]">({subItem.pctDisplay})</span>
-                                          {subItem.grade !== '--' ? (
-                                            <Badge variant={subItem.grade === 'A+' ? 'purple' : subItem.grade === 'A' ? 'teal' : subItem.grade === 'B+' ? 'blue' : 'amber'}>
-                                              {subItem.grade}
-                                            </Badge>
-                                          ) : (
-                                            <span className="text-[11px] text-[var(--tx3)] font-medium">--</span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+                      return (
+                        <Fragment key={student.roll}>
+                          <tr
+                            onClick={() => toggleStudentExpand(student.roll)}
+                            className={`border-b border-[var(--b)] transition-colors cursor-pointer ${isExpanded ? 'bg-[var(--surf2)] font-semibold' : 'hover:bg-[var(--surf2)]'
+                              }`}
+                          >
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2.5">
+                                <Avatar initials={student.init} bg={avatarColor.bg} color={avatarColor.color} />
+                                <span className="font-bold text-[13px] text-[var(--tx)]">{student.name}</span>
                               </div>
                             </td>
+                            <td className="px-3 py-3 font-mono text-[11.5px] text-[var(--tx3)]">{student.roll}</td>
+                            <td className="px-3 py-3 text-[12px] text-[var(--tx3)]">{detail.totalMaxMarks}</td>
+                            <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.totalMarksObtainedDisplay}</td>
+                            <td className="px-3 py-3 font-bold text-[13px] text-[var(--tx)]">{detail.overallPctDisplay}</td>
+                            <td className="px-3 py-3">
+                              {detail.hasAnyMark ? (
+                                <Badge variant={detail.overallGrade === 'A+' ? 'purple' : detail.overallGrade === 'A' ? 'teal' : detail.overallGrade === 'B+' ? 'blue' : 'amber'}>
+                                  {detail.overallGrade}
+                                </Badge>
+                              ) : (
+                                <span className="text-[12px] text-[var(--tx3)] font-medium">--</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-right">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleStudentExpand(student.roll);
+                                }}
+                                className="p-1.5 rounded-lg text-[var(--tx3)] hover:bg-[var(--surf3)] transition-colors cursor-pointer inline-flex items-center gap-1 text-[11px]"
+                                title="Toggle Subject Marks"
+                              >
+                                <span>{isExpanded ? 'Hide Subjects' : 'View Subjects'}</span>
+                                {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              </button>
+                            </td>
                           </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-          {studentsToShow.length > 0 && marksExams.length > 0 && isCurrentMarksExamCompleted && (
-            <div className="mt-4 pt-3 border-t border-[var(--b)] flex flex-wrap items-center justify-between gap-3">
-              <div className="text-[11.5px] text-[var(--tx3)] font-medium">
-                {!isAdmin
-                  ? isTeacherAssignedToClass(selectedMarksClass)
-                    ? 'Faculty Mode: Entered numbers remain in Draft Mode. Click "Save Marks" below to commit changes to the database and update Admin Preview.'
-                    : 'Read-Only Mode: Only the assigned class teacher can enter or save marks for this class.'
-                  : 'Admin Mode: You can view and edit marks for any class.'}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleSaveMarks}
-                  disabled={savingMarks || !selectedMarksExamId || (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass))}
-                  className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
-                >
-                  {savingMarks ? (
-                    <span>Saving...</span>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={15} />
-                      <span>Save Marks</span>
-                    </>
-                  )}
-                </button>
-              </div>
+
+                          {isExpanded && (
+                            <tr className="bg-[var(--surf2)] border-b border-[var(--b)]">
+                              <td colSpan={7} className="p-3.5">
+                                <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 shadow-sm space-y-3">
+                                  <div className="flex items-center justify-between border-b border-[var(--b)] pb-2.5">
+                                    <div className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-2">
+                                      <BookOpen size={14} className="text-[var(--blue-tx)]" />
+                                      Subject-wise Marks for Class {selectedMarksClass} — <span className="text-[var(--blue-tx)]">{student.name}</span> (Roll: {student.roll})
+                                      {canEdit && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleClearStudentMarks(student);
+                                          }}
+                                          className="ml-2 px-2 py-0.5 rounded text-[10px] font-semibold bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 hover:opacity-90 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1"
+                                          title="Clear all subject marks"
+                                        >
+                                          Clear Marks
+                                        </button>
+                                      )}
+                                    </div>
+                                    <span className="text-[11px] text-[var(--tx3)] font-medium">
+                                      {isAdmin ? 'Admin Edit Mode: Adjust subject marks below' : isTeacherAssignedToClass(selectedMarksClass) ? 'Faculty Marks Entry Mode: Adjust subject marks below' : 'Read-Only Mode: Unassigned Class Teacher'}
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                    {detail.subjectBreakdown.map((subItem) => {
+                                      const canEditMarks = isAdmin || isTeacherAssignedToClass(selectedMarksClass);
+
+                                      return (
+                                        <div key={subItem.subject} className="p-3 bg-[var(--surf2)]/70 border border-[var(--b)] rounded-xl flex items-center justify-between gap-2">
+                                          <div>
+                                            <div className="text-[12px] font-bold text-[var(--tx)]">{subItem.subject}</div>
+                                            <div className="text-[10px] text-[var(--tx3)] mt-0.5">Max Marks: {subItem.maxMarks}</div>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            {canEditMarks ? (
+                                              <input
+                                                type="number"
+                                                value={subItem.mark !== null ? subItem.mark : ''}
+                                                placeholder="--"
+                                                min={0}
+                                                max={subItem.maxMarks}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onChange={(e) => {
+                                                  const raw = e.target.value;
+                                                  if (raw === '') {
+                                                    handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, null, student.id);
+                                                  } else {
+                                                    let val = Number(raw);
+                                                    if (isNaN(val)) return;
+                                                    if (val > subItem.maxMarks) {
+                                                      val = subItem.maxMarks;
+                                                    }
+                                                    if (val < 0) {
+                                                      val = 0;
+                                                    }
+                                                    handleUpdateStudentMark(selectedMarksExamId, subItem.subject, student.roll, val, student.id);
+                                                  }
+                                                }}
+                                                className="w-14 bg-[var(--surf)] border border-[var(--b)] rounded-lg px-2 py-1 text-[12px] font-bold text-[var(--tx)] text-center outline-none focus:border-[var(--blue)] shadow-inner placeholder:text-[var(--tx3)] placeholder:font-bold"
+                                              />
+                                            ) : (
+                                              <span className="font-bold text-[12.5px] text-[var(--tx)]">
+                                                {subItem.mark !== null ? subItem.mark : '--'}
+                                              </span>
+                                            )}
+                                            <span className="text-[11px] font-semibold text-[var(--tx2)]">({subItem.pctDisplay})</span>
+                                            {subItem.grade !== '--' ? (
+                                              <Badge variant={subItem.grade === 'A+' ? 'purple' : subItem.grade === 'A' ? 'teal' : subItem.grade === 'B+' ? 'blue' : 'amber'}>
+                                                {subItem.grade}
+                                              </Badge>
+                                            ) : (
+                                              <span className="text-[11px] text-[var(--tx3)] font-medium">--</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
-          )}
-        </Card>
-      )}
+            {studentsToShow.length > 0 && marksExams.length > 0 && !isUpcomingExam && (
+              <div className="mt-4 pt-3 border-t border-[var(--b)] flex flex-wrap items-center justify-between gap-3">
+                <div className="text-[11.5px] text-[var(--tx3)] font-medium">
+                  {!isAdmin
+                    ? isTeacherAssignedToClass(selectedMarksClass)
+                      ? 'Faculty Mode: Entered numbers remain in Draft Mode. Click "Save Marks" below to commit changes to the database and update Admin Preview.'
+                      : 'Read-Only Mode: Only the assigned class teacher can enter or save marks for this class.'
+                    : 'Admin Mode: You can view and edit marks for any class.'}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveMarks}
+                    disabled={savingMarks || !selectedMarksExamId || (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass))}
+                    className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
+                  >
+                    {savingMarks ? (
+                      <span>Saving...</span>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={15} />
+                        <span>Save Marks</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
+        );
+      })()}
 
       {activeTab === 'designer' && (
         selectedExamId === null ? (
