@@ -434,6 +434,7 @@ function ExamScheduleDesigner({
   };
 
   const [isEditing, setIsEditing] = useState(() => {
+    if (!isAdmin) return false;
     const examSchedules = getScheduleForExam(schedules, exam, exams);
     const totalEntries = countScheduleEntries(examSchedules);
     return totalEntries === 0;
@@ -920,7 +921,8 @@ export function Examinations() {
   const { user } = useAuth();
   const { alert, confirm } = useDialog();
   const roleStr = String(user?.role || '').toLowerCase();
-  const isAdmin = roleStr === 'admin' || roleStr.includes('admin') || roleStr === 'principal' || roleStr === 'superadmin' || roleStr === 'super_admin';
+  const hasAdminRole = Array.isArray(user?.roles) && user.roles.some((r: string) => String(r).toLowerCase().includes('admin'));
+  const isAdmin = roleStr === 'admin' || roleStr.includes('admin') || roleStr === 'principal' || roleStr === 'superadmin' || roleStr === 'super_admin' || hasAdminRole;
   // Faculty/Teacher role — can enter marks for their assigned class
   const isFaculty = roleStr === 'faculty' || roleStr === 'teacher' || roleStr.includes('teacher') || roleStr.includes('faculty') || roleStr === 'staff';
   // Only admin and faculty/teacher may access marks entry/preview
@@ -2785,10 +2787,12 @@ export function Examinations() {
               <button onClick={exportExamsToExcel} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold">
                 Export
               </button>
-              <label className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold">
-                <input type="file" accept=".xlsx, .xls, .csv" onChange={handleImportExamsExcel} className="hidden" />
-                Import
-              </label>
+              {isAdmin && (
+                <label className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] border border-[var(--b)] bg-[var(--surf2)] rounded-lg cursor-pointer hover:bg-[var(--surf3)] text-[var(--tx)] font-semibold">
+                  <input type="file" accept=".xlsx, .xls, .csv" onChange={handleImportExamsExcel} className="hidden" />
+                  Import
+                </label>
+              )}
               {isAdmin && (
                 <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 font-semibold">
                   <Plus size={12} /> Create Exam
@@ -2797,7 +2801,7 @@ export function Examinations() {
             </div>
           </div>
 
-          {selectedExamIds.length > 0 && (
+          {isAdmin && selectedExamIds.length > 0 && (
             <div className="flex items-center justify-between bg-[var(--blue-bg)] border border-[var(--blue-tx)]/25 rounded-lg p-3 mb-4 animate-in fade-in slide-in-from-top-1 duration-200">
               <span className="text-[12px] text-[var(--blue-tx)] font-semibold">{selectedExamIds.length} exams selected</span>
               <div className="flex gap-2">
@@ -2816,20 +2820,22 @@ export function Examinations() {
                 onClick={() => handleExamCardClick(exam)}
                 className={`bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 cursor-pointer hover:border-[var(--blue)]/50 hover:shadow-md transition-all ${isSelected ? 'bg-[var(--blue-bg)]/10' : ''}`}
               >
-                <div onClick={(e) => e.stopPropagation()} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedExamIds(prev => [...prev, exam.id]);
-                      } else {
-                        setSelectedExamIds(prev => prev.filter(id => id !== exam.id));
-                      }
-                    }}
-                    className="cursor-pointer rounded border-[var(--b)]"
-                  />
-                </div>
+                {isAdmin && (
+                  <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedExamIds(prev => [...prev, exam.id]);
+                        } else {
+                          setSelectedExamIds(prev => prev.filter(id => id !== exam.id));
+                        }
+                      }}
+                      className="cursor-pointer rounded border-[var(--b)]"
+                    />
+                  </div>
+                )}
                 <div className="w-12 h-12 rounded-xl bg-[var(--blue-bg)] flex items-center justify-center flex-shrink-0">
                   <BookOpen size={18} className="text-[var(--blue-tx)]" />
                 </div>
