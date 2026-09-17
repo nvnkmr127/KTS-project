@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { useAuth } from '../context/AuthContext';
 import { Users, Calendar, Clock, AlertCircle, X, Loader2, Check, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Reusable Custom Date Picker Component
@@ -225,6 +226,7 @@ const findNextValidDate = (startDateStr: string, holidays: Record<string, string
 };
 
 const Substitute = () => {
+  const { user } = useAuth();
   const getLocalDateString = () => {
     const d = new Date();
     const year = d.getFullYear();
@@ -382,6 +384,25 @@ const Substitute = () => {
       if (Array.isArray(data)) {
         setSchedule(data);
       }
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        const absentStaffName = staffList.find(s => String(s.id) === String(selectedStaff))?.name || 'Teacher';
+        const subStaffName = staffList.find(s => String(s.id) === String(selectedSubstitute))?.name || 'Substitute';
+        await api.recordActivityLog({
+          log_name: 'substitute',
+          event: 'created',
+          description: `${actorName} assigned ${subStaffName} as substitute for ${absentStaffName} on ${selectedDate}.`,
+          properties: {
+            absent_teacher: absentStaffName,
+            substitute_teacher: subStaffName,
+            date: selectedDate,
+            notes,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
 
       setSuccessMsg('Substitute assigned successfully!');
       setTimeout(() => setSuccessMsg(''), 3000);

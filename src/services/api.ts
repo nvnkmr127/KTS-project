@@ -667,6 +667,28 @@ export const api = {
 
   // ── Activity Logs ────────────────────────────────────────────────────
 
+  async recordActivityLog(data: {
+    log_name?: string;
+    event?: string;
+    description: string;
+    properties?: Record<string, any>;
+  }) {
+    try {
+      clearApiCache('activity-logs');
+      return await this.createResource('activity-logs', data);
+    } catch {
+      try {
+        return await request('/activity-logs', {
+          method: 'POST',
+          body: JSON.stringify(data),
+          silent: true,
+        });
+      } catch {
+        return null;
+      }
+    }
+  },
+
   async getActivityLogs(params: Record<string, string> = {}) {
     const query = new URLSearchParams(params).toString();
     return request(`/activity-logs${query ? `?${query}` : ''}`);

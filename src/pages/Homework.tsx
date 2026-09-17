@@ -25,6 +25,7 @@ const DEFAULT_CLASSES = ['6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', 
 
 /* ── Admin View ── */
 function AdminHomeworkView() {
+  const { user } = useAuth();
   const { confirm } = useDialog();
   const [entries, setEntries] = useState<HomeworkEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,6 +68,24 @@ function AdminHomeworkView() {
         submissions_received: 0,
         total_students: 35,
       });
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'homework',
+          event: 'created',
+          description: `${actorName} assigned homework "${fTitle}" (${fSubject}) for Class ${fClass}.`,
+          properties: {
+            title: fTitle,
+            subject: fSubject,
+            class_name: fClass,
+            due_date: fDue,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       setFTitle(''); setFSubject(''); setFDesc(''); setFDue('');
       setShowCreate(false);
       loadEntries();
@@ -80,7 +99,25 @@ function AdminHomeworkView() {
   const handleDelete = async (id: string) => {
     if (!await confirm('Delete this homework assignment?', 'Delete Homework', true)) return;
     try {
+      const hwToDelete = entries.find(h => String(h.id) === String(id));
       await api.deleteResource('homework', id);
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'homework',
+          event: 'deleted',
+          description: `${actorName} deleted homework "${hwToDelete?.title || 'Homework'}" for Class ${hwToDelete?.batch_name || ''}.`,
+          properties: {
+            homework_id: id,
+            title: hwToDelete?.title,
+            class_name: hwToDelete?.batch_name,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       loadEntries();
     } catch (err) {
       console.error('Error deleting homework:', err);
@@ -252,6 +289,24 @@ function TeacherHomeworkView() {
         submissions_received: 0,
         total_students: 35,
       });
+
+      try {
+        const actorName = user?.name || 'Staff Member';
+        await api.recordActivityLog({
+          log_name: 'homework',
+          event: 'created',
+          description: `${actorName} assigned homework "${fTitle}" (${fSubject}) for Class ${fClass}.`,
+          properties: {
+            title: fTitle,
+            subject: fSubject,
+            class_name: fClass,
+            due_date: fDue,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       setFTitle(''); setFDesc(''); setFDue('');
       setShowCreate(false);
       loadEntries();

@@ -11,6 +11,7 @@ import { StaffFormModal } from '../components/Staff/StaffFormModal';
 import { StaffPayslipModal } from '../components/Staff/StaffPayslipModal';
 
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import * as XLSX from 'xlsx-js-style';
 import { downloadSheet } from '../utils/excel';
@@ -62,7 +63,8 @@ const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
 type ModalState = { type: 'add' | 'view' | 'edit'; staff?: StaffMember } | null;
 
 export function StaffManagement() {
-  const { alert, confirm } = useDialog();
+  const { user } = useAuth();
+  const { confirm, alert } = useDialog();
   const { leaveRequests } = useApp();
   const [staffList, setStaffList] = useState<StaffMember[]>(() => {
     try {
@@ -169,6 +171,21 @@ export function StaffManagement() {
     try {
       await Promise.all(selectedIds.map(id => api.deleteResource('faculty', id)));
       setStaffList(prev => prev.map(s => selectedIds.includes(s.id) ? { ...s, status: 'Resigned' } : s));
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'staff',
+          event: 'deleted',
+          description: `${actorName} moved ${selectedIds.length} staff members to Recycle Bin.`,
+          properties: {
+            staff_count: selectedIds.length,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       setSelectedIds([]);
     } catch (err) {
       console.error('Bulk delete failed', err);
@@ -739,6 +756,25 @@ export function StaffManagement() {
           status: res.status ? res.status.charAt(0).toUpperCase() + res.status.slice(1) : 'Active',
           salary: typeof res.salary === 'string' ? parseFloat(res.salary) : res.salary
         }, ...prev]);
+
+        try {
+          const actorName = user?.name || 'Super Admin';
+          await api.recordActivityLog({
+            log_name: 'staff',
+            event: 'created',
+            description: `${actorName} created staff account '${nameVal}' (${emailVal || ''}).`,
+            properties: {
+              staff_name: nameVal,
+              designation: designationVal,
+              department: departmentVal,
+              email: emailVal,
+              phone: phoneVal,
+              salary: salaryVal,
+              marked_by: actorName,
+              actor_name: actorName,
+            },
+          });
+        } catch { /* empty */ }
       } catch (err) {
         console.error('Failed to create staff', err);
       }
@@ -767,6 +803,22 @@ export function StaffManagement() {
           status: res.status ? res.status.charAt(0).toUpperCase() + res.status.slice(1) : 'Active',
           salary: typeof res.salary === 'string' ? parseFloat(res.salary) : res.salary
         } : s));
+
+        try {
+          const actorName = user?.name || 'Super Admin';
+          await api.recordActivityLog({
+            log_name: 'staff',
+            event: 'updated',
+            description: `${actorName} updated staff profile for '${nameVal}'.`,
+            properties: {
+              staff_name: nameVal,
+              designation: designationVal,
+              department: departmentVal,
+              marked_by: actorName,
+              actor_name: actorName,
+            },
+          });
+        } catch { /* empty */ }
       } catch (err) {
         console.error('Failed to update staff', err);
       }
@@ -777,8 +829,24 @@ export function StaffManagement() {
   const handleDelete = async (id: string) => {
     if (!(await confirm('Are you sure you want to move this staff member to the recycle bin? You can restore them later.', 'Move Staff Member to Recycle Bin', true))) return;
     try {
+      const staffToDelete = staffList.find(s => String(s.id) === String(id));
       await api.deleteResource('faculty', id);
       setStaffList(prev => prev.map(s => s.id === id ? { ...s, status: 'Resigned' as const } : s));
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'staff',
+          event: 'deleted',
+          description: `${actorName} moved staff member '${staffToDelete?.name || 'Staff'}' to Recycle Bin.`,
+          properties: {
+            staff_id: id,
+            staff_name: staffToDelete?.name,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
     } catch (err) {
       console.error('Failed to delete staff', err);
     }

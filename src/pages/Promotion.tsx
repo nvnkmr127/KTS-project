@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { addLocalAlumni } from '../utils/alumniStore';
 
@@ -35,6 +36,7 @@ interface StudentPromotionState {
 }
 
 export function Promotion() {
+  const { user } = useAuth();
   const [academicYears, setAcademicYears] = useState<{ id: string; name: string }[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   
@@ -369,6 +371,25 @@ export function Promotion() {
           alumniCount > 0 ? ` ${alumniCount} student(s) moved to Alumni network.` : ''
         }${errorCount > 0 ? ` ${errorCount} failed.` : ''}`
       });
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        const srcBatchName = selectedSourceBatch?.name || 'Class';
+        const tgtBatchName = targetBatches.find(b => b.id === targetBatch)?.name || 'Next Class';
+        await api.recordActivityLog({
+          log_name: 'promotion',
+          event: 'updated',
+          description: `${actorName} executed student promotion from ${srcBatchName} to ${tgtBatchName} (${successCount} student(s) updated).`,
+          properties: {
+            source_batch: srcBatchName,
+            target_batch: tgtBatchName,
+            success_count: successCount,
+            alumni_count: alumniCount,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
       
       // Reload
       const data = await api.getResources('students', { batch_id: sourceBatch, limit: '1000' });

@@ -483,6 +483,25 @@ function TeacherDiaryView() {
         diary_date: new Date().toISOString().slice(0, 10),
         parents_count: 0,
       });
+
+      try {
+        const actorName = user?.name || 'Staff Member';
+        await api.recordActivityLog({
+          log_name: 'diary',
+          event: 'created',
+          description: `${actorName} published daily diary update for Class ${selectedClass}.`,
+          properties: {
+            class_name: selectedClass,
+            topics,
+            homework,
+            notes,
+            diary_date: new Date().toISOString().slice(0, 10),
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       setTopics('');
       setHomework('');
       setNotes('');

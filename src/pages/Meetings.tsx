@@ -4,6 +4,7 @@ import { KPICard } from '../components/KPICard';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { EmptyState } from '../components/EmptyState';
+import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 
@@ -72,26 +73,61 @@ export function Meetings() {
 
   const handleCreate = () => {
     if (!fTitle.trim() || !fDate || !fTime) return;
-    persist([
-      {
-        id: String(Date.now()),
-        title: fTitle.trim(),
-        class: fClass,
-        venue: fVenue.trim() || 'School Campus',
-        date: fDate,
-        time: fTime,
-        agenda: fAgenda.trim(),
-        createdBy: user?.name,
-      },
-      ...meetings,
-    ]);
+    const newMeeting = {
+      id: String(Date.now()),
+      title: fTitle.trim(),
+      class: fClass,
+      venue: fVenue.trim() || 'School Campus',
+      date: fDate,
+      time: fTime,
+      agenda: fAgenda.trim(),
+      createdBy: user?.name,
+    };
+    persist([newMeeting, ...meetings]);
+
+    try {
+      const actorName = user?.name || 'Super Admin';
+      api.recordActivityLog({
+        log_name: 'meeting',
+        event: 'created',
+        description: `${actorName} scheduled parent meeting "${fTitle.trim()}" for ${fClass} on ${fDate} at ${fTime}.`,
+        properties: {
+          meeting_title: fTitle.trim(),
+          class_name: fClass,
+          venue: fVenue.trim() || 'School Campus',
+          date: fDate,
+          time: fTime,
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      }).catch(() => {});
+    } catch { /* empty */ }
+
     resetForm();
     setShowCreate(false);
   };
 
   const handleDelete = async (id: string) => {
+    const meetingToDelete = meetings.find((m) => m.id === id);
     const ok = await confirm('Delete this meeting?', 'Delete Meeting');
-    if (ok) persist(meetings.filter((m) => m.id !== id));
+    if (ok) {
+      persist(meetings.filter((m) => m.id !== id));
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        api.recordActivityLog({
+          log_name: 'meeting',
+          event: 'deleted',
+          description: `${actorName} deleted meeting "${meetingToDelete?.title || 'Parent Meeting'}".`,
+          properties: {
+            meeting_id: id,
+            meeting_title: meetingToDelete?.title,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        }).catch(() => {});
+      } catch { /* empty */ }
+    }
   };
 
   const list = activeTab === 'upcoming' ? upcoming : completed;

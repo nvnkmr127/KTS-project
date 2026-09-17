@@ -289,6 +289,7 @@ function ExamScheduleDesigner({
     return { year: today.getFullYear(), month: today.getMonth() };
   };
 
+  const { user } = useAuth();
   const [year, setYear] = useState(() => getInitialYearMonth().year);
   const [month, setMonth] = useState(() => getInitialYearMonth().month);
   const [addModal, setAddModal] = useState<AddExamModal | null>(null);
@@ -393,7 +394,7 @@ function ExamScheduleDesigner({
 
   const getCalendarDateStr = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-  const addExamEntry = () => {
+  const addExamEntry = async () => {
     if (!addModal) return;
     if (isDateBeforeExam(addModal.dateStr)) return;
     const selectedSub = classSubjects.includes(newSubject) ? newSubject : (classSubjects[0] || newSubject);
@@ -416,10 +417,11 @@ function ExamScheduleDesigner({
       saveSettingToDb('examinations_schedules', updatedSchedules);
       return updatedSchedules;
     });
+
     setAddModal(null);
   };
 
-  const removeEntry = (dateStr: string, idx: number) => {
+  const removeEntry = async (dateStr: string, idx: number) => {
     setSchedules((prev) => {
       const examPrev = prev[exam.id] ?? {};
       const classPrev = examPrev[selectedClass] ?? {};
@@ -481,12 +483,60 @@ function ExamScheduleDesigner({
           {isAdmin && (
             isEditing ? (
               <button
-                onClick={() => {
+                onClick={async () => {
                   localStorage.setItem('examinations_schedules', JSON.stringify(schedules));
                   saveSettingToDb('examinations_schedules', schedules);
                   setSavedMsg(true);
-                  setTimeout(() => setSavedMsg(false), 2000);
+                  setTimeout(() => setSavedMsg(false), 2500);
                   setIsEditing(false);
+                  try {
+                    const actorName = user?.name || 'Super Admin';
+                    const examSched = schedules[exam.id] ?? {};
+                    const scheduleList: Array<{
+                      class_name: string;
+                      subject: string;
+                      date: string;
+                      timings: string;
+                      max_marks: number | string;
+                    }> = [];
+
+                    Object.entries(examSched).forEach(([cls, dates]) => {
+                      if (dates && typeof dates === 'object') {
+                        Object.entries(dates as Record<string, ExamScheduleEntry[]>).forEach(([dateStr, entries]) => {
+                          if (Array.isArray(entries)) {
+                            entries.forEach((e) => {
+                              scheduleList.push({
+                                class_name: cls,
+                                subject: e.subject,
+                                date: dateStr,
+                                timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
+                                max_marks: e.maxMarks || 100,
+                              });
+                            });
+                          }
+                        });
+                      }
+                    });
+
+                    // Sort schedule entries by date and class
+                    scheduleList.sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.class_name || '').localeCompare(b.class_name || ''));
+
+                    await api.recordActivityLog({
+                      log_name: 'exam',
+                      event: 'created',
+                      description: `${actorName} published examination timetable schedule for "${exam.name}" (${scheduleList.length} timetable entries).`,
+                      properties: {
+                        type: 'exam_schedule',
+                        exam_id: exam.id,
+                        exam_name: exam.name,
+                        schedule_list: scheduleList,
+                        total_entries: scheduleList.length,
+                        classes: Object.keys(examSched),
+                        marked_by: actorName,
+                        actor_name: actorName,
+                      },
+                    });
+                  } catch { /* empty */ }
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[11.5px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 font-medium"
               >
@@ -834,6 +884,20 @@ export function Examinations() {
             return next;
           });
 
+          try {
+            const actorName = user?.name || 'Super Admin';
+            await api.recordActivityLog({
+              log_name: 'exam',
+              event: 'created',
+              description: `${actorName} imported ${parsedExams.length} exams from Excel.`,
+              properties: {
+                exam_count: parsedExams.length,
+                marked_by: actorName,
+                actor_name: actorName,
+              },
+            });
+          } catch { /* empty */ }
+
           await alert(`Successfully imported ${parsedExams.length} exams!`, "Import Success");
           // eslint-disable-next-line unused-imports/no-unused-vars
         } catch (err) {
@@ -847,7 +911,7 @@ export function Examinations() {
     }
   };
 
-  const handleBulkExamStatusChange = (newStatus: 'Upcoming' | 'Completed' | 'Results Published') => {
+  const handleBulkExamStatusChange = async (newStatus: 'Upcoming' | 'Completed' | 'Results Published') => {
     if (selectedExamIds.length === 0) return;
     setExams(prev => {
       const next = prev.map(e => selectedExamIds.includes(e.id) ? { ...e, status: newStatus } : e);
@@ -855,6 +919,22 @@ export function Examinations() {
       saveSettingToDb('examinations_exams', next);
       return next;
     });
+
+    try {
+      const actorName = user?.name || 'Super Admin';
+      await api.recordActivityLog({
+        log_name: 'exam',
+        event: 'updated',
+        description: `${actorName} changed status of ${selectedExamIds.length} exam(s) to "${newStatus}".`,
+        properties: {
+          new_status: newStatus,
+          exam_count: selectedExamIds.length,
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      });
+    } catch { /* empty */ }
+
     setSelectedExamIds([]);
   };
 
@@ -899,6 +979,21 @@ export function Examinations() {
         saveSettingToDb('kts_student_marks', updated);
         return updated;
       });
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'exam',
+          event: 'deleted',
+          description: `${actorName} deleted ${idsToDelete.length} exams.`,
+          properties: {
+            exam_count: idsToDelete.length,
+            deleted_ids: idsToDelete,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
     }
   };
 
@@ -1023,6 +1118,24 @@ export function Examinations() {
       setStudentMarks(committed);
       setDraftMarks({});
       window.dispatchEvent(new CustomEvent('kts:student_marks_updated', { detail: committed }));
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        const exName = exams.find(e => e.id === selectedMarksExamId)?.name || 'Exam';
+        await api.recordActivityLog({
+          log_name: 'marks',
+          event: 'updated',
+          description: `${actorName} saved student evaluation marks for Class ${selectedMarksClass} in ${exName}.`,
+          properties: {
+            class_name: selectedMarksClass,
+            exam_id: selectedMarksExamId,
+            exam_name: exName,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       await alert('Marks Saved Successfully', `Student marks for Class ${selectedMarksClass} have been saved to the database. They are now visible in both Admin and Faculty logins.`);
     } catch (err) {
       console.error('Error saving marks to DB:', err);
@@ -1531,6 +1644,25 @@ export function Examinations() {
     localStorage.setItem('examinations_exams', JSON.stringify(updatedExams));
     saveSettingToDb('examinations_exams', updatedExams);
 
+    try {
+      const actorName = user?.name || 'Super Admin';
+      await api.recordActivityLog({
+        log_name: 'exam',
+        event: 'created',
+        description: `${actorName} created new exam "${newExam.name}" for ${newExam.class}.`,
+        properties: {
+          exam_name: newExam.name,
+          class_name: newExam.class,
+          subject: newExam.subject,
+          exam_date: newExam.date,
+          max_marks: newExam.maxMarks,
+          status: newExam.status,
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      });
+    } catch { /* empty */ }
+
     setShowCreate(false);
     setCreateName('');
     setSelectedCreateClasses(['All Classes']);
@@ -1561,6 +1693,20 @@ export function Examinations() {
 
     localStorage.setItem('examinations_exams', JSON.stringify(updatedExams));
     saveSettingToDb('examinations_exams', updatedExams);
+
+    try {
+      const actorName = user?.name || 'Super Admin';
+      await api.recordActivityLog({
+        log_name: 'exam',
+        event: 'deleted',
+        description: `${actorName} deleted exam "${examName}".`,
+        properties: {
+          exam_name: examName,
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      });
+    } catch { /* empty */ }
 
     // Delete from SQL exams table
     try {
@@ -1639,14 +1785,55 @@ export function Examinations() {
     setInvigilations(updated);
     localStorage.setItem('kts_exam_invigilations', JSON.stringify(updated));
     saveSettingToDb('kts_exam_invigilations', updated);
+
+    try {
+      const actorName = user?.name || 'Super Admin';
+      await api.recordActivityLog({
+        log_name: 'exam',
+        event: 'created',
+        description: `${actorName} assigned invigilator ${selectedStaff.name} to ${newInv.examName} (${newInv.subject}) in Room ${allotRoom}.`,
+        properties: {
+          exam_name: newInv.examName,
+          class_name: allotClass,
+          subject: allotSubject,
+          exam_date: targetDate,
+          time_slot: allotTimeSlot,
+          room_number: allotRoom,
+          invigilator_name: selectedStaff.name,
+          staff_name: selectedStaff.name,
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      });
+    } catch { /* empty */ }
+
     setShowAllotModal(false);
   };
 
-  const handleDeleteInvigilation = (id: string) => {
+  const handleDeleteInvigilation = async (id: string) => {
+    const invToDelete = invigilations.find((i) => i.id === id);
     const updated = invigilations.filter((i) => i.id !== id);
     setInvigilations(updated);
     localStorage.setItem('kts_exam_invigilations', JSON.stringify(updated));
     saveSettingToDb('kts_exam_invigilations', updated);
+
+    if (invToDelete) {
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'exam',
+          event: 'deleted',
+          description: `${actorName} removed invigilation assignment for ${invToDelete.staffName} (${invToDelete.examName}).`,
+          properties: {
+            exam_name: invToDelete.examName,
+            invigilator_name: invToDelete.staffName,
+            room_number: invToDelete.room,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+    }
   };
 
   const handleExamCardClick = (exam: Exam) => {

@@ -393,6 +393,25 @@ export function Leave() {
       reason: applyReason,
       status: 'Pending',
     });
+
+    try {
+      const actorName = user?.name || 'Staff Member';
+      api.recordActivityLog({
+        log_name: 'leave',
+        event: 'created',
+        description: `${actorName} applied for ${days} day(s) ${applyType} from ${applyFrom} to ${applyTo}.`,
+        properties: {
+          leave_type: applyType,
+          from: applyFrom,
+          to: applyTo,
+          days,
+          reason: applyReason,
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      }).catch(() => {});
+    } catch { /* empty */ }
+
     setHasUnsavedChanges(false);
     setShowApply(false);
     setApplyFrom('');

@@ -5,6 +5,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { STAFF } from './StaffManagement';
 import { getClassWeight } from './Students';
 
@@ -49,6 +50,7 @@ async function saveSettingToDb(key: string, value: any) {
 }
 
 export function Classes() {
+  const { user } = useAuth();
   const { selectedAcademicYearId } = useApp();
   const [classes, setClasses] = useState<ClassData[]>([]);
   // Pre-populate teachers from local storage / STAFF constant so dropdown always works
@@ -303,6 +305,24 @@ export function Classes() {
           class_teacher_id: Number(teacherId),
         });
       }
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        const assignedTeacher = teachers.find(t => String(t.id) === String(teacherId));
+        await api.recordActivityLog({
+          log_name: 'staff',
+          event: 'updated',
+          description: `${actorName} assigned class teacher ${assignedTeacher?.name || 'Teacher'} to Section ${showAssignTeacher.name}.`,
+          properties: {
+            section_name: showAssignTeacher.name,
+            teacher_id: teacherId,
+            teacher_name: assignedTeacher?.name,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       setShowAssignTeacher(null);
       loadClasses();
     } catch (err) {
@@ -368,6 +388,25 @@ export function Classes() {
       localStorage.setItem(`batch_subjects_${classNum}${sectionLetter}`, JSON.stringify(selectedSubjects));
       localStorage.setItem(`batch_capacity_${classNum}${sectionLetter}`, capacityVal || '40');
       saveSettingToDb(`batch_subjects_${classNum}${sectionLetter}`, selectedSubjects);
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'student',
+          event: 'created',
+          description: `${actorName} created new section Class ${classNum}${sectionLetter}.`,
+          properties: {
+            class_name: classNum,
+            section_name: sectionLetter,
+            batch_name: `${classNum}${sectionLetter}`,
+            capacity: capacityVal || '40',
+            subjects: selectedSubjects,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       setShowAddSection(false);
       loadClasses();
     } catch (err) {
@@ -382,6 +421,22 @@ export function Classes() {
     setErrorMsg(null);
     try {
       await api.deleteResource('batches', deleteConfirmSection.id);
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'student',
+          event: 'deleted',
+          description: `${actorName} deleted Section ${deleteConfirmSection.name}.`,
+          properties: {
+            section_id: deleteConfirmSection.id,
+            section_name: deleteConfirmSection.name,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       setDeleteConfirmSection(null);
       loadClasses();
     } catch (err) {
@@ -439,6 +494,25 @@ export function Classes() {
         localStorage.removeItem(`batch_subjects_${oldBatchName}`);
         localStorage.removeItem(`batch_capacity_${oldBatchName}`);
       }
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'student',
+          event: 'updated',
+          description: `${actorName} updated Section Class ${classNum}${sectionLetter}.`,
+          properties: {
+            class_name: classNum,
+            section_name: sectionLetter,
+            batch_name: `${classNum}${sectionLetter}`,
+            capacity: capacityVal || '40',
+            subjects: selectedSubjects,
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
+
       setEditSectionData(null);
       loadClasses();
     } catch (err) {

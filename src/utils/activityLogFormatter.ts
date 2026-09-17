@@ -697,6 +697,8 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
   const subjectType = String(log.subject_type || '').toLowerCase();
   const lowerDesc = cleanedDesc.toLowerCase();
   const lowerRaw = rawDesc.toLowerCase();
+  const properties = log?.properties || {};
+  const attributes = properties.attributes || {};
 
   // 1. Auth Events
   if (event === 'login' || lowerDesc === 'login success' || lowerRaw.includes('logged in') || lowerRaw === 'login') {
@@ -879,8 +881,100 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
     };
   }
 
-  // 7. Timetable
-  if (lowerDesc.includes('timetable') || subjectType.includes('timetable')) {
+  // 7. Examinations & Marks (Must precede Timetable)
+  if (
+    lowerDesc.includes('exam') ||
+    lowerDesc.includes('mark') ||
+    subjectType.includes('exam') ||
+    subjectType.includes('examination') ||
+    log.log_name === 'exam' ||
+    log.log_name === 'marks' ||
+    properties.type === 'exam_schedule' ||
+    properties.type === 'exam_marks' ||
+    Array.isArray(properties.schedule_list)
+  ) {
+    const examName = properties.exam_name || properties.exam || attributes.exam_name || '';
+    const isSchedule =
+      properties.type === 'exam_schedule' ||
+      Array.isArray(properties.schedule_list) ||
+      lowerDesc.includes('exam schedule') ||
+      lowerDesc.includes('examination schedule') ||
+      lowerDesc.includes('schedule design') ||
+      lowerDesc.includes('designed exam schedule') ||
+      lowerDesc.includes('timetable schedule') ||
+      lowerDesc.includes('published examination timetable') ||
+      (lowerDesc.includes('schedule') && (lowerDesc.includes('exam') || subjectType.includes('exam') || log.log_name === 'exam'));
+    const isInvigilation = lowerDesc.includes('invigilat') || properties.invigilator_name;
+    const isMarks = lowerDesc.includes('mark') || properties.type === 'exam_marks';
+
+    if (isSchedule) {
+      return {
+        title: 'Exam Schedule Design',
+        description: cleanedDesc || (examName ? `Designed and published timetable schedule for exam "${examName}".` : 'Designed and published examination schedule.'),
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: 'EXAMINATION SCHEDULE',
+      };
+    }
+
+    if (isInvigilation) {
+      return {
+        title: 'Exam Invigilation Allotted',
+        description: cleanedDesc || 'Assigned faculty invigilator to exam hall.',
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: 'EXAMINATION SCHEDULE',
+      };
+    }
+
+    if (isMarks) {
+      return {
+        title: examName ? `Marks Recorded: ${examName}` : 'Student Marks Evaluated',
+        description: cleanedDesc || (examName ? `Recorded evaluation marks for ${examName}.` : 'Entered student evaluation marks.'),
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: examName ? `Exam: ${examName}` : 'EXAMINATION',
+      };
+    }
+
+    if (log.event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('new exam')) {
+      return {
+        title: examName ? `Exam Created: ${examName}` : 'New Examination Created',
+        description: cleanedDesc || (examName ? `Created new examination "${examName}".` : 'Created new examination record.'),
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: examName ? `Exam: ${examName}` : 'EXAMINATION',
+      };
+    }
+
+    if (log.event === 'deleted' || lowerDesc.includes('deleted')) {
+      return {
+        title: examName ? `Exam Deleted: ${examName}` : 'Examination Deleted',
+        description: cleanedDesc || (examName ? `Deleted examination "${examName}".` : 'Deleted examination record.'),
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: examName ? `Exam: ${examName}` : 'EXAMINATION',
+      };
+    }
+
+    return {
+      title: examName ? `Exam Updated: ${examName}` : 'Examination Record Updated',
+      description: cleanedDesc || (examName ? `Updated examination records for ${examName}.` : 'Configured exam schedule or entered student evaluation marks.'),
+      category: 'EXAMINATION',
+      categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+      target: examName ? `Exam: ${examName}` : 'EXAMINATION SCHEDULE',
+    };
+  }
+
+  // 8. Timetable
+  if (
+    (lowerDesc.includes('timetable') || subjectType.includes('timetable')) &&
+    !lowerDesc.includes('exam') &&
+    !subjectType.includes('exam') &&
+    log.log_name !== 'exam' &&
+    properties.type !== 'exam_schedule' &&
+    !Array.isArray(properties.schedule_list)
+  ) {
     const isCreate = event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('entry');
     return {
       title: isCreate ? 'Timetable Entry Created' : 'Timetable Modified',
@@ -891,7 +985,7 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
     };
   }
 
-  // 8. Courses & Subjects
+  // 9. Courses & Subjects
   if (lowerDesc.includes('subject') || subjectType.includes('subject')) {
     const subjMatch = rawDesc.match(/'([^']+)'/);
     const subjName = subjMatch ? subjMatch[1] : 'Subject';
@@ -954,7 +1048,7 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
     };
   }
 
-  // 9. Leave Applications
+  // 10. Leave Applications
   if (lowerDesc.includes('leave') || subjectType.includes('leave')) {
     const isApprove = lowerDesc.includes('approved');
     const isReject = lowerDesc.includes('rejected');
@@ -967,7 +1061,7 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
     };
   }
 
-  // 10. Library / Books
+  // 11. Library / Books
   if (lowerDesc.includes('book') || lowerDesc.includes('library')) {
     const bookMatch = rawDesc.match(/for '([^']+)'/) || rawDesc.match(/:\s*(.+)$/);
     const bookName = bookMatch ? bookMatch[1] : 'Book Record';
@@ -977,17 +1071,6 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
       category: 'LIBRARY',
       categoryBadgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200/60 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/40',
       target: `Book: ${bookName}`,
-    };
-  }
-
-  // 11. Examinations & Marks
-  if (lowerDesc.includes('exam') || lowerDesc.includes('mark') || subjectType.includes('exam')) {
-    return {
-      title: 'Examination Record Updated',
-      description: cleanedDesc || 'Configured exam schedule or entered student evaluation marks.',
-      category: 'EXAMINATIONS',
-      categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
-      target: 'Exams & Marks',
     };
   }
 
@@ -1115,6 +1198,7 @@ export function generateActionSummary(log: any): string {
   const attributes = properties.attributes || {};
   const old = properties.old || {};
   const lowerDesc = rawDesc.toLowerCase();
+  const subjectType = String(log.subject_type || '').toLowerCase();
 
   // 1. Fee Payments
   if (lowerDesc.includes('payment') || lowerDesc.includes('fee payment')) {
@@ -1194,16 +1278,61 @@ export function generateActionSummary(log: any): string {
   }
 
   // 5. Exams & Marks
-  if (lowerDesc.includes('mark') || lowerDesc.includes('exam')) {
-    const student = properties.student_name || attributes.student_name || properties.name || attributes.name || 'student';
+  // 5. Exams & Marks
+  if (
+    lowerDesc.includes('mark') ||
+    lowerDesc.includes('exam') ||
+    subjectType.includes('exam') ||
+    subjectType.includes('examination') ||
+    log.log_name === 'exam' ||
+    log.log_name === 'marks' ||
+    properties.type === 'exam_schedule' ||
+    properties.type === 'exam_marks' ||
+    Array.isArray(properties.schedule_list)
+  ) {
+    const isSchedule =
+      properties.type === 'exam_schedule' ||
+      Array.isArray(properties.schedule_list) ||
+      lowerDesc.includes('exam schedule') ||
+      lowerDesc.includes('examination schedule') ||
+      lowerDesc.includes('schedule design') ||
+      lowerDesc.includes('designed exam schedule') ||
+      lowerDesc.includes('timetable schedule') ||
+      lowerDesc.includes('published examination timetable') ||
+      (lowerDesc.includes('schedule') && (lowerDesc.includes('exam') || subjectType.includes('exam') || log.log_name === 'exam'));
+    const isInvigilation = lowerDesc.includes('invigilat') || properties.invigilator_name;
+    const exam = properties.exam_name || properties.exam || attributes.exam_name || '';
+
+    if (isSchedule) {
+      return `${userName} designed and published timetable schedule for examination${exam ? ` "${exam}"` : ''}.`;
+    }
+
+    if (isInvigilation) {
+      const invigilator = properties.invigilator_name || properties.staff_name || 'faculty';
+      return `${userName} assigned invigilator ${invigilator} to ${exam ? `"${exam}"` : 'examination'}.`;
+    }
+
+    const student = properties.student_name || attributes.student_name || properties.name || attributes.name;
     const subject = properties.subject_name || properties.subject || attributes.subject_name || 'subject';
-    const exam = properties.exam_name || properties.exam || attributes.exam_name || 'examination';
     const oldMarks = old.marks ?? properties.previous_marks;
     const newMarks = attributes.marks ?? properties.marks ?? properties.new_marks;
-    if (oldMarks !== undefined && newMarks !== undefined) {
-      return `${userName} updated ${student}'s ${subject} marks from ${oldMarks} to ${newMarks} in ${exam}.`;
+
+    if (student && (oldMarks !== undefined || newMarks !== undefined)) {
+      if (oldMarks !== undefined && newMarks !== undefined) {
+        return `${userName} updated ${student}'s ${subject} marks from ${oldMarks} to ${newMarks} in ${exam || 'examination'}.`;
+      }
+      return `${userName} updated examination evaluation records for ${student}.`;
     }
-    return `${userName} updated examination evaluation records for ${student}.`;
+
+    if (event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('new exam')) {
+      return `${userName} created new examination${exam ? ` "${exam}"` : ''}.`;
+    }
+
+    if (event === 'deleted' || lowerDesc.includes('deleted')) {
+      return `${userName} deleted examination${exam ? ` "${exam}"` : ''}.`;
+    }
+
+    return `${userName} updated examination records${exam ? ` for "${exam}"` : ''}.`;
   }
 
   // 6. Leave

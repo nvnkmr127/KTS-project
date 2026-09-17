@@ -219,11 +219,13 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
   const isExamSchedule =
     !isInvigilation &&
     !isExamMarks &&
-    (rawDesc.includes('exam') || subjectType.includes('exam') || subjectType.includes('examination')) &&
-    Boolean(properties.exam_name || properties.subject_name || properties.max_marks || properties.schedule || attributes.exam_name || attributes.max_marks);
+    (rawDesc.includes('exam') || subjectType.includes('exam') || subjectType.includes('examination') || log.log_name === 'exam' || activity.category === 'EXAMINATION' || activity.category === 'EXAMINATIONS' || properties.type === 'exam_schedule' || Array.isArray(properties.schedule_list)) &&
+    Boolean(properties.exam_name || properties.subject_name || properties.max_marks || properties.schedule || properties.schedule_list || attributes.exam_name || attributes.max_marks || properties.type === 'exam_schedule');
 
   // 5. Timetable Designing
   const isTimetable =
+    !isExamSchedule &&
+    !rawDesc.includes('exam') &&
     (rawDesc.includes('timetable') || subjectType.includes('timetable')) &&
     Boolean(properties.period !== undefined || properties.day || properties.substitute_teacher || properties.previous_teacher || properties.new_teacher || attributes.period !== undefined);
 
@@ -781,98 +783,205 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       )}
 
       {/* 4. EXAMINATION, SCHEDULE & MARKS CARD */}
-      {(isExamSchedule || isExamMarks || isInvigilation) && (
-        <div className="bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-900/40 rounded-xl p-4 text-[12px] space-y-3">
-          <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300 font-bold text-[12.5px] border-b border-purple-200/50 dark:border-purple-900/40 pb-2">
-            <GraduationCap size={15} />
-            <span>
-              {isInvigilation ? 'Exam Invigilation Assignment' : isExamMarks ? 'Exam Evaluation & Marks Allotment' : 'Examination Creation & Schedule'}
-            </span>
-          </div>
+      {(isExamSchedule || isExamMarks || isInvigilation) && (() => {
+        const examName =
+          properties.exam_name ||
+          properties.exam ||
+          attributes.exam_name ||
+          (activity.target?.startsWith('Exam:') ? activity.target.replace(/^Exam:\s*/i, '') : '') ||
+          '';
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Examination</span>
-              <span className="font-bold text-slate-900 dark:text-white">
-                {properties.exam_name || properties.exam || attributes.exam_name || '—'}
+        const examScheduleList: Array<{ class_name?: string; subject?: string; timings?: string; max_marks?: any; date?: string }> = (() => {
+          if (Array.isArray(properties.schedule_list) && properties.schedule_list.length > 0) {
+            return properties.schedule_list;
+          }
+          if (Array.isArray(properties.schedules) && properties.schedules.length > 0) {
+            return properties.schedules;
+          }
+          if (properties.schedule && typeof properties.schedule === 'object') {
+            const list: any[] = [];
+            Object.entries(properties.schedule).forEach(([cls, dates]: [string, any]) => {
+              if (dates && typeof dates === 'object') {
+                Object.entries(dates).forEach(([dateStr, entries]: [string, any]) => {
+                  if (Array.isArray(entries)) {
+                    entries.forEach((e: any) => {
+                      list.push({
+                        class_name: cls,
+                        subject: e.subject || e.subject_name,
+                        date: dateStr,
+                        timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
+                        max_marks: e.maxMarks || e.max_marks || 100,
+                      });
+                    });
+                  }
+                });
+              }
+            });
+            if (list.length > 0) return list;
+          }
+          if (!isInvigilation && !isExamMarks && (properties.subject_name || properties.subject || properties.class_name || properties.class)) {
+            return [{
+              class_name: properties.class_name || properties.class || 'All Classes',
+              subject: properties.subject_name || properties.subject || 'All Subjects',
+              timings: properties.time_slot || properties.timings || properties.time || (properties.duration ? `${properties.duration}` : '—'),
+              max_marks: properties.max_marks || properties.maximum_marks || 100,
+              date: properties.exam_date || properties.date,
+            }];
+          }
+          return [];
+        })();
+
+        return (
+          <div className="bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-900/40 rounded-xl p-4 text-[12px] space-y-3">
+            <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300 font-bold text-[12.5px] border-b border-purple-200/50 dark:border-purple-900/40 pb-2">
+              <GraduationCap size={15} />
+              <span>
+                {isInvigilation ? 'Exam Invigilation Assignment' : isExamMarks ? 'Exam Evaluation & Marks Allotment' : 'Examination Creation & Schedule'}
               </span>
             </div>
 
+            {/* Centered Examination Title Banner in the middle of the card */}
+            {examName && (
+              <div className="text-center py-2.5 px-4 rounded-xl bg-purple-100/70 dark:bg-purple-900/40 border border-purple-200/80 dark:border-purple-800/40 shadow-xs">
+                <span className="text-[10.5px] uppercase tracking-wider font-semibold text-purple-600 dark:text-purple-300 block">
+                  Examination Name
+                </span>
+                <span className="text-[15.5px] sm:text-[17px] font-extrabold text-purple-950 dark:text-purple-100 tracking-tight">
+                  {examName}
+                </span>
+              </div>
+            )}
+
+            {/* Invigilation details */}
             {isInvigilation && (
-              <>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Invigilator Staff</span>
                   <span className="font-semibold text-purple-700 dark:text-purple-300">
                     {properties.invigilator_name || properties.staff_name || attributes.invigilator_name || '—'}
                   </span>
                 </div>
-
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Room / Hall No</span>
                   <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
                     {properties.hall_no || properties.room_number || attributes.hall_no || '—'}
                   </span>
                 </div>
-              </>
-            )}
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class / Batch</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.class_name || properties.batch_name || attributes.class_name || '—'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Subject</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.subject_name || properties.subject || attributes.subject_name || '—'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Maximum Marks</span>
-              <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                {properties.max_marks || properties.maximum_marks || attributes.max_marks || '—'}
-              </span>
-            </div>
-
-            {properties.pass_marks && (
-              <div>
-                <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Passing Marks</span>
-                <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                  {properties.pass_marks || attributes.pass_marks}
-                </span>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Date & Time</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {formatDateOnly(properties.exam_date || properties.date) || '—'} {properties.time_slot ? `(${properties.time_slot})` : ''}
+                  </span>
+                </div>
               </div>
             )}
 
-            {isExamMarks && (
-              <div>
-                <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Grade / Evaluation</span>
-                <span className="font-bold text-purple-700 dark:text-purple-300">
-                  {properties.grade || attributes.grade || '—'}
-                </span>
+            {/* Schedule Table containing class, subject, timings, max marks */}
+            {examScheduleList.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11.5px] font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                    <Calendar size={13} className="text-purple-600 dark:text-purple-400" />
+                    Examination Timetable & Subject Breakdown ({examScheduleList.length} {examScheduleList.length === 1 ? 'entry' : 'entries'})
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-purple-200/80 dark:border-purple-800/40 bg-white dark:bg-[var(--surf)] shadow-xs">
+                  <table className="w-full text-left text-[12px] border-collapse">
+                    <thead className="bg-purple-100/70 dark:bg-purple-900/50 text-purple-950 dark:text-purple-200 font-bold border-b border-purple-200 dark:border-purple-800/40">
+                      <tr>
+                        <th className="py-2.5 px-3.5">Class</th>
+                        <th className="py-2.5 px-3.5">Subject</th>
+                        <th className="py-2.5 px-3.5">Timings</th>
+                        <th className="py-2.5 px-3.5">Max Marks</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-purple-100 dark:divide-purple-900/30 text-slate-800 dark:text-slate-200">
+                      {examScheduleList.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-purple-50/40 dark:hover:bg-purple-900/20 transition-colors">
+                          <td className="py-2.5 px-3.5 font-semibold text-purple-900 dark:text-purple-300">
+                            {item.class_name || '—'}
+                          </td>
+                          <td className="py-2.5 px-3.5 font-medium text-slate-900 dark:text-white">
+                            {item.subject || '—'}
+                            {item.date && (
+                              <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 font-normal">
+                                {formatDateOnly(item.date)}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3.5 font-mono text-slate-700 dark:text-slate-300">
+                            {item.timings || '—'}
+                          </td>
+                          <td className="py-2.5 px-3.5 font-mono font-bold text-purple-700 dark:text-purple-300">
+                            {item.max_marks ?? '100'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Fallback info when not invigilation and no schedule table */}
+            {examScheduleList.length === 0 && !isInvigilation && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class / Batch</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {properties.class_name || properties.batch_name || attributes.class_name || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Subject</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {properties.subject_name || properties.subject || attributes.subject_name || '—'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Maximum Marks</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                    {properties.max_marks || properties.maximum_marks || attributes.max_marks || '—'}
+                  </span>
+                </div>
+                {properties.pass_marks && (
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Passing Marks</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {properties.pass_marks || attributes.pass_marks}
+                    </span>
+                  </div>
+                )}
+                {isExamMarks && (
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Grade / Evaluation</span>
+                    <span className="font-bold text-purple-700 dark:text-purple-300">
+                      {properties.grade || attributes.grade || '—'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Exam Marks Comparison */}
+            {(properties.marks !== undefined || properties.obtained_marks !== undefined || properties.new_marks !== undefined || properties.old?.marks !== undefined || attributes.marks !== undefined) && (
+              <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/40">
+                <span className="text-slate-500 dark:text-slate-400 text-[11px] block mb-1">Marks Comparison</span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 font-mono line-through font-semibold">
+                    Before: {properties.old?.marks ?? properties.previous_marks ?? '—'}
+                  </span>
+                  <ArrowRight size={13} className="text-slate-400" />
+                  <span className="px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 font-mono font-bold">
+                    After: {properties.attributes?.marks ?? properties.marks ?? properties.obtained_marks ?? properties.new_marks ?? '—'}
+                  </span>
+                </div>
               </div>
             )}
           </div>
-
-          {/* Exam Marks Comparison */}
-          {(properties.marks !== undefined || properties.obtained_marks !== undefined || properties.new_marks !== undefined || properties.old?.marks !== undefined || attributes.marks !== undefined) && (
-            <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/40">
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block mb-1">Marks Comparison</span>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 font-mono line-through font-semibold">
-                  Before: {properties.old?.marks ?? properties.previous_marks ?? '—'}
-                </span>
-                <ArrowRight size={13} className="text-slate-400" />
-                <span className="px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 font-mono font-bold">
-                  After: {properties.attributes?.marks ?? properties.marks ?? properties.obtained_marks ?? properties.new_marks ?? '—'}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* 5. TIMETABLE DESIGNING CARD */}
       {isTimetable && (
