@@ -247,7 +247,9 @@ class GenericApiController extends Controller
                             'value' => $constructedValue,
                         ]);
                     } else {
-                        $setting->value = $constructedValue;
+                        if (!empty($constructedValue) && $constructedValue !== '[]' && $constructedValue !== '{}') {
+                            $setting->value = $constructedValue;
+                        }
                     }
                     return response()->json([$setting]);
                 }
@@ -256,7 +258,7 @@ class GenericApiController extends Controller
                 $settings = $query->get();
                 foreach ($settings as $setting) {
                     $constructedValue = $this->constructSettingFromTables($setting->key);
-                    if ($constructedValue !== null) {
+                    if ($constructedValue !== null && !empty($constructedValue) && $constructedValue !== '[]' && $constructedValue !== '{}') {
                         $setting->value = $constructedValue;
                     }
                     $this->filterSettingForNonAdmin($setting, $user);
@@ -1401,6 +1403,10 @@ class GenericApiController extends Controller
             }
         }
 
+        if ($resource === 'settings') {
+            $this->syncSettingToTables($item->key, $item->value);
+        }
+
         return response()->json($item, 201);
     }
 
@@ -2053,10 +2059,63 @@ class GenericApiController extends Controller
                 }
             }
 
+            if ($key === 'examinations_exams') {
+                \Log::info('[Settings Sync] Syncing examinations_exams to exams table');
+                foreach ($data as $item) {
+                    if (!is_array($item) || empty($item['name'])) continue;
+                    $examDate = $item['date'] ?? $item['exam_date'] ?? null;
+                    $examName = trim($item['name']);
+                    $existingExam = null;
+                    if (!empty($item['id']) && is_numeric($item['id'])) {
+                        $existingExam = \App\Models\Exam::find(intval($item['id']));
+                    }
+                    if (!$existingExam) {
+                        $existingExam = \App\Models\Exam::where('name', $examName)
+                            ->where('exam_date', $examDate)
+                            ->first();
+                    }
+                    if ($existingExam) {
+                        $existingExam->update([
+                            'name' => $examName,
+                            'subject' => $item['subject'] ?? 'All Subjects',
+                            'class' => $item['class'] ?? 'All Classes',
+                            'exam_date' => $examDate,
+                            'max_marks' => intval($item['maxMarks'] ?? $item['max_marks'] ?? 100),
+                            'status' => $item['status'] ?? 'Upcoming',
+                        ]);
+                    } else {
+                        \App\Models\Exam::create([
+                            'name' => $examName,
+                            'subject' => $item['subject'] ?? 'All Subjects',
+                            'class' => $item['class'] ?? 'All Classes',
+                            'exam_date' => $examDate,
+                            'max_marks' => intval($item['maxMarks'] ?? $item['max_marks'] ?? 100),
+                            'status' => $item['status'] ?? 'Upcoming',
+                        ]);
+                    }
+                }
+            }
+
             if ($key === 'examinations_schedules') {
+                \Log::info('[Settings Sync] Syncing examinations_schedules to table with exam IDs: ' . implode(', ', array_keys($data)));
                 \App\Models\ExamSchedule::query()->delete();
+                $count = 0;
                 foreach ($data as $examId => $classes) {
                     if (!is_array($classes)) continue;
+
+                    $numericExamId = null;
+                    if (is_numeric($examId)) {
+                        $numericExamId = intval($examId);
+                    } else {
+                        $cleanDigits = preg_replace('/\D/', '', (string)$examId);
+                        if (!empty($cleanDigits) && is_numeric($cleanDigits) && strlen($cleanDigits) <= 9) {
+                            $numericExamId = intval($cleanDigits);
+                        }
+                    }
+                    if (!$numericExamId) {
+                        $numericExamId = 1;
+                    }
+
                     foreach ($classes as $className => $dates) {
                         if (!is_array($dates)) continue;
                         foreach ($dates as $dateStr => $entries) {
@@ -2064,7 +2123,7 @@ class GenericApiController extends Controller
                             foreach ($entries as $entry) {
                                 if (isset($entry['subject'])) {
                                     \App\Models\ExamSchedule::create([
-                                        'exam_id' => intval($examId),
+                                        'exam_id' => $numericExamId,
                                         'class_name' => $className,
                                         'date_str' => $dateStr,
                                         'subject' => $entry['subject'],
@@ -2072,11 +2131,13 @@ class GenericApiController extends Controller
                                         'duration' => $entry['duration'] ?? null,
                                         'max_marks' => intval($entry['maxMarks'] ?? 100),
                                     ]);
+                                    $count++;
                                 }
                             }
                         }
                     }
                 }
+                \Log::info("[Settings Sync] Successfully synced {$count} entries to exam_schedules table");
             }
 
             }); // end transaction
@@ -2093,7 +2154,14 @@ class GenericApiController extends Controller
     {
         // ── 1. HOLIDAYS ──────────────────────────────────────────────────
         if ($key === 'kts_holidays') {
+            $existing = \App\Models\Setting::where('key', 'kts_holidays')->first();
+            if ($existing && !empty($existing->value) && $existing->value !== '[]' && $existing->value !== '{}') {
+                return $existing->value;
+            }
             $holidays = \App\Models\Holiday::all();
+            if ($holidays->isEmpty()) {
+                return $existing ? $existing->value : '[]';
+            }
             $mapped = [];
             foreach ($holidays as $h) {
                 $mapped[] = [
@@ -2193,7 +2261,16 @@ class GenericApiController extends Controller
 
         // ── 5. EXAM SCHEDULES ────────────────────────────────────────────
         if ($key === 'examinations_schedules') {
+            $existing = \App\Models\Setting::where('key', 'examinations_schedules')->first();
+            if ($existing && !empty($existing->value) && $existing->value !== '[]' && $existing->value !== '{}') {
+                \Log::info('[Settings API] Returning existing examinations_schedules from Setting table: ' . substr($existing->value, 0, 150));
+                return $existing->value;
+            }
             $schedules = \App\Models\ExamSchedule::all();
+            if ($schedules->isEmpty()) {
+                \Log::info('[Settings API] examinations_schedules: No records in ExamSchedule table, returning existing value or empty object');
+                return $existing ? $existing->value : '{}';
+            }
             $mapped = [];
             foreach ($schedules as $s) {
                 $examId = (string)$s->exam_id;
@@ -2217,7 +2294,9 @@ class GenericApiController extends Controller
                     'maxMarks' => $s->max_marks,
                 ];
             }
-            return json_encode($mapped);
+            $json = json_encode($mapped);
+            \Log::info('[Settings API] Constructed examinations_schedules from ExamSchedule table: ' . substr($json, 0, 150));
+            return $json;
         }
 
         return null;

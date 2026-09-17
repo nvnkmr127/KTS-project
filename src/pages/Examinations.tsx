@@ -142,30 +142,40 @@ export function sortAndFilterExamSubjects(subjects: string[]): string[] {
 
 export function deduplicateExams(examList: Exam[]): Exam[] {
   if (!Array.isArray(examList)) return [];
-  const seenIds = new Set<string>();
-  const seenSignatures = new Set<string>();
-  const result: Exam[] = [];
 
+  // Group exams by signature: (name.toLowerCase() | date)
+  const groups: Record<string, Exam[]> = {};
   for (const ex of examList) {
     if (!ex) continue;
-    const idStr = ex.id ? String(ex.id).trim() : '';
     const name = String(ex.name || '').trim();
     if (!name || /^Examination\s+\d+$/i.test(name)) continue;
-
     const date = String(ex.date || '').trim();
-    const cls = String(ex.class || 'All Classes').trim();
+    const sig = `${name.toLowerCase()}|${date}`;
+    if (!groups[sig]) groups[sig] = [];
+    groups[sig].push(ex);
+  }
 
-    const fullSig = `${name.toLowerCase()}|${date}|${cls.toLowerCase()}`;
-    const nameDateSig = `${name.toLowerCase()}|${date}`;
+  const result: Exam[] = [];
+  const seenIds = new Set<string>();
 
-    if (idStr && seenIds.has(idStr)) continue;
-    if (seenSignatures.has(fullSig)) continue;
-    if (seenSignatures.has(nameDateSig)) continue;
+  for (const [, group] of Object.entries(groups)) {
+    // Pick best candidate: Prefer small numeric DB IDs (e.g. "1", "2", "3") over large client timestamp IDs
+    group.sort((a, b) => {
+      const aIdNum = Number(a.id);
+      const bIdNum = Number(b.id);
+      const aIsSmallInt = !isNaN(aIdNum) && aIdNum > 0 && aIdNum <= 100000;
+      const bIsSmallInt = !isNaN(bIdNum) && bIdNum > 0 && bIdNum <= 100000;
+      if (aIsSmallInt && !bIsSmallInt) return -1;
+      if (!aIsSmallInt && bIsSmallInt) return 1;
+      if (aIsSmallInt && bIsSmallInt) return aIdNum - bIdNum;
+      return String(a.id || '').length - String(b.id || '').length;
+    });
 
-    if (idStr) seenIds.add(idStr);
-    seenSignatures.add(fullSig);
-    seenSignatures.add(nameDateSig);
-    result.push(ex);
+    const chosen = group[0];
+    if (chosen && !seenIds.has(String(chosen.id))) {
+      seenIds.add(String(chosen.id));
+      result.push(chosen);
+    }
   }
 
   return result;
@@ -245,6 +255,102 @@ const INITIAL_SCHEDULES_BY_EXAM: Record<string, Record<string, ClassExamSchedule
   }
 };
 
+export function countScheduleEntries(sched: Record<string, ClassExamSchedule> | undefined): number {
+  if (!sched || typeof sched !== 'object') return 0;
+  return Object.values(sched).reduce((sum, clsSched) => {
+    if (!clsSched || typeof clsSched !== 'object') return sum;
+    return sum + Object.values(clsSched).reduce((s, arr) => s + (Array.isArray(arr) ? arr.length : 0), 0);
+  }, 0);
+}
+
+export function getScheduleForExam(
+  schedules: Record<string, Record<string, ClassExamSchedule>>,
+  exam: Exam | string | null | undefined,
+  allExams?: Exam[]
+): Record<string, ClassExamSchedule> {
+  if (!schedules || typeof schedules !== 'object' || !exam) return {};
+  const idStr = typeof exam === 'string' ? exam : String(exam.id || '').trim();
+  const nameStr = typeof exam === 'string' ? '' : String(exam.name || '').trim().toLowerCase();
+
+  // 1. Direct ID match if it has entries
+  if (idStr && countScheduleEntries(schedules[idStr]) > 0) {
+    return schedules[idStr];
+  }
+
+  // 2. Clean digits match if it has entries
+  const cleanDigits = idStr.replace(/\D/g, '');
+  if (cleanDigits && countScheduleEntries(schedules[cleanDigits]) > 0) {
+    return schedules[cleanDigits];
+  }
+  if (cleanDigits && countScheduleEntries(schedules[`exam_${cleanDigits}`]) > 0) {
+    return schedules[`exam_${cleanDigits}`];
+  }
+  if (cleanDigits && countScheduleEntries(schedules[`exam-${cleanDigits}`]) > 0) {
+    return schedules[`exam-${cleanDigits}`];
+  }
+
+  // 3. Match via allExams list or stored examinations_exams setting
+  let candidateExams: Exam[] = Array.isArray(allExams) && allExams.length > 0 ? [...allExams] : [];
+  if (candidateExams.length === 0) {
+    try {
+      const stored = localStorage.getItem('examinations_exams');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) candidateExams = parsed;
+      }
+    } catch { /* empty */ }
+  }
+  if (candidateExams.length === 0) {
+    candidateExams = DEFAULT_EXAMS;
+  }
+
+  if (nameStr) {
+    const matchingExams = candidateExams.filter(
+      (e) => e && String(e.name || '').trim().toLowerCase() === nameStr
+    );
+    for (const match of matchingExams) {
+      const matchId = String(match.id);
+      if (matchId && countScheduleEntries(schedules[matchId]) > 0) {
+        return schedules[matchId];
+      }
+      const matchDigits = matchId.replace(/\D/g, '');
+      if (matchDigits && countScheduleEntries(schedules[matchDigits]) > 0) {
+        return schedules[matchDigits];
+      }
+      if (matchDigits && countScheduleEntries(schedules[`exam_${matchDigits}`]) > 0) {
+        return schedules[`exam_${matchDigits}`];
+      }
+    }
+  }
+
+  // 4. Match by Exam Name as a key in schedules
+  if (nameStr) {
+    for (const [k, v] of Object.entries(schedules)) {
+      if (k.trim().toLowerCase() === nameStr && countScheduleEntries(v) > 0) {
+        return v;
+      }
+    }
+  }
+
+  // 5. Cross check all keys in schedules against known candidate exams
+  for (const [k, v] of Object.entries(schedules)) {
+    if (countScheduleEntries(v) > 0) {
+      const matchedEx = candidateExams.find(
+        (e) => String(e.id) === k || String(e.id).replace(/\D/g, '') === k.replace(/\D/g, '')
+      );
+      if (matchedEx && nameStr && String(matchedEx.name || '').trim().toLowerCase() === nameStr) {
+        return v;
+      }
+    }
+  }
+
+  // 6. Fallback: direct key or cleanDigits even if 0 entries so user can add
+  if (idStr && schedules[idStr]) return schedules[idStr];
+  if (cleanDigits && schedules[cleanDigits]) return schedules[cleanDigits];
+
+  return {};
+}
+
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -268,6 +374,7 @@ function ExamScheduleDesigner({
   schedules,
   setSchedules,
   onBack,
+  exams,
 }: {
   isAdmin: boolean;
   selectedClass: string;
@@ -277,6 +384,7 @@ function ExamScheduleDesigner({
   schedules: Record<string, Record<string, ClassExamSchedule>>;
   setSchedules: React.Dispatch<React.SetStateAction<Record<string, Record<string, ClassExamSchedule>>>>;
   onBack: () => void;
+  exams?: Exam[];
 }) {
   const getInitialYearMonth = () => {
     if (exam.date) {
@@ -326,10 +434,8 @@ function ExamScheduleDesigner({
   };
 
   const [isEditing, setIsEditing] = useState(() => {
-    const examSchedules = schedules[exam.id] ?? {};
-    const totalEntries = Object.values(examSchedules).reduce((sum, clsSched) => {
-      return sum + Object.values(clsSched).reduce((s, arr) => s + arr.length, 0);
-    }, 0);
+    const examSchedules = getScheduleForExam(schedules, exam, exams);
+    const totalEntries = countScheduleEntries(examSchedules);
     return totalEntries === 0;
   });
 
@@ -382,7 +488,7 @@ function ExamScheduleDesigner({
   }, [exam.id, selectedClass, examClasses, setSelectedClass]);
 
   const classSubjects = dbSubjects || getSubjectsForClass(selectedClass);
-  const examSchedules = schedules[exam.id] ?? {};
+  const examSchedules = getScheduleForExam(schedules, exam, exams);
   const classSchedule = examSchedules[selectedClass] ?? {};
 
   const daysInMonth = getDaysInMonth(year, month);
@@ -399,22 +505,36 @@ function ExamScheduleDesigner({
     if (isDateBeforeExam(addModal.dateStr)) return;
     const selectedSub = classSubjects.includes(newSubject) ? newSubject : (classSubjects[0] || newSubject);
     const entry: ExamScheduleEntry = { subject: selectedSub, time: newTime, duration: newDuration, maxMarks: newMarks };
+    console.log('[Schedule Designer] Adding exam schedule entry:', {
+      examId: exam.id,
+      examName: exam.name,
+      class: selectedClass,
+      date: addModal.dateStr,
+      entry,
+    });
     setSchedules((prev) => {
-      const examPrev = prev[exam.id] ?? {};
+      const examPrev = getScheduleForExam(prev, exam, exams);
       const classPrev = examPrev[selectedClass] ?? {};
       const dayPrev = classPrev[addModal.dateStr] ?? [];
-      const updatedSchedules = {
-        ...prev,
-        [exam.id]: {
-          ...examPrev,
-          [selectedClass]: {
-            ...classPrev,
-            [addModal.dateStr]: [...dayPrev, entry],
-          },
-        },
+      const updatedClass = {
+        ...classPrev,
+        [addModal.dateStr]: [...dayPrev, entry],
       };
+      const updatedExam = {
+        ...examPrev,
+        [selectedClass]: updatedClass,
+      };
+      const updatedSchedules: Record<string, Record<string, ClassExamSchedule>> = {
+        ...prev,
+        [exam.id]: updatedExam,
+      };
+      const cleanDigits = String(exam.id).replace(/\D/g, '');
+      if (cleanDigits) {
+        updatedSchedules[cleanDigits] = updatedExam;
+      }
       localStorage.setItem('examinations_schedules', JSON.stringify(updatedSchedules));
       saveSettingToDb('examinations_schedules', updatedSchedules);
+      console.log('[Schedule Designer] Updated schedules saved to localStorage & DB. Exam IDs in state:', Object.keys(updatedSchedules));
       return updatedSchedules;
     });
 
@@ -422,8 +542,9 @@ function ExamScheduleDesigner({
   };
 
   const removeEntry = async (dateStr: string, idx: number) => {
+    console.log('[Schedule Designer] Removing schedule entry:', { examId: exam.id, class: selectedClass, date: dateStr, idx });
     setSchedules((prev) => {
-      const examPrev = prev[exam.id] ?? {};
+      const examPrev = getScheduleForExam(prev, exam, exams);
       const classPrev = examPrev[selectedClass] ?? {};
       const dayEntries = [...(classPrev[dateStr] ?? [])];
       dayEntries.splice(idx, 1);
@@ -431,15 +552,21 @@ function ExamScheduleDesigner({
       const updatedClass = { ...classPrev, [dateStr]: dayEntries };
       if (dayEntries.length === 0) delete updatedClass[dateStr];
 
-      const updatedSchedules = {
-        ...prev,
-        [exam.id]: {
-          ...examPrev,
-          [selectedClass]: updatedClass,
-        },
+      const updatedExam = {
+        ...examPrev,
+        [selectedClass]: updatedClass,
       };
+      const updatedSchedules: Record<string, Record<string, ClassExamSchedule>> = {
+        ...prev,
+        [exam.id]: updatedExam,
+      };
+      const cleanDigits = String(exam.id).replace(/\D/g, '');
+      if (cleanDigits) {
+        updatedSchedules[cleanDigits] = updatedExam;
+      }
       localStorage.setItem('examinations_schedules', JSON.stringify(updatedSchedules));
       saveSettingToDb('examinations_schedules', updatedSchedules);
+      console.log('[Schedule Designer] Removed entry and saved to localStorage & DB');
       return updatedSchedules;
     });
   };
@@ -484,14 +611,23 @@ function ExamScheduleDesigner({
             isEditing ? (
               <button
                 onClick={async () => {
-                  localStorage.setItem('examinations_schedules', JSON.stringify(schedules));
-                  saveSettingToDb('examinations_schedules', schedules);
+                  const currentExamSched = getScheduleForExam(schedules, exam, exams);
+                  const updatedSchedules: Record<string, Record<string, ClassExamSchedule>> = {
+                    ...schedules,
+                    [exam.id]: currentExamSched,
+                  };
+                  const cleanDigits = String(exam.id).replace(/\D/g, '');
+                  if (cleanDigits) {
+                    updatedSchedules[cleanDigits] = currentExamSched;
+                  }
+                  localStorage.setItem('examinations_schedules', JSON.stringify(updatedSchedules));
+                  saveSettingToDb('examinations_schedules', updatedSchedules);
                   setSavedMsg(true);
                   setTimeout(() => setSavedMsg(false), 2500);
                   setIsEditing(false);
                   try {
                     const actorName = user?.name || 'Super Admin';
-                    const examSched = schedules[exam.id] ?? {};
+                    const examSched = currentExamSched;
                     const scheduleList: Array<{
                       class_name: string;
                       subject: string;
@@ -823,6 +959,15 @@ export function Examinations() {
     }
     return deduplicateExams(EXAMS);
   });
+
+  const selectedExam = useMemo(() => {
+    if (!selectedExamId) return null;
+    return exams.find((e) =>
+      String(e.id) === String(selectedExamId) ||
+      (selectedExamId && String(e.id).replace(/\D/g, '') === String(selectedExamId).replace(/\D/g, '') && String(e.id).replace(/\D/g, '') !== '') ||
+      (selectedExamId && e.name && e.name.toLowerCase().trim() === String(selectedExamId).toLowerCase().trim())
+    ) || null;
+  }, [exams, selectedExamId]);
 
   const [examSearch, setExamSearch] = useState('');
   const [examStatusFilter, setExamStatusFilter] = useState('All');
@@ -1200,17 +1345,17 @@ export function Examinations() {
               maxMarks: Number(e.max_marks || e.maxMarks || 100),
               status: (e.status || 'Upcoming') as any,
             }));
-            const existingSigs = new Set(
-              currentExams.map((e) => `${(e.name || '').toLowerCase().trim()}|${(e.date || '').trim()}`)
-            );
-            const existingIds = new Set(currentExams.map((e) => String(e.id)));
-
-            directMapped.forEach((ex) => {
-              const sig = `${(ex.name || '').toLowerCase().trim()}|${(ex.date || '').trim()}`;
-              if (!existingIds.has(String(ex.id)) && !existingSigs.has(sig)) {
-                currentExams.push(ex);
-                existingIds.add(String(ex.id));
-                existingSigs.add(sig);
+            directMapped.forEach((dbEx) => {
+              const sig = `${(dbEx.name || '').toLowerCase().trim()}|${(dbEx.date || '').trim()}`;
+              const existingIdx = currentExams.findIndex(
+                (e) =>
+                  String(e.id) === String(dbEx.id) ||
+                  `${(e.name || '').toLowerCase().trim()}|${(e.date || '').trim()}` === sig
+              );
+              if (existingIdx >= 0) {
+                currentExams[existingIdx] = { ...currentExams[existingIdx], ...dbEx, id: String(dbEx.id) };
+              } else {
+                currentExams.push(dbEx);
               }
             });
           }
@@ -1236,7 +1381,7 @@ export function Examinations() {
           currentExams = DEFAULT_EXAMS;
         }
 
-        setExams(currentExams);
+        setExams((prev) => deduplicateExams([...currentExams, ...prev]));
         (localStorage as any).originalSetItem('examinations_exams', JSON.stringify(currentExams));
         saveSettingToDb('examinations_exams', currentExams);
 
@@ -1246,13 +1391,44 @@ export function Examinations() {
         if (schedulesList.length > 0 && schedulesList[0].value) {
           try {
             const rawVal = schedulesList[0].value;
-            currentSchedules = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
-            setSchedules(currentSchedules);
-            (localStorage as any).originalSetItem('examinations_schedules', JSON.stringify(currentSchedules));
+            const parsed = typeof rawVal === 'string' ? JSON.parse(rawVal) : rawVal;
+            if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+              currentSchedules = { ...currentSchedules, ...parsed };
+            }
           } catch (e) {
-            console.error('Error parsing examinations_schedules setting:', e);
+            console.error('[Examinations Sync] Error parsing examinations_schedules setting:', e);
           }
-        } else if (isAdmin) {
+        }
+
+        // Canonicalize & alias schedules for all current exams
+        currentExams.forEach((ex) => {
+          const sched = getScheduleForExam(currentSchedules, ex, currentExams);
+          if (countScheduleEntries(sched) > 0) {
+            currentSchedules[ex.id] = sched;
+            const cleanDigits = String(ex.id).replace(/\D/g, '');
+            if (cleanDigits) {
+              currentSchedules[cleanDigits] = sched;
+            }
+          }
+        });
+
+        console.log('[Examinations Sync] Synchronized examinations_schedules keys:', Object.keys(currentSchedules));
+        setSchedules((prev) => {
+          const merged = { ...prev, ...currentSchedules };
+          currentExams.forEach((ex) => {
+            const sched = getScheduleForExam(merged, ex, currentExams);
+            if (countScheduleEntries(sched) > 0) {
+              merged[ex.id] = sched;
+              const cleanDigits = String(ex.id).replace(/\D/g, '');
+              if (cleanDigits) {
+                merged[cleanDigits] = sched;
+              }
+            }
+          });
+          return merged;
+        });
+        (localStorage as any).originalSetItem('examinations_schedules', JSON.stringify(currentSchedules));
+        if (isAdmin && schedulesList.length === 0) {
           await saveSettingToDb('examinations_schedules', currentSchedules);
         }
 
@@ -1397,7 +1573,7 @@ export function Examinations() {
     };
     loadBatchesAndStudents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   // Listen to cross-tab updates to examinations, schedules, invigilations, and student marks
   useEffect(() => {
@@ -1407,7 +1583,11 @@ export function Examinations() {
         if (e.key === 'examinations_exams') {
           setExams(JSON.parse(e.newValue));
         } else if (e.key === 'examinations_schedules') {
-          setSchedules(JSON.parse(e.newValue));
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && typeof parsed === 'object') {
+            console.log('[Examinations Storage Event] Received schedules update from another tab/sync. Keys:', Object.keys(parsed));
+            setSchedules((prev) => ({ ...prev, ...parsed }));
+          }
         } else if (e.key === 'kts_exam_invigilations') {
           setInvigilations(JSON.parse(e.newValue));
         } else if (e.key === 'kts_student_marks') {
@@ -1463,11 +1643,12 @@ export function Examinations() {
     }
 
     // 3. Check if schedule entries exist for this class in allSchedules
-    if (allSchedules && allSchedules[exam.id]) {
-      const schedClasses = Object.keys(allSchedules[exam.id]);
+    if (allSchedules) {
+      const examSched = getScheduleForExam(allSchedules, exam);
+      const schedClasses = Object.keys(examSched);
       for (const sc of schedClasses) {
         if (normalizeCls(sc) === cleanTarget) {
-          const entriesCount = Object.values(allSchedules[exam.id][sc] || {}).reduce(
+          const entriesCount = Object.values(examSched[sc] || {}).reduce(
             (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0),
             0
           );
@@ -1629,7 +1810,21 @@ export function Examinations() {
       return;
     }
 
-    const newId = 'exam_' + Date.now();
+    let newId = 'exam_' + Date.now();
+    try {
+      const res = await api.createResource('exams', {
+        name: createName.trim(),
+        class: classStr,
+        subject: createSubject,
+        exam_date: createDate,
+        max_marks: createMaxMarks,
+        status: 'Upcoming',
+      });
+      if (res && res.id) {
+        newId = String(res.id);
+      }
+    } catch { /* empty */ }
+
     const newExam: Exam = {
       id: newId,
       name: createName.trim(),
@@ -1642,7 +1837,7 @@ export function Examinations() {
     const updatedExams = deduplicateExams([...exams, newExam]);
     setExams(updatedExams);
     localStorage.setItem('examinations_exams', JSON.stringify(updatedExams));
-    saveSettingToDb('examinations_exams', updatedExams);
+    await saveSettingToDb('examinations_exams', updatedExams);
 
     try {
       const actorName = user?.name || 'Super Admin';
@@ -2855,10 +3050,8 @@ export function Examinations() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {exams.map((exam) => {
-                const examSchedules = schedules[exam.id] ?? {};
-                const totalScheduledExams = Object.values(examSchedules).reduce((sum, clsSched) => {
-                  return sum + Object.values(clsSched).reduce((s, arr) => s + arr.length, 0);
-                }, 0);
+                const examSchedules = getScheduleForExam(schedules, exam, exams);
+                const totalScheduledExams = countScheduleEntries(examSchedules);
 
                 return (
                   <Card
@@ -2898,26 +3091,28 @@ export function Examinations() {
               })}
             </div>
           </div>
+        ) : selectedExam ? (
+          <ExamScheduleDesigner
+            isAdmin={isAdmin}
+            selectedClass={selectedClass}
+            setSelectedClass={setSelectedClass}
+            classList={classList}
+            exam={selectedExam}
+            schedules={schedules}
+            setSchedules={setSchedules}
+            onBack={() => setSelectedExamId(null)}
+            exams={exams}
+          />
         ) : (
-          (() => {
-            const selectedExam = exams.find((e) => e.id === selectedExamId);
-            if (!selectedExam) {
-              setSelectedExamId(null);
-              return null;
-            }
-            return (
-              <ExamScheduleDesigner
-                isAdmin={isAdmin}
-                selectedClass={selectedClass}
-                setSelectedClass={setSelectedClass}
-                classList={classList}
-                exam={selectedExam}
-                schedules={schedules}
-                setSchedules={setSchedules}
-                onBack={() => setSelectedExamId(null)}
-              />
-            );
-          })()
+          <div className="p-8 text-center bg-[var(--surf)] border border-[var(--b)] rounded-2xl">
+            <div className="text-[13px] text-[var(--tx2)] font-medium mb-3">Loading examination details...</div>
+            <button
+              onClick={() => setSelectedExamId(null)}
+              className="px-3 py-1.5 text-[12px] bg-[var(--surf2)] border border-[var(--b)] rounded-lg text-[var(--tx)] font-semibold cursor-pointer hover:bg-[var(--surf3)]"
+            >
+              ← Back to Exam List
+            </button>
+          </div>
         )
       )}
 
