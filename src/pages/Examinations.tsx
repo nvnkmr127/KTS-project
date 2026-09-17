@@ -1661,7 +1661,17 @@ export function Examinations() {
   };
 
   const isExamCompleted = (e: Exam, classSchedule?: ClassExamSchedule): boolean => {
+    if (!e) return false;
     if (e.status === 'Completed' || e.status === 'Results Published') return true;
+    if (e.status === 'Upcoming') {
+      if (e.date) {
+        const examDate = new Date(e.date + 'T23:59:59');
+        const today = new Date();
+        if (!isNaN(examDate.getTime()) && examDate > today) {
+          return false;
+        }
+      }
+    }
     if (e.date) {
       const examDate = new Date(e.date + 'T23:59:59');
       const today = new Date();
@@ -1695,12 +1705,13 @@ export function Examinations() {
   useEffect(() => {
     if (marksExams.length > 0) {
       if (!selectedMarksExamId || !marksExams.some((e) => e.id === selectedMarksExamId)) {
-        setSelectedMarksExamId(marksExams[0].id);
+        const firstCompleted = marksExams.find((e) => isExamCompleted(e, schedules[e.id]?.[selectedMarksClass]));
+        setSelectedMarksExamId(firstCompleted ? firstCompleted.id : marksExams[0].id);
       }
     } else {
       setSelectedMarksExamId('');
     }
-  }, [marksExams, selectedMarksExamId]);
+  }, [marksExams, selectedMarksExamId, selectedMarksClass, schedules]);
 
   useEffect(() => {
     if (resultsExams.length > 0) {
@@ -2082,7 +2093,7 @@ export function Examinations() {
     cleanRoll?: string,
     studentName?: string
   ): number | string | undefined => {
-    if (!marksRecord) return undefined;
+    if (!marksRecord || !examId) return undefined;
 
     // Normalize candidate student keys
     const cleanR = cleanRoll || (studentRoll ? studentRoll.replace(/^[0-9]+[A-Z]+-?/i, '') : undefined);
@@ -2109,7 +2120,10 @@ export function Examinations() {
       for (const row of marksRecord) {
         if (!row || typeof row !== 'object') continue;
         const rowExam = String(row.exam_id ?? row.examId ?? '');
-        if (rowExam && examId && rowExam !== String(examId) && rowExam.replace(/^(exam|ex)[-_]/i, '') !== String(examId).replace(/^(exam|ex)[-_]/i, '')) {
+        const isExamMatch =
+          rowExam === String(examId) ||
+          rowExam.replace(/^(exam|ex)[-_]/i, '').trim().toLowerCase() === String(examId).replace(/^(exam|ex)[-_]/i, '').trim().toLowerCase();
+        if (!isExamMatch) {
           continue;
         }
         const rowRoll = String(row.roll ?? row.student_roll ?? row.studentId ?? row.student_id ?? row.id ?? '');
@@ -2173,7 +2187,7 @@ export function Examinations() {
       return undefined;
     };
 
-    // 1. Match specific exam ID or Exam Name
+    // 1. Match specific exam ID or Exam Name strictly
     let examObj = marksRecord[examId] ?? marksRecord[String(examId)];
     if (!examObj) {
       const currentExamObj = Array.isArray(exams) ? exams.find((e) => e.id === examId) : undefined;
@@ -2191,22 +2205,10 @@ export function Examinations() {
     }
 
     if (examObj) {
-      const found = searchInExamContainer(examObj);
-      if (found !== undefined) return found;
+      return searchInExamContainer(examObj);
     }
 
-    // 2. Search directly in root marksRecord
-    const rootFound = searchInExamContainer(marksRecord);
-    if (rootFound !== undefined) return rootFound;
-
-    // 3. Search in all child containers
-    for (const subContainer of Object.values(marksRecord)) {
-      if (subContainer && typeof subContainer === 'object') {
-        const anyFound = searchInExamContainer(subContainer);
-        if (anyFound !== undefined) return anyFound;
-      }
-    }
-
+    // Do NOT search other exams! Return undefined if no marks for this specific exam.
     return undefined;
   };
 
@@ -2514,6 +2516,15 @@ export function Examinations() {
   const subjectAverages = getSubjectAverages();
   const gradeDistribution = getGradeDistribution();
 
+  const selectedMarksExamObj = useMemo(() => {
+    return marksExams.find((e) => e.id === selectedMarksExamId) || exams.find((e) => e.id === selectedMarksExamId);
+  }, [marksExams, exams, selectedMarksExamId]);
+
+  const isCurrentMarksExamCompleted = useMemo(() => {
+    if (!selectedMarksExamObj) return false;
+    return isExamCompleted(selectedMarksExamObj, schedules[selectedMarksExamObj.id]?.[selectedMarksClass]);
+  }, [selectedMarksExamObj, schedules, selectedMarksClass]);
+
   const classAvg = metrics.classAvg;
 
   const tabs: { id: Tab; label: string }[] = [
@@ -2649,16 +2660,32 @@ export function Examinations() {
                 <div className="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0 items-center">
                   {exam.status === 'Completed' && (
                     <button
-                      onClick={(e) => e.stopPropagation()}
-                      className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedMarksExamId(exam.id);
+                        if (exam.class && exam.class !== 'All Classes') {
+                          const firstCls = exam.class.split(',')[0]?.trim();
+                          if (firstCls) setSelectedMarksClass(firstCls);
+                        }
+                        setActiveTab('marks');
+                      }}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium hover:opacity-90 active:scale-95 transition-all"
                     >
                       Enter Marks
                     </button>
                   )}
                   {exam.status === 'Results Published' && (
                     <button
-                      onClick={(e) => e.stopPropagation()}
-                      className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedResultsExamId(exam.id);
+                        if (exam.class && exam.class !== 'All Classes') {
+                          const firstCls = exam.class.split(',')[0]?.trim();
+                          if (firstCls) setSelectedClass(firstCls);
+                        }
+                        setActiveTab('results');
+                      }}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium hover:opacity-90 active:scale-95 transition-all"
                     >
                       View Results
                     </button>
@@ -2837,11 +2864,16 @@ export function Examinations() {
                 className="bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-1.5 text-[12px] cursor-pointer outline-none text-[var(--tx)] font-medium disabled:opacity-50"
               >
                 {marksExams.length === 0 ? (
-                  <option value="">No completed exams</option>
+                  <option value="">No exams available</option>
                 ) : (
-                  marksExams.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))
+                  marksExams.map((e) => {
+                    const completed = isExamCompleted(e, schedules[e.id]?.[selectedMarksClass]);
+                    return (
+                      <option key={e.id} value={e.id}>
+                        {e.name} {completed ? '• Completed' : '• Upcoming'}
+                      </option>
+                    );
+                  })
                 )}
               </select>
             </div>
@@ -2850,7 +2882,39 @@ export function Examinations() {
           <div className="overflow-x-auto">
             {marksExams.length === 0 ? (
               <div className="text-center py-12 text-[12px] text-[var(--tx3)]">
-                No completed exams available for Class {selectedMarksClass}.
+                No exams available for Class {selectedMarksClass}.
+              </div>
+            ) : !isCurrentMarksExamCompleted ? (
+              <div className="py-12 px-4 text-center max-w-lg mx-auto space-y-3.5">
+                <div className="w-14 h-14 rounded-2xl bg-[var(--blue-bg)] text-[var(--blue-tx)] flex items-center justify-center mx-auto shadow-sm border border-[var(--blue-tx)]/20">
+                  <Calendar size={24} />
+                </div>
+                <div>
+                  <div className="text-[14.5px] font-bold text-[var(--tx)]">
+                    Marks Entry Available After Exam Completion
+                  </div>
+                  <div className="text-[12px] text-[var(--tx3)] mt-1.5 leading-relaxed">
+                    <span className="font-semibold text-[var(--tx)]">{selectedMarksExamObj?.name || 'This exam'}</span> is currently <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-[var(--blue-bg)] text-[var(--blue-tx)]">Upcoming</span>{selectedMarksExamObj?.date ? ` (Scheduled Date: ${formatDate(selectedMarksExamObj.date)})` : ''}.
+                    Marks entry and preview are only enabled once the exam is completed.
+                  </div>
+                </div>
+                {isAdmin && selectedMarksExamObj && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const updated = exams.map((ex) => (ex.id === selectedMarksExamObj.id ? { ...ex, status: 'Completed' as const } : ex));
+                        setExams(updated);
+                        localStorage.setItem('examinations_exams', JSON.stringify(updated));
+                        await saveSettingToDb('examinations_exams', updated);
+                      }}
+                      className="px-3.5 py-1.5 bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/25 rounded-lg text-[12px] font-semibold hover:opacity-90 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+                    >
+                      <CheckCircle2 size={14} />
+                      Mark Exam as Completed
+                    </button>
+                  </div>
+                )}
               </div>
             ) : studentsToShow.length === 0 ? (
               <div className="text-center py-8 text-[12px] text-[var(--tx3)]">
@@ -2923,7 +2987,7 @@ export function Examinations() {
                             <td colSpan={7} className="p-3.5">
                               <div className="bg-[var(--surf)] border border-[var(--b)] rounded-xl p-4 shadow-sm space-y-3">
                                 <div className="flex items-center justify-between border-b border-[var(--b)] pb-2.5">
-                                  <div className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-2">
+                                   <div className="text-[12.5px] font-bold text-[var(--tx)] flex items-center gap-2">
                                     <BookOpen size={14} className="text-[var(--blue-tx)]" />
                                     Subject-wise Marks for Class {selectedMarksClass} — <span className="text-[var(--blue-tx)]">{student.name}</span> (Roll: {student.roll})
                                     {canEdit && (
@@ -3011,7 +3075,7 @@ export function Examinations() {
               </table>
             )}
           </div>
-          {studentsToShow.length > 0 && marksExams.length > 0 && (
+          {studentsToShow.length > 0 && marksExams.length > 0 && isCurrentMarksExamCompleted && (
             <div className="mt-4 pt-3 border-t border-[var(--b)] flex flex-wrap items-center justify-between gap-3">
               <div className="text-[11.5px] text-[var(--tx3)] font-medium">
                 {!isAdmin
