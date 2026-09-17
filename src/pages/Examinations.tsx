@@ -1067,6 +1067,10 @@ export function Examinations() {
       return next;
     });
 
+    selectedExamIds.forEach((id) => {
+      api.updateResource('exams', id, { status: newStatus }).catch(() => {});
+    });
+
     try {
       const actorName = user?.name || 'Super Admin';
       await api.recordActivityLog({
@@ -2807,6 +2811,7 @@ export function Examinations() {
               <div className="flex gap-2">
                 <button onClick={() => handleBulkExamStatusChange('Upcoming')} className="px-2.5 py-1 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] border border-[var(--blue-tx)]/20 rounded-md font-semibold hover:opacity-90 cursor-pointer">Mark Upcoming</button>
                 <button onClick={() => handleBulkExamStatusChange('Completed')} className="px-2.5 py-1 text-[11px] bg-[var(--amber-bg)] text-[var(--amber-tx)] border border-[var(--amber-tx)]/20 rounded-md font-semibold hover:opacity-90 cursor-pointer">Mark Completed</button>
+                <button onClick={() => handleBulkExamStatusChange('Results Published')} className="px-2.5 py-1 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/20 rounded-md font-semibold hover:opacity-90 cursor-pointer">Publish Results</button>
                 <button onClick={handleBulkExamDelete} className="px-2.5 py-1 text-[11px] bg-[var(--red-bg)] text-[var(--red-tx)] border border-[var(--red-tx)]/25 rounded-md font-semibold hover:opacity-90 cursor-pointer">Delete Exams</button>
               </div>
             </div>
@@ -2856,16 +2861,69 @@ export function Examinations() {
                 <div className="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0 items-center">
                   {exam.status === 'Completed' && (
                     <button
-                      onClick={(e) => e.stopPropagation()}
-                      className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        let targetClass = selectedMarksClass || '8A';
+                        if (exam.class && exam.class !== 'All Classes') {
+                          const classes = exam.class.split(',').map((c) => c.trim());
+                          if (classes.length > 0) targetClass = classes[0];
+                        }
+                        setSelectedMarksExamId(exam.id);
+                        setSelectedMarksClass(targetClass);
+                        setActiveTab('marks');
+                      }}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--teal-bg)] text-[var(--teal-tx)] rounded-lg cursor-pointer font-medium hover:opacity-90 active:scale-95 transition-all"
                     >
                       Enter Marks
                     </button>
                   )}
+                  {isAdmin && exam.status === 'Completed' && (
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const next = exams.map((ex) => ex.id === exam.id ? { ...ex, status: 'Results Published' as const } : ex);
+                        setExams(next);
+                        localStorage.setItem('examinations_exams', JSON.stringify(next));
+                        await saveSettingToDb('examinations_exams', next);
+                        try {
+                          await api.updateResource('exams', exam.id, { status: 'Results Published' });
+                        } catch { /* empty */ }
+                        try {
+                          const actorName = user?.name || 'Super Admin';
+                          await api.recordActivityLog({
+                            log_name: 'exam',
+                            event: 'updated',
+                            description: `${actorName} published results for "${exam.name}".`,
+                            properties: {
+                              new_status: 'Results Published',
+                              exam_id: exam.id,
+                              exam_name: exam.name,
+                              marked_by: actorName,
+                              actor_name: actorName,
+                            },
+                          });
+                        } catch { /* empty */ }
+                        await alert(`Results for "${exam.name}" have been published.`, "Results Published");
+                      }}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium hover:opacity-90 active:scale-95 transition-all"
+                    >
+                      Publish Results
+                    </button>
+                  )}
                   {exam.status === 'Results Published' && (
                     <button
-                      onClick={(e) => e.stopPropagation()}
-                      className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        let targetClass = selectedClass || '8A';
+                        if (exam.class && exam.class !== 'All Classes') {
+                          const classes = exam.class.split(',').map((c) => c.trim());
+                          if (classes.length > 0) targetClass = classes[0];
+                        }
+                        setSelectedResultsExamId(exam.id);
+                        setSelectedClass(targetClass);
+                        setActiveTab('results');
+                      }}
+                      className="px-2.5 py-1.5 text-[11px] bg-[var(--blue-bg)] text-[var(--blue-tx)] rounded-lg cursor-pointer font-medium hover:opacity-90 active:scale-95 transition-all"
                     >
                       View Results
                     </button>
@@ -3265,9 +3323,43 @@ export function Examinations() {
                     : 'Admin Mode: You can view and edit marks for any class.'}
                 </div>
                 <div className="flex gap-2">
+                  {isAdmin && currentMarksExam && currentMarksExam.status !== 'Results Published' && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const next = exams.map((e) => String(e.id) === String(currentMarksExam.id) ? { ...e, status: 'Results Published' as const } : e);
+                        setExams(next);
+                        localStorage.setItem('examinations_exams', JSON.stringify(next));
+                        await saveSettingToDb('examinations_exams', next);
+                        try {
+                          await api.updateResource('exams', currentMarksExam.id, { status: 'Results Published' });
+                        } catch { /* empty */ }
+                        try {
+                          const actorName = user?.name || 'Super Admin';
+                          await api.recordActivityLog({
+                            log_name: 'exam',
+                            event: 'updated',
+                            description: `${actorName} published results for "${currentMarksExam.name}".`,
+                            properties: {
+                              new_status: 'Results Published',
+                              exam_id: currentMarksExam.id,
+                              exam_name: currentMarksExam.name,
+                              marked_by: actorName,
+                              actor_name: actorName,
+                            },
+                          });
+                        } catch { /* empty */ }
+                        await alert(`Results for "${currentMarksExam.name}" have been published.`, "Results Published");
+                      }}
+                      className="px-4 py-2 bg-[var(--teal-bg)] text-[var(--teal-tx)] border border-[var(--teal-tx)]/25 rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
+                    >
+                      <TrendingUp size={15} />
+                      <span>Publish Results</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={handleSaveMarks}
+                    onClick={handleSaveMarksToDb}
                     disabled={savingMarks || !selectedMarksExamId || (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass))}
                     className="px-4 py-2 bg-[var(--blue)] text-white rounded-xl text-[12.5px] font-semibold cursor-pointer hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm"
                   >
