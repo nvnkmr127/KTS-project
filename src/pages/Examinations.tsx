@@ -1201,7 +1201,161 @@ export function Examinations() {
     }));
   };
 
+  const myStaffRecord = useMemo(() => {
+    if (!user) return null;
+    let staffArray = staffList && staffList.length > 0 ? staffList : [];
+    if (staffArray.length === 0) {
+      try {
+        const saved = localStorage.getItem('kts_staff_members');
+        if (saved) staffArray = JSON.parse(saved);
+      } catch { /* empty */ }
+    }
+    return staffArray.find((s: any) =>
+      (s.id && user.id && String(s.id) === String(user.id)) ||
+      (s.id && (user as any).staffId && String(s.id) === String((user as any).staffId)) ||
+      (s.staffId && user.id && String(s.staffId) === String(user.id)) ||
+      (s.email && user.email && s.email.trim().toLowerCase() === user.email.trim().toLowerCase()) ||
+      (s.name && user.name && s.name.trim().toLowerCase() === user.name.trim().toLowerCase())
+    ) || null;
+  }, [user, staffList]);
+
+  const isTeacherAssignedToClass = (className: string): boolean => {
+    if (isAdmin) return true;
+    if (!isFaculty || !user || !className) return false;
+
+    const cleanTarget = String(className || '').replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!cleanTarget) return false;
+
+    // Collect all candidate IDs for the logged in teacher
+    const idsToMatch = new Set<string>();
+    if (user?.id) idsToMatch.add(String(user.id));
+    if ((user as any)?.staffId) idsToMatch.add(String((user as any).staffId));
+    if ((user as any)?.user_id) idsToMatch.add(String((user as any).user_id));
+    if ((user as any)?.staff_id) idsToMatch.add(String((user as any).staff_id));
+    if (myStaffRecord?.id) idsToMatch.add(String(myStaffRecord.id));
+    if ((myStaffRecord as any)?.staffId) idsToMatch.add(String((myStaffRecord as any).staffId));
+    if ((myStaffRecord as any)?.user_id) idsToMatch.add(String((myStaffRecord as any).user_id));
+
+    // Collect all candidate names for the logged in teacher
+    const namesToMatch = new Set<string>();
+    if (user?.name) namesToMatch.add(user.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    if (myStaffRecord?.name) namesToMatch.add(myStaffRecord.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+    // Check direct property on user or staff record
+    const directClasses = [
+      (user as any)?.classTeacherOf,
+      (user as any)?.class_teacher_of,
+      (user as any)?.assigned_class,
+      (user as any)?.assignedClass,
+      (user as any)?.className,
+      (myStaffRecord as any)?.classTeacherOf,
+      (myStaffRecord as any)?.class_teacher_of,
+      (myStaffRecord as any)?.assigned_class,
+      (myStaffRecord as any)?.assignedClass,
+      (myStaffRecord as any)?.class,
+    ].filter(Boolean);
+
+    for (const d of directClasses) {
+      const cleanD = String(d).replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanD === cleanTarget) return true;
+    }
+
+    // Check rawBatches loaded from backend / state
+    const batchesToCheck = Array.isArray(rawBatches) && rawBatches.length > 0
+      ? rawBatches
+      : (() => {
+          try {
+            const local = localStorage.getItem('kts_batches') || localStorage.getItem('batches');
+            return local ? JSON.parse(local) : [];
+          } catch {
+            return [];
+          }
+        })();
+
+    for (const b of batchesToCheck) {
+      if (!b || !b.name) continue;
+      const batchClean = String(b.name).replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (
+        batchClean === cleanTarget ||
+        batchClean === `class${cleanTarget}` ||
+        `class${batchClean}` === cleanTarget
+      ) {
+        if (b.class_teacher_id && idsToMatch.has(String(b.class_teacher_id))) {
+          return true;
+        }
+        if (b.class_teacher_name) {
+          const cleanB = String(b.class_teacher_name).toLowerCase().replace(/[^a-z0-9]/g, '');
+          for (const n of namesToMatch) {
+            if (n && (cleanB === n || cleanB.includes(n) || n.includes(cleanB))) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    // Check local classes storage (saved via Classes page)
+    try {
+      const savedClasses = localStorage.getItem('classes') || localStorage.getItem('kts_classes');
+      if (savedClasses) {
+        const parsedClasses = JSON.parse(savedClasses);
+        if (Array.isArray(parsedClasses)) {
+          for (const c of parsedClasses) {
+            if (Array.isArray(c.sections)) {
+              for (const sec of c.sections) {
+                const fullSecName = `${c.name || c.id}${sec.name ? String(sec.name).replace(/^Section\s*/i, '') : ''}`;
+                const cleanSec = fullSecName.replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (cleanSec === cleanTarget || cleanSec === `class${cleanTarget}` || String(c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget) {
+                  if (sec.classTeacherId && idsToMatch.has(String(sec.classTeacherId))) return true;
+                  if (sec.classTeacher) {
+                    const cleanSecTeacher = String(sec.classTeacher).toLowerCase().replace(/[^a-z0-9]/g, '');
+                    for (const n of namesToMatch) {
+                      if (n && (cleanSecTeacher === n || cleanSecTeacher.includes(n) || n.includes(cleanSecTeacher))) {
+                        return true;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch { /* empty */ }
+
+    return false;
+  };
+
+  const getClassTeacherName = (className: string): string => {
+    if (!className) return '';
+    const cleanTarget = String(className || '').replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const batchesToCheck = Array.isArray(rawBatches) && rawBatches.length > 0
+      ? rawBatches
+      : (() => {
+          try {
+            const local = localStorage.getItem('kts_batches') || localStorage.getItem('batches');
+            return local ? JSON.parse(local) : [];
+          } catch {
+            return [];
+          }
+        })();
+
+    for (const b of batchesToCheck) {
+      if (!b || !b.name) continue;
+      const batchClean = String(b.name).replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (batchClean === cleanTarget || batchClean === `class${cleanTarget}` || `class${batchClean}` === cleanTarget) {
+        if (b.class_teacher_name) return b.class_teacher_name;
+        if (b.class_teacher_id) {
+          const st = staffList.find((s: any) => String(s.id) === String(b.class_teacher_id));
+          if (st) return st.name;
+        }
+      }
+    }
+    return '';
+  };
+
   const handleUpdateStudentMark = (examId: string, subject: string, roll: string, mark: number | string | null, studentId?: string) => {
+    if (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass)) return;
     const effectiveId = examId || selectedMarksExamId || (marksExams[0]?.id ?? 'default_exam');
     if (!effectiveId) return;
     const targetExam = Array.isArray(exams) ? exams.find((e) => String(e.id) === String(effectiveId)) : undefined;
@@ -1243,6 +1397,10 @@ export function Examinations() {
   };
 
   const handleSaveMarksToDb = async () => {
+    if (!isAdmin && !isTeacherAssignedToClass(selectedMarksClass)) {
+      await alert('Permission Denied', 'You can only save marks for the class where you are the assigned class teacher.');
+      return;
+    }
     setSavingMarks(true);
     try {
       // Merge draft on top of saved marks to produce final committed marks
@@ -1564,6 +1722,18 @@ export function Examinations() {
           });
           if (names.length > 0) {
             setClassList(names);
+            if (!isAdmin && user) {
+              const teacherBatch = rawBatchesList.find((b: any) =>
+                String(b.class_teacher_id) === String(user.id) ||
+                String(b.class_teacher_id) === String((user as any).staffId) ||
+                String(b.class_teacher_id) === String((user as any).user_id) ||
+                (b.class_teacher_name && user.name && b.class_teacher_name.toLowerCase().trim() === user.name.toLowerCase().trim())
+              );
+              if (teacherBatch && teacherBatch.name) {
+                setSelectedMarksClass(teacherBatch.name);
+                setSelectedClass(teacherBatch.name);
+              }
+            }
           }
         }
 
@@ -2046,13 +2216,6 @@ export function Examinations() {
     setSelectedClass(targetClass);
     setSelectedExamId(exam.id);
     setActiveTab('designer');
-  };
-
-  const isTeacherAssignedToClass = (className: string): boolean => {
-    if (isAdmin) return true;
-    if (isFaculty) return true;
-    if (!className) return false;
-    return true;
   };
 
   const activeClassList = classList;
@@ -2816,7 +2979,7 @@ export function Examinations() {
                 {!isAdmin && !isTeacherAssignedToClass(selectedMarksClass) && (
                   <div className="p-2.5 bg-[var(--amber-bg)] border border-[var(--amber)]/30 rounded-lg text-[11px] text-[var(--amber-tx)] font-semibold flex items-center gap-1.5 shadow-sm">
                     <AlertCircle size={13} />
-                    <span>Read-Only mode. (Assigned class teacher only)</span>
+                    <span>Read-Only mode. {getClassTeacherName(selectedMarksClass) ? `(Assigned Class Teacher: ${getClassTeacherName(selectedMarksClass)})` : '(Assigned class teacher only)'}</span>
                   </div>
                 )}
                 <select
