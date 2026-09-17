@@ -806,7 +806,118 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
     };
   }
 
-  // 5. Student Actions
+  // 5. Examinations & Marks (Must precede Student to avoid matching 'student evaluation marks')
+  if (
+    lowerDesc.includes('exam') ||
+    lowerDesc.includes('mark') ||
+    lowerDesc.includes('evaluation') ||
+    subjectType.includes('exam') ||
+    subjectType.includes('examination') ||
+    log.log_name === 'exam' ||
+    log.log_name === 'marks' ||
+    properties.type === 'exam_schedule' ||
+    properties.type === 'exam_marks' ||
+    Array.isArray(properties.schedule_list) ||
+    Boolean(properties.exam_id)
+  ) {
+    const rawClass = properties.class_name || properties.class || properties.batch_name || '';
+    const classMatch = rawDesc.match(/for Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i) || rawDesc.match(/in Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i);
+    const targetClass = rawClass ? (rawClass.toLowerCase().startsWith('class') ? rawClass : `Class ${rawClass}`) : (classMatch ? `Class ${classMatch[1]}` : '');
+    const examMatch = rawDesc.match(/in\s+([A-Za-z0-9\s-]+?)(?:\.|$)/i);
+    const examName = properties.exam_name || properties.exam || attributes.exam_name || (examMatch ? examMatch[1].trim() : '');
+
+    const isSchedule =
+      properties.type === 'exam_schedule' ||
+      Array.isArray(properties.schedule_list) ||
+      lowerDesc.includes('exam schedule') ||
+      lowerDesc.includes('examination schedule') ||
+      lowerDesc.includes('schedule design') ||
+      lowerDesc.includes('designed exam schedule') ||
+      lowerDesc.includes('timetable schedule') ||
+      lowerDesc.includes('published examination timetable') ||
+      (lowerDesc.includes('schedule') && (lowerDesc.includes('exam') || subjectType.includes('exam') || log.log_name === 'exam'));
+    const isInvigilation = lowerDesc.includes('invigilat') || properties.invigilator_name;
+    const isMarks =
+      log.log_name === 'marks' ||
+      properties.type === 'exam_marks' ||
+      lowerDesc.includes('evaluation marks') ||
+      lowerDesc.includes('saved student evaluation marks') ||
+      lowerDesc.includes('student evaluation marks') ||
+      lowerDesc.includes('marks entered') ||
+      lowerDesc.includes('marks recorded') ||
+      lowerDesc.includes('marks allotted') ||
+      lowerDesc.includes('mark') ||
+      Boolean(properties.students_marks || properties.marks_list || properties.marks !== undefined || properties.obtained_marks !== undefined);
+
+    if (isSchedule) {
+      return {
+        title: 'Exam Schedule Design',
+        description: cleanedDesc || (examName ? `Designed and published timetable schedule for exam "${examName}".` : 'Designed and published examination schedule.'),
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: targetClass && examName ? `${targetClass} • ${examName}` : (examName ? `Exam: ${examName}` : (targetClass || 'EXAMINATION SCHEDULE')),
+      };
+    }
+
+    if (isInvigilation) {
+      return {
+        title: 'Exam Invigilation Allotted',
+        description: cleanedDesc || 'Assigned faculty invigilator to exam hall.',
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: examName ? `Exam: ${examName}` : 'EXAMINATION SCHEDULE',
+      };
+    }
+
+    if (isMarks) {
+      let target = 'EXAMINATION';
+      if (targetClass && examName) {
+        target = `${targetClass} • ${examName}`;
+      } else if (targetClass) {
+        target = targetClass;
+      } else if (examName) {
+        target = `Exam: ${examName}`;
+      }
+
+      return {
+        title: 'Marks Entered',
+        description: cleanedDesc || (examName && targetClass ? `Entered student evaluation marks for ${targetClass} in ${examName}.` : (examName ? `Recorded evaluation marks for ${examName}.` : 'Entered student evaluation marks.')),
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target,
+      };
+    }
+
+    if (log.event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('new exam')) {
+      return {
+        title: examName ? `Exam Created: ${examName}` : 'New Examination Created',
+        description: cleanedDesc || (examName ? `Created new examination "${examName}".` : 'Created new examination record.'),
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: examName ? `Exam: ${examName}` : 'EXAMINATION',
+      };
+    }
+
+    if (log.event === 'deleted' || lowerDesc.includes('deleted')) {
+      return {
+        title: examName ? `Exam Deleted: ${examName}` : 'Examination Deleted',
+        description: cleanedDesc || (examName ? `Deleted examination "${examName}".` : 'Deleted examination record.'),
+        category: 'EXAMINATION',
+        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+        target: examName ? `Exam: ${examName}` : 'EXAMINATION',
+      };
+    }
+
+    return {
+      title: examName ? `Exam Updated: ${examName}` : 'Examination Updated',
+      description: cleanedDesc || (examName ? `Updated examination record "${examName}".` : 'Updated examination record.'),
+      category: 'EXAMINATION',
+      categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
+      target: examName ? `Exam: ${examName}` : 'EXAMINATION',
+    };
+  }
+
+  // 6. Student Actions
   if (
     lowerDesc.includes('student profile created') ||
     (lowerDesc.includes('student') && (event === 'created' || lowerDesc.startsWith('added student'))) ||
@@ -863,7 +974,7 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
     };
   }
 
-  // 6. Staff & Faculty
+  // 7. Staff & Faculty
   if (lowerDesc.includes('staff account') || lowerDesc.includes('faculty') || (subjectType.includes('user') && !lowerDesc.includes('login'))) {
     const staffMatch = rawDesc.match(/'([^']+)'/) || rawDesc.match(/:\s*(.+)$/);
     const staffName = staffMatch ? staffMatch[1] : (log.properties?.name || log.properties?.attributes?.name || 'Staff Member');
@@ -878,91 +989,6 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
       category: 'STAFF',
       categoryBadgeClass: 'bg-violet-50 text-violet-700 border-violet-200/60 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800/40',
       target: `Staff: ${staffName}`,
-    };
-  }
-
-  // 7. Examinations & Marks (Must precede Timetable)
-  if (
-    lowerDesc.includes('exam') ||
-    lowerDesc.includes('mark') ||
-    subjectType.includes('exam') ||
-    subjectType.includes('examination') ||
-    log.log_name === 'exam' ||
-    log.log_name === 'marks' ||
-    properties.type === 'exam_schedule' ||
-    properties.type === 'exam_marks' ||
-    Array.isArray(properties.schedule_list)
-  ) {
-    const examName = properties.exam_name || properties.exam || attributes.exam_name || '';
-    const isSchedule =
-      properties.type === 'exam_schedule' ||
-      Array.isArray(properties.schedule_list) ||
-      lowerDesc.includes('exam schedule') ||
-      lowerDesc.includes('examination schedule') ||
-      lowerDesc.includes('schedule design') ||
-      lowerDesc.includes('designed exam schedule') ||
-      lowerDesc.includes('timetable schedule') ||
-      lowerDesc.includes('published examination timetable') ||
-      (lowerDesc.includes('schedule') && (lowerDesc.includes('exam') || subjectType.includes('exam') || log.log_name === 'exam'));
-    const isInvigilation = lowerDesc.includes('invigilat') || properties.invigilator_name;
-    const isMarks = lowerDesc.includes('mark') || properties.type === 'exam_marks';
-
-    if (isSchedule) {
-      return {
-        title: 'Exam Schedule Design',
-        description: cleanedDesc || (examName ? `Designed and published timetable schedule for exam "${examName}".` : 'Designed and published examination schedule.'),
-        category: 'EXAMINATION',
-        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
-        target: 'EXAMINATION SCHEDULE',
-      };
-    }
-
-    if (isInvigilation) {
-      return {
-        title: 'Exam Invigilation Allotted',
-        description: cleanedDesc || 'Assigned faculty invigilator to exam hall.',
-        category: 'EXAMINATION',
-        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
-        target: 'EXAMINATION SCHEDULE',
-      };
-    }
-
-    if (isMarks) {
-      return {
-        title: examName ? `Marks Recorded: ${examName}` : 'Student Marks Evaluated',
-        description: cleanedDesc || (examName ? `Recorded evaluation marks for ${examName}.` : 'Entered student evaluation marks.'),
-        category: 'EXAMINATION',
-        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
-        target: examName ? `Exam: ${examName}` : 'EXAMINATION',
-      };
-    }
-
-    if (log.event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('new exam')) {
-      return {
-        title: examName ? `Exam Created: ${examName}` : 'New Examination Created',
-        description: cleanedDesc || (examName ? `Created new examination "${examName}".` : 'Created new examination record.'),
-        category: 'EXAMINATION',
-        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
-        target: examName ? `Exam: ${examName}` : 'EXAMINATION',
-      };
-    }
-
-    if (log.event === 'deleted' || lowerDesc.includes('deleted')) {
-      return {
-        title: examName ? `Exam Deleted: ${examName}` : 'Examination Deleted',
-        description: cleanedDesc || (examName ? `Deleted examination "${examName}".` : 'Deleted examination record.'),
-        category: 'EXAMINATION',
-        categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
-        target: examName ? `Exam: ${examName}` : 'EXAMINATION',
-      };
-    }
-
-    return {
-      title: examName ? `Exam Updated: ${examName}` : 'Examination Record Updated',
-      description: cleanedDesc || (examName ? `Updated examination records for ${examName}.` : 'Configured exam schedule or entered student evaluation marks.'),
-      category: 'EXAMINATION',
-      categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
-      target: examName ? `Exam: ${examName}` : 'EXAMINATION SCHEDULE',
     };
   }
 
@@ -1262,33 +1288,19 @@ export function generateActionSummary(log: any): string {
     return `${userName} ${event === 'updated' || lowerDesc.includes('updated') ? 'updated' : 'marked'} ${session} attendance for ${formattedClass}${counts}.`;
   }
 
-  // 5. Student Actions
-  if (lowerDesc.includes('student') || (log.subject_type || '').toLowerCase().includes('student')) {
-    const studentName = extractStudentName(properties, rawDesc);
-
-    if (event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('added')) {
-      return studentName ? `${userName} created student profile for ${studentName}.` : `${userName} added a new student record.`;
-    }
-    if (event === 'updated' || lowerDesc.includes('updated')) {
-      return studentName ? `${userName} updated student profile for ${studentName}.` : `${userName} updated student profile information.`;
-    }
-    if (event === 'deleted' || lowerDesc.includes('deleted') || lowerDesc.includes('removed')) {
-      return studentName ? `${userName} deleted student record for ${studentName}.` : `${userName} deleted student record from the system.`;
-    }
-  }
-
-  // 5. Exams & Marks
-  // 5. Exams & Marks
+  // 5. Exams & Marks (Must precede Student Actions)
   if (
     lowerDesc.includes('mark') ||
     lowerDesc.includes('exam') ||
+    lowerDesc.includes('evaluation') ||
     subjectType.includes('exam') ||
     subjectType.includes('examination') ||
     log.log_name === 'exam' ||
     log.log_name === 'marks' ||
     properties.type === 'exam_schedule' ||
     properties.type === 'exam_marks' ||
-    Array.isArray(properties.schedule_list)
+    Array.isArray(properties.schedule_list) ||
+    Boolean(properties.exam_id)
   ) {
     const isSchedule =
       properties.type === 'exam_schedule' ||
@@ -1310,6 +1322,33 @@ export function generateActionSummary(log: any): string {
     if (isInvigilation) {
       const invigilator = properties.invigilator_name || properties.staff_name || 'faculty';
       return `${userName} assigned invigilator ${invigilator} to ${exam ? `"${exam}"` : 'examination'}.`;
+    }
+
+    const isMarks =
+      log.log_name === 'marks' ||
+      properties.type === 'exam_marks' ||
+      lowerDesc.includes('evaluation marks') ||
+      lowerDesc.includes('saved student evaluation marks') ||
+      lowerDesc.includes('student evaluation marks') ||
+      lowerDesc.includes('marks entered') ||
+      lowerDesc.includes('marks recorded') ||
+      lowerDesc.includes('marks allotted') ||
+      lowerDesc.includes('mark') ||
+      Boolean(properties.students_marks || properties.marks_list || properties.marks !== undefined || properties.obtained_marks !== undefined);
+
+    if (isMarks) {
+      const targetClass = properties.class_name || properties.class || (rawDesc.match(/for Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i)?.[1]);
+      const formattedClass = targetClass ? (targetClass.toLowerCase().startsWith('class') ? targetClass : `Class ${targetClass}`) : '';
+      if (formattedClass && exam) {
+        return `${userName} entered student marks for ${formattedClass} in ${exam}.`;
+      }
+      if (exam) {
+        return `${userName} entered student evaluation marks for "${exam}".`;
+      }
+      if (formattedClass) {
+        return `${userName} entered student evaluation marks for ${formattedClass}.`;
+      }
+      return `${userName} entered student evaluation marks.`;
     }
 
     const student = properties.student_name || attributes.student_name || properties.name || attributes.name;
@@ -1335,7 +1374,22 @@ export function generateActionSummary(log: any): string {
     return `${userName} updated examination records${exam ? ` for "${exam}"` : ''}.`;
   }
 
-  // 6. Leave
+  // 6. Student Actions
+  if (lowerDesc.includes('student') || (log.subject_type || '').toLowerCase().includes('student')) {
+    const studentName = extractStudentName(properties, rawDesc);
+
+    if (event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('added')) {
+      return studentName ? `${userName} created student profile for ${studentName}.` : `${userName} added a new student record.`;
+    }
+    if (event === 'updated' || lowerDesc.includes('updated')) {
+      return studentName ? `${userName} updated student profile for ${studentName}.` : `${userName} updated student profile information.`;
+    }
+    if (event === 'deleted' || lowerDesc.includes('deleted') || lowerDesc.includes('removed')) {
+      return studentName ? `${userName} deleted student record for ${studentName}.` : `${userName} deleted student record from the system.`;
+    }
+  }
+
+  // 7. Leave
   if (lowerDesc.includes('leave')) {
     const applicant = properties.applicant_name || properties.staff_name || properties.user_name || attributes.name || 'staff member';
     const leaveType = properties.leave_type || attributes.leave_type || 'Leave';
@@ -1348,7 +1402,7 @@ export function generateActionSummary(log: any): string {
     return `${userName} submitted a ${leaveType} request for ${applicant}.`;
   }
 
-  // 7. Student Promotion / Transfer / Batch Changes
+  // 8. Student Promotion / Transfer / Batch Changes
   if (lowerDesc.includes('transfer') || lowerDesc.includes('promot') || properties.type === 'batch_change') {
     const student = properties.student_name || attributes.student_name || properties.name || attributes.name || 'Student';
     const oldBatch = properties.old_batch_name || old.batch_name || 'previous class';
@@ -1356,7 +1410,7 @@ export function generateActionSummary(log: any): string {
     return `${userName} transferred ${student} from ${oldBatch} to ${newBatch}.`;
   }
 
-  // 8. Daily Diary
+  // 9. Daily Diary
   if (
     lowerDesc.includes('daily diary') ||
     lowerDesc.includes('dailydiar') ||
@@ -1377,7 +1431,7 @@ export function generateActionSummary(log: any): string {
     return `${userName} updated the Daily Diary notes for ${targetClass}.`;
   }
 
-  // 9. General Updates with attributes/old
+  // 10. General Updates with attributes/old
   if (event === 'updated' && old && attributes) {
     const subject = properties.name || properties.title || attributes.name || log.subject_type || 'record';
     const changedKeys = Object.keys(attributes).filter(k => !SYSTEM_METADATA_KEYS.has(k) && !isSensitiveKey(k) && old[k] !== attributes[k]);
@@ -1393,14 +1447,14 @@ export function generateActionSummary(log: any): string {
     }
   }
 
-  // 10. Creations
+  // 11. Creations
   if (event === 'created' || lowerDesc.startsWith('added') || lowerDesc.startsWith('created')) {
     const subject = properties.name || attributes.name || properties.title || '';
     const entityType = (log.subject_type || '').toLowerCase().includes('user') ? 'staff account' : 'record';
     return subject ? `${userName} created ${entityType} for ${subject}.` : `${userName} created a new ${entityType}.`;
   }
 
-  // 11. Deletions
+  // 12. Deletions
   if (event === 'deleted' || lowerDesc.startsWith('deleted') || lowerDesc.startsWith('removed')) {
     const subject = properties.name || old.name || properties.title || '';
     return subject ? `${userName} deleted ${subject} from the system.` : `${userName} deleted a record from the system.`;
@@ -1425,6 +1479,7 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
     const desc = String(log.description || '').trim();
     const lowerDesc = desc.toLowerCase();
     const st = String(log.subject_type || '').toLowerCase();
+    const properties = log.properties || {};
 
     // 1. Skip redundant raw HTTP middleware logs that duplicate native model event logs or rich logs
     if (
@@ -1446,7 +1501,8 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
     
     // Group student profile updates or attendance occurring within the same minute
     const isAttendance = lowerDesc.includes('attendance') || log.log_name === 'attendance' || st.includes('attendance');
-    const isStudentUpdate = !isAttendance && (lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student'));
+    const isMarksLog = lowerDesc.includes('mark') || lowerDesc.includes('evaluation') || log.log_name === 'marks' || properties.type === 'exam_marks' || Boolean(properties.exam_id);
+    const isStudentUpdate = !isAttendance && !isMarksLog && (lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student'));
     
     const signature = isAttendance
       ? `attendance_${log.properties?.class_name || target}_${log.properties?.session || ''}_${createdMinute}`

@@ -1428,16 +1428,60 @@ export function Examinations() {
       try {
         const actorName = user?.name || 'Super Admin';
         const exName = exams.find(e => e.id === selectedMarksExamId)?.name || 'Exam';
+
+        // Prepare student marks snapshot for activity log
+        const targetClean = String(selectedMarksClass || '').replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const classStudents = (students || []).filter((s: any) => {
+          const sClass = String(s.class || s.class_name || s.batch_name || '').replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const sSec = String(s.section || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const sFull = `${sClass}${sSec}`;
+          return sClass === targetClean || sFull === targetClean || targetClean.includes(sClass);
+        });
+
+        const marksSummary: any[] = [];
+        const examObjMarks = committed[selectedMarksExamId] || {};
+        const subjectNames = Object.keys(examObjMarks);
+
+        classStudents.forEach((st: any) => {
+          const studentEntry: any = {
+            student_id: st.id,
+            name: st.name,
+            roll_no: st.roll || st.roll_no || '—',
+            admission_no: st.admission_no || st.admission_number || '—',
+            subjects: {},
+            total_obtained: 0,
+            has_marks: false,
+          };
+
+          subjectNames.forEach((sub: string) => {
+            const cleanRoll = String(st.roll || '').replace(/^[0-9]+[A-Z]+-?/i, '');
+            const m = examObjMarks[sub]?.[st.id] ?? examObjMarks[sub]?.[st.roll] ?? examObjMarks[sub]?.[cleanRoll] ?? null;
+            if (m !== null && m !== undefined && m !== '') {
+              const numMark = Number(m);
+              studentEntry.subjects[sub] = m;
+              studentEntry.total_obtained += isNaN(numMark) ? 0 : numMark;
+              studentEntry.has_marks = true;
+            }
+          });
+
+          if (studentEntry.has_marks || Object.keys(studentEntry.subjects).length > 0) {
+            marksSummary.push(studentEntry);
+          }
+        });
+
         await api.recordActivityLog({
           log_name: 'marks',
           event: 'updated',
           description: `${actorName} saved student evaluation marks for Class ${selectedMarksClass} in ${exName}.`,
           properties: {
+            type: 'exam_marks',
             class_name: selectedMarksClass,
             exam_id: selectedMarksExamId,
             exam_name: exName,
             marked_by: actorName,
             actor_name: actorName,
+            students_marks: marksSummary,
+            total_students_evaluated: marksSummary.length,
           },
         });
       } catch { /* empty */ }

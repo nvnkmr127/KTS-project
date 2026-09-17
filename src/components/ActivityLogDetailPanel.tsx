@@ -122,10 +122,44 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       Boolean(properties.receipt_number || properties.receipt_no || (properties.amount !== undefined && properties.payment_method))
     );
 
+  // 4. Examination, Schedule, Marks & Invigilation Guards
+  const isInvigilation =
+    rawDesc.includes('invigilat') ||
+    Boolean(properties.invigilator_name || properties.hall_no || properties.room_number || attributes.invigilator_name);
+
+  const isExamMarks =
+    !isInvigilation &&
+    (
+      log.log_name === 'marks' ||
+      properties.type === 'exam_marks' ||
+      rawDesc.includes('evaluation marks') ||
+      rawDesc.includes('saved student evaluation marks') ||
+      rawDesc.includes('student evaluation marks') ||
+      rawDesc.includes('marks entered') ||
+      rawDesc.includes('marks recorded') ||
+      rawDesc.includes('marks allotted') ||
+      (rawDesc.includes('mark') && !rawDesc.includes('attendance') && !rawDesc.includes('remark') && !rawDesc.includes('bookmark') && !rawDesc.includes('marked attendance')) ||
+      Boolean(properties.students_marks || properties.marks_list || properties.marks_data || properties.marks !== undefined || properties.obtained_marks !== undefined || properties.new_marks !== undefined || attributes.marks !== undefined)
+    );
+
+  const isExamSchedule =
+    !isInvigilation &&
+    !isExamMarks &&
+    (rawDesc.includes('exam') || subjectType.includes('exam') || subjectType.includes('examination') || log.log_name === 'exam' || activity.category === 'EXAMINATION' || activity.category === 'EXAMINATIONS' || properties.type === 'exam_schedule' || Array.isArray(properties.schedule_list)) &&
+    Boolean(properties.exam_name || properties.subject_name || properties.max_marks || properties.schedule || properties.schedule_list || attributes.exam_name || attributes.max_marks || properties.type === 'exam_schedule');
+
   // 1. Student Management (Student Profile & Admission Details)
   const isStudent =
     !isFeeCategory &&
     !isConcession &&
+    !isExamMarks &&
+    !isExamSchedule &&
+    !isInvigilation &&
+    log.log_name !== 'marks' &&
+    activity.category !== 'EXAMINATION' &&
+    !rawDesc.includes('evaluation marks') &&
+    !rawDesc.includes('saved student evaluation marks') &&
+    !rawDesc.includes('student evaluation marks') &&
     (
       log.log_name === 'student' ||
       subjectType === 'student' ||
@@ -158,6 +192,99 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       )
     ) &&
     !(isPayment && properties.amount !== undefined && !properties.student_name && !attributes.name && !attributes.student_name);
+
+  // Dynamic student marks resolution for Examination & Marks logs
+  const [dynamicallyLoadedMarks, setDynamicallyLoadedMarks] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    if (isExamMarks && (!properties.students_marks || !Array.isArray(properties.students_marks) || properties.students_marks.length === 0)) {
+      const rawClass = properties.class_name || properties.class || properties.batch_name || (() => {
+        const m = rawDesc.match(/for Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i) || rawDesc.match(/in Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i);
+        return m ? m[1] : '';
+      })();
+      const cleanClass = String(rawClass || '').replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const examName = properties.exam_name || properties.exam || attributes.exam_name || (() => {
+        const m = rawDesc.match(/in\s+([A-Za-z0-9\s-]+?)(?:\.|$)/i);
+        return m ? m[1].trim() : '';
+      })();
+
+      const examId = properties.exam_id || attributes.exam_id;
+
+      try {
+        const rawMarks = localStorage.getItem('kts_student_marks');
+        const allMarks = rawMarks ? JSON.parse(rawMarks) : {};
+        const rawStudents = localStorage.getItem('kts_students') || localStorage.getItem('students');
+        let studentsList: any[] = rawStudents ? JSON.parse(rawStudents) : [];
+
+        let matchedExamId = examId;
+        if (!matchedExamId && examName) {
+          const rawExams = localStorage.getItem('examinations_exams');
+          const examList: any[] = rawExams ? JSON.parse(rawExams) : [];
+          const foundEx = examList.find((e: any) => e.name?.toLowerCase().trim() === examName.toLowerCase().trim() || String(e.id) === String(examId));
+          if (foundEx) matchedExamId = foundEx.id;
+        }
+
+        const targetExamMarks = (matchedExamId && allMarks[matchedExamId]) || (Object.keys(allMarks).length > 0 ? allMarks[Object.keys(allMarks)[0]] : null);
+
+        const buildRows = (stList: any[]) => {
+          if (!targetExamMarks || typeof targetExamMarks !== 'object') return;
+          const subjects = Object.keys(targetExamMarks);
+          const filteredSt = cleanClass
+            ? stList.filter((s: any) => {
+                const sC = String(s.class || s.class_name || s.batch_name || '').replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                const sS = String(s.section || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                return sC === cleanClass || `${sC}${sS}` === cleanClass || cleanClass.includes(sC);
+              })
+            : stList;
+
+          const rows: any[] = [];
+          filteredSt.forEach((st: any) => {
+            const cleanRoll = String(st.roll || '').replace(/^[0-9]+[A-Z]+-?/i, '');
+            const stMarks: Record<string, any> = {};
+            let totalObt = 0;
+            let hasAny = false;
+
+            subjects.forEach((sub: string) => {
+              const m = targetExamMarks[sub]?.[st.id] ?? targetExamMarks[sub]?.[st.roll] ?? targetExamMarks[sub]?.[cleanRoll];
+              if (m !== undefined && m !== null && m !== '') {
+                stMarks[sub] = m;
+                const num = Number(m);
+                if (!isNaN(num)) totalObt += num;
+                hasAny = true;
+              }
+            });
+
+            if (hasAny) {
+              rows.push({
+                student_id: st.id,
+                name: st.name,
+                roll_no: st.roll || '—',
+                admission_no: st.admission_no || st.admission_number || '—',
+                subjects: stMarks,
+                total_obtained: totalObt,
+                has_marks: true,
+              });
+            }
+          });
+
+          if (rows.length > 0) {
+            setDynamicallyLoadedMarks(rows);
+          }
+        };
+
+        if (studentsList.length > 0) {
+          buildRows(studentsList);
+        } else {
+          api.getResources('students').then((res) => {
+            if (Array.isArray(res)) buildRows(res);
+          }).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('Error resolving marks dynamically:', err);
+      }
+    }
+  }, [isExamMarks, properties, rawDesc]);
 
   // Live Student asynchronous lookup if missing profile details
   const [liveStudent, setLiveStudent] = useState<any>(null);
@@ -205,22 +332,6 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
     rawDesc.includes('diary') ||
     subjectType.includes('dailydiary') ||
     Boolean(properties.topics_taught || properties.homework_given || attributes.topics_taught || attributes.homework_given);
-
-  // 4. Examination, Schedule, Marks & Invigilation
-  const isInvigilation =
-    rawDesc.includes('invigilat') ||
-    Boolean(properties.invigilator_name || properties.hall_no || properties.room_number || attributes.invigilator_name);
-
-  const isExamMarks =
-    !isInvigilation &&
-    (rawDesc.includes('mark') || properties.type === 'exam_marks') &&
-    Boolean(properties.marks !== undefined || properties.obtained_marks !== undefined || properties.new_marks !== undefined || attributes.marks !== undefined);
-
-  const isExamSchedule =
-    !isInvigilation &&
-    !isExamMarks &&
-    (rawDesc.includes('exam') || subjectType.includes('exam') || subjectType.includes('examination') || log.log_name === 'exam' || activity.category === 'EXAMINATION' || activity.category === 'EXAMINATIONS' || properties.type === 'exam_schedule' || Array.isArray(properties.schedule_list)) &&
-    Boolean(properties.exam_name || properties.subject_name || properties.max_marks || properties.schedule || properties.schedule_list || attributes.exam_name || attributes.max_marks || properties.type === 'exam_schedule');
 
   // 5. Timetable Designing
   const isTimetable =
@@ -789,7 +900,33 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
           properties.exam ||
           attributes.exam_name ||
           (activity.target?.startsWith('Exam:') ? activity.target.replace(/^Exam:\s*/i, '') : '') ||
+          (activity.target?.includes('•') ? activity.target.split('•')[1]?.trim() : '') ||
           '';
+
+        const rawClass =
+          properties.class_name ||
+          properties.class ||
+          properties.batch_name ||
+          attributes.class_name ||
+          (activity.target?.includes('•') ? activity.target.split('•')[0]?.trim() : '') ||
+          '';
+        const targetClassName = rawClass ? (rawClass.toLowerCase().startsWith('class') ? rawClass : `Class ${rawClass}`) : '';
+
+        const finalStudentMarks: any[] = (Array.isArray(properties.students_marks) && properties.students_marks.length > 0)
+          ? properties.students_marks
+          : (Array.isArray(properties.marks_list) && properties.marks_list.length > 0)
+          ? properties.marks_list
+          : (Array.isArray(dynamicallyLoadedMarks) && dynamicallyLoadedMarks.length > 0)
+          ? dynamicallyLoadedMarks
+          : [];
+
+        const allSubjects: string[] = Array.from(
+          new Set(
+            finalStudentMarks.flatMap((st: any) =>
+              st.subjects ? Object.keys(st.subjects) : (st.marks && typeof st.marks === 'object' ? Object.keys(st.marks) : [])
+            )
+          )
+        );
 
         const examScheduleList: Array<{ class_name?: string; subject?: string; timings?: string; max_marks?: any; date?: string }> = (() => {
           if (Array.isArray(properties.schedule_list) && properties.schedule_list.length > 0) {
@@ -876,8 +1013,121 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
               </div>
             )}
 
+            {/* Marks Allotment Header Summary */}
+            {isExamMarks && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-white/70 dark:bg-[var(--surf)] p-3 rounded-xl border border-purple-200/60 dark:border-purple-900/40 text-[11.5px]">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[10.5px] block font-medium">Class & Section</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {targetClassName || 'All Classes'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[10.5px] block font-medium">Allotted / Evaluated By</span>
+                  <span className="font-semibold text-purple-700 dark:text-purple-300">
+                    {properties.marked_by || properties.actor_name || user.name}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[10.5px] block font-medium">Evaluation Date</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {formatDateOnly(log.created_at)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[10.5px] block font-medium">Students Evaluated</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded font-bold text-[11px] bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300">
+                    {finalStudentMarks.length > 0 ? `${finalStudentMarks.length} Students` : (properties.total_students_evaluated ? `${properties.total_students_evaluated} Students` : 'Recorded')}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 4.A — Student Marks Breakdown Table */}
+            {isExamMarks && finalStudentMarks.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11.5px] font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                    <GraduationCap size={14} className="text-purple-600 dark:text-purple-400" />
+                    Student-wise Marks Allotted ({finalStudentMarks.length} {finalStudentMarks.length === 1 ? 'Student' : 'Students'})
+                  </span>
+                  {targetClassName && (
+                    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                      Class: <strong className="text-slate-800 dark:text-slate-200">{targetClassName}</strong>
+                    </span>
+                  )}
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-purple-200/80 dark:border-purple-800/40 bg-white dark:bg-[var(--surf)] shadow-xs">
+                  <table className="w-full text-left text-[12px] border-collapse">
+                    <thead className="bg-purple-100/70 dark:bg-purple-900/50 text-purple-950 dark:text-purple-200 font-bold border-b border-purple-200 dark:border-purple-800/40">
+                      <tr>
+                        <th className="py-2.5 px-3 w-10 text-center">#</th>
+                        <th className="py-2.5 px-3.5 min-w-[140px]">Student Name</th>
+                        <th className="py-2.5 px-3 font-mono text-[11px]">Roll / Adm</th>
+                        {allSubjects.map((sub: string) => (
+                          <th key={sub} className="py-2.5 px-3 text-center font-semibold whitespace-nowrap">
+                            {sub}
+                          </th>
+                        ))}
+                        <th className="py-2.5 px-3 text-center font-bold">Total</th>
+                        <th className="py-2.5 px-3 text-center font-bold">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-purple-100 dark:divide-purple-900/30 text-slate-800 dark:text-slate-200">
+                      {finalStudentMarks.map((st: any, idx: number) => {
+                        const marksMap = st.subjects || st.marks || {};
+                        let rowTotal = 0;
+                        return (
+                          <tr key={idx} className="hover:bg-purple-50/40 dark:hover:bg-purple-900/20 transition-colors">
+                            <td className="py-2.5 px-3 text-center font-mono text-[11px] text-slate-400">
+                              {idx + 1}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white">
+                              {st.name || `Student #${st.student_id || idx + 1}`}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                              {st.roll_no || st.roll || st.admission_no || '—'}
+                            </td>
+                            {allSubjects.map((sub: string) => {
+                              const val = marksMap[sub];
+                              const markVal = typeof val === 'object' && val !== null ? val.obtained : val;
+                              const maxVal = typeof val === 'object' && val !== null ? val.max : null;
+                              const numVal = Number(markVal);
+                              if (!isNaN(numVal) && markVal !== null && markVal !== undefined && markVal !== '') {
+                                rowTotal += numVal;
+                              }
+                              return (
+                                <td key={sub} className="py-2.5 px-3 text-center">
+                                  {markVal !== undefined && markVal !== null && markVal !== '' ? (
+                                    <span className="inline-block px-2 py-0.5 rounded-md font-mono font-bold text-[11.5px] bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/40">
+                                      {markVal} {maxVal ? <span className="text-[10px] font-normal text-slate-400">/{maxVal}</span> : ''}
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-400 font-mono text-[11px]">--</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                            <td className="py-2.5 px-3 text-center font-mono font-extrabold text-purple-900 dark:text-purple-200 text-[12.5px]">
+                              {rowTotal || st.total_obtained || '—'}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+                                Evaluated
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Schedule Table containing class, subject, timings, max marks */}
-            {examScheduleList.length > 0 && (
+            {examScheduleList.length > 0 && !isExamMarks && (
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[11.5px] font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
@@ -924,13 +1174,13 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
               </div>
             )}
 
-            {/* Fallback info when not invigilation and no schedule table */}
-            {examScheduleList.length === 0 && !isInvigilation && (
+            {/* Fallback info when not invigilation, no schedule table, and no marks table */}
+            {examScheduleList.length === 0 && finalStudentMarks.length === 0 && !isInvigilation && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class / Batch</span>
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {properties.class_name || properties.batch_name || attributes.class_name || '—'}
+                    {targetClassName || properties.class_name || properties.batch_name || attributes.class_name || '—'}
                   </span>
                 </div>
                 <div>
@@ -964,7 +1214,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
               </div>
             )}
 
-            {/* Exam Marks Comparison */}
+            {/* Exam Marks Comparison for single-mark updates */}
             {(properties.marks !== undefined || properties.obtained_marks !== undefined || properties.new_marks !== undefined || properties.old?.marks !== undefined || attributes.marks !== undefined) && (
               <div className="pt-2 border-t border-purple-200/50 dark:border-purple-900/40">
                 <span className="text-slate-500 dark:text-slate-400 text-[11px] block mb-1">Marks Comparison</span>
