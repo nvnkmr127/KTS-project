@@ -628,7 +628,7 @@ class ActivityLogApiController extends Controller
                         foreach ($logs as $log) {
                             $log->timestamps = false;
                             $props = $log->properties ? (is_array($log->properties) ? $log->properties : (is_object($log->properties) && method_exists($log->properties, 'toArray') ? $log->properties->toArray() : [])) : [];
-                            $props['original_created_at'] = $log->created_at ? $log->created_at->toIso8601String() : $now->toIso8601String();
+                            $props['original_created_at'] = $log->created_at ? Carbon::parse($log->created_at)->toIso8601String() : $now->toIso8601String();
                             $props['deleted_at'] = $now->toIso8601String();
                             $log->properties = $props;
                             $log->created_at = $targetDate;
@@ -719,12 +719,13 @@ class ActivityLogApiController extends Controller
             $log = Activity::findOrFail($id);
             
             // Check if log is active (< 30 days old)
-            $is_active = $log->created_at >= Carbon::now()->subDays(30);
+            $createdAt = $log->created_at ? Carbon::parse($log->created_at) : Carbon::now();
+            $is_active = $createdAt->gte(Carbon::now()->subDays(30));
 
             if ($is_active) {
                 // Move to recycle bin (set created_at to 31 days ago, saving original_created_at)
                 $log->timestamps = false;
-                $log->setCustomProperty('original_created_at', $log->created_at->toIso8601String());
+                $log->setCustomProperty('original_created_at', $createdAt->toIso8601String());
                 $log->setCustomProperty('deleted_at', Carbon::now()->toIso8601String());
                 $log->created_at = Carbon::now()->subDays(31);
                 $log->saveQuietly();

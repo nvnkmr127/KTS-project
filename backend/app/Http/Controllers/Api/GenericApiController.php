@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
 
 class GenericApiController extends Controller
@@ -666,7 +667,7 @@ class GenericApiController extends Controller
                     'causer_name' => $item->causer ? $item->causer->name : ($item->causer_id ? 'User #' . $item->causer_id : 'System'),
                     'causer_email' => $item->causer ? $item->causer->email : null,
                     'properties' => $properties,
-                    'created_at' => $item->created_at ? $item->created_at->toIso8601String() : null,
+                    'created_at' => $item->created_at ? Carbon::parse($item->created_at)->toIso8601String() : null,
                 ];
             });
         } elseif ($resource === 'failed-logins') {
@@ -686,7 +687,7 @@ class GenericApiController extends Controller
                     'causer_name'    => $item->causer ? $item->causer->name : null,
                     'causer_email'   => $item->causer ? $item->causer->email : null,
                     'causer_id'      => $item->causer_id ? (string)$item->causer_id : null,
-                    'created_at'     => $item->created_at ? $item->created_at->toIso8601String() : null,
+                    'created_at'     => $item->created_at ? Carbon::parse($item->created_at)->toIso8601String() : null,
                 ];
             });
         }
