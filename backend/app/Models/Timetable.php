@@ -399,9 +399,35 @@ class Timetable extends Model
         static::updated(function ($timetable) {
             try {
                 $causer = auth('sanctum')->user() ?? auth()->user();
+                $properties = [
+                    'batch_name' => $timetable->batch?->name,
+                    'subject_name' => $timetable->subject?->name,
+                    'faculty_name' => $timetable->user?->name,
+                    'classroom_name' => $timetable->classroom?->name,
+                    'academic_year' => $timetable->academicYear?->name,
+                    'schedule_date' => $timetable->schedule_date,
+                    'time_range' => $timetable->time_range,
+                    'is_lab_session' => $timetable->is_lab_session,
+                    'attributes' => [
+                        'batch_name' => $timetable->batch?->name,
+                        'subject_name' => $timetable->subject?->name,
+                        'faculty_name' => $timetable->user?->name,
+                        'classroom_name' => $timetable->classroom?->name,
+                        'schedule_date' => $timetable->schedule_date,
+                        'time_range' => $timetable->time_range,
+                    ],
+                    'old' => $timetable->getOriginal(),
+                ];
+
+                if ($timetable->isLabSession() && $timetable->practicalGroup) {
+                    $properties['practical_group'] = $timetable->practicalGroup->name;
+                    $properties['student_count'] = $timetable->getStudentCount();
+                }
+
                 activity()
                     ->causedBy($causer)
                     ->performedOn($timetable)
+                    ->withProperties($properties)
                     ->log($timetable->isLabSession() ? 'Lab session updated' : 'Timetable entry updated');
             } catch (\Throwable $e) {
                 // Ignore activity logging errors

@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { STAFF } from './StaffManagement';
 import { getClassWeight } from './Students';
+import { formatExamTimingsWithEnd } from '../utils/activityLogFormatter';
 
 const SUBJECTS = ['Mathematics', 'Science', 'English', 'Telugu', 'Hindi', 'Social Studies', 'Physical Education', 'Computer Science', 'Art', 'Music', 'Library', 'Break'];
 
@@ -298,9 +299,15 @@ export function Timetable() {
     setIsManualRoom(!ROOMS.includes(roomVal));
   };
 
-  const saveCell = () => {
+  const saveCell = async () => {
     if (!editCell) return;
     const teacher = teachers.find((t) => t.id === editTeacher);
+    const teacherName = teacher?.name || 'Unassigned';
+    const periodNumber = editCell.period + 1;
+    const isEdit = Boolean(editCell.current);
+    const timing = periodTimings[editCell.period];
+    const timingStr = timing ? formatExamTimingsWithEnd(timing.start, timing.end, `${timing.start} - ${timing.end}`) : '';
+
     setTimetablePeriod(selectedClass, editCell.day, editCell.period, {
       subject: editSubject,
       teacher: teacher?.name ?? '',
@@ -308,14 +315,119 @@ export function Timetable() {
       room: editRoom,
     });
     setHasUnsavedChanges(true);
+
+    try {
+      const actorName = user?.name || 'Super Admin';
+      const prevSubject = editCell.current?.subject || '';
+      const prevTeacher = editCell.current?.teacher || (editCell.current?.teacherId ? (teachers.find(t => t.id === editCell.current?.teacherId)?.name || '') : '');
+      const prevRoom = editCell.current?.room || 'Room 12';
+      const isPeriodModification = isEdit && Boolean(prevSubject || prevTeacher);
+
+      await api.recordActivityLog({
+        log_name: 'timetable',
+        event: isPeriodModification ? 'updated' : (isEdit ? 'updated' : 'created'),
+        description: isPeriodModification
+          ? `${actorName} updated Period ${periodNumber} (${editCell.day}) for Class ${selectedClass} from ${prevSubject || 'Unassigned'} (Faculty: ${prevTeacher || 'Unassigned'}, Room: ${prevRoom}) to ${editSubject} (Faculty: ${teacherName}, Room: ${editRoom}).`
+          : `${actorName} assigned ${editSubject} to Period ${periodNumber} (${editCell.day}) for Class ${selectedClass} (Faculty: ${teacherName}, Room: ${editRoom}).`,
+        properties: {
+          type: 'timetable_period',
+          action_type: isPeriodModification ? 'period_updated' : (isEdit ? 'period_updated' : 'period_assigned'),
+          class_name: selectedClass,
+          class: selectedClass,
+          batch_name: selectedClass,
+          day: editCell.day,
+          period: periodNumber,
+          period_index: editCell.period,
+          period_time: timingStr,
+          subject: editSubject,
+          subject_name: editSubject,
+          teacher_name: teacherName,
+          teacher: teacherName,
+          faculty_name: teacherName,
+          teacher_id: editTeacher,
+          room: editRoom,
+          classroom_name: editRoom,
+          old_subject: prevSubject,
+          old_teacher: prevTeacher,
+          old_room: prevRoom,
+          previous_subject: prevSubject,
+          previous_teacher: prevTeacher,
+          previous_room: prevRoom,
+          previous: isPeriodModification || isEdit ? {
+            subject: prevSubject,
+            subject_name: prevSubject,
+            teacher: prevTeacher,
+            teacher_name: prevTeacher,
+            faculty_name: prevTeacher,
+            room: prevRoom,
+            classroom_name: prevRoom,
+            day: editCell.day,
+            period: periodNumber,
+            period_time: timingStr,
+          } : undefined,
+          attributes: {
+            batch_name: selectedClass,
+            day: editCell.day,
+            period: periodNumber,
+            period_time: timingStr,
+            subject: editSubject,
+            teacher: teacherName,
+            room: editRoom,
+          },
+          old: isPeriodModification || isEdit ? {
+            subject: prevSubject,
+            teacher: prevTeacher,
+            room: prevRoom,
+            day: editCell.day,
+            period: periodNumber,
+            period_time: timingStr,
+          } : undefined,
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      });
+    } catch { /* empty */ }
+
     setEditCell(null);
   };
 
-   
-  const clearCell = () => {
+  const clearCell = async () => {
     if (!editCell) return;
+    const periodNumber = editCell.period + 1;
+    const prevSubject = editCell.current?.subject || 'period';
+    const prevTeacher = editCell.current?.teacher || '';
+    const prevRoom = editCell.current?.room || '';
+    const timing = periodTimings[editCell.period];
+    const timingStr = timing ? formatExamTimingsWithEnd(timing.start, timing.end, `${timing.start} - ${timing.end}`) : '';
+
     setTimetablePeriod(selectedClass, editCell.day, editCell.period, null);
     setHasUnsavedChanges(true);
+
+    try {
+      const actorName = user?.name || 'Super Admin';
+      await api.recordActivityLog({
+        log_name: 'timetable',
+        event: 'deleted',
+        description: `${actorName} cleared Period ${periodNumber} (${editCell.day}) timetable slot for Class ${selectedClass} (was ${prevSubject}${prevTeacher ? ` with ${prevTeacher}` : ''}).`,
+        properties: {
+          type: 'timetable_period',
+          action_type: 'period_cleared',
+          class_name: selectedClass,
+          class: selectedClass,
+          day: editCell.day,
+          period: periodNumber,
+          period_index: editCell.period,
+          period_time: timingStr,
+          cleared_subject: prevSubject,
+          cleared_teacher: prevTeacher,
+          cleared_room: prevRoom,
+          status: 'Cleared',
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      });
+    } catch { /* empty */ }
+
     setEditCell(null);
   };
 
@@ -367,6 +479,28 @@ export function Timetable() {
         academic_year_id: selectedAcademicYearId,
         slots: slots
       });
+
+      try {
+        const actorName = user?.name || 'Super Admin';
+        await api.recordActivityLog({
+          log_name: 'timetable',
+          event: 'updated',
+          description: `${actorName} saved and published weekly timetable schedule for Class ${selectedClass} (${slots.length} period allocations).`,
+          properties: {
+            type: 'timetable_schedule',
+            action_type: 'schedule_saved',
+            class_name: selectedClass,
+            class: selectedClass,
+            total_slots: slots.length,
+            slots: slots.map(s => ({
+              ...s,
+              timings: formatExamTimingsWithEnd(s.start_time, s.end_time, `${s.start_time} - ${s.end_time}`)
+            })),
+            marked_by: actorName,
+            actor_name: actorName,
+          },
+        });
+      } catch { /* empty */ }
 
       await refreshTimetable();
 
@@ -730,9 +864,33 @@ export function Timetable() {
       {showEditTimings && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              savePeriodTimings(tempTimings);
+              await savePeriodTimings(tempTimings);
+              try {
+                const actorName = user?.name || 'Super Admin';
+                const formattedList = tempTimings.map((t, idx) => ({
+                  period: t.isBreak ? (t.label || 'Break') : `Period ${idx + 1}`,
+                  start: t.start,
+                  end: t.end,
+                  timings: formatExamTimingsWithEnd(t.start, t.end, `${t.start} - ${t.end}`),
+                  is_break: Boolean(t.isBreak),
+                  label: t.label,
+                }));
+                await api.recordActivityLog({
+                  log_name: 'timetable',
+                  event: 'updated',
+                  description: `${actorName} updated the daily timetable period timings (${tempTimings.length} periods/breaks configured).`,
+                  properties: {
+                    type: 'timetable_period_timings',
+                    action_type: 'timings_updated',
+                    total_periods: tempTimings.length,
+                    timings: formattedList,
+                    marked_by: actorName,
+                    actor_name: actorName,
+                  },
+                });
+              } catch { /* empty */ }
               setShowEditTimings(false);
             }}
             className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[420px] shadow-2xl overflow-hidden"

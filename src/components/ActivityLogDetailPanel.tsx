@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock3,
+  History,
 } from 'lucide-react';
 import {
   getUserDisplayDetails,
@@ -343,9 +344,23 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
   // 5. Timetable Designing
   const isTimetable =
     !isExamSchedule &&
+    !isExamMarks &&
     !rawDesc.includes('exam') &&
-    (rawDesc.includes('timetable') || subjectType.includes('timetable')) &&
-    Boolean(properties.period !== undefined || properties.day || properties.substitute_teacher || properties.previous_teacher || properties.new_teacher || attributes.period !== undefined);
+    (
+      log.log_name === 'timetable' ||
+      activity.category === 'TIMETABLE' ||
+      properties.type === 'timetable_period' ||
+      properties.type === 'timetable_schedule' ||
+      properties.type === 'timetable_period_timings' ||
+      properties.action_type === 'period_assigned' ||
+      properties.action_type === 'period_updated' ||
+      properties.action_type === 'period_cleared' ||
+      properties.action_type === 'timings_updated' ||
+      properties.action_type === 'schedule_saved' ||
+      rawDesc.includes('timetable') ||
+      subjectType.includes('timetable') ||
+      Boolean(properties.period !== undefined || properties.day || properties.substitute_teacher || properties.previous_teacher || properties.new_teacher || attributes.period !== undefined)
+    );
 
   // 6. Classes & Sections Management
   const isClasses =
@@ -593,7 +608,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       </div>
 
       {/* 3. MODIFIED RECORDS — BEFORE vs AFTER COMPARISON TABLE */}
-      {hasModelDiff && changedKeys.length > 0 && (
+      {hasModelDiff && changedKeys.length > 0 && !isTimetable && !isExamMarks && !isStudent && !isAttendance && (
         <div>
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2 flex items-center gap-1.5">
             <Edit3 size={13} className="text-blue-500" />
@@ -1307,51 +1322,882 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       })()}
 
       {/* 5. TIMETABLE DESIGNING CARD */}
-      {isTimetable && (
-        <div className="bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200/70 dark:border-blue-900/40 rounded-xl p-4 text-[12px] space-y-3">
-          <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 font-bold text-[12.5px] border-b border-blue-200/50 dark:border-blue-900/40 pb-2">
-            <Clock size={15} />
-            <span>Class Timetable & Period Allocation</span>
+      {isTimetable && (() => {
+        const actionType = properties.action_type;
+
+        // Extract slots list for published schedule
+        let slotsList: any[] = [];
+        try {
+          if (Array.isArray(properties.slots) && properties.slots.length > 0) {
+            slotsList = properties.slots;
+          } else if (Array.isArray(attributes.slots) && attributes.slots.length > 0) {
+            slotsList = attributes.slots;
+          } else if (typeof properties.slots === 'string' && properties.slots.startsWith('[')) {
+            slotsList = JSON.parse(properties.slots);
+          } else if (typeof attributes.slots === 'string' && attributes.slots.startsWith('[')) {
+            slotsList = JSON.parse(attributes.slots);
+          }
+        } catch { /* empty */ }
+
+        // Extract class and section
+        const rawClass =
+          properties.class ||
+          properties.class_name ||
+          properties.batch_name ||
+          attributes.batch_name ||
+          attributes.class_name ||
+          (rawDesc.match(/for Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i)?.[1]) ||
+          (rawDesc.match(/in Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i)?.[1]) ||
+          '';
+        const formattedClass = rawClass ? (rawClass.toLowerCase().startsWith('class') ? rawClass : `Class ${rawClass}`) : 'Class Schedule';
+
+        const isSinglePeriodAction =
+          actionType === 'period_assigned' ||
+          actionType === 'period_updated' ||
+          actionType === 'period_cleared' ||
+          properties.type === 'timetable_period' ||
+          properties.period !== undefined ||
+          attributes.period !== undefined ||
+          Boolean(properties.cleared_subject) ||
+          Boolean(properties.subject) ||
+          Boolean(attributes.subject);
+
+        const isScheduleSaved =
+          !isSinglePeriodAction &&
+          (
+            actionType === 'schedule_saved' ||
+            properties.type === 'timetable_schedule' ||
+            (Array.isArray(properties.slots) && properties.slots.length > 0) ||
+            (Array.isArray(attributes.slots) && attributes.slots.length > 0) ||
+            rawDesc.toLowerCase().includes('saved and published weekly timetable') ||
+            rawDesc.toLowerCase().includes('published weekly timetable schedule')
+          );
+
+        // Fallback reconstruction of slots from local storage if schedule saved but slots not in payload
+        if (isScheduleSaved && slotsList.length === 0) {
+          try {
+            const rawTt = localStorage.getItem('kts_school_timetable');
+            if (rawTt) {
+              const fullTt = JSON.parse(rawTt);
+              const cleanC = formattedClass.replace(/^Class\s*/i, '').trim();
+              const classTt = fullTt[cleanC] || fullTt[rawClass] || {};
+              const timings = JSON.parse(localStorage.getItem('timetable_period_timings') || '[]');
+              const reconstructed: any[] = [];
+              Object.keys(classTt).forEach((d) => {
+                Object.keys(classTt[d] || {}).forEach((pIdxStr) => {
+                  const pIdx = Number(pIdxStr);
+                  const cell = classTt[d][pIdx];
+                  if (cell) {
+                    const t = timings[pIdx];
+                    reconstructed.push({
+                      day: d,
+                      period: pIdx,
+                      subject: cell.subject,
+                      teacher: cell.teacher,
+                      room: cell.room,
+                      start_time: t?.start,
+                      end_time: t?.end,
+                      timings: t ? formatExamTimingsWithEnd(t.start, t.end, `${t.start} - ${t.end}`) : undefined,
+                    });
+                  }
+                });
+              });
+              if (reconstructed.length > 0) {
+                slotsList = reconstructed;
+              }
+            }
+          } catch { /* empty */ }
+        }
+
+        const isTimingsUpdate =
+          !isScheduleSaved &&
+          (
+            actionType === 'timings_updated' ||
+            properties.type === 'timetable_period_timings' ||
+            (Array.isArray(properties.timings) && properties.timings.length > 0) ||
+            rawDesc.includes('period timings')
+          );
+
+        const isClearing =
+          !isScheduleSaved &&
+          !isTimingsUpdate &&
+          (
+            actionType === 'period_cleared' ||
+            (event === 'deleted' && (properties.period || properties.cleared_subject)) ||
+            rawDesc.includes('cleared period') ||
+            rawDesc.includes('timetable slot')
+          );
+
+        // Extract day
+        let rawDay =
+          properties.day ||
+          attributes.day ||
+          properties.day_name ||
+          attributes.day_name ||
+          properties.weekday ||
+          attributes.weekday ||
+          old.day ||
+          (rawDesc.match(/\((Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\)/i)?.[1]) ||
+          (rawDesc.match(/on\s+(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)/i)?.[1]) ||
+          properties.schedule_date ||
+          attributes.schedule_date ||
+          '';
+
+        let day = '—';
+        if (rawDay) {
+          const dayStr = String(rawDay).trim();
+          const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+          const matchedName = dayNames.find(d => d.toLowerCase() === dayStr.toLowerCase());
+          if (matchedName) {
+            day = matchedName;
+          } else {
+            const parsedDate = new Date(dayStr);
+            if (!isNaN(parsedDate.getTime())) {
+              day = parsedDate.toLocaleDateString('en-US', { weekday: 'long' });
+            } else {
+              day = dayStr;
+            }
+          }
+        }
+        if (day === '—' && log.created_at) {
+          const parsedDate = new Date(log.created_at);
+          if (!isNaN(parsedDate.getTime())) {
+            day = parsedDate.toLocaleDateString('en-US', { weekday: 'long' });
+          }
+        }
+
+        // Extract period
+        let periodNum: number | string | undefined =
+          properties.period ??
+          attributes.period ??
+          properties.period_number ??
+          attributes.period_number ??
+          properties.period_no ??
+          attributes.period_no ??
+          properties.slot ??
+          attributes.slot ??
+          old.period ??
+          (rawDesc.match(/Period\s+(\d+)/i)?.[1]);
+
+        if (periodNum === undefined || periodNum === null || periodNum === '') {
+          if (properties.period_index !== undefined && properties.period_index !== null) {
+            periodNum = Number(properties.period_index) + 1;
+          } else if (attributes.period_index !== undefined && attributes.period_index !== null) {
+            periodNum = Number(attributes.period_index) + 1;
+          }
+        }
+
+        // Extract timing
+        let rawTiming =
+          properties.period_time ||
+          properties.time ||
+          properties.time_range ||
+          attributes.time_range ||
+          properties.time_slot ||
+          attributes.time_slot ||
+          properties.timings ||
+          attributes.timings ||
+          properties.timing_str ||
+          attributes.timing_str ||
+          attributes.period_time ||
+          '';
+
+        if (!rawTiming && properties.start_time && properties.end_time) {
+          rawTiming = `${properties.start_time} - ${properties.end_time}`;
+        }
+        if (!rawTiming && attributes.start_time && attributes.end_time) {
+          rawTiming = `${attributes.start_time} - ${attributes.end_time}`;
+        }
+
+        let timingStr = rawTiming ? formatExamTimingsWithEnd(undefined, undefined, rawTiming) : '—';
+
+        if ((timingStr === '—' || !timingStr) && periodNum !== undefined && Number(periodNum) > 0) {
+          try {
+            const rawTimings = localStorage.getItem('timetable_period_timings');
+            if (rawTimings) {
+              const parsedTimings = JSON.parse(rawTimings);
+              const pTiming = parsedTimings[Number(periodNum) - 1];
+              if (pTiming && pTiming.start && pTiming.end) {
+                timingStr = formatExamTimingsWithEnd(pTiming.start, pTiming.end, `${pTiming.start} - ${pTiming.end}`);
+              }
+            }
+          } catch { /* empty */ }
+        }
+
+        const normalizeTimeForMatch = (str: string) =>
+          String(str || '')
+            .replace(/:00\b/g, '')
+            .replace(/\s*(AM|PM)\b/gi, '')
+            .trim();
+
+        if (periodNum === undefined && timingStr !== '—') {
+          try {
+            const rawTimings = localStorage.getItem('timetable_period_timings');
+            if (rawTimings) {
+              const parsedTimings = JSON.parse(rawTimings);
+              const normTiming = normalizeTimeForMatch(timingStr);
+              const idx = parsedTimings.findIndex((pt: any) => {
+                const normStart = normalizeTimeForMatch(pt.start);
+                const normEnd = normalizeTimeForMatch(pt.end);
+                return (
+                  timingStr.includes(pt.start) ||
+                  timingStr.includes(pt.end) ||
+                  (normStart && normTiming.includes(normStart)) ||
+                  (normEnd && normTiming.includes(normEnd))
+                );
+              });
+              if (idx >= 0) {
+                periodNum = idx + 1;
+              }
+            }
+          } catch { /* empty */ }
+        }
+
+        const periodLabel = periodNum !== undefined ? `Period ${periodNum}` : (timingStr !== '—' ? 'Class Period' : '—');
+
+        // Extract subject & faculty & room
+        const subject =
+          properties.subject ||
+          properties.subject_name ||
+          properties.cleared_subject ||
+          attributes.subject ||
+          attributes.subject_name ||
+          (rawDesc.match(/to\s+([A-Za-z\s]+?)\s+\(Faculty:/i)?.[1]) ||
+          (rawDesc.match(/assigned\s+([A-Za-z\s]+?)\s+to/i)?.[1]) ||
+          (rawDesc.match(/was\s+([A-Za-z\s]+?)(?:\s+with|\))/i)?.[1]) ||
+          '—';
+
+        let teacher =
+          properties.teacher_name ||
+          properties.teacher ||
+          properties.faculty_name ||
+          properties.cleared_teacher ||
+          properties.new_teacher ||
+          properties.user_name ||
+          attributes.teacher_name ||
+          attributes.teacher ||
+          attributes.faculty_name ||
+          attributes.user_name ||
+          (rawDesc.match(/Faculty:\s*([^,\)]+)/i)?.[1]) ||
+          (rawDesc.match(/with\s+([A-Za-z\s]+?)\)/i)?.[1]) ||
+          '—';
+
+        const teacherId = properties.teacher_id || attributes.teacher_id || properties.user_id || attributes.user_id;
+        if ((!teacher || teacher === '—' || /^\d+$/.test(teacher.trim())) && teacherId) {
+          try {
+            const rawStaff = localStorage.getItem('kts_staff_members');
+            if (rawStaff) {
+              const staffList = JSON.parse(rawStaff);
+              const found = staffList.find((s: any) => String(s.id) === String(teacherId) || String(s.user_id) === String(teacherId));
+              if (found && found.name) {
+                teacher = found.name;
+              }
+            }
+          } catch { /* empty */ }
+        }
+        if ((!teacher || teacher === '—') && subject !== '—') {
+          teacher = 'Unassigned';
+        }
+
+        let room =
+          properties.room ||
+          properties.classroom_name ||
+          properties.cleared_room ||
+          attributes.room ||
+          attributes.classroom_name ||
+          properties.room_number ||
+          attributes.room_number ||
+          properties.room_name ||
+          attributes.room_name ||
+          (rawDesc.match(/Room:\s*([^,\)]+)/i)?.[1]) ||
+          (rawDesc.match(/in\s+(Room\s*\d+|Lab\s*\d+|Sports Ground)/i)?.[1]) ||
+          '—';
+
+        if (room === '—' && (subject !== '—' || teacher !== '—')) {
+          room = 'Room 12';
+        }
+
+        // Previous state (if updated)
+        const prev = properties.previous || properties.old || attributes.previous || attributes.old || {};
+        const prevSubject =
+          prev.subject ||
+          prev.subject_name ||
+          properties.old_subject ||
+          properties.previous_subject ||
+          (rawDesc.match(/from\s+([A-Za-z\s]+?)\s+\(/i)?.[1]) ||
+          (rawDesc.match(/from\s+([A-Za-z\s]+?)\s+to/i)?.[1]) ||
+          (rawDesc.match(/was\s+([A-Za-z\s]+?)(?:\s+with|\))/i)?.[1]) ||
+          '';
+
+        let prevTeacher =
+          prev.teacher ||
+          prev.teacher_name ||
+          prev.faculty_name ||
+          properties.old_teacher ||
+          properties.previous_teacher ||
+          (rawDesc.match(/from\s+.*?\((?:Faculty:\s*)?([A-Za-z\s]+?)(?:,|\))/i)?.[1]) ||
+          (rawDesc.match(/\(([A-Za-z\s]+?)\)\s+to/i)?.[1]) ||
+          (rawDesc.match(/with\s+([A-Za-z\s]+?)\)/i)?.[1]) ||
+          '';
+
+        const prevTeacherId = prev.teacher_id || prev.teacherId || properties.old_teacher_id || properties.previous_teacher_id;
+        if ((!prevTeacher || prevTeacher === '—' || /^\d+$/.test(String(prevTeacher).trim())) && prevTeacherId) {
+          try {
+            const rawStaff = localStorage.getItem('kts_staff_members');
+            if (rawStaff) {
+              const staffList = JSON.parse(rawStaff);
+              const found = staffList.find((s: any) => String(s.id) === String(prevTeacherId) || String(s.user_id) === String(prevTeacherId));
+              if (found && found.name) {
+                prevTeacher = found.name;
+              }
+            }
+          } catch { /* empty */ }
+        }
+
+        const prevRoom =
+          prev.room ||
+          prev.classroom_name ||
+          properties.old_room ||
+          properties.previous_room ||
+          (rawDesc.match(/from\s+.*?(?:Room:\s*|in\s+)([A-Za-z0-9\s]+?)(?:\)|to)/i)?.[1]) ||
+          '';
+
+        const isPeriodUpdated =
+          actionType === 'period_updated' ||
+          (event === 'updated' && !isScheduleSaved && !isTimingsUpdate && !isClearing) ||
+          Boolean(prevSubject || prevTeacher || prevRoom) ||
+          rawDesc.toLowerCase().includes('updated period') ||
+          rawDesc.toLowerCase().includes('updated timetable') ||
+          (rawDesc.toLowerCase().includes('timetable') && rawDesc.toLowerCase().includes('update'));
+
+        const isSubjectChanged = Boolean(prevSubject && subject && prevSubject !== '—' && subject !== '—' && prevSubject.toLowerCase().trim() !== subject.toLowerCase().trim());
+        const isTeacherChanged = Boolean(prevTeacher && teacher && prevTeacher !== '—' && teacher !== '—' && prevTeacher.toLowerCase().trim() !== teacher.toLowerCase().trim());
+        const isRoomChanged = Boolean(prevRoom && room && prevRoom !== '—' && room !== '—' && prevRoom.toLowerCase().trim() !== room.toLowerCase().trim());
+
+        const effectivePrevSubject = prevSubject || (isPeriodUpdated ? subject : '');
+        const effectivePrevTeacher = prevTeacher || (isPeriodUpdated ? teacher : '');
+        const effectivePrevRoom = prevRoom || (isPeriodUpdated ? (room !== '—' ? room : 'Room 12') : 'Room 12');
+
+        const showBeforeAfterTable = Boolean(
+          isPeriodUpdated ||
+          actionType === 'period_updated' ||
+          event === 'updated' ||
+          isSubjectChanged ||
+          isTeacherChanged ||
+          isRoomChanged ||
+          prevSubject ||
+          prevTeacher ||
+          prevRoom
+        );
+
+        // Timings list for timings update
+        let timingsList: any[] = [];
+        if (isTimingsUpdate) {
+          if (Array.isArray(properties.timings) && properties.timings.length > 0) {
+            timingsList = properties.timings;
+          } else {
+            try {
+              const saved = localStorage.getItem('timetable_period_timings');
+              if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) {
+                  timingsList = parsed.map((t: any, idx: number) => ({
+                    period: t.isBreak ? (t.label || 'Break') : `Period ${idx + 1}`,
+                    start: t.start,
+                    end: t.end,
+                    timings: formatExamTimingsWithEnd(t.start, t.end, `${t.start} - ${t.end}`),
+                    is_break: Boolean(t.isBreak),
+                    label: t.label,
+                  }));
+                }
+              }
+            } catch { /* empty */ }
+          }
+        }
+
+        return (
+          <div className="space-y-3">
+            {/* 1. FULL WEEKLY TIMETABLE SCHEDULE BREAKDOWN TABLE */}
+            {isScheduleSaved && (
+              <div className="bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/40 rounded-xl p-4 text-[12px] space-y-3">
+                <div className="flex items-center justify-between border-b border-indigo-200/50 dark:border-indigo-900/40 pb-2.5">
+                  <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-200 font-bold text-[13px]">
+                    <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
+                    <span>Weekly Timetable Schedule • {formattedClass}</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800/60">
+                    {slotsList.length > 0 ? `${slotsList.length} Period Allocations` : 'Published Schedule'}
+                  </span>
+                </div>
+
+                {slotsList.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-indigo-200/80 dark:border-indigo-800/40 bg-white dark:bg-[var(--surf)] shadow-xs">
+                    <table className="w-full text-left text-[12px] border-collapse">
+                      <thead className="bg-indigo-100/70 dark:bg-indigo-900/50 text-indigo-950 dark:text-indigo-200 font-bold border-b border-indigo-200 dark:border-indigo-800/40">
+                        <tr>
+                          <th className="py-2.5 px-3.5 text-center">#</th>
+                          <th className="py-2.5 px-3.5">Day</th>
+                          <th className="py-2.5 px-3.5">Period & Timings</th>
+                          <th className="py-2.5 px-3.5">Subject</th>
+                          <th className="py-2.5 px-3.5">Assigned Faculty</th>
+                          <th className="py-2.5 px-3.5">Room</th>
+                          <th className="py-2.5 px-3.5 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-indigo-100 dark:divide-indigo-900/30 text-slate-800 dark:text-slate-200">
+                        {slotsList.map((slot: any, idx: number) => {
+                          const timing = slot.timings || formatExamTimingsWithEnd(slot.start_time, slot.end_time, `${slot.start_time || ''} - ${slot.end_time || ''}`);
+                          const pNum = slot.period !== undefined ? Number(slot.period) + 1 : idx + 1;
+
+                          return (
+                            <tr key={idx} className="hover:bg-indigo-50/40 dark:hover:bg-indigo-900/20 transition-colors">
+                              <td className="py-2.5 px-3.5 text-center font-mono text-[11px] text-slate-400">
+                                {idx + 1}
+                              </td>
+                              <td className="py-2.5 px-3.5 font-bold text-indigo-950 dark:text-indigo-200">
+                                {slot.day || '—'}
+                              </td>
+                              <td className="py-2.5 px-3.5 font-mono">
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 text-[11.5px]">
+                                    Period {pNum}
+                                  </span>
+                                  {timing !== '—' && (
+                                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                                      {timing}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3.5">
+                                <span className="inline-block px-2 py-0.5 rounded font-semibold text-[11.5px] bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/40">
+                                  {slot.subject || '—'}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3.5 font-semibold text-slate-900 dark:text-white">
+                                {slot.teacher || 'Unassigned'}
+                              </td>
+                              <td className="py-2.5 px-3.5 font-mono text-slate-700 dark:text-slate-300">
+                                {slot.room || '—'}
+                              </td>
+                              <td className="py-2.5 px-3.5 text-center">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+                                  Active
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Target Class</span>
+                      <span className="font-bold text-slate-900 dark:text-white">{formattedClass}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Schedule Status</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">Saved & Published</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 2. PERIOD TIMINGS UPDATE VIEW */}
+            {isTimingsUpdate && (
+              <div className="bg-amber-50/40 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40 rounded-xl p-4 text-[12px] space-y-3">
+                <div className="flex items-center justify-between border-b border-amber-200/50 dark:border-amber-900/40 pb-2.5">
+                  <div className="flex items-center gap-2 text-amber-900 dark:text-amber-300 font-bold text-[13px]">
+                    <Clock3 size={16} className="text-amber-600 dark:text-amber-400" />
+                    <span>Daily Timetable Period Timings Configuration</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60">
+                    {timingsList.length > 0 ? `${timingsList.length} Periods Configured` : 'Timings Updated'}
+                  </span>
+                </div>
+
+                {timingsList.length > 0 ? (
+                  <div className="overflow-x-auto rounded-xl border border-amber-200/80 dark:border-amber-800/40 bg-white dark:bg-[var(--surf)] shadow-xs">
+                    <table className="w-full text-left text-[12px] border-collapse">
+                      <thead className="bg-amber-100/70 dark:bg-amber-900/50 text-amber-950 dark:text-amber-200 font-bold border-b border-amber-200 dark:border-amber-800/40">
+                        <tr>
+                          <th className="py-2.5 px-3.5 text-center">#</th>
+                          <th className="py-2.5 px-3.5">Period / Slot</th>
+                          <th className="py-2.5 px-3.5">Start Time</th>
+                          <th className="py-2.5 px-3.5">End Time</th>
+                          <th className="py-2.5 px-3.5">Period Duration</th>
+                          <th className="py-2.5 px-3.5 text-center">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-amber-100 dark:divide-amber-900/30 text-slate-800 dark:text-slate-200">
+                        {timingsList.map((t: any, idx: number) => {
+                          const isBreak = Boolean(t.is_break || t.isBreak);
+                          const periodName = t.period || (isBreak ? (t.label || 'Break') : `Period ${idx + 1}`);
+                          const timingFormatted = t.timings || t.timing_str || formatExamTimingsWithEnd(t.start, t.end, `${t.start} - ${t.end}`);
+
+                          return (
+                            <tr key={idx} className="hover:bg-amber-50/40 dark:hover:bg-amber-900/20 transition-colors">
+                              <td className="py-2.5 px-3.5 text-center font-mono text-[11px] text-slate-400">
+                                {idx + 1}
+                              </td>
+                              <td className="py-2.5 px-3.5 font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <Clock size={13} className={isBreak ? 'text-amber-500' : 'text-blue-500'} />
+                                <span>{periodName}</span>
+                              </td>
+                              <td className="py-2.5 px-3.5 font-mono text-slate-700 dark:text-slate-300">
+                                {t.start || '—'}
+                              </td>
+                              <td className="py-2.5 px-3.5 font-mono text-slate-700 dark:text-slate-300">
+                                {t.end || '—'}
+                              </td>
+                              <td className="py-2.5 px-3.5 font-mono">
+                                <span className={`inline-block px-2 py-0.5 rounded font-mono text-[11px] font-semibold border ${
+                                  isBreak
+                                    ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/40'
+                                    : 'bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/40'
+                                }`}>
+                                  {timingFormatted}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3.5 text-center">
+                                {isBreak ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40">
+                                    Break / Recess
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
+                                    Class Period
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Configuration Event</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">Daily Timetable Period Timings Updated</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Total Periods / Breaks</span>
+                      <span className="font-mono font-bold text-amber-800 dark:text-amber-300">{properties.total_periods || 'Updated'}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 3. PERIOD CLEARED NOTICE CARD */}
+            {isClearing && (
+              <div className="bg-rose-50/40 dark:bg-rose-950/20 border border-rose-200/70 dark:border-rose-900/40 rounded-xl p-4 text-[12px] space-y-3">
+                <div className="flex items-center justify-between border-b border-rose-200/50 dark:border-rose-900/40 pb-2.5">
+                  <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-[13px]">
+                    <XCircle size={16} className="text-rose-600 dark:text-rose-400" />
+                    <span>Period Timetable Slot Cleared & Unassigned</span>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded text-[10.5px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
+                    Slot Cleared
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class & Section</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {formattedClass}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Weekday</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {day}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Period Slot</span>
+                    <span className="font-semibold text-rose-700 dark:text-rose-300 font-mono">
+                      {periodLabel}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Period Timing</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {timingStr !== '—' ? (
+                        <span className="inline-block px-2 py-0.5 rounded font-mono text-[11px] font-semibold bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/40">
+                          {timingStr}
+                        </span>
+                      ) : '—'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Cleared Subject</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200 line-through">
+                      {subject}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Cleared Faculty</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-300 line-through">
+                      {teacher}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Cleared Room</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300 line-through">
+                      {room}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Slot Status</span>
+                    <span className="font-bold text-rose-600 dark:text-rose-400">
+                      Empty / Available
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4. PERIOD ASSIGNED / UPDATED CARD */}
+            {!isClearing && !isTimingsUpdate && !isScheduleSaved && (
+              <div className="space-y-3">
+                <div className="bg-blue-50/40 dark:bg-blue-950/20 border border-blue-200/70 dark:border-blue-900/40 rounded-xl p-4 text-[12px] space-y-3">
+                  <div className="flex items-center justify-between border-b border-blue-200/50 dark:border-blue-900/40 pb-2.5">
+                    <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200 font-bold text-[13px]">
+                      <Clock size={16} className="text-blue-600 dark:text-blue-400" />
+                      <span>Class Timetable • Period Allocation</span>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded text-[10.5px] font-bold border ${
+                      actionType === 'period_assigned' || (!isPeriodUpdated && event === 'created')
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40'
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40'
+                    }`}>
+                      {actionType === 'period_assigned' || (!isPeriodUpdated && event === 'created') ? 'Period Assigned' : 'Period Updated'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class & Section</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {formattedClass}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Weekday</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        {day}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Period Slot</span>
+                      <span className="font-semibold text-blue-700 dark:text-blue-300 font-mono">
+                        {periodLabel}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Period Timing</span>
+                      <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                        {timingStr !== '—' ? (
+                          <span className="inline-block px-2 py-0.5 rounded font-mono text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40">
+                            {timingStr}
+                          </span>
+                        ) : '—'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Subject</span>
+                      <span className="inline-block px-2.5 py-0.5 rounded font-bold text-[12px] bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800/40 mt-0.5">
+                        {subject}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Assigned Faculty</span>
+                      <span className="font-bold text-slate-900 dark:text-white">
+                        {teacher}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Classroom / Lab</span>
+                      <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                        {room}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Allocation Status</span>
+                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 size={13} />
+                        <span>Scheduled</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SEPARATE TABLE BELOW CARD: Before vs After Changes Breakdown Table */}
+                {showBeforeAfterTable && (
+                  <div className="bg-white dark:bg-[var(--surf)] border border-blue-200/80 dark:border-blue-900/50 rounded-xl p-4 text-[12px] space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                      <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-bold text-[12.5px]">
+                        <History size={15} className="text-blue-600 dark:text-blue-400" />
+                        <span>Period Allocation Changes Breakdown (Before vs After)</span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200/70 dark:border-amber-800/40">
+                        {isSubjectChanged && isTeacherChanged
+                          ? 'Subject & Faculty Changed'
+                          : isSubjectChanged
+                          ? 'Subject Changed'
+                          : isTeacherChanged
+                          ? 'Faculty Changed'
+                          : isRoomChanged
+                          ? 'Room Changed'
+                          : 'Period Updated'}
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
+                      <table className="w-full text-left text-[12px] border-collapse">
+                        <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                          <tr>
+                            <th className="py-2.5 px-3.5 w-36">Change State</th>
+                            <th className="py-2.5 px-3.5">Subject</th>
+                            <th className="py-2.5 px-3.5">Assigned Faculty</th>
+                            <th className="py-2.5 px-3.5">Classroom / Lab</th>
+                            <th className="py-2.5 px-3.5">Period & Weekday</th>
+                            <th className="py-2.5 px-3.5 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-slate-800 dark:text-slate-200">
+                          {/* Row 1: BEFORE (Previous) */}
+                          <tr className="bg-rose-50/30 dark:bg-rose-950/10 hover:bg-rose-50/60 dark:hover:bg-rose-950/20 transition-colors">
+                            <td className="py-2.5 px-3.5 font-bold">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                Before (Previous)
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3.5">
+                              {isSubjectChanged ? (
+                                <span className="inline-block px-2 py-0.5 rounded font-semibold text-[11.5px] bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 line-through">
+                                  {effectivePrevSubject}
+                                </span>
+                              ) : (
+                                <span className="font-medium text-slate-700 dark:text-slate-300">
+                                  {effectivePrevSubject}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3.5">
+                              {isTeacherChanged ? (
+                                <span className="inline-block px-2 py-0.5 rounded font-semibold text-[11.5px] bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 line-through">
+                                  {effectivePrevTeacher}
+                                </span>
+                              ) : (
+                                <span className="font-medium text-slate-700 dark:text-slate-300">
+                                  {effectivePrevTeacher}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-mono">
+                              {isRoomChanged ? (
+                                <span className="inline-block px-2 py-0.5 rounded text-[11.5px] bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border border-rose-200 line-through">
+                                  {effectivePrevRoom}
+                                </span>
+                              ) : (
+                                <span className="text-slate-700 dark:text-slate-300">
+                                  {effectivePrevRoom}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-mono text-slate-600 dark:text-slate-400">
+                              {periodLabel} • {day}
+                            </td>
+                            <td className="py-2.5 px-3.5 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                Replaced
+                              </span>
+                            </td>
+                          </tr>
+
+                          {/* Row 2: AFTER (Updated) */}
+                          <tr className="bg-emerald-50/30 dark:bg-emerald-950/10 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 transition-colors">
+                            <td className="py-2.5 px-3.5 font-bold">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-900/50">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                After (Updated)
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3.5">
+                              {isSubjectChanged ? (
+                                <span className="inline-block px-2 py-0.5 rounded font-bold text-[11.5px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
+                                  {subject}
+                                </span>
+                              ) : (
+                                <span className="font-semibold text-slate-900 dark:text-white">
+                                  {subject}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3.5">
+                              {isTeacherChanged ? (
+                                <span className="inline-block px-2 py-0.5 rounded font-bold text-[11.5px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
+                                  {teacher}
+                                </span>
+                              ) : (
+                                <span className="font-semibold text-slate-900 dark:text-white">
+                                  {teacher}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-mono">
+                              {isRoomChanged ? (
+                                <span className="inline-block px-2 py-0.5 rounded font-bold text-[11.5px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
+                                  {room}
+                                </span>
+                              ) : (
+                                <span className="font-medium text-slate-900 dark:text-white">
+                                  {room}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-mono text-slate-800 dark:text-slate-200 font-semibold">
+                              {periodLabel} • {day}
+                            </td>
+                            <td className="py-2.5 px-3.5 text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+                                Active
+                              </span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class & Section</span>
-              <span className="font-bold text-slate-900 dark:text-white">
-                {properties.class_name || properties.batch_name || attributes.batch_name || '—'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Day & Period</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.day ? `${properties.day}${properties.period !== undefined ? `, Period ${properties.period}` : ''}` : '—'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Period Timings</span>
-              <span className="font-mono text-slate-800 dark:text-slate-200 font-semibold">
-                {properties.time || (properties.start_time && properties.end_time ? `${properties.start_time} - ${properties.end_time}` : '—')}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Subject</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.subject_name || properties.subject || attributes.subject_name || '—'}
-              </span>
-            </div>
-
-            <div className="sm:col-span-2">
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Assigned Faculty</span>
-              <span className="font-semibold text-blue-700 dark:text-blue-300">
-                {properties.teacher_name || properties.new_teacher || attributes.teacher_name || '—'}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 6. CLASSES & SECTIONS MANAGEMENT CARD */}
       {isClasses && (
@@ -2018,6 +2864,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
         !isDailyDiary &&
         !isExamSchedule &&
         !isExamMarks &&
+        !isTimetable &&
         !isPayment &&
         !isExpense &&
         !isStaff &&
@@ -2043,7 +2890,8 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
 
       {/* 6. GENERIC DELETED RECORD DETAILS (Fallback if no specialized card matched) */}
       {(event === 'deleted' || rawDesc.startsWith('deleted') || rawDesc.startsWith('removed')) &&
-        Object.keys(old).length > 0 && (
+        Object.keys(old).length > 0 &&
+        !isTimetable && (
           <div>
             <div className="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-2 flex items-center gap-1.5">
               <Trash2 size={13} />

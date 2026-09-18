@@ -1089,20 +1089,60 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
 
   // 8. Timetable
   if (
-    (lowerDesc.includes('timetable') || subjectType.includes('timetable')) &&
+    (lowerDesc.includes('timetable') || subjectType.includes('timetable') || log.log_name === 'timetable' || properties.type?.startsWith('timetable')) &&
     !lowerDesc.includes('exam') &&
     !subjectType.includes('exam') &&
     log.log_name !== 'exam' &&
     properties.type !== 'exam_schedule' &&
     !Array.isArray(properties.schedule_list)
   ) {
-    const isCreate = event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('entry');
+    const actionType = properties.action_type;
+    const rawClass = properties.class_name || properties.class || properties.batch_name || attributes.class_name || attributes.batch_name || '';
+    const classMatch = rawDesc.match(/for Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i) || rawDesc.match(/in Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i);
+    const targetClass = rawClass ? (rawClass.toLowerCase().startsWith('class') ? rawClass : `Class ${rawClass}`) : (classMatch ? (classMatch[1].toLowerCase().startsWith('class') ? classMatch[1] : `Class ${classMatch[1]}`) : '');
+    const day = properties.day || attributes.day || (rawDesc.match(/\((Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\)/i)?.[1]) || '';
+    const periodNumber = properties.period ?? attributes.period ?? (rawDesc.match(/Period\s+(\d+)/i)?.[1]);
+    const periodStr = periodNumber ? `Period ${periodNumber}` : '';
+    const dayPeriodStr = day && periodStr ? `${day} (${periodStr})` : (day || periodStr);
+    const hasSlots = Boolean(
+      (Array.isArray(properties.slots) && properties.slots.length > 0) ||
+      (Array.isArray(attributes.slots) && attributes.slots.length > 0) ||
+      (typeof properties.slots === 'string' && properties.slots.startsWith('[')) ||
+      (typeof attributes.slots === 'string' && attributes.slots.startsWith('['))
+    );
+
+    let title = 'Timetable Updated';
+    let target = targetClass || 'Class Timetable';
+    let badgeClass = 'bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40';
+
+    if (actionType === 'schedule_saved' || lowerDesc.includes('saved and published') || hasSlots) {
+      title = 'Timetable Published';
+      target = targetClass ? `${targetClass} • Weekly Schedule` : 'Weekly Schedule';
+      badgeClass = 'bg-indigo-50 text-indigo-700 border-indigo-200/60 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/40';
+    } else if (actionType === 'period_assigned' || (!actionType && event === 'created' && (periodStr || properties.subject || attributes.subject))) {
+      title = 'Period Assigned';
+      target = targetClass && dayPeriodStr ? `${targetClass} • ${dayPeriodStr}` : (targetClass || dayPeriodStr || 'Timetable Period');
+      badgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40';
+    } else if (actionType === 'period_cleared' || (!actionType && (event === 'deleted' || lowerDesc.includes('cleared')) && (periodStr || properties.cleared_subject))) {
+      title = 'Period Cleared';
+      target = targetClass && dayPeriodStr ? `${targetClass} • ${dayPeriodStr}` : (targetClass || dayPeriodStr || 'Timetable Period');
+      badgeClass = 'bg-rose-50 text-rose-700 border-rose-200/60 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40';
+    } else if (actionType === 'timings_updated' || lowerDesc.includes('period timings') || lowerDesc.includes('daily timetable period timings')) {
+      title = 'Period Timings Updated';
+      target = 'Daily Timetable Schedule';
+      badgeClass = 'bg-amber-50 text-amber-800 border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40';
+    } else if (actionType === 'period_updated' || periodStr) {
+      title = 'Period Updated';
+      target = targetClass && dayPeriodStr ? `${targetClass} • ${dayPeriodStr}` : (targetClass || dayPeriodStr || 'Timetable Period');
+      badgeClass = 'bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40';
+    }
+
     return {
-      title: isCreate ? 'Timetable Entry Created' : 'Timetable Modified',
-      description: isCreate ? 'Created schedule and period slot in class timetable.' : 'Updated class periods, timings, or assigned faculty in timetable.',
-      category: 'ACADEMICS',
-      categoryBadgeClass: 'bg-blue-50 text-blue-700 border-blue-200/60 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40',
-      target: 'Class Timetable',
+      title,
+      description: cleanedDesc || 'Updated class periods, timings, or assigned faculty in timetable.',
+      category: 'TIMETABLE',
+      categoryBadgeClass: badgeClass,
+      target,
     };
   }
 
@@ -1469,7 +1509,54 @@ export function generateActionSummary(log: any): string {
     return `${userName} updated examination records${exam ? ` for "${exam}"` : ''}.`;
   }
 
-  // 6. Student Actions
+  // 6. Timetable Actions
+  if (
+    (lowerDesc.includes('timetable') || (log.subject_type || '').toLowerCase().includes('timetable') || log.log_name === 'timetable' || properties.type?.startsWith('timetable')) &&
+    !lowerDesc.includes('exam') &&
+    !(log.subject_type || '').toLowerCase().includes('exam') &&
+    log.log_name !== 'exam' &&
+    properties.type !== 'exam_schedule'
+  ) {
+    const actionType = properties.action_type;
+    const rawCls = properties.class || properties.class_name || properties.batch_name || attributes.batch_name || attributes.class_name || (rawDesc.match(/for Class\s+([A-Za-z0-9-]+)/i)?.[1]) || '';
+    const formattedClass = rawCls ? (rawCls.toLowerCase().startsWith('class') ? rawCls : `Class ${rawCls}`) : 'Class';
+    const day = properties.day || attributes.day || (rawDesc.match(/\((Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\)/i)?.[1]) || '';
+    const periodNum = properties.period ?? attributes.period ?? (rawDesc.match(/Period\s+(\d+)/i)?.[1]);
+    const period = periodNum ? `Period ${periodNum}` : '';
+    const subject = properties.subject || properties.subject_name || attributes.subject || attributes.subject_name || '';
+    const teacher = properties.teacher_name || properties.teacher || attributes.teacher_name || attributes.teacher || '';
+    const room = properties.room || attributes.room || '';
+
+    let slotsArr: any[] = [];
+    try {
+      if (Array.isArray(properties.slots)) slotsArr = properties.slots;
+      else if (Array.isArray(attributes.slots)) slotsArr = attributes.slots;
+      else if (typeof attributes.slots === 'string' && attributes.slots.startsWith('[')) slotsArr = JSON.parse(attributes.slots);
+      else if (typeof properties.slots === 'string' && properties.slots.startsWith('[')) slotsArr = JSON.parse(properties.slots);
+    } catch { /* empty */ }
+
+    if (actionType === 'schedule_saved' || lowerDesc.includes('saved and published') || slotsArr.length > 0) {
+      const total = properties.total_slots || slotsArr.length;
+      return `${userName} saved and published weekly timetable schedule for ${formattedClass}${total ? ` (${total} period allocations)` : ''}.`;
+    }
+    if (actionType === 'period_assigned' || (!actionType && event === 'created' && (period || subject))) {
+      return `${userName} assigned ${subject || 'subject'} to ${period || 'period'}${day ? ` (${day})` : ''} for ${formattedClass}${teacher ? ` (Faculty: ${teacher})` : ''}${room ? ` in ${room}` : ''}.`;
+    }
+    if (actionType === 'period_updated' || (!actionType && event === 'updated' && period)) {
+      return `${userName} updated ${period}${day ? ` (${day})` : ''} for ${formattedClass} to ${subject || 'subject'}${teacher ? ` (Faculty: ${teacher})` : ''}${room ? ` in ${room}` : ''}.`;
+    }
+    if (actionType === 'period_cleared' || (!actionType && (event === 'deleted' || lowerDesc.includes('cleared')) && (period || properties.cleared_subject))) {
+      const prevSubj = properties.cleared_subject || '';
+      return `${userName} cleared ${period || 'period'}${day ? ` (${day})` : ''} timetable slot for ${formattedClass}${prevSubj ? ` (was ${prevSubj})` : ''}.`;
+    }
+    if (actionType === 'timings_updated' || lowerDesc.includes('period timings') || lowerDesc.includes('daily timetable period timings')) {
+      const count = properties.total_periods || (Array.isArray(properties.timings) ? properties.timings.length : '');
+      return `${userName} updated daily timetable period timings${count ? ` (${count} periods/breaks configured)` : ''}.`;
+    }
+    return `${userName} updated timetable schedule${rawCls ? ` for ${formattedClass}` : ''}.`;
+  }
+
+  // 7. Student Actions
   if (lowerDesc.includes('student') || (log.subject_type || '').toLowerCase().includes('student')) {
     const studentName = extractStudentName(properties, rawDesc);
 
@@ -1587,19 +1674,28 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
       lowerDesc.startsWith('marked attendance for ') ||
       lowerDesc.startsWith('created exam:') ||
       lowerDesc.startsWith('added exam:') ||
-      lowerDesc.startsWith('updated exam:')
+      lowerDesc.startsWith('updated exam:') ||
+      lowerDesc.startsWith('updated timetable:') ||
+      lowerDesc.startsWith('saved timetable:') ||
+      lowerDesc.startsWith('assigned timetable:') ||
+      lowerDesc.startsWith('cleared timetable:') ||
+      lowerDesc.startsWith('updated period timings:')
     ) {
       continue;
     }
 
-    // Skip setting logs that duplicate exam creation / marks / attendance
+    // Skip setting logs that duplicate exam creation / marks / attendance / timetable
     if (
       properties.key === 'examinations_exams' ||
       properties.key === 'kts_student_marks' ||
       properties.key === 'examinations_schedules' ||
+      properties.key === 'kts_school_timetable' ||
+      properties.key === 'timetable_period_timings' ||
       properties.attributes?.key === 'examinations_exams' ||
       properties.attributes?.key === 'kts_student_marks' ||
-      properties.attributes?.key === 'examinations_schedules'
+      properties.attributes?.key === 'examinations_schedules' ||
+      properties.attributes?.key === 'kts_school_timetable' ||
+      properties.attributes?.key === 'timetable_period_timings'
     ) {
       continue;
     }
@@ -1609,13 +1705,17 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
     const createdMinute = log.created_at ? log.created_at.substring(0, 16) : '';
     const event = log.event || 'action';
     
-    // Group student profile updates, attendance, or exam actions occurring within the same minute
+    // Group student profile updates, attendance, exam, or timetable actions occurring within the same minute
     const isAttendance = lowerDesc.includes('attendance') || log.log_name === 'attendance' || st.includes('attendance');
     const isMarksLog = lowerDesc.includes('mark') || lowerDesc.includes('evaluation') || log.log_name === 'marks' || properties.type === 'exam_marks' || Boolean(properties.exam_id);
     const isStudentUpdate = !isAttendance && !isMarksLog && (lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student'));
     
     const isExamAction = (lowerDesc.includes('exam') || st.includes('exam') || log.log_name === 'exam') && !isMarksLog;
     const examNameClean = String(properties.exam_name || properties.exam || (desc.match(/"([^"]+)"/)?.[1]) || desc).toLowerCase().trim();
+
+    const isTimetableAction =
+      !isExamAction &&
+      (lowerDesc.includes('timetable') || log.log_name === 'timetable' || st.includes('timetable') || properties.type?.startsWith('timetable'));
 
     let signature = `log_${log.id}`;
     if (isAttendance) {
@@ -1626,9 +1726,15 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
       signature = `marks_${properties.class_name || ''}_${properties.exam_id || examNameClean}_${createdMinute}`;
     } else if (isExamAction) {
       signature = `exam_${event}_${examNameClean}_${createdMinute}`;
+    } else if (isTimetableAction) {
+      const cls = properties.class || properties.class_name || '';
+      const day = properties.day || '';
+      const period = properties.period ?? properties.period_index ?? '';
+      const actionType = properties.action_type || event;
+      signature = `timetable_${actionType}_${cls}_${day}_${period}_${createdMinute}`;
     }
 
-    if (isAttendance || isStudentUpdate || isMarksLog || isExamAction) {
+    if (isAttendance || isStudentUpdate || isMarksLog || isExamAction || isTimetableAction) {
       if (seenSignatures.has(signature)) {
         continue;
       }
