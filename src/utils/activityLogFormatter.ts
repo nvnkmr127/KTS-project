@@ -230,6 +230,101 @@ export function formatDateOnly(dateStr: any): string {
   return str;
 }
 
+export function formatExamTimingsWithEnd(timeStr?: any, durationStr?: any, fallbackTimings?: any): string {
+  const rawTime = String(timeStr || '').trim();
+  const rawDuration = String(durationStr || '').trim();
+  const rawFallback = String(fallbackTimings || '').trim();
+
+  let timeInput = rawTime;
+  let durationInput = rawDuration;
+
+  if (!timeInput && rawFallback && rawFallback !== '—' && rawFallback !== 'Not set') {
+    // If rawFallback already matches "10:00 AM - 12:00 PM (2 hrs)"
+    if (rawFallback.includes('-') && rawFallback.includes('(') && rawFallback.includes(')')) {
+      return rawFallback;
+    }
+    // Check if fallback has format "10:00 AM (2 hrs)"
+    const parenMatch = rawFallback.match(/^([^(]+)\s*\(([^)]+)\)$/);
+    if (parenMatch) {
+      timeInput = parenMatch[1].trim();
+      if (!durationInput) durationInput = parenMatch[2].trim();
+    } else {
+      timeInput = rawFallback;
+    }
+  }
+
+  if (!timeInput && !durationInput) return '—';
+
+  // If timeInput already contains a full range like "10:00 AM - 12:00 PM"
+  if (timeInput.includes('-')) {
+    if (durationInput && !timeInput.includes('(')) {
+      return `${timeInput} (${durationInput})`;
+    }
+    return timeInput;
+  }
+
+  // Parse duration in minutes
+  let durationMinutes = 0;
+  if (durationInput) {
+    const hoursMatch = durationInput.match(/(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)/i);
+    const minsMatch = durationInput.match(/(\d+)\s*(?:m|min|mins|minute|minutes)/i);
+
+    if (hoursMatch) {
+      durationMinutes += parseFloat(hoursMatch[1]) * 60;
+    }
+    if (minsMatch) {
+      durationMinutes += parseInt(minsMatch[1], 10);
+    }
+    if (!hoursMatch && !minsMatch) {
+      const num = parseFloat(durationInput);
+      if (!isNaN(num)) {
+        durationMinutes = num <= 12 ? num * 60 : num;
+      }
+    }
+  }
+
+  // Parse start time (e.g. "10:00 AM", "09:30 AM", "14:00", "9:30", "10:00am")
+  const timeMatch = timeInput.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if (!timeMatch) {
+    if (timeInput && durationInput) {
+      return `${timeInput} (${durationInput})`;
+    }
+    return timeInput || (durationInput ? `(${durationInput})` : '—');
+  }
+
+  let hours = parseInt(timeMatch[1], 10);
+  const minutes = parseInt(timeMatch[2], 10);
+  const ampm = timeMatch[3]?.toUpperCase();
+
+  if (ampm === 'PM' && hours < 12) hours += 12;
+  if (ampm === 'AM' && hours === 12) hours = 0;
+
+  const startTotalMinutes = hours * 60 + minutes;
+
+  // Format Start Time
+  const startH24 = Math.floor(startTotalMinutes / 60) % 24;
+  const startM = startTotalMinutes % 60;
+  const startAmpm = startH24 >= 12 ? 'PM' : 'AM';
+  const startH12 = startH24 % 12 || 12;
+  const formattedStart = `${String(startH12).padStart(2, '0')}:${String(startM).padStart(2, '0')} ${startAmpm}`;
+
+  if (durationMinutes <= 0) {
+    return durationInput ? `${formattedStart} (${durationInput})` : formattedStart;
+  }
+
+  // Calculate End Time
+  const endTotalMinutes = (startTotalMinutes + durationMinutes) % 1440;
+  const endH24 = Math.floor(endTotalMinutes / 60) % 24;
+  const endM = endTotalMinutes % 60;
+  const endAmpm = endH24 >= 12 ? 'PM' : 'AM';
+  const endH12 = endH24 % 12 || 12;
+  const formattedEnd = `${String(endH12).padStart(2, '0')}:${String(endM).padStart(2, '0')} ${endAmpm}`;
+
+  const formattedDuration = durationInput || `${Math.floor(durationMinutes / 60)} hrs`;
+
+  return `${formattedStart} - ${formattedEnd} (${formattedDuration})`;
+}
+
 export function formatAuditValue(value: any, fieldKey?: string): string {
   if (value === null || value === undefined || value === '') {
     return 'Not set';

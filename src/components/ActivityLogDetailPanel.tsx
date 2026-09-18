@@ -41,6 +41,7 @@ import {
   formatFieldLabel,
   formatAuditValue,
   formatDateOnly,
+  formatExamTimingsWithEnd,
   generateActionSummary,
   extractStudentName,
   extractClassSection,
@@ -938,16 +939,18 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
           )
         );
 
-        const examScheduleList: Array<{ class_name?: string; subject?: string; timings?: string; max_marks?: any; date?: string; status?: string }> = (() => {
+        const examScheduleList: Array<{ class_name?: string; subject?: string; timings?: string; time?: string; duration?: string; max_marks?: any; date?: string; status?: string }> = (() => {
           if (Array.isArray(properties.schedule_list) && properties.schedule_list.length > 0) {
             return properties.schedule_list.map((item: any) => ({
               ...item,
+              timings: item.timings || (item.time ? `${item.time}${item.duration ? ` (${item.duration})` : ''}` : item.duration) || properties.timings || properties.time_slot || '—',
               status: isDeleted ? 'Deleted' : (item.status || properties.status || 'Upcoming'),
             }));
           }
           if (Array.isArray(properties.schedules) && properties.schedules.length > 0) {
             return properties.schedules.map((item: any) => ({
               ...item,
+              timings: item.timings || (item.time ? `${item.time}${item.duration ? ` (${item.duration})` : ''}` : item.duration) || properties.timings || properties.time_slot || '—',
               status: isDeleted ? 'Deleted' : (item.status || properties.status || 'Upcoming'),
             }));
           }
@@ -962,7 +965,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                         class_name: cls,
                         subject: e.subject || e.subject_name,
                         date: dateStr,
-                        timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
+                        timings: e.timings || (e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—')),
                         max_marks: e.maxMarks || e.max_marks || 100,
                         status: isDeleted ? 'Deleted' : (e.status || properties.status || 'Upcoming'),
                       });
@@ -990,7 +993,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
               {
                 class_name: properties.class_name || properties.class || attributes.class_name || 'All Classes',
                 subject: properties.subject_name || properties.subject || attributes.subject_name || 'All Subjects',
-                timings: properties.time_slot || properties.timings || properties.time || (properties.duration ? `${properties.duration}` : '—'),
+                timings: properties.timings || properties.time_slot || properties.time || (properties.duration ? `${properties.duration}` : '—'),
                 max_marks: properties.max_marks || properties.maximum_marks || attributes.max_marks || 100,
                 date: properties.exam_date || properties.date || attributes.exam_date || attributes.date,
                 status: isDeleted ? 'Deleted' : (properties.status || attributes.status || 'Upcoming'),
@@ -1171,7 +1174,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
               </div>
             )}
 
-            {/* Schedule Table containing class, subject, starting date, max marks, and status */}
+            {/* Schedule Table containing class, subject, starting date, timings, max marks, and status */}
             {examScheduleList.length > 0 && !isExamMarks && (
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
@@ -1188,6 +1191,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                         <th className="py-2.5 px-3.5">Class</th>
                         <th className="py-2.5 px-3.5">Subject</th>
                         <th className="py-2.5 px-3.5">Starting Date</th>
+                        <th className="py-2.5 px-3.5">Timings</th>
                         <th className="py-2.5 px-3.5">Max Marks</th>
                         <th className="py-2.5 px-3.5 text-center">Status</th>
                       </tr>
@@ -1196,6 +1200,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                       {examScheduleList.map((item, idx) => {
                         const rawItemDate = item.date || properties.exam_date || properties.date || attributes.exam_date;
                         const formattedDate = formatDateOnly(rawItemDate);
+                        const timingStr = formatExamTimingsWithEnd(item.time, item.duration, item.timings || properties.timings || properties.time_slot);
                         const itemStatus = isDeleted ? 'Deleted' : (item.status || properties.status || attributes.status || 'Upcoming');
                         const isRowDeleted = itemStatus.toLowerCase() === 'deleted' || isDeleted;
 
@@ -1208,7 +1213,16 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                               {item.subject || '—'}
                             </td>
                             <td className="py-2.5 px-3.5 font-mono text-slate-700 dark:text-slate-300">
-                              {formattedDate || item.timings || '—'}
+                              {formattedDate || '—'}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-mono text-slate-700 dark:text-slate-300">
+                              {timingStr !== '—' ? (
+                                <span className="inline-block px-2 py-0.5 rounded font-mono text-[11px] font-semibold bg-purple-50 dark:bg-purple-950/50 text-purple-800 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/40">
+                                  {timingStr}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 font-mono text-[11px]">—</span>
+                              )}
                             </td>
                             <td className="py-2.5 px-3.5 font-mono font-bold text-purple-700 dark:text-purple-300">
                               {item.max_marks ?? '100'}

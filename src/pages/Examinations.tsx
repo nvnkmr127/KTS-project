@@ -15,6 +15,7 @@ import { useDialog } from '../context/DialogContext';
 import * as XLSX from 'xlsx-js-style';
 import { downloadSheet } from '../utils/excel';
 import { getClassWeight } from './Students';
+import { formatExamTimingsWithEnd } from '../utils/activityLogFormatter';
 
 
 export interface Invigilation {
@@ -539,6 +540,35 @@ function ExamScheduleDesigner({
       return updatedSchedules;
     });
 
+    const timingStr = formatExamTimingsWithEnd(newTime, newDuration);
+
+    try {
+      const actorName = user?.name || 'Super Admin';
+      await api.recordActivityLog({
+        log_name: 'exam',
+        event: 'updated',
+        description: `${actorName} scheduled ${selectedSub} for ${selectedClass} on ${addModal.dateStr} (${timingStr}) in "${exam.name}".`,
+        properties: {
+          type: 'exam_schedule',
+          exam_id: exam.id,
+          exam_name: exam.name,
+          class_name: selectedClass,
+          class: selectedClass,
+          subject: selectedSub,
+          subject_name: selectedSub,
+          exam_date: addModal.dateStr,
+          date: addModal.dateStr,
+          timings: timingStr,
+          time: newTime,
+          duration: newDuration,
+          max_marks: newMarks,
+          status: 'Upcoming',
+          marked_by: actorName,
+          actor_name: actorName,
+        },
+      });
+    } catch { /* empty */ }
+
     setAddModal(null);
   };
 
@@ -634,7 +664,10 @@ function ExamScheduleDesigner({
                       subject: string;
                       date: string;
                       timings: string;
+                      time?: string;
+                      duration?: string;
                       max_marks: number | string;
+                      status?: string;
                     }> = [];
 
                     Object.entries(examSched).forEach(([cls, dates]) => {
@@ -646,8 +679,11 @@ function ExamScheduleDesigner({
                                 class_name: cls,
                                 subject: e.subject,
                                 date: dateStr,
-                                timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
+                                timings: formatExamTimingsWithEnd(e.time, e.duration),
+                                time: e.time || '',
+                                duration: e.duration || '',
                                 max_marks: e.maxMarks || 100,
+                                status: 'Upcoming',
                               });
                             });
                           }
@@ -1131,7 +1167,9 @@ export function Examinations() {
                       class_name: cls,
                       subject: e.subject || e.subject_name || ex.subject || 'All Subjects',
                       date: dateStr || ex.date || '',
-                      timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
+                      timings: formatExamTimingsWithEnd(e.time, e.duration),
+                      time: e.time || '',
+                      duration: e.duration || '',
                       max_marks: e.maxMarks || e.max_marks || ex.maxMarks || 100,
                       status: 'Deleted',
                     });
@@ -2168,7 +2206,9 @@ export function Examinations() {
                   class_name: cls,
                   subject: e.subject || e.subject_name || examToDelete?.subject || 'All Subjects',
                   date: dateStr || examToDelete?.date || '',
-                  timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
+                  timings: formatExamTimingsWithEnd(e.time, e.duration),
+                  time: e.time || '',
+                  duration: e.duration || '',
                   max_marks: e.maxMarks || e.max_marks || examToDelete?.maxMarks || 100,
                   status: 'Deleted',
                 });
