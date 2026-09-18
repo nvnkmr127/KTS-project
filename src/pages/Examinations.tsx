@@ -1093,6 +1093,7 @@ export function Examinations() {
     if (selectedExamIds.length === 0) return;
     if (await confirm(`Are you sure you want to delete the ${selectedExamIds.length} selected exams?`, 'Delete Exams', true)) {
       const idsToDelete = [...selectedExamIds];
+      const deletedExamsList = exams.filter((e) => idsToDelete.includes(e.id));
       const next = exams.filter(e => !idsToDelete.includes(e.id));
       setExams(next);
       setSelectedExamIds([]);
@@ -1114,6 +1115,43 @@ export function Examinations() {
         api.deleteResource('exams', id).catch(() => {});
       });
 
+      // Collect schedule list for deleted exams
+      const scheduleList: any[] = [];
+      deletedExamsList.forEach((ex) => {
+        const examSched = schedules[ex.id];
+        let foundSched = false;
+        if (examSched && typeof examSched === 'object') {
+          Object.entries(examSched).forEach(([cls, dates]: [string, any]) => {
+            if (dates && typeof dates === 'object') {
+              Object.entries(dates).forEach(([dateStr, entries]: [string, any]) => {
+                if (Array.isArray(entries)) {
+                  entries.forEach((e: any) => {
+                    foundSched = true;
+                    scheduleList.push({
+                      class_name: cls,
+                      subject: e.subject || e.subject_name || ex.subject || 'All Subjects',
+                      date: dateStr || ex.date || '',
+                      timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
+                      max_marks: e.maxMarks || e.max_marks || ex.maxMarks || 100,
+                      status: 'Deleted',
+                    });
+                  });
+                }
+              });
+            }
+          });
+        }
+        if (!foundSched) {
+          scheduleList.push({
+            class_name: ex.class || 'All Classes',
+            subject: ex.subject || 'All Subjects',
+            date: ex.date || '',
+            max_marks: ex.maxMarks || 100,
+            status: 'Deleted',
+          });
+        }
+      });
+
       // Clean up schedules and marks
       setSchedules(prev => {
         const updated = { ...prev };
@@ -1133,13 +1171,17 @@ export function Examinations() {
 
       try {
         const actorName = user?.name || 'Super Admin';
+        const examNames = deletedExamsList.map((e) => e.name).join(', ');
         await api.recordActivityLog({
           log_name: 'exam',
           event: 'deleted',
-          description: `${actorName} deleted ${idsToDelete.length} exams.`,
+          description: `${actorName} deleted ${idsToDelete.length} exam(s): ${examNames}.`,
           properties: {
+            exam_name: examNames,
             exam_count: idsToDelete.length,
             deleted_ids: idsToDelete,
+            schedule_list: scheduleList,
+            status: 'Deleted',
             marked_by: actorName,
             actor_name: actorName,
           },
@@ -2113,6 +2155,42 @@ export function Examinations() {
     localStorage.setItem('examinations_exams', JSON.stringify(updatedExams));
     saveSettingToDb('examinations_exams', updatedExams);
 
+    // Build schedule entries for deleted exam
+    const examSched = schedules[id];
+    let scheduleList: any[] = [];
+    if (examSched && typeof examSched === 'object') {
+      Object.entries(examSched).forEach(([cls, dates]: [string, any]) => {
+        if (dates && typeof dates === 'object') {
+          Object.entries(dates).forEach(([dateStr, entries]: [string, any]) => {
+            if (Array.isArray(entries)) {
+              entries.forEach((e: any) => {
+                scheduleList.push({
+                  class_name: cls,
+                  subject: e.subject || e.subject_name || examToDelete?.subject || 'All Subjects',
+                  date: dateStr || examToDelete?.date || '',
+                  timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
+                  max_marks: e.maxMarks || e.max_marks || examToDelete?.maxMarks || 100,
+                  status: 'Deleted',
+                });
+              });
+            }
+          });
+        }
+      });
+    }
+
+    if (scheduleList.length === 0) {
+      scheduleList = [
+        {
+          class_name: examToDelete?.class || 'All Classes',
+          subject: examToDelete?.subject || 'All Subjects',
+          date: examToDelete?.date || '',
+          max_marks: examToDelete?.maxMarks || 100,
+          status: 'Deleted',
+        },
+      ];
+    }
+
     try {
       const actorName = user?.name || 'Super Admin';
       await api.recordActivityLog({
@@ -2120,7 +2198,17 @@ export function Examinations() {
         event: 'deleted',
         description: `${actorName} deleted exam "${examName}".`,
         properties: {
+          exam_id: id,
           exam_name: examName,
+          class_name: examToDelete?.class || 'All Classes',
+          class: examToDelete?.class || 'All Classes',
+          subject: examToDelete?.subject || 'All Subjects',
+          subject_name: examToDelete?.subject || 'All Subjects',
+          exam_date: examToDelete?.date || '',
+          date: examToDelete?.date || '',
+          max_marks: examToDelete?.maxMarks || 100,
+          schedule_list: scheduleList,
+          status: 'Deleted',
           marked_by: actorName,
           actor_name: actorName,
         },

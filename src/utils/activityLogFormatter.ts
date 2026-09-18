@@ -1489,28 +1489,51 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
       lowerDesc.startsWith('updated staff profile:') ||
       lowerDesc.startsWith('added staff member:') ||
       lowerDesc.startsWith('removed staff member:') ||
-      lowerDesc.startsWith('marked attendance for ')
+      lowerDesc.startsWith('marked attendance for ') ||
+      lowerDesc.startsWith('created exam:') ||
+      lowerDesc.startsWith('added exam:') ||
+      lowerDesc.startsWith('updated exam:')
     ) {
       continue;
     }
 
-    // 2. Build a deduplication signature based on causer, target/student/class, action, and timestamp (down to the minute)
+    // Skip setting logs that duplicate exam creation / marks / attendance
+    if (
+      properties.key === 'examinations_exams' ||
+      properties.key === 'kts_student_marks' ||
+      properties.key === 'examinations_schedules' ||
+      properties.attributes?.key === 'examinations_exams' ||
+      properties.attributes?.key === 'kts_student_marks' ||
+      properties.attributes?.key === 'examinations_schedules'
+    ) {
+      continue;
+    }
+
+    // 2. Build a deduplication signature based on causer, target/student/class/exam, action, and timestamp (down to the minute)
     const target = extractStudentName(log.properties, desc) || log.properties?.class_name || log.subject_id || desc;
     const createdMinute = log.created_at ? log.created_at.substring(0, 16) : '';
     const event = log.event || 'action';
     
-    // Group student profile updates or attendance occurring within the same minute
+    // Group student profile updates, attendance, or exam actions occurring within the same minute
     const isAttendance = lowerDesc.includes('attendance') || log.log_name === 'attendance' || st.includes('attendance');
     const isMarksLog = lowerDesc.includes('mark') || lowerDesc.includes('evaluation') || log.log_name === 'marks' || properties.type === 'exam_marks' || Boolean(properties.exam_id);
     const isStudentUpdate = !isAttendance && !isMarksLog && (lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student'));
     
-    const signature = isAttendance
-      ? `attendance_${log.properties?.class_name || target}_${log.properties?.session || ''}_${createdMinute}`
-      : (isStudentUpdate
-        ? `student-update_${target}_${log.causer_id || log.causer_name}_${createdMinute}`
-        : `log_${log.id}`);
+    const isExamAction = (lowerDesc.includes('exam') || st.includes('exam') || log.log_name === 'exam') && !isMarksLog;
+    const examNameClean = String(properties.exam_name || properties.exam || (desc.match(/"([^"]+)"/)?.[1]) || desc).toLowerCase().trim();
 
-    if (isAttendance || isStudentUpdate) {
+    let signature = `log_${log.id}`;
+    if (isAttendance) {
+      signature = `attendance_${log.properties?.class_name || target}_${log.properties?.session || ''}_${createdMinute}`;
+    } else if (isStudentUpdate) {
+      signature = `student-update_${target}_${log.causer_id || log.causer_name}_${createdMinute}`;
+    } else if (isMarksLog) {
+      signature = `marks_${properties.class_name || ''}_${properties.exam_id || examNameClean}_${createdMinute}`;
+    } else if (isExamAction) {
+      signature = `exam_${event}_${examNameClean}_${createdMinute}`;
+    }
+
+    if (isAttendance || isStudentUpdate || isMarksLog || isExamAction) {
       if (seenSignatures.has(signature)) {
         continue;
       }

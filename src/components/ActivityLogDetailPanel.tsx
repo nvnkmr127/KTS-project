@@ -142,11 +142,17 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       Boolean(properties.students_marks || properties.marks_list || properties.marks_data || properties.marks !== undefined || properties.obtained_marks !== undefined || properties.new_marks !== undefined || attributes.marks !== undefined)
     );
 
+  const isDeleted =
+    event === 'deleted' ||
+    properties.status === 'Deleted' ||
+    String(log.event || '').toLowerCase() === 'deleted' ||
+    rawDesc.includes('deleted');
+
   const isExamSchedule =
     !isInvigilation &&
     !isExamMarks &&
     (rawDesc.includes('exam') || subjectType.includes('exam') || subjectType.includes('examination') || log.log_name === 'exam' || activity.category === 'EXAMINATION' || activity.category === 'EXAMINATIONS' || properties.type === 'exam_schedule' || Array.isArray(properties.schedule_list)) &&
-    Boolean(properties.exam_name || properties.subject_name || properties.max_marks || properties.schedule || properties.schedule_list || attributes.exam_name || attributes.max_marks || properties.type === 'exam_schedule');
+    Boolean(properties.exam_name || properties.subject_name || properties.max_marks || properties.schedule || properties.schedule_list || attributes.exam_name || attributes.max_marks || properties.type === 'exam_schedule' || isDeleted || rawDesc.includes('deleted exam') || rawDesc.includes('created new exam'));
 
   // 1. Student Management (Student Profile & Admission Details)
   const isStudent =
@@ -901,6 +907,10 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
           attributes.exam_name ||
           (activity.target?.startsWith('Exam:') ? activity.target.replace(/^Exam:\s*/i, '') : '') ||
           (activity.target?.includes('•') ? activity.target.split('•')[1]?.trim() : '') ||
+          (() => {
+            const m = rawDesc.match(/deleted exam\s+["']([^"']+)["']/i) || rawDesc.match(/exam\s+["']([^"']+)["']/i);
+            return m ? m[1] : '';
+          })() ||
           '';
 
         const rawClass =
@@ -928,12 +938,18 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
           )
         );
 
-        const examScheduleList: Array<{ class_name?: string; subject?: string; timings?: string; max_marks?: any; date?: string }> = (() => {
+        const examScheduleList: Array<{ class_name?: string; subject?: string; timings?: string; max_marks?: any; date?: string; status?: string }> = (() => {
           if (Array.isArray(properties.schedule_list) && properties.schedule_list.length > 0) {
-            return properties.schedule_list;
+            return properties.schedule_list.map((item: any) => ({
+              ...item,
+              status: isDeleted ? 'Deleted' : (item.status || properties.status || 'Upcoming'),
+            }));
           }
           if (Array.isArray(properties.schedules) && properties.schedules.length > 0) {
-            return properties.schedules;
+            return properties.schedules.map((item: any) => ({
+              ...item,
+              status: isDeleted ? 'Deleted' : (item.status || properties.status || 'Upcoming'),
+            }));
           }
           if (properties.schedule && typeof properties.schedule === 'object') {
             const list: any[] = [];
@@ -948,6 +964,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                         date: dateStr,
                         timings: e.time ? `${e.time}${e.duration ? ` (${e.duration})` : ''}` : (e.duration || '—'),
                         max_marks: e.maxMarks || e.max_marks || 100,
+                        status: isDeleted ? 'Deleted' : (e.status || properties.status || 'Upcoming'),
                       });
                     });
                   }
@@ -956,25 +973,53 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
             });
             if (list.length > 0) return list;
           }
-          if (!isInvigilation && !isExamMarks && (properties.subject_name || properties.subject || properties.class_name || properties.class)) {
-            return [{
-              class_name: properties.class_name || properties.class || 'All Classes',
-              subject: properties.subject_name || properties.subject || 'All Subjects',
-              timings: properties.time_slot || properties.timings || properties.time || (properties.duration ? `${properties.duration}` : '—'),
-              max_marks: properties.max_marks || properties.maximum_marks || 100,
-              date: properties.exam_date || properties.date,
-            }];
+          if (
+            !isInvigilation &&
+            !isExamMarks &&
+            (properties.exam_name ||
+              properties.exam ||
+              properties.subject_name ||
+              properties.subject ||
+              properties.class_name ||
+              properties.class ||
+              attributes.exam_name ||
+              isDeleted ||
+              rawDesc.includes('exam'))
+          ) {
+            return [
+              {
+                class_name: properties.class_name || properties.class || attributes.class_name || 'All Classes',
+                subject: properties.subject_name || properties.subject || attributes.subject_name || 'All Subjects',
+                timings: properties.time_slot || properties.timings || properties.time || (properties.duration ? `${properties.duration}` : '—'),
+                max_marks: properties.max_marks || properties.maximum_marks || attributes.max_marks || 100,
+                date: properties.exam_date || properties.date || attributes.exam_date || attributes.date,
+                status: isDeleted ? 'Deleted' : (properties.status || attributes.status || 'Upcoming'),
+              },
+            ];
           }
           return [];
         })();
 
         return (
           <div className="bg-purple-50/40 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-900/40 rounded-xl p-4 text-[12px] space-y-3">
-            <div className="flex items-center gap-2 text-purple-800 dark:text-purple-300 font-bold text-[12.5px] border-b border-purple-200/50 dark:border-purple-900/40 pb-2">
-              <GraduationCap size={15} />
-              <span>
-                {isInvigilation ? 'Exam Invigilation Assignment' : isExamMarks ? 'Exam Evaluation & Marks Allotment' : 'Examination Creation & Schedule'}
-              </span>
+            <div className="flex items-center justify-between text-purple-800 dark:text-purple-300 font-bold text-[12.5px] border-b border-purple-200/50 dark:border-purple-900/40 pb-2">
+              <div className="flex items-center gap-2">
+                <GraduationCap size={15} />
+                <span>
+                  {isInvigilation
+                    ? (isDeleted ? 'Exam Invigilation Removed' : 'Exam Invigilation Assignment')
+                    : isExamMarks
+                    ? 'Exam Evaluation & Marks Allotment'
+                    : isDeleted
+                    ? 'Examination Deleted & Schedule'
+                    : 'Examination Creation & Schedule'}
+                </span>
+              </div>
+              {isDeleted && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
+                  Deleted
+                </span>
+              )}
             </div>
 
             {/* Centered Examination Title Banner in the middle of the card */}
@@ -1126,7 +1171,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
               </div>
             )}
 
-            {/* Schedule Table containing class, subject, timings, max marks */}
+            {/* Schedule Table containing class, subject, starting date, max marks, and status */}
             {examScheduleList.length > 0 && !isExamMarks && (
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
@@ -1142,32 +1187,46 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                       <tr>
                         <th className="py-2.5 px-3.5">Class</th>
                         <th className="py-2.5 px-3.5">Subject</th>
-                        <th className="py-2.5 px-3.5">Timings</th>
+                        <th className="py-2.5 px-3.5">Starting Date</th>
                         <th className="py-2.5 px-3.5">Max Marks</th>
+                        <th className="py-2.5 px-3.5 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-purple-100 dark:divide-purple-900/30 text-slate-800 dark:text-slate-200">
-                      {examScheduleList.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-purple-50/40 dark:hover:bg-purple-900/20 transition-colors">
-                          <td className="py-2.5 px-3.5 font-semibold text-purple-900 dark:text-purple-300">
-                            {item.class_name || '—'}
-                          </td>
-                          <td className="py-2.5 px-3.5 font-medium text-slate-900 dark:text-white">
-                            {item.subject || '—'}
-                            {item.date && (
-                              <span className="block text-[10.5px] text-slate-500 dark:text-slate-400 font-normal">
-                                {formatDateOnly(item.date)}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3.5 font-mono text-slate-700 dark:text-slate-300">
-                            {item.timings || '—'}
-                          </td>
-                          <td className="py-2.5 px-3.5 font-mono font-bold text-purple-700 dark:text-purple-300">
-                            {item.max_marks ?? '100'}
-                          </td>
-                        </tr>
-                      ))}
+                      {examScheduleList.map((item, idx) => {
+                        const rawItemDate = item.date || properties.exam_date || properties.date || attributes.exam_date;
+                        const formattedDate = formatDateOnly(rawItemDate);
+                        const itemStatus = isDeleted ? 'Deleted' : (item.status || properties.status || attributes.status || 'Upcoming');
+                        const isRowDeleted = itemStatus.toLowerCase() === 'deleted' || isDeleted;
+
+                        return (
+                          <tr key={idx} className="hover:bg-purple-50/40 dark:hover:bg-purple-900/20 transition-colors">
+                            <td className="py-2.5 px-3.5 font-semibold text-purple-900 dark:text-purple-300">
+                              {item.class_name || '—'}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-medium text-slate-900 dark:text-white">
+                              {item.subject || '—'}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-mono text-slate-700 dark:text-slate-300">
+                              {formattedDate || item.timings || '—'}
+                            </td>
+                            <td className="py-2.5 px-3.5 font-mono font-bold text-purple-700 dark:text-purple-300">
+                              {item.max_marks ?? '100'}
+                            </td>
+                            <td className="py-2.5 px-3.5 text-center">
+                              {isRowDeleted ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/50">
+                                  Deleted
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                  {itemStatus}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
