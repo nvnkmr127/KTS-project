@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Modal, BackHandler } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet, Platform, Modal, BackHandler, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,6 +42,42 @@ export const SuperAdminDashboard: React.FC = () => {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [notificationFilter, setNotificationFilter] = useState<'All' | 'Fees' | 'Leaves' | 'Staff' | 'System' | 'Bus'>('All');
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+
+  const showSidebarModalRef = useRef(showSidebarModal);
+  showSidebarModalRef.current = showSidebarModal;
+
+  // Swipe from left-to-right anywhere on Dashboard to open sidebar drawer
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        if (showSidebarModalRef.current) return false;
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25;
+        return isHorizontal && gestureState.dx > 20;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 35 || (gestureState.dx > 15 && gestureState.vx > 0.2)) {
+          setShowSidebarModal(true);
+        }
+      },
+    })
+  ).current;
+
+  // Swipe from right-to-left on open sidebar drawer to close
+  const sidebarSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
+        return isHorizontal && gestureState.dx < -20;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -30 || gestureState.vx < -0.2) {
+          setShowSidebarModal(false);
+        }
+      },
+    })
+  ).current;
 
   // Safe BackHandler effect
   useFocusEffect(
@@ -128,7 +164,7 @@ export const SuperAdminDashboard: React.FC = () => {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...panResponder.panHandlers}>
       {/* Background Gradient */}
       <LinearGradient
         colors={['#1d2022', '#101415']}
@@ -547,6 +583,7 @@ export const SuperAdminDashboard: React.FC = () => {
         >
           <View className="flex-1 bg-black/80 flex-row">
             <View 
+              {...sidebarSwipeResponder.panHandlers}
               className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-[#f0c110]/30" 
               style={{ 
                 backgroundColor: '#101415',

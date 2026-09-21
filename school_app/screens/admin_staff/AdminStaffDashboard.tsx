@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl, Modal, BackHandler } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, RefreshControl, Modal, BackHandler, PanResponder } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { GlassCard } from '../../components/GlassCard';
@@ -55,6 +55,42 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [notificationFilter, setNotificationFilter] = useState<'All' | 'Fees' | 'Leaves' | 'System' | 'Bus'>('All');
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+
+  const showSidebarModalRef = useRef(showSidebarModal);
+  showSidebarModalRef.current = showSidebarModal;
+
+  // Swipe from left-to-right anywhere on Dashboard to open sidebar drawer
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        if (showSidebarModalRef.current) return false;
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25;
+        return isHorizontal && gestureState.dx > 20;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 35 || (gestureState.dx > 15 && gestureState.vx > 0.2)) {
+          setShowSidebarModal(true);
+        }
+      },
+    })
+  ).current;
+
+  // Swipe from right-to-left on open sidebar drawer to close
+  const sidebarSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
+        return isHorizontal && gestureState.dx < -20;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -30 || gestureState.vx < -0.2) {
+          setShowSidebarModal(false);
+        }
+      },
+    })
+  ).current;
 
   const [stats, setStats] = useState({
     studentsCount: '1,248',
@@ -257,7 +293,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
   );
 
   return (
-    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]} {...panResponder.panHandlers}>
       <LinearGradient
         colors={isSuperAdmin ? ['#1d2022', '#101415'] : ['#0d2a24', '#121414']}
         start={{ x: 1, y: 0 }}
@@ -415,6 +451,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
         <Modal visible={showSidebarModal} transparent animationType="fade" onRequestClose={() => setShowSidebarModal(false)}>
           <View className="flex-1 bg-black/80 flex-row">
             <View
+              {...sidebarSwipeResponder.panHandlers}
               className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-white/15"
               style={{
                 backgroundColor: '#101415',
