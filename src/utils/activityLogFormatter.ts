@@ -407,13 +407,15 @@ export function getUserDisplayDetails(log: any): UserDisplayDetails {
   // If causer is System or empty, check metadata
   if (!name || name.toLowerCase() === 'system') {
     const props = log?.properties || {};
-    if (props.marked_by && props.marked_by.toLowerCase() !== 'system') {
-      name = props.marked_by;
+    if (props.user_name && props.user_name.toLowerCase() !== 'system') {
+      name = props.user_name;
     } else if (props.actor_name && props.actor_name.toLowerCase() !== 'system') {
       name = props.actor_name;
+    } else if (props.marked_by && props.marked_by.toLowerCase() !== 'system') {
+      name = props.marked_by;
     } else if (log?.description) {
       const desc = String(log.description);
-      const m = desc.match(/^(Super Admin|Admin|[A-Za-z\s]+?)\s+(?:marked|registered|added|updated|created|deleted)/i);
+      const m = desc.match(/^(Super Admin|Admin|[A-Za-z\s]+?)\s+(?:marked|registered|added|updated|created|deleted|logged in|signed in)/i);
       if (m) {
         name = m[1].trim();
       }
@@ -450,7 +452,7 @@ export function getUserDisplayDetails(log: any): UserDisplayDetails {
     : AVATAR_COLOR_PALETTES[colorIndex];
 
   // Derive role
-  let role = log.causer_role || log.properties?.user_role || '';
+  let role = log.causer_role || log.properties?.role || log.properties?.user_role || '';
   if (!role || role.toLowerCase() === 'system') {
     const lower = name.toLowerCase();
     if (lower.includes('super admin') || lower.includes('superadmin')) role = 'super-admin';
@@ -825,21 +827,29 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
 
   // 1. Auth Events
   if (event === 'login' || lowerDesc === 'login success' || lowerRaw.includes('logged in') || lowerRaw === 'login') {
+    const actor = log.causer_name || log.causer?.name || properties.user_name || properties.actor_name || properties.marked_by || (() => {
+      const m = rawDesc.match(/^(Super Admin|Admin|[A-Za-z\s]+?)\s+(?:logged in|signed in)/i);
+      return m ? m[1].trim() : '';
+    })();
+    const portalName = properties.portal || (properties.role === 'teacher' ? 'Teacher Portal' : 'the system');
+    const descText = actor && !cleanedDesc.includes(actor) ? `${actor} logged in to ${portalName}.` : (cleanedDesc || 'User logged in to the system.');
     return {
       title: 'User Login',
-      description: 'User logged in to the system.',
+      description: descText,
       category: 'AUTHENTICATION',
       categoryBadgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40',
-      target: null,
+      target: actor ? `User: ${actor}` : 'User Session',
     };
   }
   if (event === 'logout' || lowerDesc === 'signed out' || lowerRaw.includes('logout') || lowerRaw.includes('signed out')) {
+    const actor = log.causer_name || log.causer?.name || properties.user_name || properties.actor_name || properties.marked_by || '';
+    const descText = actor && !cleanedDesc.includes(actor) ? `${actor} logged out of the application session.` : (cleanedDesc || 'User logged out of the application session.');
     return {
       title: 'User Signed Out',
-      description: 'User logged out of the application session.',
+      description: descText,
       category: 'AUTHENTICATION',
       categoryBadgeClass: 'bg-slate-100 text-slate-700 border-slate-200/60 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
-      target: null,
+      target: actor ? `User: ${actor}` : 'User Session',
     };
   }
 
@@ -1786,9 +1796,19 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
   
   const result: any[] = [];
   const seenSignatures = new Set<string>();
+  const seenIds = new Set<string>();
 
   for (const log of logs) {
     if (!log) continue;
+    
+    // Check ID first
+    if (log.id !== undefined && log.id !== null) {
+      const idStr = String(log.id);
+      if (seenIds.has(idStr)) {
+        continue;
+      }
+    }
+
     const desc = String(log.description || '').trim();
     const lowerDesc = desc.toLowerCase();
     const st = String(log.subject_type || '').toLowerCase();
@@ -1838,18 +1858,20 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
       continue;
     }
 
-    // 2. Build a deduplication signature based on causer, target/student/class/exam, action, and timestamp (down to the minute)
+    // 2. Build a deduplication signature based on causer, target/student/class/exam, action, and timestamp
     const target = extractStudentName(log.properties, desc) || log.properties?.class_name || log.subject_id || desc;
     const createdMinute = log.created_at ? log.created_at.substring(0, 16) : '';
+    const createdDate = log.created_at ? log.created_at.substring(0, 10) : '';
+    // 5-minute bucket to handle any slight clock drift between frontend and backend
+    const createdTimeBucket = log.created_at ? log.created_at.substring(0, 15) : '';
     const event = log.event || 'action';
     
-    // Group student profile updates, attendance, exam, timetable, or class section actions occurring within the same minute
+    const isAuth = event === 'login' || event === 'logout' || log.log_name === 'auth' || log.log_name === 'login' || lowerDesc.includes('logged in') || lowerDesc.includes('signed in') || lowerDesc.includes('signed out');
     const isAttendance = lowerDesc.includes('attendance') || log.log_name === 'attendance' || st.includes('attendance');
     const isMarksLog = lowerDesc.includes('mark') || lowerDesc.includes('evaluation') || log.log_name === 'marks' || properties.type === 'exam_marks' || Boolean(properties.exam_id);
     const isStudentUpdate = !isAttendance && !isMarksLog && (lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student'));
-    
     const isExamAction = (lowerDesc.includes('exam') || st.includes('exam') || log.log_name === 'exam') && !isMarksLog;
-    const examNameClean = String(properties.exam_name || properties.exam || (desc.match(/"([^"]+)"/)?.[1]) || desc).toLowerCase().trim();
+    const examNameClean = String(properties.exam_name || properties.exam || (desc.match(/"([^"]+)"/)?.[1]) || desc).toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 
     const isTimetableAction =
       !isExamAction &&
@@ -1868,38 +1890,64 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
         lowerDesc.includes('section') ||
         lowerDesc.includes('batch'));
 
-    let signature = `log_${log.id}`;
-    if (isAttendance) {
-      signature = `attendance_${log.properties?.class_name || target}_${log.properties?.session || ''}_${createdMinute}`;
+    const isDiary = log.log_name === 'diary' || st.includes('diary') || lowerDesc.includes('daily diary');
+    const isHomework = log.log_name === 'homework' || st.includes('homework') || lowerDesc.includes('homework');
+
+    let signature = `log_${log.id || Math.random()}`;
+
+    if (isAuth) {
+      const actor = String(properties.user_name || properties.actor_name || log.causer_name || 'user').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      signature = `auth_${event}_${actor}_${createdDate}`;
+    } else if (isAttendance) {
+      const cls = String(properties.class_name || properties.batch_name || target || 'class').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const session = String(properties.session || 'morning').toLowerCase().trim();
+      const attDate = properties.date || properties.attendance_date || createdDate;
+      signature = `attendance_${cls}_${attDate}_${session}`;
+    } else if (isDiary) {
+      const cls = String(properties.class_name || properties.batch_name || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const subj = String(properties.subject || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      signature = `diary_${cls}_${subj}_${createdDate}`;
+    } else if (isHomework) {
+      const cls = String(properties.class_name || properties.batch_name || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const subj = String(properties.subject || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      signature = `hw_${cls}_${subj}_${createdDate}`;
     } else if (isStudentUpdate) {
-      signature = `student-update_${target}_${log.causer_id || log.causer_name}_${createdMinute}`;
+      const stud = String(target || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      signature = `student-update_${stud}_${createdDate}`;
     } else if (isMarksLog) {
-      signature = `marks_${properties.class_name || ''}_${properties.exam_id || examNameClean}_${createdMinute}`;
+      const cls = String(properties.class_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      signature = `marks_${cls}_${properties.exam_id || examNameClean}_${createdDate}`;
     } else if (isExamAction) {
-      signature = `exam_${event}_${examNameClean}_${createdMinute}`;
+      signature = `exam_${event}_${examNameClean}_${createdDate}`;
     } else if (isTimetableAction) {
-      const cls = properties.class || properties.class_name || '';
-      const day = properties.day || '';
-      const period = properties.period ?? properties.period_index ?? '';
+      const cls = String(properties.class || properties.class_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const day = String(properties.day || '').toLowerCase();
+      const period = String(properties.period ?? properties.period_index ?? '');
       const actionType = properties.action_type || event;
-      signature = `timetable_${actionType}_${cls}_${day}_${period}_${createdMinute}`;
+      signature = `timetable_${actionType}_${cls}_${day}_${period}_${createdDate}`;
     } else if (isClassAction) {
       const batchNameClean = String(
         properties.batch_name ||
         properties.class_name ||
         properties.attributes?.name ||
+        properties.name ||
         (desc.match(/Class\s+([A-Za-z0-9-]+)/i)?.[1]) ||
+        (desc.match(/Section\s+([A-Za-z0-9-]+)/i)?.[1]) ||
         desc
-      ).toLowerCase().trim();
+      ).toLowerCase().replace(/[^a-z0-9]/g, '').trim();
       const actionType = properties.action_type || event;
-      signature = `class_section_${actionType}_${batchNameClean}_${createdMinute}`;
+      signature = `class_section_${actionType}_${batchNameClean}_${createdDate}`;
+    } else {
+      const normDesc = lowerDesc.replace(/[^a-z0-9]/g, '');
+      signature = `gen_${event}_${normDesc.substring(0, 40)}_${createdTimeBucket}`;
     }
 
-    if (isAttendance || isStudentUpdate || isMarksLog || isExamAction || isTimetableAction || isClassAction) {
-      if (seenSignatures.has(signature)) {
-        continue;
-      }
-      seenSignatures.add(signature);
+    if (seenSignatures.has(signature)) {
+      continue;
+    }
+    seenSignatures.add(signature);
+    if (log.id !== undefined && log.id !== null) {
+      seenIds.add(String(log.id));
     }
 
     result.push(log);

@@ -20,6 +20,7 @@ interface SectionData {
   name: string;
   classTeacher: string;
   classTeacherId?: string;
+  classId?: string;
   students: number;
   realStudents?: number;
   subjects: string[];

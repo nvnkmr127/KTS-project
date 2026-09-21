@@ -196,8 +196,16 @@ class LogUserAction
                         }
 
                         if (!empty($description)) {
+                            $authUser = auth('sanctum')->user() ?? auth()->user();
+                            if ($authUser) {
+                                $properties['user_id'] = $authUser->id;
+                                $properties['user_name'] = $authUser->name;
+                                $properties['actor_name'] = $authUser->name;
+                                $properties['user_email'] = $authUser->email;
+                                $properties['actor_role'] = method_exists($authUser, 'getRoleNames') && $authUser->getRoleNames()->isNotEmpty() ? $authUser->getRoleNames()->first() : ($authUser->role ?? null);
+                            }
                             activity()
-                                ->causedBy(auth('sanctum')->user())
+                                ->causedBy($authUser)
                                 ->withProperties($properties)
                                 ->event($event)
                                 ->log($description);

@@ -191,6 +191,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(formattedUser);
         localStorage.setItem('user', JSON.stringify(formattedUser));
+
+        // Record activity log for user login
+        try {
+          api.recordActivityLog({
+            log_name: 'login',
+            event: 'login',
+            description: `${formattedUser.name} logged in to ${formattedUser.role === 'admin' ? 'Admin Portal' : 'Teacher Portal'}.`,
+            properties: {
+              type: 'auth',
+              action_type: 'login',
+              user_id: formattedUser.id,
+              user_name: formattedUser.name,
+              actor_name: formattedUser.name,
+              marked_by: formattedUser.name,
+              user_email: formattedUser.email,
+              role: formattedUser.role,
+              portal: formattedUser.role === 'admin' ? 'Admin Portal' : 'Teacher Portal',
+            }
+          }).catch(() => {});
+        } catch { /* empty */ }
+
         return { ok: true };
       }
       return { ok: false, error: 'Login failed' };
@@ -238,6 +259,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(fallbackUser);
             localStorage.setItem('user', JSON.stringify(fallbackUser));
             localStorage.setItem('token', 'demo-token');
+
+            // Record login log for fallback user
+            try {
+              api.recordActivityLog({
+                log_name: 'login',
+                event: 'login',
+                description: `${fallbackUser.name} logged in to Teacher Portal.`,
+                properties: {
+                  type: 'auth',
+                  action_type: 'login',
+                  user_id: fallbackUser.id,
+                  user_name: fallbackUser.name,
+                  actor_name: fallbackUser.name,
+                  marked_by: fallbackUser.name,
+                  user_email: fallbackUser.email,
+                  role: 'teacher',
+                  portal: 'Teacher Portal',
+                }
+              }).catch(() => {});
+            } catch { /* empty */ }
+
             return { ok: true };
           }
         } catch (fallbackErr) {

@@ -132,16 +132,34 @@ Route::post('/v1/login', function(Request $request) {
         }
     }
 
-    // Log successful login
+    // Update user last login timestamp
     try {
-        activity()
+        $user->timestamps = false;
+        $user->last_login_at = \Carbon\Carbon::now();
+        $user->saveQuietly();
+    } catch (\Throwable $e) {
+        // Safe fallback
+    }
+
+    // Log successful login with full user context
+    try {
+        activity('login')
             ->causedBy($user)
             ->withProperties([
-                'ip_address' => $request->ip(),
-                'user_agent' => substr($request->userAgent() ?? '', 0, 200),
+                'type'        => 'auth',
+                'action_type' => 'login',
+                'user_id'     => $user->id,
+                'user_name'   => $user->name,
+                'actor_name'  => $user->name,
+                'marked_by'   => $user->name,
+                'user_email'  => $user->email,
+                'role'        => $role,
+                'portal'      => $role === 'admin' ? 'Admin Portal' : 'Teacher Portal',
+                'ip_address'  => $request->ip(),
+                'user_agent'  => substr($request->userAgent() ?? '', 0, 200),
             ])
             ->event('login')
-            ->log('login success');
+            ->log("{$user->name} logged in to " . ($role === 'admin' ? 'Admin Portal' : 'Teacher Portal') . ".");
     } catch (\Throwable $e) {
         // Safe fallback
     }

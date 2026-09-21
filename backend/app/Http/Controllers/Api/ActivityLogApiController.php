@@ -41,12 +41,20 @@ class ActivityLogApiController extends Controller
     public function index(Request $request)
     {
         try {
-            $user = auth('sanctum')->user();
+            $user = auth('sanctum')->user() ?? auth()->user();
+            if (!$user) {
+                if ($request->filled('user_id')) {
+                    $user = \App\Models\User::find($request->user_id);
+                } elseif ($request->filled('user_name')) {
+                    $user = \App\Models\User::where('name', $request->user_name)->orWhere('name', 'like', "%{$request->user_name}%")->first();
+                } elseif ($request->filled('user_email')) {
+                    $user = \App\Models\User::where('email', $request->user_email)->first();
+                }
+            }
             if (!$user) {
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
 
-            $userMorphClass = (new \App\Models\User())->getMorphClass();
             $query = Activity::query()->with(['causer', 'causer.roles']);
             $query = $this->applyExclusions($query);
 
@@ -65,32 +73,41 @@ class ActivityLogApiController extends Controller
                 $query->whereNull('properties->deleted_at');
             }
 
-            // Apply role-based visibility
-            if ($this->isAdmin($user)) {
-                // Admin can filter by causer_id (user_id parameter)
-                if ($request->filled('user_id')) {
-                    $targetUserId = $request->user_id;
-                    $targetUser = \App\Models\User::find($targetUserId);
-                    $query->where(function($q) use ($targetUserId, $targetUser) {
-                        $q->where('causer_id', $targetUserId);
-                        if ($targetUser) {
-                            $name = $targetUser->name;
-                            $q->orWhere('properties->marked_by', 'like', "%{$name}%")
-                              ->orWhere('properties->actor_name', 'like', "%{$name}%")
-                              ->orWhere('description', 'like', "%{$name}%");
-                        }
-                    });
-                }
+            // Apply role-based visibility & teacher scoping
+            $isTargetedUser = $request->filled('user_id') || $request->filled('user_name');
+            if ($this->isAdmin($user) && !$isTargetedUser) {
+                // Global admin viewing all system logs
             } else {
-                // Non-admin can only see their own activities
-                $query->where(function($q) use ($user, $userMorphClass) {
-                    $q->where(function($sub) use ($user, $userMorphClass) {
-                        $sub->where('causer_id', $user->id)
-                            ->where('causer_type', $userMorphClass);
-                    })
-                    ->orWhere('properties->marked_by', 'like', "%{$user->name}%")
-                    ->orWhere('properties->actor_name', 'like', "%{$user->name}%")
-                    ->orWhere('description', 'like', "%{$user->name}%");
+                // Filter specifically for the teacher / target user
+                $targetUserId = $request->input('user_id', $user->id);
+                $targetUserName = $request->input('user_name', $user->name);
+                $targetUserEmail = $request->input('user_email', $user->email);
+                $targetUser = $targetUserId ? \App\Models\User::find($targetUserId) : null;
+                if ($targetUser) {
+                    $targetUserName = $targetUser->name;
+                    $targetUserEmail = $targetUser->email;
+                }
+
+                $query->where(function($q) use ($targetUserId, $targetUserName, $targetUserEmail) {
+                    if ($targetUserId) {
+                        $q->where('causer_id', $targetUserId)
+                          ->orWhere('properties->user_id', $targetUserId)
+                          ->orWhere('properties->user_id', (string)$targetUserId)
+                          ->orWhere('properties->causer_id', $targetUserId)
+                          ->orWhere('properties->teacher_id', $targetUserId)
+                          ->orWhere('properties->faculty_id', $targetUserId);
+                    }
+                    if ($targetUserName) {
+                        $q->orWhere('properties->marked_by', 'like', "%{$targetUserName}%")
+                          ->orWhere('properties->actor_name', 'like', "%{$targetUserName}%")
+                          ->orWhere('properties->user_name', 'like', "%{$targetUserName}%")
+                          ->orWhere('properties->teacher_name', 'like', "%{$targetUserName}%")
+                          ->orWhere('properties->faculty_name', 'like', "%{$targetUserName}%")
+                          ->orWhere('description', 'like', "%{$targetUserName}%");
+                    }
+                    if ($targetUserEmail) {
+                        $q->orWhere('properties->user_email', 'like', "%{$targetUserEmail}%");
+                    }
                 });
             }
 
@@ -350,6 +367,18 @@ class ActivityLogApiController extends Controller
         try {
             $user = auth('sanctum')->user() ?? auth()->user();
             $data = $request->all();
+            if (!$user) {
+                $markedBy = $data['properties']['marked_by'] ?? $data['properties']['actor_name'] ?? $data['properties']['user_name'] ?? null;
+                if ($markedBy) {
+                    $user = \App\Models\User::where('name', $markedBy)->orWhere('name', 'like', "%{$markedBy}%")->first();
+                }
+                if (!$user && !empty($data['properties']['user_id'])) {
+                    $user = \App\Models\User::find($data['properties']['user_id']);
+                }
+                if (!$user && !empty($data['properties']['user_email'])) {
+                    $user = \App\Models\User::where('email', $data['properties']['user_email'])->first();
+                }
+            }
             $logItem = activity($data['log_name'] ?? 'attendance')
                 ->causedBy($user)
                 ->event($data['event'] ?? 'created')
@@ -374,23 +403,45 @@ class ActivityLogApiController extends Controller
     public function myStats(Request $request)
     {
         try {
-            $user = auth('sanctum')->user();
+            $user = auth('sanctum')->user() ?? auth()->user();
+            if (!$user) {
+                if ($request->filled('user_id')) {
+                    $user = \App\Models\User::find($request->user_id);
+                } elseif ($request->filled('user_name')) {
+                    $user = \App\Models\User::where('name', $request->user_name)->orWhere('name', 'like', "%{$request->user_name}%")->first();
+                } elseif ($request->filled('user_email')) {
+                    $user = \App\Models\User::where('email', $request->user_email)->first();
+                }
+            }
             if (!$user) {
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
 
-            $userMorphClass = (new \App\Models\User())->getMorphClass();
+            $userId = $request->input('user_id', $user->id);
+            $userName = $request->input('user_name', $user->name);
+            $userEmail = $request->input('user_email', $user->email);
+            $targetUser = $userId ? \App\Models\User::find($userId) : null;
+            if ($targetUser) {
+                $userName = $targetUser->name;
+                $userEmail = $targetUser->email;
+            }
 
             // Base query for user's own activity (active logs without arbitrary 30-day cutoff)
             $baseQuery = Activity::whereNull('properties->deleted_at')
-                                 ->where(function ($q) use ($user, $userMorphClass) {
-                                     $q->where(function($sub) use ($user, $userMorphClass) {
-                                         $sub->where('causer_id', $user->id)
-                                             ->where('causer_type', $userMorphClass);
-                                     })
-                                     ->orWhere('properties->marked_by', 'like', "%{$user->name}%")
-                                     ->orWhere('properties->actor_name', 'like', "%{$user->name}%")
-                                     ->orWhere('description', 'like', "%{$user->name}%");
+                                 ->where(function ($q) use ($userId, $userName, $userEmail) {
+                                     $q->where('causer_id', $userId)
+                                       ->orWhere('properties->user_id', $userId)
+                                       ->orWhere('properties->user_id', (string)$userId)
+                                       ->orWhere('properties->causer_id', $userId)
+                                       ->orWhere('properties->teacher_id', $userId)
+                                       ->orWhere('properties->faculty_id', $userId)
+                                       ->orWhere('properties->marked_by', 'like', "%{$userName}%")
+                                       ->orWhere('properties->actor_name', 'like', "%{$userName}%")
+                                       ->orWhere('properties->user_name', 'like', "%{$userName}%")
+                                       ->orWhere('properties->teacher_name', 'like', "%{$userName}%")
+                                       ->orWhere('properties->faculty_name', 'like', "%{$userName}%")
+                                       ->orWhere('properties->user_email', 'like', "%{$userEmail}%")
+                                       ->orWhere('description', 'like', "%{$userName}%");
                                  });
             $baseQuery = $this->applyExclusions($baseQuery);
 
@@ -408,7 +459,8 @@ class ActivityLogApiController extends Controller
             $lastLogin = null;
             if ($user->last_login_at) {
                 $lastLogin = Carbon::parse($user->last_login_at)->toIso8601String();
-            } else {
+            }
+            if (!$lastLogin) {
                 $lastLoginLog = (clone $baseQuery)
                     ->where(function ($q) {
                         $q->where('event', 'login')

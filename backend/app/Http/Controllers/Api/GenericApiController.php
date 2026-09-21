@@ -820,12 +820,15 @@ class GenericApiController extends Controller
         if ($resource === 'activity-logs') {
             $user = auth('sanctum')->user() ?? auth()->user();
             if (!$user) {
-                $markedBy = $data['properties']['marked_by'] ?? null;
+                $markedBy = $data['properties']['marked_by'] ?? $data['properties']['actor_name'] ?? $data['properties']['user_name'] ?? null;
                 if ($markedBy) {
-                    $user = \App\Models\User::where('name', $markedBy)->first();
+                    $user = \App\Models\User::where('name', $markedBy)->orWhere('name', 'like', "%{$markedBy}%")->first();
                 }
-                if (!$user) {
-                    $user = \App\Models\User::first();
+                if (!$user && !empty($data['properties']['user_id'])) {
+                    $user = \App\Models\User::find($data['properties']['user_id']);
+                }
+                if (!$user && !empty($data['properties']['user_email'])) {
+                    $user = \App\Models\User::where('email', $data['properties']['user_email'])->first();
                 }
             }
             $logItem = activity($data['log_name'] ?? 'attendance')

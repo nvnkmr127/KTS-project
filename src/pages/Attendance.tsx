@@ -14,6 +14,7 @@ import { Badge } from '../components/Badge';
 import { Avatar, ProgressBar, getInitials } from '../components/ui';
 import { api, clearApiCache } from '../services/api';
 import { useDialog } from '../context/DialogContext';
+import { useAuth } from '../context/AuthContext';
 import { syncAndReconcileAttendanceRecords, reconcileStudentAttendance, isRecordAutoAllotted } from '../utils/studentAttendanceUtils';
 
 const monthlyData = [
@@ -47,6 +48,7 @@ interface StudentPercentage {
   total_classes: number;
   present_classes: number;
   percentage: number;
+  batch_id?: string | number;
 }
 
 interface AttendanceRecord {
@@ -68,6 +70,7 @@ interface AttendanceRecord {
 }
 
 export function Attendance() {
+  const { user } = useAuth();
   const { alert, confirm } = useDialog();
   const [view, setView] = useState<'cards' | 'class-details' | 'student-details'>('cards');
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -80,6 +83,10 @@ export function Attendance() {
   // Drill-down states
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [studentsList, setStudentsList] = useState<StudentPercentage[]>([]);
+  const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
+  const [loadingAttendance, setLoadingAttendance] = useState<boolean>(false);
+  const [loadingPeriods, setLoadingPeriods] = useState<boolean>(false);
 
   const [selectedStudent, setSelectedStudent] = useState<StudentPercentage | null>(null);
   const [studentAttendance, setStudentAttendance] = useState<AttendanceRecord[]>([]);
@@ -88,15 +95,27 @@ export function Attendance() {
 
   // Calendar states
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
-  const [loadingAttendance, setLoadingAttendance] = useState(false);
-  const [loadingPeriods, setLoadingPeriods] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
 
-  const [students, setStudents] = useState<any[]>([]);
-  const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
-
-  // Additional states for bulk actions, sorting, and Excel import
+  // Quick Action / Multi-select states
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+
+  // Modals
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+  // State to track if students are currently being loaded from the API
+  const [loadingStudents, setLoadingStudents] = useState(false);
+
+  // Excel bulk upload states
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+
+  const students = allStudents.length > 0 ? allStudents : studentsList;
+
+  // Additional states for sorting, and Excel import
   const [sortField, setSortField] = useState<'name' | 'enrollment_number' | 'percentage' | ''>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showExcelImport, setShowExcelImport] = useState(false);
@@ -131,6 +150,7 @@ export function Attendance() {
     try {
       const local = localStorage.getItem('kts_student_attendance_records');
       const records = (local && JSON.parse(local)) as any[] || [];
+      const currentMarker = user?.name || 'Admin';
 
       selectedStudentIds.forEach((studentId) => {
         // Mark both morning and lunch period
@@ -140,6 +160,7 @@ export function Attendance() {
           );
           if (idx !== -1) {
             records[idx].status = status;
+            records[idx].markedBy = currentMarker;
           } else {
             records.push({
               studentId,
@@ -147,7 +168,7 @@ export function Attendance() {
               date: selectedDate,
               session,
               status,
-              markedBy: 'Admin'
+              markedBy: currentMarker
             });
           }
         });
@@ -160,7 +181,7 @@ export function Attendance() {
       // Record Activity Log entry for bulk attendance
       try {
         const studentNames = students.filter(s => selectedStudentIds.includes(String(s.id))).map(s => s.name);
-        await api.createResource('activity-logs', {
+        await api.recordActivityLog({
           log_name: 'attendance',
           event: 'updated',
           description: `Bulk marked attendance as ${status} for ${selectedStudentIds.length} students in Class ${selectedBatch.name}.`,
@@ -172,7 +193,10 @@ export function Attendance() {
             status: status,
             count: selectedStudentIds.length,
             students: studentNames,
-            marked_by: 'Admin',
+            marked_by: currentMarker,
+            actor_name: currentMarker,
+            user_name: currentMarker,
+            role: user?.role || 'Teacher',
           }
         });
       } catch (logErr) {
@@ -200,6 +224,7 @@ export function Attendance() {
       setLoading(true);
       try {
         const local = localStorage.getItem('kts_student_attendance_records');
+        const currentMarker = user?.name || 'Admin';
         if (local) {
           const records = (local && JSON.parse(local) as any[]) || [];
           const filteredRecords = records.filter(r =>
@@ -211,7 +236,7 @@ export function Attendance() {
 
           // Record Activity Log entry for bulk attendance deletion
           try {
-            await api.createResource('activity-logs', {
+            await api.recordActivityLog({
               log_name: 'attendance',
               event: 'deleted',
               description: `Deleted attendance records on ${selectedDate} for ${selectedStudentIds.length} students in Class ${selectedBatch.name}.`,
@@ -221,7 +246,10 @@ export function Attendance() {
                 date: selectedDate,
                 attendance_date: selectedDate,
                 count: selectedStudentIds.length,
-                marked_by: 'Admin',
+                marked_by: currentMarker,
+                actor_name: currentMarker,
+                user_name: currentMarker,
+                role: user?.role || 'Teacher',
               }
             });
           } catch (logErr) {
@@ -475,7 +503,7 @@ export function Attendance() {
         );
 
         setBatches(sortedBatches);
-        setStudents(activeStudents);
+        setAllStudents(activeStudents);
         setTodayAttendance(activeTodayAttendance);
 
         // Compute class-wise today's glance data with real analytics using active students only
@@ -779,9 +807,9 @@ export function Attendance() {
         (att: any) => String(att.student_id) === String(student.id)
       );
       if (studentAtt.length > 0) {
-        isPresent = studentAtt.some(att => ['present', 'late'].includes(att.status));
+        isPresent = studentAtt.some((att: any) => ['present', 'late'].includes(att.status));
         if (!isPresent) {
-          isAbsent = studentAtt.some(att => att.status === 'absent');
+          isAbsent = studentAtt.some((att: any) => att.status === 'absent');
         }
       }
     }
@@ -891,11 +919,11 @@ export function Attendance() {
                           (att: any) => String(att.student_id) === String(student.id)
                         );
                         if (studentAtt.length > 0) {
-                          const hasPresent = studentAtt.some(att => ['present', 'late'].includes(att.status));
+                          const hasPresent = studentAtt.some((att: any) => ['present', 'late'].includes(att.status));
                           if (hasPresent) {
                             presentCount++;
                           } else {
-                            const hasAbsent = studentAtt.some(att => att.status === 'absent');
+                            const hasAbsent = studentAtt.some((att: any) => att.status === 'absent');
                             if (hasAbsent) {
                               absentCount++;
                             }

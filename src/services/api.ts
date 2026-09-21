@@ -674,13 +674,37 @@ export const api = {
     properties?: Record<string, any>;
   }) {
     try {
+      const user = storage.getItem<any>('user');
+      const enrichedProperties = {
+        ...(user?.id ? { user_id: user.id } : {}),
+        ...(user?.name ? { user_name: user.name, actor_name: user.name, marked_by: user.name } : {}),
+        ...(user?.email ? { user_email: user.email } : {}),
+        ...(user?.role ? { role: user.role, actor_role: user.role } : {}),
+        ...(data.properties || {}),
+      };
+      const payload = {
+        ...data,
+        properties: enrichedProperties,
+      };
       clearApiCache('activity-logs');
-      return await this.createResource('activity-logs', data);
+      return await this.createResource('activity-logs', payload);
     } catch {
       try {
+        const user = storage.getItem<any>('user');
+        const enrichedProperties = {
+          ...(user?.id ? { user_id: user.id } : {}),
+          ...(user?.name ? { user_name: user.name, actor_name: user.name, marked_by: user.name } : {}),
+          ...(user?.email ? { user_email: user.email } : {}),
+          ...(user?.role ? { role: user.role, actor_role: user.role } : {}),
+          ...(data.properties || {}),
+        };
+        const payload = {
+          ...data,
+          properties: enrichedProperties,
+        };
         return await request('/activity-logs', {
           method: 'POST',
-          body: JSON.stringify(data),
+          body: JSON.stringify(payload),
           silent: true,
         });
       } catch {
@@ -694,8 +718,16 @@ export const api = {
     return request(`/activity-logs${query ? `?${query}` : ''}`);
   },
 
-  async getMyActivityStats() {
-    return request('/activity-logs/my-stats');
+  async getMyActivityStats(params?: Record<string, string>) {
+    const user = storage.getItem<any>('user');
+    const queryParams: Record<string, string> = {
+      ...(user?.id ? { user_id: String(user.id) } : {}),
+      ...(user?.name ? { user_name: user.name } : {}),
+      ...(user?.email ? { user_email: user.email } : {}),
+      ...(params || {}),
+    };
+    const query = new URLSearchParams(queryParams).toString();
+    return request(`/activity-logs/my-stats${query ? `?${query}` : ''}`);
   },
 
   async getActivityUsers() {

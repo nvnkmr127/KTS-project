@@ -33,6 +33,7 @@ import {
   XCircle,
   Clock3,
   History,
+  LogIn,
 } from 'lucide-react';
 import {
   getUserDisplayDetails,
@@ -58,7 +59,8 @@ interface ActivityLogDetailPanelProps {
 }
 
 export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ log }) => {
-  const user = getUserDisplayDetails(log);
+  const userDisplay = getUserDisplayDetails(log);
+  const user = userDisplay;
   const activity = parseActivityDetails(log);
   const platform = parsePlatformInfo(log);
   const actionSummary = generateActionSummary(log);
@@ -200,8 +202,21 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       Boolean(properties.period !== undefined || properties.day || properties.substitute_teacher || properties.previous_teacher || properties.new_teacher || attributes.period !== undefined)
     );
 
+  // 0. Authentication / Login Management
+  const isAuth =
+    log.event === 'login' ||
+    log.event === 'logout' ||
+    log.log_name === 'login' ||
+    activity.category === 'AUTHENTICATION' ||
+    properties.type === 'auth' ||
+    properties.action_type === 'login' ||
+    rawDesc.includes('logged in') ||
+    rawDesc.includes('login success') ||
+    rawDesc.includes('signed out');
+
   // 6. Classes & Sections Management
   const isClasses =
+    !isAuth &&
     !isTimetable &&
     !isAttendance &&
     !isDailyDiary &&
@@ -333,10 +348,10 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
           const subjects = Object.keys(targetExamMarks);
           const filteredSt = cleanClass
             ? stList.filter((s: any) => {
-                const sC = String(s.class || s.class_name || s.batch_name || '').replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                const sS = String(s.section || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                return sC === cleanClass || `${sC}${sS}` === cleanClass || cleanClass.includes(sC);
-              })
+              const sC = String(s.class || s.class_name || s.batch_name || '').replace(/^Class\s*/i, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              const sS = String(s.section || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              return sC === cleanClass || `${sC}${sS}` === cleanClass || cleanClass.includes(sC);
+            })
             : stList;
 
           const rows: any[] = [];
@@ -379,7 +394,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
         } else {
           api.getResources('students').then((res) => {
             if (Array.isArray(res)) buildRows(res);
-          }).catch(() => {});
+          }).catch(() => { });
         }
       } catch (err) {
         console.warn('Error resolving marks dynamically:', err);
@@ -397,14 +412,14 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       if (subjectId) {
         api.getResource('students', subjectId).then(res => {
           if (res && res.name) setLiveStudent(res);
-        }).catch(() => {});
+        }).catch(() => { });
       } else if (targetName && targetName !== '—' && !['student', 'record', 'student record'].includes(targetName.toLowerCase())) {
         api.getResources('students', { search: targetName }).then(res => {
           if (Array.isArray(res) && res.length > 0) {
             const found = res.find((s: any) => (s.name || '').toLowerCase().trim() === targetName.toLowerCase().trim()) || res[0];
             if (found) setLiveStudent(found);
           }
-        }).catch(() => {});
+        }).catch(() => { });
       }
     }
   }, [log.id, log.subject_id, isStudent, isClasses, studentName]);
@@ -529,7 +544,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
 
   return (
     <div className="p-4 sm:p-5 my-2 bg-white dark:bg-[var(--surf)] border border-slate-200/80 dark:border-[var(--b)] rounded-2xl shadow-sm text-slate-800 dark:text-slate-200 space-y-5 animate-in fade-in-50 duration-200">
-      
+
       {/* 1. ACTION SUMMARY HEADER BANNER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-blue-50/90 to-indigo-50/70 dark:from-blue-950/30 dark:to-indigo-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl">
         <div className="flex items-start gap-2.5">
@@ -698,6 +713,46 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
 
       {/* 4. DOMAIN-SPECIFIC SPECIALIZED CARDS */}
 
+      {/* 0. AUTHENTICATION & LOGIN DETAILS CARD */}
+      {isAuth && (
+        <div className="bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-900/40 rounded-xl p-4 text-[12px] space-y-3">
+          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-[12.5px] border-b border-emerald-200/50 dark:border-emerald-900/40 pb-2">
+            <LogIn size={15} />
+            <span>User Authentication & Session Details</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div>
+              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">User Account</span>
+              <span className="font-bold text-slate-900 dark:text-white text-[12.5px]">
+                {userDisplay.name}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Role / Designation</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {userDisplay.role}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Session Event</span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                {event === 'logout' ? 'User Signed Out' : 'Active Login Session'}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Portal Interface</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                {properties.portal || (userDisplay.role?.toLowerCase().includes('admin') ? 'Admin Portal' : 'Teacher Portal')}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 0. CLASSES & SECTIONS MANAGEMENT CARD */}
       {isClasses && (() => {
         // Dynamic & fallback extraction for class name, section, batch name, teacher, capacity, subjects
@@ -790,11 +845,10 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                   <Layers size={15} />
                   <span>Class & Section Configuration Details</span>
                 </div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                  currentStatus === 'Active'
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${currentStatus === 'Active'
                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40'
                     : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40'
-                }`}>
+                  }`}>
                   {currentStatus}
                 </span>
               </div>
@@ -1265,10 +1319,10 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
         const finalStudentMarks: any[] = (Array.isArray(properties.students_marks) && properties.students_marks.length > 0)
           ? properties.students_marks
           : (Array.isArray(properties.marks_list) && properties.marks_list.length > 0)
-          ? properties.marks_list
-          : (Array.isArray(dynamicallyLoadedMarks) && dynamicallyLoadedMarks.length > 0)
-          ? dynamicallyLoadedMarks
-          : [];
+            ? properties.marks_list
+            : (Array.isArray(dynamicallyLoadedMarks) && dynamicallyLoadedMarks.length > 0)
+              ? dynamicallyLoadedMarks
+              : [];
 
         const allSubjects: string[] = Array.from(
           new Set(
@@ -1351,10 +1405,10 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                   {isInvigilation
                     ? (isDeleted ? 'Exam Invigilation Removed' : 'Exam Invigilation Assignment')
                     : isExamMarks
-                    ? 'Exam Evaluation & Marks Allotment'
-                    : isDeleted
-                    ? 'Examination Deleted & Schedule'
-                    : 'Examination Creation & Schedule'}
+                      ? 'Exam Evaluation & Marks Allotment'
+                      : isDeleted
+                        ? 'Examination Deleted & Schedule'
+                        : 'Examination Creation & Schedule'}
                 </span>
               </div>
               {isDeleted && (
@@ -2178,11 +2232,10 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                                 {t.end || '—'}
                               </td>
                               <td className="py-2.5 px-3.5 font-mono">
-                                <span className={`inline-block px-2 py-0.5 rounded font-mono text-[11px] font-semibold border ${
-                                  isBreak
+                                <span className={`inline-block px-2 py-0.5 rounded font-mono text-[11px] font-semibold border ${isBreak
                                     ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/40'
                                     : 'bg-blue-50 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/40'
-                                }`}>
+                                  }`}>
                                   {timingFormatted}
                                 </span>
                               </td>
@@ -2304,11 +2357,10 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                       <Clock size={16} className="text-blue-600 dark:text-blue-400" />
                       <span>Class Timetable • Period Allocation</span>
                     </div>
-                    <span className={`px-2.5 py-0.5 rounded text-[10.5px] font-bold border ${
-                      actionType === 'period_assigned' || (!isPeriodUpdated && event === 'created')
+                    <span className={`px-2.5 py-0.5 rounded text-[10.5px] font-bold border ${actionType === 'period_assigned' || (!isPeriodUpdated && event === 'created')
                         ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40'
                         : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40'
-                    }`}>
+                      }`}>
                       {actionType === 'period_assigned' || (!isPeriodUpdated && event === 'created') ? 'Period Assigned' : 'Period Updated'}
                     </span>
                   </div>
@@ -2389,12 +2441,12 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
                         {isSubjectChanged && isTeacherChanged
                           ? 'Subject & Faculty Changed'
                           : isSubjectChanged
-                          ? 'Subject Changed'
-                          : isTeacherChanged
-                          ? 'Faculty Changed'
-                          : isRoomChanged
-                          ? 'Room Changed'
-                          : 'Period Updated'}
+                            ? 'Subject Changed'
+                            : isTeacherChanged
+                              ? 'Faculty Changed'
+                              : isRoomChanged
+                                ? 'Room Changed'
+                                : 'Period Updated'}
                       </span>
                     </div>
 
