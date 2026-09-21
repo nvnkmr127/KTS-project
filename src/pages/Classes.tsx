@@ -310,13 +310,19 @@ export function Classes() {
         const actorName = user?.name || 'Super Admin';
         const assignedTeacher = teachers.find(t => String(t.id) === String(teacherId));
         await api.recordActivityLog({
-          log_name: 'staff',
+          log_name: 'classes',
           event: 'updated',
           description: `${actorName} assigned class teacher ${assignedTeacher?.name || 'Teacher'} to Section ${showAssignTeacher.name}.`,
           properties: {
+            type: 'class_section',
+            action_type: 'teacher_assigned',
+            class_name: showAssignTeacher.classId,
             section_name: showAssignTeacher.name,
+            batch_name: showAssignTeacher.name,
             teacher_id: teacherId,
-            teacher_name: assignedTeacher?.name,
+            teacher_name: assignedTeacher?.name || 'Unassigned',
+            class_teacher: assignedTeacher?.name || 'Unassigned',
+            class_teacher_name: assignedTeacher?.name || 'Unassigned',
             marked_by: actorName,
             actor_name: actorName,
           },
@@ -391,16 +397,28 @@ export function Classes() {
 
       try {
         const actorName = user?.name || 'Super Admin';
+        const assignedTeacher = teachers.find(t => String(t.id) === String(teacherIdVal));
+        const teacherName = assignedTeacher?.name || 'Unassigned';
         await api.recordActivityLog({
-          log_name: 'student',
+          log_name: 'classes',
           event: 'created',
           description: `${actorName} created new section Class ${classNum}${sectionLetter}.`,
           properties: {
+            type: 'class_section',
+            action_type: 'section_created',
             class_name: classNum,
             section_name: sectionLetter,
             batch_name: `${classNum}${sectionLetter}`,
             capacity: capacityVal || '40',
+            max_strength: capacityVal || '40',
+            class_teacher: teacherName,
+            class_teacher_name: teacherName,
+            class_teacher_id: teacherIdVal || null,
+            teacher_name: teacherName,
             subjects: selectedSubjects,
+            subject_count: selectedSubjects.length,
+            academic_year: '2026-2027',
+            status: 'Active',
             marked_by: actorName,
             actor_name: actorName,
           },
@@ -425,12 +443,16 @@ export function Classes() {
       try {
         const actorName = user?.name || 'Super Admin';
         await api.recordActivityLog({
-          log_name: 'student',
+          log_name: 'classes',
           event: 'deleted',
           description: `${actorName} deleted Section ${deleteConfirmSection.name}.`,
           properties: {
+            type: 'class_section',
+            action_type: 'section_deleted',
             section_id: deleteConfirmSection.id,
             section_name: deleteConfirmSection.name,
+            batch_name: deleteConfirmSection.name,
+            class_name: deleteConfirmSection.name.replace(/[A-Z]$/i, ''),
             marked_by: actorName,
             actor_name: actorName,
           },
@@ -497,16 +519,50 @@ export function Classes() {
 
       try {
         const actorName = user?.name || 'Super Admin';
+        const assignedTeacher = teachers.find(t => String(t.id) === String(teacherIdVal));
+        const teacherName = assignedTeacher?.name || 'Unassigned';
+        const oldTeacherName = editSectionData.section.classTeacher || 'Unassigned';
+        const oldCapacity = String(editSectionData.section.capacity || 40);
         await api.recordActivityLog({
-          log_name: 'student',
+          log_name: 'classes',
           event: 'updated',
           description: `${actorName} updated Section Class ${classNum}${sectionLetter}.`,
           properties: {
+            type: 'class_section',
+            action_type: 'section_updated',
             class_name: classNum,
             section_name: sectionLetter,
             batch_name: `${classNum}${sectionLetter}`,
             capacity: capacityVal || '40',
+            max_strength: capacityVal || '40',
+            class_teacher: teacherName,
+            class_teacher_name: teacherName,
+            class_teacher_id: teacherIdVal || null,
+            teacher_name: teacherName,
             subjects: selectedSubjects,
+            subject_count: selectedSubjects.length,
+            status: 'Active',
+            old: {
+              class_name: originalClassNum,
+              section_name: originalSectionLetter,
+              batch_name: `${originalClassNum}${originalSectionLetter}`,
+              capacity: oldCapacity,
+              class_teacher: oldTeacherName,
+            },
+            previous: {
+              class_name: originalClassNum,
+              section_name: originalSectionLetter,
+              batch_name: `${originalClassNum}${originalSectionLetter}`,
+              capacity: oldCapacity,
+              class_teacher: oldTeacherName,
+            },
+            attributes: {
+              class_name: classNum,
+              section_name: sectionLetter,
+              batch_name: `${classNum}${sectionLetter}`,
+              capacity: capacityVal || '40',
+              class_teacher: teacherName,
+            },
             marked_by: actorName,
             actor_name: actorName,
           },

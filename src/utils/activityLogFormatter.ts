@@ -504,13 +504,30 @@ export function sanitizeLogDescription(desc: string): string {
   return cleaned.trim();
 }
 
-/**
- * Safely extracts real student name without placeholder words or misplaced amounts
- */
 export function extractStudentName(properties: any, rawDesc?: string, fallbackTarget?: string | null): string | null {
   if (!properties) properties = {};
   const attributes = properties.attributes || {};
   const old = properties.old || {};
+  const lowerDesc = String(rawDesc || '').toLowerCase();
+
+  // 0. Completely reject if this is a class, section, batch, course, fee, or exam action
+  if (
+    properties.type === 'class_section' ||
+    properties.type === 'batch' ||
+    properties.type === 'course' ||
+    properties.action_type?.startsWith('section_') ||
+    properties.action_type === 'teacher_assigned' ||
+    lowerDesc.includes('created new section') ||
+    lowerDesc.includes('updated section') ||
+    lowerDesc.includes('deleted section') ||
+    lowerDesc.includes('created batch') ||
+    lowerDesc.includes('updated batch') ||
+    lowerDesc.includes('deleted batch') ||
+    lowerDesc.includes('batch:') ||
+    (lowerDesc.includes('record for') && (lowerDesc.includes('nursery') || lowerDesc.includes('lkg') || lowerDesc.includes('ukg') || /[0-9]+[a-z]/i.test(lowerDesc)))
+  ) {
+    return null;
+  }
 
   const candidates = [
     properties.student_name,
@@ -522,6 +539,18 @@ export function extractStudentName(properties: any, rawDesc?: string, fallbackTa
     properties.name,
   ];
 
+  const isBatchLike = (str: string) => {
+    const s = str.toLowerCase().trim();
+    return s.startsWith('class ') ||
+      s.startsWith('batch ') ||
+      s.startsWith('section ') ||
+      s.startsWith('nursery') ||
+      s.startsWith('lkg') ||
+      s.startsWith('ukg') ||
+      /^[0-9]+[a-z]$/i.test(s) ||
+      /^[0-9]+$/i.test(s);
+  };
+
   for (const c of candidates) {
     if (c && typeof c === 'string') {
       const trimmed = c.trim();
@@ -529,8 +558,7 @@ export function extractStudentName(properties: any, rawDesc?: string, fallbackTa
       if (
         trimmed &&
         !['student', 'record', 'student record', 'undefined', 'null', 'tuition fee', 'fee'].includes(lower) &&
-        !lower.startsWith('class ') &&
-        !lower.startsWith('batch ') &&
+        !isBatchLike(trimmed) &&
         !trimmed.startsWith('₹') &&
         isNaN(Number(trimmed))
       ) {
@@ -545,7 +573,7 @@ export function extractStudentName(properties: any, rawDesc?: string, fallbackTa
     if (matchQuote && matchQuote[1]) {
       const val = matchQuote[1].trim();
       const lower = val.toLowerCase();
-      if (val && !['student', 'record', 'student record', 'class', 'tuition fee'].includes(lower) && !val.startsWith('₹') && !lower.startsWith('class ') && isNaN(Number(val))) {
+      if (val && !['student', 'record', 'student record', 'class', 'tuition fee'].includes(lower) && !val.startsWith('₹') && !isBatchLike(val) && isNaN(Number(val))) {
         return val;
       }
     }
@@ -554,7 +582,7 @@ export function extractStudentName(properties: any, rawDesc?: string, fallbackTa
     if (matchFor && matchFor[1]) {
       const val = matchFor[1].trim();
       const lower = val.toLowerCase();
-      if (val && !['student', 'record', 'student record', 'class', 'tuition fee'].includes(lower) && !val.startsWith('₹') && !lower.startsWith('class ') && isNaN(Number(val))) {
+      if (val && !['student', 'record', 'student record', 'class', 'tuition fee'].includes(lower) && !val.startsWith('₹') && !isBatchLike(val) && isNaN(Number(val))) {
         return val;
       }
     }
@@ -563,7 +591,7 @@ export function extractStudentName(properties: any, rawDesc?: string, fallbackTa
     if (matchColon && matchColon[1]) {
       const val = matchColon[1].trim();
       const lower = val.toLowerCase();
-      if (val && !['student', 'record', 'student record'].includes(lower) && !val.startsWith('₹') && !lower.startsWith('class ') && isNaN(Number(val))) {
+      if (val && !['student', 'record', 'student record'].includes(lower) && !val.startsWith('₹') && !isBatchLike(val) && isNaN(Number(val))) {
         return val;
       }
     }
@@ -572,7 +600,7 @@ export function extractStudentName(properties: any, rawDesc?: string, fallbackTa
   if (fallbackTarget) {
     const cleanTarget = fallbackTarget.replace(/^Student:\s*/i, '').trim();
     const lower = cleanTarget.toLowerCase();
-    if (cleanTarget && !['student', 'record', 'student record', 'undefined', 'null'].includes(lower) && !cleanTarget.startsWith('₹') && !lower.startsWith('class ') && isNaN(Number(cleanTarget))) {
+    if (cleanTarget && !['student', 'record', 'student record', 'undefined', 'null'].includes(lower) && !cleanTarget.startsWith('₹') && !isBatchLike(cleanTarget) && isNaN(Number(cleanTarget))) {
       return cleanTarget;
     }
   }
@@ -1009,6 +1037,52 @@ export function parseActivityDetails(log: any): ActivityDisplayDetails {
       category: 'EXAMINATION',
       categoryBadgeClass: 'bg-purple-50 text-purple-700 border-purple-200/60 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40',
       target: examName ? `Exam: ${examName}` : 'EXAMINATION',
+    };
+  }
+
+  // 5.5 Classes & Sections Management
+  if (
+    log.log_name === 'classes' ||
+    log.log_name === 'batch' ||
+    properties.type === 'class_section' ||
+    properties.type === 'batch' ||
+    properties.type === 'course' ||
+    properties.action_type?.startsWith('section_') ||
+    properties.action_type === 'teacher_assigned' ||
+    lowerDesc.includes('created new section') ||
+    lowerDesc.includes('updated section') ||
+    lowerDesc.includes('deleted section') ||
+    lowerDesc.includes('assigned class teacher') ||
+    lowerDesc.includes('created batch') ||
+    lowerDesc.includes('updated batch') ||
+    lowerDesc.includes('deleted batch') ||
+    lowerDesc.includes('batch:') ||
+    (lowerDesc.includes('record for') && (subjectType.includes('batch') || subjectType.includes('course') || lowerDesc.includes('nursery') || lowerDesc.includes('lkg') || lowerDesc.includes('ukg') || /[0-9]+[a-z]/i.test(lowerDesc))) ||
+    (lowerDesc.includes('section') && !lowerDesc.includes('student') && !lowerDesc.includes('attendance') && !lowerDesc.includes('timetable') && !lowerDesc.includes('exam')) ||
+    (subjectType.includes('batch') && !lowerDesc.includes('student') && !lowerDesc.includes('attendance') && !lowerDesc.includes('timetable') && !lowerDesc.includes('exam'))
+  ) {
+    const isCreate = event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('added') || lowerDesc.includes('new section');
+    const isDelete = event === 'deleted' || lowerDesc.includes('deleted');
+    const isTeacherAssign = properties.action_type === 'teacher_assigned' || lowerDesc.includes('assigned class teacher');
+    
+    let rawClass = properties.class_name || properties.batch_name || attributes.batch_name || attributes.name || properties.name || '';
+    if (!rawClass) {
+      const m = rawDesc.match(/Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i) || rawDesc.match(/Section\s+([A-Za-z0-9-]+)/i) || rawDesc.match(/batch:\s*([A-Za-z0-9-]+)/i) || rawDesc.match(/for\s+([A-Za-z0-9-]+)/i);
+      if (m) rawClass = m[1].trim();
+    }
+    const formattedClass = rawClass ? formatClassSectionDisplay(rawClass) : 'Class Section';
+
+    let title = 'Class Section Updated';
+    if (isTeacherAssign) title = 'Class Teacher Assigned';
+    else if (isCreate) title = 'Class Section Created';
+    else if (isDelete) title = 'Class Section Deleted';
+
+    return {
+      title,
+      description: cleanedDesc || (isCreate ? `Created new section ${formattedClass}.` : (isDelete ? `Deleted section ${formattedClass}.` : `Updated configuration for ${formattedClass}.`)),
+      category: 'CLASSES',
+      categoryBadgeClass: 'bg-sky-50 text-sky-700 border-sky-200/60 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/40',
+      target: formattedClass,
     };
   }
 
@@ -1556,8 +1630,56 @@ export function generateActionSummary(log: any): string {
     return `${userName} updated timetable schedule${rawCls ? ` for ${formattedClass}` : ''}.`;
   }
 
+  // 6.5 Classes & Sections
+  if (
+    log.log_name === 'classes' ||
+    log.log_name === 'batch' ||
+    properties.type === 'class_section' ||
+    properties.type === 'batch' ||
+    properties.type === 'course' ||
+    properties.action_type?.startsWith('section_') ||
+    properties.action_type === 'teacher_assigned' ||
+    lowerDesc.includes('created new section') ||
+    lowerDesc.includes('updated section') ||
+    lowerDesc.includes('deleted section') ||
+    lowerDesc.includes('assigned class teacher') ||
+    lowerDesc.includes('created batch') ||
+    lowerDesc.includes('updated batch') ||
+    lowerDesc.includes('deleted batch') ||
+    lowerDesc.includes('batch:') ||
+    (lowerDesc.includes('record for') && (subjectType.includes('batch') || subjectType.includes('course') || lowerDesc.includes('nursery') || lowerDesc.includes('lkg') || lowerDesc.includes('ukg') || /[0-9]+[a-z]/i.test(lowerDesc))) ||
+    (lowerDesc.includes('section') && !lowerDesc.includes('student') && !lowerDesc.includes('attendance') && !lowerDesc.includes('timetable') && !lowerDesc.includes('exam')) ||
+    (subjectType.includes('batch') && !lowerDesc.includes('student') && !lowerDesc.includes('attendance') && !lowerDesc.includes('timetable') && !lowerDesc.includes('exam'))
+  ) {
+    let rawClass = properties.class_name || properties.batch_name || attributes.batch_name || attributes.name || properties.name || '';
+    if (!rawClass) {
+      const m = rawDesc.match(/Class\s+([A-Za-z0-9-]+(?:\s*[- ]\s*[A-Za-z])?)/i) || rawDesc.match(/Section\s+([A-Za-z0-9-]+)/i) || rawDesc.match(/batch:\s*([A-Za-z0-9-]+)/i) || rawDesc.match(/for\s+([A-Za-z0-9-]+)/i);
+      if (m) rawClass = m[1].trim();
+    }
+    const formattedClass = rawClass ? formatClassSectionDisplay(rawClass) : 'Class Section';
+    const teacher = properties.class_teacher || properties.teacher_name || properties.class_teacher_name || attributes.class_teacher || '';
+    const capacity = properties.capacity || properties.max_strength || attributes.capacity || attributes.max_strength || '';
+
+    if (lowerDesc.includes('assigned class teacher') || properties.action_type === 'teacher_assigned') {
+      return `${userName} assigned class teacher ${teacher || 'Teacher'} to ${formattedClass}.`;
+    }
+    if (event === 'deleted' || lowerDesc.includes('deleted')) {
+      return `${userName} deleted Section ${formattedClass}.`;
+    }
+    if (event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('new section') || lowerDesc.includes('batch:')) {
+      return `${userName} created new section ${formattedClass}${teacher && teacher !== 'Unassigned' ? ` (Class Teacher: ${teacher})` : ''}${capacity ? ` (Capacity: ${capacity} Students)` : ''}.`;
+    }
+    return `${userName} updated configuration for section ${formattedClass}.`;
+  }
+
   // 7. Student Actions
-  if (lowerDesc.includes('student') || (log.subject_type || '').toLowerCase().includes('student')) {
+  if (
+    !subjectType.includes('batch') &&
+    !subjectType.includes('course') &&
+    log.log_name !== 'classes' &&
+    log.log_name !== 'batch' &&
+    (lowerDesc.includes('student') || (log.subject_type || '').toLowerCase().includes('student'))
+  ) {
     const studentName = extractStudentName(properties, rawDesc);
 
     if (event === 'created' || lowerDesc.includes('created') || lowerDesc.includes('added')) {
@@ -1573,15 +1695,24 @@ export function generateActionSummary(log: any): string {
 
   // 7. Leave
   if (lowerDesc.includes('leave')) {
-    const applicant = properties.applicant_name || properties.staff_name || properties.user_name || attributes.name || 'staff member';
+    const applicant = properties.applicant_name || properties.applicant || attributes.applicant_name || 'Staff member';
     const leaveType = properties.leave_type || attributes.leave_type || 'Leave';
+    const duration = properties.duration || (properties.start_date && properties.end_date ? `${properties.start_date} to ${properties.end_date}` : '');
+    const durationText = duration ? ` (${duration})` : '';
+
+    if (event === 'created' || lowerDesc.includes('applied') || lowerDesc.includes('submitted')) {
+      return `${applicant} submitted ${leaveType} application${durationText}.`;
+    }
     if (lowerDesc.includes('approved')) {
-      return `${userName} approved ${leaveType} for ${applicant}.`;
+      return `${userName} approved ${applicant}'s ${leaveType} application${durationText}.`;
     }
     if (lowerDesc.includes('rejected')) {
-      return `${userName} rejected ${leaveType} request for ${applicant}.`;
+      return `${userName} rejected ${applicant}'s ${leaveType} application${durationText}.`;
     }
-    return `${userName} submitted a ${leaveType} request for ${applicant}.`;
+    if (event === 'deleted' || lowerDesc.includes('cancelled')) {
+      return `${userName} cancelled ${applicant}'s ${leaveType} application.`;
+    }
+    return `${userName} updated ${leaveType} application for ${applicant}.`;
   }
 
   // 8. Student Promotion / Transfer / Batch Changes
@@ -1663,11 +1794,18 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
     const st = String(log.subject_type || '').toLowerCase();
     const properties = log.properties || {};
 
-    // 1. Skip redundant raw HTTP middleware logs that duplicate native model event logs or rich logs
+    // 1. Skip redundant raw HTTP middleware / backend observer logs that duplicate native rich logs
     if (
       lowerDesc.startsWith('updated student:') ||
       lowerDesc.startsWith('added student:') ||
       lowerDesc.startsWith('deleted student:') ||
+      lowerDesc.startsWith('created batch:') ||
+      lowerDesc.startsWith('updated batch:') ||
+      lowerDesc.startsWith('deleted batch:') ||
+      lowerDesc.startsWith('added batch:') ||
+      (lowerDesc.includes('created record for') && (st.includes('batch') || st.includes('course'))) ||
+      (lowerDesc.includes('updated record for') && (st.includes('batch') || st.includes('course'))) ||
+      (lowerDesc.includes('deleted record for') && (st.includes('batch') || st.includes('course'))) ||
       lowerDesc.startsWith('updated staff profile:') ||
       lowerDesc.startsWith('added staff member:') ||
       lowerDesc.startsWith('removed staff member:') ||
@@ -1705,7 +1843,7 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
     const createdMinute = log.created_at ? log.created_at.substring(0, 16) : '';
     const event = log.event || 'action';
     
-    // Group student profile updates, attendance, exam, or timetable actions occurring within the same minute
+    // Group student profile updates, attendance, exam, timetable, or class section actions occurring within the same minute
     const isAttendance = lowerDesc.includes('attendance') || log.log_name === 'attendance' || st.includes('attendance');
     const isMarksLog = lowerDesc.includes('mark') || lowerDesc.includes('evaluation') || log.log_name === 'marks' || properties.type === 'exam_marks' || Boolean(properties.exam_id);
     const isStudentUpdate = !isAttendance && !isMarksLog && (lowerDesc.includes('student profile updated') || (lowerDesc.includes('student') && event === 'updated') || st.includes('student'));
@@ -1716,6 +1854,19 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
     const isTimetableAction =
       !isExamAction &&
       (lowerDesc.includes('timetable') || log.log_name === 'timetable' || st.includes('timetable') || properties.type?.startsWith('timetable'));
+
+    const isClassAction =
+      !isTimetableAction &&
+      !isAttendance &&
+      !isExamAction &&
+      (log.log_name === 'classes' ||
+        log.log_name === 'batch' ||
+        properties.type === 'class_section' ||
+        properties.type === 'batch' ||
+        st.includes('batch') ||
+        st.includes('course') ||
+        lowerDesc.includes('section') ||
+        lowerDesc.includes('batch'));
 
     let signature = `log_${log.id}`;
     if (isAttendance) {
@@ -1732,9 +1883,19 @@ export function deduplicateActivityLogs(logs: any[]): any[] {
       const period = properties.period ?? properties.period_index ?? '';
       const actionType = properties.action_type || event;
       signature = `timetable_${actionType}_${cls}_${day}_${period}_${createdMinute}`;
+    } else if (isClassAction) {
+      const batchNameClean = String(
+        properties.batch_name ||
+        properties.class_name ||
+        properties.attributes?.name ||
+        (desc.match(/Class\s+([A-Za-z0-9-]+)/i)?.[1]) ||
+        desc
+      ).toLowerCase().trim();
+      const actionType = properties.action_type || event;
+      signature = `class_section_${actionType}_${batchNameClean}_${createdMinute}`;
     }
 
-    if (isAttendance || isStudentUpdate || isMarksLog || isExamAction || isTimetableAction) {
+    if (isAttendance || isStudentUpdate || isMarksLog || isExamAction || isTimetableAction || isClassAction) {
       if (seenSignatures.has(signature)) {
         continue;
       }

@@ -156,15 +156,108 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
     (rawDesc.includes('exam') || subjectType.includes('exam') || subjectType.includes('examination') || log.log_name === 'exam' || activity.category === 'EXAMINATION' || activity.category === 'EXAMINATIONS' || properties.type === 'exam_schedule' || Array.isArray(properties.schedule_list)) &&
     Boolean(properties.exam_name || properties.subject_name || properties.max_marks || properties.schedule || properties.schedule_list || attributes.exam_name || attributes.max_marks || properties.type === 'exam_schedule' || isDeleted || rawDesc.includes('deleted exam') || rawDesc.includes('created new exam'));
 
+  // 2. Attendance / Allot Attendance
+  const isAttendance =
+    (rawDesc.includes('attendance') || subjectType.includes('attendance') || log.log_name === 'attendance' || activity.category === 'ATTENDANCE') &&
+    (properties.present_count !== undefined ||
+      properties.absent_count !== undefined ||
+      properties.count !== undefined ||
+      properties.student_name !== undefined ||
+      properties.class_name !== undefined ||
+      properties.batch_name !== undefined ||
+      Array.isArray(properties.present_students) ||
+      Array.isArray(properties.absent_students) ||
+      Array.isArray(properties.students) ||
+      properties.attributes?.key === 'kts_student_attendance_records' ||
+      properties.old?.key === 'kts_student_attendance_records');
+
+  // 3. Daily Diary
+  const isDailyDiary =
+    rawDesc.includes('daily diary') ||
+    rawDesc.includes('dailydiary') ||
+    rawDesc.includes('diary') ||
+    subjectType.includes('dailydiary') ||
+    Boolean(properties.topics_taught || properties.homework_given || attributes.topics_taught || attributes.homework_given);
+
+  // 5. Timetable Designing
+  const isTimetable =
+    !isExamSchedule &&
+    !isExamMarks &&
+    !rawDesc.includes('exam') &&
+    (
+      log.log_name === 'timetable' ||
+      activity.category === 'TIMETABLE' ||
+      properties.type === 'timetable_period' ||
+      properties.type === 'timetable_schedule' ||
+      properties.type === 'timetable_period_timings' ||
+      properties.action_type === 'period_assigned' ||
+      properties.action_type === 'period_updated' ||
+      properties.action_type === 'period_cleared' ||
+      properties.action_type === 'timings_updated' ||
+      properties.action_type === 'schedule_saved' ||
+      rawDesc.includes('timetable') ||
+      subjectType.includes('timetable') ||
+      Boolean(properties.period !== undefined || properties.day || properties.substitute_teacher || properties.previous_teacher || properties.new_teacher || attributes.period !== undefined)
+    );
+
+  // 6. Classes & Sections Management
+  const isClasses =
+    !isTimetable &&
+    !isAttendance &&
+    !isDailyDiary &&
+    !isExamMarks &&
+    !isExamSchedule &&
+    !isInvigilation &&
+    (
+      log.log_name === 'classes' ||
+      log.log_name === 'course' ||
+      log.log_name === 'batch' ||
+      properties.type === 'class_section' ||
+      properties.type === 'batch' ||
+      properties.type === 'course' ||
+      subjectType.includes('batch') ||
+      subjectType.includes('course') ||
+      properties.action_type === 'section_created' ||
+      properties.action_type === 'section_updated' ||
+      properties.action_type === 'section_deleted' ||
+      properties.action_type === 'teacher_assigned' ||
+      activity.category === 'CLASSES' ||
+      activity.category === 'CLASSES_SECTIONS' ||
+      rawDesc.includes('created new section') ||
+      rawDesc.includes('updated section') ||
+      rawDesc.includes('deleted section') ||
+      rawDesc.includes('created batch') ||
+      rawDesc.includes('updated batch') ||
+      rawDesc.includes('deleted batch') ||
+      rawDesc.includes('batch:') ||
+      (rawDesc.includes('record for') && (subjectType.includes('batch') || subjectType.includes('course') || /nursery|lkg|ukg|[0-9]+[a-z]/i.test(rawDesc))) ||
+      (rawDesc.includes('section') && (rawDesc.includes('created') || rawDesc.includes('updated') || rawDesc.includes('deleted') || rawDesc.includes('assigned'))) ||
+      (rawDesc.includes('assigned') && (rawDesc.includes('as class teacher') || rawDesc.includes('to class'))) ||
+      ((rawDesc.includes('class') || rawDesc.includes('section') || rawDesc.includes('batch') || subjectType.includes('batch') || subjectType.includes('course')) &&
+        Boolean(properties.class_teacher || properties.max_strength || properties.capacity || properties.section || properties.section_name || attributes.class_teacher || attributes.max_strength || attributes.capacity || attributes.course_id || attributes.section_name || attributes.name || properties.name))
+    );
+
   // 1. Student Management (Student Profile & Admission Details)
   const isStudent =
+    !isClasses &&
+    !isTimetable &&
+    !isAttendance &&
+    !isDailyDiary &&
     !isFeeCategory &&
     !isConcession &&
     !isExamMarks &&
     !isExamSchedule &&
     !isInvigilation &&
     log.log_name !== 'marks' &&
+    log.log_name !== 'classes' &&
+    log.log_name !== 'batch' &&
+    !subjectType.includes('batch') &&
+    !subjectType.includes('course') &&
     activity.category !== 'EXAMINATION' &&
+    activity.category !== 'CLASSES' &&
+    activity.category !== 'CLASSES_SECTIONS' &&
+    !rawDesc.includes('section') &&
+    !rawDesc.includes('batch') &&
     !rawDesc.includes('evaluation marks') &&
     !rawDesc.includes('saved student evaluation marks') &&
     !rawDesc.includes('student evaluation marks') &&
@@ -298,8 +391,8 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
   const [liveStudent, setLiveStudent] = useState<any>(null);
 
   useEffect(() => {
-    if (isStudent) {
-      const subjectId = log.subject_id || properties.student_id || attributes.student_id || attributes.id;
+    if (isStudent && !isClasses) {
+      const subjectId = log.subject_id || properties.student_id || attributes.student_id;
       const targetName = studentName || (activity.target ? activity.target.replace(/^Student:\s*/i, '').trim() : '');
       if (subjectId) {
         api.getResource('students', subjectId).then(res => {
@@ -314,61 +407,9 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
         }).catch(() => {});
       }
     }
-  }, [log.id, log.subject_id, isStudent, studentName]);
+  }, [log.id, log.subject_id, isStudent, isClasses, studentName]);
 
-  const student = liveStudent || cachedStudent;
-
-  // 2. Attendance / Allot Attendance
-  const isAttendance =
-    (rawDesc.includes('attendance') || subjectType.includes('attendance') || log.log_name === 'attendance' || activity.category === 'ATTENDANCE') &&
-    (properties.present_count !== undefined ||
-      properties.absent_count !== undefined ||
-      properties.count !== undefined ||
-      properties.student_name !== undefined ||
-      properties.class_name !== undefined ||
-      properties.batch_name !== undefined ||
-      Array.isArray(properties.present_students) ||
-      Array.isArray(properties.absent_students) ||
-      Array.isArray(properties.students) ||
-      properties.attributes?.key === 'kts_student_attendance_records' ||
-      properties.old?.key === 'kts_student_attendance_records');
-
-  // 3. Daily Diary
-  const isDailyDiary =
-    rawDesc.includes('daily diary') ||
-    rawDesc.includes('dailydiary') ||
-    rawDesc.includes('diary') ||
-    subjectType.includes('dailydiary') ||
-    Boolean(properties.topics_taught || properties.homework_given || attributes.topics_taught || attributes.homework_given);
-
-  // 5. Timetable Designing
-  const isTimetable =
-    !isExamSchedule &&
-    !isExamMarks &&
-    !rawDesc.includes('exam') &&
-    (
-      log.log_name === 'timetable' ||
-      activity.category === 'TIMETABLE' ||
-      properties.type === 'timetable_period' ||
-      properties.type === 'timetable_schedule' ||
-      properties.type === 'timetable_period_timings' ||
-      properties.action_type === 'period_assigned' ||
-      properties.action_type === 'period_updated' ||
-      properties.action_type === 'period_cleared' ||
-      properties.action_type === 'timings_updated' ||
-      properties.action_type === 'schedule_saved' ||
-      rawDesc.includes('timetable') ||
-      subjectType.includes('timetable') ||
-      Boolean(properties.period !== undefined || properties.day || properties.substitute_teacher || properties.previous_teacher || properties.new_teacher || attributes.period !== undefined)
-    );
-
-  // 6. Classes & Sections Management
-  const isClasses =
-    (rawDesc.includes('class') || rawDesc.includes('batch') || subjectType.includes('batch') || subjectType.includes('course')) &&
-    !isTimetable &&
-    !isAttendance &&
-    !isDailyDiary &&
-    Boolean(properties.class_teacher || properties.max_strength || properties.section || attributes.class_teacher || attributes.max_strength || attributes.course_id);
+  const student = !isClasses ? (liveStudent || cachedStudent) : null;
 
   // 7. Promotion Management
   const isPromotion =
@@ -608,7 +649,7 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
       </div>
 
       {/* 3. MODIFIED RECORDS — BEFORE vs AFTER COMPARISON TABLE */}
-      {hasModelDiff && changedKeys.length > 0 && !isTimetable && !isExamMarks && !isStudent && !isAttendance && (
+      {hasModelDiff && changedKeys.length > 0 && !isTimetable && !isExamMarks && !isStudent && !isAttendance && !isClasses && (
         <div>
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2 flex items-center gap-1.5">
             <Edit3 size={13} className="text-blue-500" />
@@ -657,8 +698,291 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
 
       {/* 4. DOMAIN-SPECIFIC SPECIALIZED CARDS */}
 
+      {/* 0. CLASSES & SECTIONS MANAGEMENT CARD */}
+      {isClasses && (() => {
+        // Dynamic & fallback extraction for class name, section, batch name, teacher, capacity, subjects
+        const rawClassName = properties.class_name || properties.class || attributes.class_name || attributes.class || old.class_name || (() => {
+          const rawName = properties.name || attributes.name || properties.batch_name || attributes.batch_name || '';
+          if (rawName) {
+            const splitMatch = rawName.match(/^(.+?)\s*([A-Z])$/i);
+            if (splitMatch) return splitMatch[1];
+            return rawName;
+          }
+          const m = rawDesc.match(/Class\s+([A-Za-z0-9-]+?)(?:[A-Z]\b|\s*-\s*[A-Z]|\.|$)/i) || rawDesc.match(/section\s+Class\s+([A-Za-z0-9-]+)/i) || rawDesc.match(/batch:\s*([A-Za-z0-9-]+)/i) || rawDesc.match(/for\s+([A-Za-z0-9-]+)/i);
+          if (m) {
+            let cl = m[1].trim();
+            const splitMatch = cl.match(/^(.+?)\s*([A-Z])$/i);
+            if (splitMatch) return splitMatch[1];
+            return cl;
+          }
+          return '—';
+        })();
+
+        const rawSectionName = properties.section_name || properties.section || attributes.section_name || attributes.section || old.section_name || (() => {
+          const rawName = properties.name || attributes.name || properties.batch_name || attributes.batch_name || '';
+          if (rawName) {
+            const splitMatch = rawName.match(/^(.+?)\s*([A-Z])$/i);
+            if (splitMatch) return `Section ${splitMatch[2].toUpperCase()}`;
+          }
+          const m = rawDesc.match(/Section\s+([A-Za-z0-9-]+)/i) || rawDesc.match(/Class\s+[A-Za-z0-9-]+?([A-Z])\b/i) || rawDesc.match(/batch:\s*[A-Za-z0-9-]+?([A-Z])\b/i);
+          return m ? (m[1].startsWith('Section') ? m[1] : `Section ${m[1]}`) : 'Section A';
+        })();
+
+        const cleanSectionLetter = rawSectionName.replace(/^Section\s*/i, '').toUpperCase().trim();
+        const displaySection = cleanSectionLetter ? `Section ${cleanSectionLetter}` : rawSectionName;
+
+        const batchIdentifier = properties.batch_name || attributes.batch_name || properties.name || attributes.name || (rawClassName !== '—' ? `${rawClassName}${cleanSectionLetter}` : '—');
+
+        let classTeacher = properties.class_teacher || properties.class_teacher_name || properties.teacher_name || attributes.class_teacher || attributes.class_teacher_name || '';
+        if (!classTeacher || classTeacher === '—') {
+          classTeacher = user?.name || 'Super Admin';
+        }
+
+        const maxCapacity = properties.capacity || properties.max_strength || properties.class_strength || attributes.capacity || attributes.max_strength || (() => {
+          if (batchIdentifier && batchIdentifier !== '—') {
+            const stored = localStorage.getItem(`batch_capacity_${batchIdentifier}`);
+            if (stored) return stored;
+          }
+          return '40';
+        })();
+
+        const academicYear = properties.academic_year || attributes.academic_year || '2026-2027';
+        const currentStatus = properties.status || attributes.status || (isDeleted ? 'Deleted' : 'Active');
+
+        // Extract subjects list
+        let subjectsList: string[] = [];
+        if (Array.isArray(properties.subjects) && properties.subjects.length > 0) {
+          subjectsList = properties.subjects;
+        } else if (Array.isArray(attributes.subjects) && attributes.subjects.length > 0) {
+          subjectsList = attributes.subjects;
+        } else if (batchIdentifier && batchIdentifier !== '—') {
+          try {
+            const saved = localStorage.getItem(`batch_subjects_${batchIdentifier}`);
+            if (saved) subjectsList = JSON.parse(saved);
+          } catch { /* empty */ }
+        }
+        if (subjectsList.length === 0) {
+          const classIdStr = String(rawClassName || '').trim();
+          subjectsList = classIdStr === '8'
+            ? ['Maths', 'Physics', 'Chemistry', 'Biology', 'English', 'Telugu', 'Social']
+            : ['Maths', 'Science', 'English', 'Telugu', 'Hindi', 'Social', 'EVS'];
+        }
+
+        // Before vs After detection for Class & Section updates
+        const isClassUpdate = event === 'updated' || properties.action_type === 'section_updated' || rawDesc.includes('updated') || Boolean(old.class_teacher || old.capacity || old.batch_name || properties.previous);
+        const oldTeacher = old.class_teacher || old.class_teacher_name || properties.previous?.class_teacher || '—';
+        const newTeacher = classTeacher;
+        const oldCap = old.capacity || old.max_strength || properties.previous?.capacity || '—';
+        const newCap = maxCapacity;
+        const oldSec = old.section_name ? `Section ${old.section_name}` : (properties.previous?.section_name ? `Section ${properties.previous.section_name}` : '—');
+        const newSec = displaySection;
+
+        const isTeacherChanged = oldTeacher !== '—' && oldTeacher !== newTeacher;
+        const isCapChanged = oldCap !== '—' && String(oldCap) !== String(newCap);
+        const isSecChanged = oldSec !== '—' && oldSec !== newSec;
+
+        return (
+          <div className="space-y-4">
+            {/* Primary Configuration Card */}
+            <div className="bg-sky-50/40 dark:bg-sky-950/20 border border-sky-200/70 dark:border-sky-900/40 rounded-xl p-4 text-[12px] space-y-3">
+              <div className="flex items-center justify-between border-b border-sky-200/50 dark:border-sky-900/40 pb-2">
+                <div className="flex items-center gap-2 text-sky-800 dark:text-sky-300 font-bold text-[12.5px]">
+                  <Layers size={15} />
+                  <span>Class & Section Configuration Details</span>
+                </div>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                  currentStatus === 'Active'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40'
+                    : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40'
+                }`}>
+                  {currentStatus}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class Name</span>
+                  <span className="font-bold text-slate-900 dark:text-white text-[12.5px]">
+                    {rawClassName.startsWith('Class ') ? rawClassName : `Class ${rawClassName}`}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Section</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {displaySection}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Batch Identifier</span>
+                  <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+                    {batchIdentifier}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Allotted Class Teacher</span>
+                  <span className="font-semibold text-sky-700 dark:text-sky-300">
+                    {classTeacher}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Maximum Class Strength</span>
+                  <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                    {maxCapacity} Students
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Academic Year</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {academicYear}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Configured Curriculum</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {subjectsList.length} Subjects Active
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Current Status</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    {currentStatus}
+                  </span>
+                </div>
+              </div>
+
+              {/* Configured Subjects List */}
+              {subjectsList.length > 0 && (
+                <div className="pt-2 border-t border-sky-200/40 dark:border-sky-900/30">
+                  <span className="text-slate-500 dark:text-slate-400 text-[11px] block font-medium mb-1.5">
+                    Configured Subjects / Curriculum:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {subjectsList.map((sub, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white dark:bg-slate-900 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800/60 shadow-xs"
+                      >
+                        {sub}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Before vs After Comparison Table for Class & Section Updates */}
+            {isClassUpdate && (isTeacherChanged || isCapChanged || isSecChanged || oldTeacher !== '—') && (
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400 mb-2 flex items-center gap-1.5">
+                  <Edit3 size={13} className="text-blue-500" />
+                  <span>Modified Records — Before vs After Comparison</span>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl shadow-xs">
+                  <table className="w-full text-left text-[12px] border-collapse bg-white dark:bg-slate-950">
+                    <thead>
+                      <tr className="bg-slate-100/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+                        <th className="py-2 px-3.5 w-24 text-center">State</th>
+                        <th className="py-2 px-3.5">Class & Section</th>
+                        <th className="py-2 px-3.5">Allotted Class Teacher</th>
+                        <th className="py-2 px-3.5">Capacity</th>
+                        <th className="py-2 px-3.5 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/70">
+                      {/* Row 1: BEFORE */}
+                      <tr className="bg-rose-50/20 dark:bg-rose-950/10 hover:bg-rose-50/30 transition-colors">
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40">
+                            BEFORE
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5">
+                          <span className={isSecChanged ? 'line-through text-rose-700 dark:text-rose-400 font-semibold' : 'text-slate-700 dark:text-slate-300'}>
+                            {rawClassName.startsWith('Class ') ? rawClassName : `Class ${rawClassName}`} {oldSec !== '—' ? `(${oldSec})` : ''}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5">
+                          <span className={isTeacherChanged ? 'line-through text-rose-700 dark:text-rose-400 font-semibold' : 'text-slate-700 dark:text-slate-300'}>
+                            {oldTeacher}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 font-mono">
+                          <span className={isCapChanged ? 'line-through text-rose-700 dark:text-rose-400 font-semibold' : 'text-slate-700 dark:text-slate-300'}>
+                            {oldCap !== '—' ? `${oldCap} Students` : '—'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            Previous
+                          </span>
+                        </td>
+                      </tr>
+
+                      {/* Row 2: AFTER */}
+                      <tr className="bg-emerald-50/25 dark:bg-emerald-950/15 hover:bg-emerald-50/35 transition-colors">
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+                            AFTER
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3.5">
+                          {isSecChanged ? (
+                            <span className="inline-block px-2 py-0.5 rounded font-bold text-[11.5px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
+                              {rawClassName.startsWith('Class ') ? rawClassName : `Class ${rawClassName}`} ({displaySection})
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                              {rawClassName.startsWith('Class ') ? rawClassName : `Class ${rawClassName}`} ({displaySection})
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3.5">
+                          {isTeacherChanged ? (
+                            <span className="inline-block px-2 py-0.5 rounded font-bold text-[11.5px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
+                              {newTeacher}
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                              {newTeacher}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3.5 font-mono">
+                          {isCapChanged ? (
+                            <span className="inline-block px-2 py-0.5 rounded font-bold text-[11.5px] bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200">
+                              {newCap} Students
+                            </span>
+                          ) : (
+                            <span className="font-medium text-slate-900 dark:text-white">
+                              {newCap} Students
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3.5 text-center">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+                            Active
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* 1. STUDENT MANAGEMENT CARD */}
-      {isStudent && (
+      {!isClasses && isStudent && (
         <div className="bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/40 rounded-xl p-4 text-[12px] space-y-3">
           <div className="flex items-center gap-2 text-indigo-800 dark:text-indigo-300 font-bold text-[12.5px] border-b border-indigo-200/50 dark:border-indigo-900/40 pb-2">
             <UserCheck size={15} />
@@ -2198,47 +2522,6 @@ export const ActivityLogDetailPanel: React.FC<ActivityLogDetailPanelProps> = ({ 
           </div>
         );
       })()}
-
-      {/* 6. CLASSES & SECTIONS MANAGEMENT CARD */}
-      {isClasses && (
-        <div className="bg-sky-50/40 dark:bg-sky-950/20 border border-sky-200/70 dark:border-sky-900/40 rounded-xl p-4 text-[12px] space-y-3">
-          <div className="flex items-center gap-2 text-sky-800 dark:text-sky-300 font-bold text-[12.5px] border-b border-sky-200/50 dark:border-sky-900/40 pb-2">
-            <Layers size={15} />
-            <span>Class & Section Configuration</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Class Name</span>
-              <span className="font-bold text-slate-900 dark:text-white">
-                {properties.class_name || properties.name || attributes.name || '—'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Section</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {properties.section || attributes.section || '—'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Allotted Class Teacher</span>
-              <span className="font-semibold text-sky-700 dark:text-sky-300">
-                {properties.class_teacher || properties.class_teacher_name || attributes.class_teacher || '—'}
-              </span>
-            </div>
-
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px] block">Maximum Class Strength</span>
-              <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
-                {properties.max_strength || properties.class_strength || attributes.max_strength || '—'} Students
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 7. PROMOTION & RETENTION MANAGEMENT CARD */}
       {isPromotion && (
         <div className="bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/40 rounded-xl p-4 text-[12px] space-y-3">
