@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, Pressable, Image, StyleSheet, Platform, Modal, BackHandler, PanResponder } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/useAuthStore';
 import { mockFees, mockHomework, mockExams } from '../../services/mockData';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,14 +20,78 @@ import {
   ChevronRight,
   ShieldCheck,
   FlaskConical,
-  MessageCircle
+  MessageCircle,
+  X,
+  LogOut,
+  Users,
+  GraduationCap,
+  School,
+  User as UserIcon,
 } from 'lucide-react-native';
 import { useResponsive } from '../../utils/responsive';
 
 export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) => {
-  const { user, activeChildId, switchChild } = useAuthStore();
+  const { user, activeChildId, switchChild, logout } = useAuthStore();
   const [showChildPicker, setShowChildPicker] = useState(false);
+  const [showSidebarModal, setShowSidebarModal] = useState(false);
   const { isSmallPhone, insets, headerPaddingTop, scrollBottomPadding } = useResponsive();
+
+  const showSidebarModalRef = useRef(showSidebarModal);
+  showSidebarModalRef.current = showSidebarModal;
+
+  // Swipe from left-to-right anywhere on Dashboard to open sidebar drawer
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        if (showSidebarModalRef.current) return false;
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25;
+        return isHorizontal && gestureState.dx > 20;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > 35 || (gestureState.dx > 15 && gestureState.vx > 0.2)) {
+          setShowSidebarModal(true);
+        }
+      },
+    })
+  ).current;
+
+  // Swipe from right-to-left on open sidebar drawer to close
+  const sidebarSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const isHorizontal = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.2;
+        return isHorizontal && gestureState.dx < -20;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -30 || gestureState.vx < -0.2) {
+          setShowSidebarModal(false);
+        }
+      },
+    })
+  ).current;
+
+  // Hardware Back Button closes open sidebar modal
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (showSidebarModal) {
+          setShowSidebarModal(false);
+          return true;
+        }
+        return false;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [showSidebarModal])
+  );
+
+  const handleSignOut = () => {
+    setShowSidebarModal(false);
+    logout();
+  };
 
   if (!user || !user.children) return null;
 
@@ -46,8 +111,17 @@ export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) =
     setShowChildPicker(false);
   };
 
+  const displayName = user.name || "Ramesh Verma";
+  const displayEmail = user.email || "ramesh.verma@parent.edu";
+  const userInitials = displayName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...panResponder.panHandlers}>
       {/* Background Gradient */}
       <LinearGradient
         colors={['#0E0F26', '#121330']}
@@ -63,22 +137,22 @@ export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) =
           { paddingTop: headerPaddingTop }
         ]}
       >
-        <View className="flex-row items-center gap-3 flex-1 mr-2">
-          <Pressable 
-            onPress={() => navigation.navigate('StudentProfileDetails')}
-            className="w-10 h-10 rounded-full overflow-hidden border border-white/20"
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          >
+        <Pressable 
+          onPress={() => setShowSidebarModal(true)}
+          className="flex-row items-center gap-3 flex-1 mr-2 active:opacity-80"
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <View className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#5E5CE6] p-0.5 bg-[#1a1535] shadow-[0_0_12px_rgba(94,92,230,0.3)]">
             <Image
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCMrIIqhz709VeW2BpRqLVg1j7U7Pl9daXfwRKA-2HDDgcA9W7mXSd5OKr4pnpdIm8PH7zmg2kpcIfjndCo00bTp-Axh-ozzk6NmCmBUgatneU-MIJXsqAP3jNupEJEVMnZddUdmfbtXx9Pf104uwZfzaiIwRgyJZ8fQhJHzGToBXPUzvkGYakj-ALyh-X-w-OuUIWQTLleEFRHfU4lEubjrHCKU1coc5G8ockGv2_JF5fyZw89gZymwweZDxq0LKQFld8hZ2gu1G6t' }}
-              className="w-full h-full object-cover"
+              source={{ uri: user.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCMrIIqhz709VeW2BpRqLVg1j7U7Pl9daXfwRKA-2HDDgcA9W7mXSd5OKr4pnpdIm8PH7zmg2kpcIfjndCo00bTp-Axh-ozzk6NmCmBUgatneU-MIJXsqAP3jNupEJEVMnZddUdmfbtXx9Pf104uwZfzaiIwRgyJZ8fQhJHzGToBXPUzvkGYakj-ALyh-X-w-OuUIWQTLleEFRHfU4lEubjrHCKU1coc5G8ockGv2_JF5fyZw89gZymwweZDxq0LKQFld8hZ2gu1G6t' }}
+              className="w-full h-full rounded-full object-cover"
             />
-          </Pressable>
+          </View>
           <View className="flex-1">
             <Text className="text-white/80 text-xs font-bold">Good Morning,</Text>
             <Text numberOfLines={1} className="text-white text-lg md:text-xl font-extrabold font-headline-md">{user.name} 👋</Text>
           </View>
-        </View>
+        </Pressable>
         <Pressable 
           className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 border border-white/10 active:scale-95"
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -338,6 +412,141 @@ export const ParentDashboard: React.FC<{ navigation: any }> = ({ navigation }) =
       >
         <MessageCircle size={24} color="#FFFFFF" />
       </Pressable>
+
+      {/* LEFT SIDEBAR DRAWER MODAL (Profile Details & Sign Out - Parent Theme) */}
+      {showSidebarModal && (
+        <Modal 
+          visible={showSidebarModal} 
+          transparent 
+          animationType="fade" 
+          onRequestClose={() => setShowSidebarModal(false)}
+        >
+          <View className="flex-1 bg-black/80 flex-row">
+            <View 
+              {...sidebarSwipeResponder.panHandlers}
+              className="w-[82%] max-w-xs h-full p-5 flex-col justify-between border-r border-[#5E5CE6]/30" 
+              style={{ 
+                backgroundColor: '#0E0F26',
+                paddingTop: Math.max(insets.top, 20) + 8,
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+              }}
+            >
+              {/* Sidebar Header & Close */}
+              <View>
+                <View className="flex-row justify-between items-center pb-4 border-b border-white/10 mb-5">
+                  <View className="flex-row items-center">
+                    <View className="w-9 h-9 rounded-xl bg-[#5E5CE6]/20 border border-[#5E5CE6]/40 items-center justify-center mr-2.5">
+                      <Users size={20} color="#5E5CE6" />
+                    </View>
+                    <View>
+                      <Text className="text-white font-extrabold text-sm">EduVision</Text>
+                      <Text className="text-[#818CF8] text-[9px] font-bold uppercase tracking-widest">PARENT PORTAL</Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={() => setShowSidebarModal(false)} className="p-1 active:scale-95">
+                    <X size={20} color="rgba(255,255,255,0.6)" />
+                  </Pressable>
+                </View>
+
+                {/* Profile Avatar Card */}
+                <View className="bg-black/40 p-4 rounded-3xl border border-[#5E5CE6]/20 mb-5 items-center">
+                  <View className="w-16 h-16 rounded-full items-center justify-center mb-3 bg-[#5E5CE6]/20 border-2 border-[#5E5CE6] shadow-[0_0_15px_rgba(94,92,230,0.3)] overflow-hidden">
+                    {user?.avatar ? (
+                      <Image
+                        source={{ uri: user.avatar }}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <Text className="text-[#818CF8] font-extrabold text-xl">
+                        {userInitials}
+                      </Text>
+                    )}
+                  </View>
+                  <Text className="text-white font-extrabold text-base text-center">{displayName}</Text>
+                  <Text className="text-white/50 text-xs text-center mt-0.5">{displayEmail}</Text>
+
+                  <View className="px-3 py-1 rounded-xl mt-3 bg-[#5E5CE6]/20 border border-[#5E5CE6]/40">
+                    <Text className="text-[#818CF8] text-[10px] font-black uppercase tracking-wider">
+                      PARENT / GUARDIAN
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Ward & Info Details List */}
+                <View className="bg-white/5 p-3.5 rounded-2xl border border-white/10 mb-4" style={{ gap: 10 }}>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Active Ward</Text>
+                    <Text className="text-[#818CF8] font-bold text-xs">{currentChild.name} ({currentChild.class})</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Student ID</Text>
+                    <Text className="text-white font-extrabold text-xs">{currentChild.id.toUpperCase()}</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Contact No</Text>
+                    <Text className="text-white font-bold text-xs">{user.phone || "+91 98765 43210"}</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">Campus</Text>
+                    <Text className="text-white font-bold text-xs">KTS Main Campus</Text>
+                  </View>
+
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-white/50 text-xs font-semibold">System Version</Text>
+                    <Text className="text-white/70 font-semibold text-xs">v2.4.0 (Expo SDK 56)</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Bottom Actions: Fast navigation & Sign Out */}
+              <View className="pb-6">
+                <Pressable
+                  onPress={() => {
+                    setShowSidebarModal(false);
+                    navigation.navigate('StudentProfileDetails');
+                  }}
+                  className="w-full py-3.5 px-4 mb-2.5 bg-white/5 border border-white/15 rounded-2xl flex-row items-center justify-between active:bg-white/10"
+                >
+                  <View className="flex-row items-center">
+                    <GraduationCap size={18} color="#818CF8" style={{ marginRight: 10 }} />
+                    <Text className="text-white font-extrabold text-xs">Student Profile</Text>
+                  </View>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setShowSidebarModal(false);
+                    navigation.navigate('Fees');
+                  }}
+                  className="w-full py-3.5 px-4 mb-2.5 bg-white/5 border border-white/15 rounded-2xl flex-row items-center justify-between active:bg-white/10"
+                >
+                  <View className="flex-row items-center">
+                    <CreditCard size={18} color="#818CF8" style={{ marginRight: 10 }} />
+                    <Text className="text-white font-extrabold text-xs">Fee Payments</Text>
+                  </View>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" />
+                </Pressable>
+
+                <Pressable
+                  onPress={handleSignOut}
+                  className="w-full py-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30"
+                >
+                  <LogOut size={18} color="#ff516a" style={{ marginRight: 8 }} />
+                  <Text className="text-[#ff516a] font-extrabold text-xs uppercase tracking-wider">Sign Out</Text>
+                </Pressable>
+              </View>
+
+            </View>
+
+            {/* Tap Backdrop Outside Drawer to Dismiss */}
+            <Pressable onPress={() => setShowSidebarModal(false)} className="flex-1" />
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
