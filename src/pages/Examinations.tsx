@@ -1510,6 +1510,10 @@ export function Examinations() {
 
   const uniqueExams = useMemo(() => deduplicateExams(exams), [exams]);
 
+  const upcomingExams = useMemo(() => {
+    return uniqueExams.filter((e) => !e.status || e.status.toLowerCase() === 'upcoming');
+  }, [uniqueExams]);
+
   const filteredExams = useMemo(() => {
     return uniqueExams.filter(e => {
       const matchSearch = (e.name || '').toLowerCase().includes(examSearch.toLowerCase());
@@ -3977,8 +3981,9 @@ export function Examinations() {
               <button
                 onClick={() => {
                   setShowAllotModal(true);
-                  if (exams.length > 0) {
-                    const firstExam = exams[0];
+                  const availableExams = upcomingExams.length > 0 ? upcomingExams : exams;
+                  if (availableExams.length > 0) {
+                    const firstExam = availableExams[0];
                     setAllotExamId(String(firstExam.id));
                     setAllotSubject(firstExam.subject === 'All Subjects' ? 'Mathematics' : firstExam.subject);
                     const validDate = getNextValidExamDate(firstExam.date, holidays);
@@ -4094,7 +4099,7 @@ export function Examinations() {
                   onChange={(e) => {
                     const selectedId = e.target.value;
                     setAllotExamId(selectedId);
-                    const selectedExam = exams.find((ex) => String(ex.id) === String(selectedId));
+                    const selectedExam = upcomingExams.find((ex) => String(ex.id) === String(selectedId)) || exams.find((ex) => String(ex.id) === String(selectedId));
                     if (selectedExam) {
                       setAllotSubject(selectedExam.subject === 'All Subjects' ? 'Mathematics' : selectedExam.subject);
                       const validDate = getNextValidExamDate(selectedExam.date, holidays);
@@ -4108,12 +4113,16 @@ export function Examinations() {
                   }}
                   className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none focus:border-[var(--blue)]"
                 >
-                  <option value="">-- Choose Exam --</option>
-                  {exams.map((ex) => (
-                    <option key={ex.id} value={String(ex.id)}>
-                      {ex.name} (Class {ex.class} · {formatDate(ex.date)})
-                    </option>
-                  ))}
+                  <option value="">-- Choose Upcoming Exam --</option>
+                  {upcomingExams.length === 0 ? (
+                    <option value="" disabled>No upcoming exams scheduled</option>
+                  ) : (
+                    upcomingExams.map((ex) => (
+                      <option key={ex.id} value={String(ex.id)}>
+                        {ex.name} (Class {ex.class} · {formatDate(ex.date)})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
