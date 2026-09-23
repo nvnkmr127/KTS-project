@@ -21,7 +21,8 @@ import {
   Home, Bell, Calendar, User, MessageCircle, 
   GraduationCap, Banknote, Bus, ClipboardCheck, 
   ClipboardList, Star, CalendarOff, Users, 
-  BarChart, Megaphone, Settings, FileText, Sliders, History
+  BarChart, Megaphone, Settings, FileText, Sliders, History,
+  Award, Eye, ShieldAlert, Edit3
 } from 'lucide-react-native';
 
 // Auth Screens
@@ -87,6 +88,13 @@ import HomeworkAssignmentsScreen from '../screens/teachers/HomeworkAssignmentsSc
 import MarksEntryScreen from '../screens/teachers/MarksEntryScreen';
 import LeaveApplicationScreen from '../screens/teachers/LeaveApplicationScreen';
 import DailyDiaryScreen from '../screens/teachers/DailyDiaryScreen';
+import TeacherSalaryScreen from '../screens/teachers/TeacherSalaryScreen';
+import TeacherSettingsScreen from '../screens/teachers/TeacherSettingsScreen';
+import { TeacherExaminationScreen } from '../screens/teachers/TeacherExaminationScreen';
+import { TeacherExamScheduleScreen } from '../screens/teachers/TeacherExamScheduleScreen';
+import { TeacherExamResultsScreen } from '../screens/teachers/TeacherExamResultsScreen';
+import { TeacherExamSchedulePreviewScreen } from '../screens/teachers/TeacherExamSchedulePreviewScreen';
+import { TeacherExamInvigilationScreen } from '../screens/teachers/TeacherExamInvigilationScreen';
 
 // Parent Screens
 import ParentDashboard from '../screens/parents/ParentDashboard';
@@ -143,13 +151,45 @@ const AdminStaffTabs = () => (
 );
 
 const TeacherTabs = () => (
-  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#0d0d12' } }}>
-    <Tab.Screen name="Dashboard" component={TeacherDashboard} options={getTabOptions(Home, '#ddb7ff')} />
-    <Tab.Screen name="Attendance" component={AttendanceMarkingScreen} options={getTabOptions(ClipboardCheck, '#ddb7ff')} />
+  <Tab.Navigator backBehavior="history" tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#0d0d12' } }}>
+    <Tab.Screen name="Dashboard" component={TeacherDashboard} options={getTabOptions(Home, '#ddb7ff', 'Dashboard')} />
+    <Tab.Screen name="AllotAttendance" component={AttendanceMarkingScreen} options={getTabOptions(ClipboardCheck, '#ddb7ff', 'Allot Attendance')} />
     <Tab.Screen name="DailyDiary" component={DailyDiaryScreen} options={getTabOptions(FileText, '#ddb7ff', 'Daily Diary')} />
-    <Tab.Screen name="Homework" component={HomeworkAssignmentsScreen} options={getTabOptions(ClipboardList, '#ddb7ff')} />
-    <Tab.Screen name="Marks" component={MarksEntryScreen} options={getTabOptions(Star, '#ddb7ff')} />
-    <Tab.Screen name="Leave" component={LeaveApplicationScreen} options={getTabOptions(CalendarOff, '#ddb7ff')} />
+    <Tab.Screen name="Homework" component={HomeworkAssignmentsScreen} options={getTabOptions(ClipboardList, '#ddb7ff', 'Homework')} />
+    <Tab.Screen name="MySalary" component={TeacherSalaryScreen} options={getTabOptions(Banknote, '#ddb7ff', 'My Salary')} />
+    <Tab.Screen name="Settings" component={TeacherSettingsScreen} options={getTabOptions(Settings, '#ddb7ff', 'Settings')} />
+    
+    {/* Examination & Sub-Screens (Preserves Bottom Tab Bar) */}
+    <Tab.Screen 
+      name="Examination" 
+      component={TeacherExaminationScreen} 
+      options={{ ...getTabOptions(GraduationCap, '#ddb7ff', 'Examination'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherExamination" 
+      component={TeacherExaminationScreen} 
+      options={{ ...getTabOptions(GraduationCap, '#ddb7ff', 'Examination'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherExamSchedule" 
+      component={TeacherExamScheduleScreen} 
+      options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Exam Schedule'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherExamResults" 
+      component={TeacherExamResultsScreen} 
+      options={{ ...getTabOptions(Award, '#ddb7ff', 'Results & Rankings'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherExamSchedulePreview" 
+      component={TeacherExamSchedulePreviewScreen} 
+      options={{ ...getTabOptions(Eye, '#ddb7ff', 'Schedule Preview'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherExamInvigilation" 
+      component={TeacherExamInvigilationScreen} 
+      options={{ ...getTabOptions(ShieldAlert, '#ddb7ff', 'Exam Invigilation'), tabBarItemStyle: { display: 'none' } }} 
+    />
   </Tab.Navigator>
 );
 
@@ -232,8 +272,22 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="FeeStructure" component={FeeStructureScreen} />
       <Stack.Screen name="EnquiryForm" component={EnquiryFormScreen} />
       <Stack.Screen name="TimetableBuilder" component={TimetableBuilderScreen} />
+      <Stack.Screen name="Timetable" component={TimetableBuilderScreen} />
+      <Stack.Screen name="TimeTable" component={TimetableBuilderScreen} />
+      <Stack.Screen name="Performance" component={StudentPerformanceScreen} />
       <Stack.Screen name="SchoolFacilities" component={SchoolFacilitiesScreen} />
       <Stack.Screen name="AttendanceMarking" component={AttendanceMarkingScreen} />
+      <Stack.Screen name="AllotAttendance" component={AttendanceMarkingScreen} />
+      <Stack.Screen name="Attendance" component={AttendanceMarkingScreen} />
+      <Stack.Screen name="TeacherSalary" component={TeacherSalaryScreen} />
+      <Stack.Screen name="MySalary" component={TeacherSalaryScreen} />
+      <Stack.Screen name="TeacherSettings" component={TeacherSettingsScreen} />
+      <Stack.Screen name="TeacherExamination" component={TeacherExaminationScreen} />
+      <Stack.Screen name="Examination" component={TeacherExaminationScreen} />
+      <Stack.Screen name="TeacherExamSchedule" component={TeacherExamScheduleScreen} />
+      <Stack.Screen name="TeacherExamResults" component={TeacherExamResultsScreen} />
+      <Stack.Screen name="TeacherExamSchedulePreview" component={TeacherExamSchedulePreviewScreen} />
+      <Stack.Screen name="TeacherExamInvigilation" component={TeacherExamInvigilationScreen} />
       <Stack.Screen name="MarksEntry" component={MarksEntryScreen} />
       <Stack.Screen name="UserManagement" component={UserManagementScreen} />
       <Stack.Screen name="LeaveApprovals" component={LeaveApprovalsScreen} />

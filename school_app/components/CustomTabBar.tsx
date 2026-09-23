@@ -84,81 +84,96 @@ export const CustomTabBar = ({
               },
         ]}
       >
-        {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
-          const label =
-            options.tabBarLabel !== undefined
-              ? options.tabBarLabel
-              : options.title !== undefined
-                ? options.title
-                : route.name;
-
-          const isFocused = state.index === index;
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: "tabPress",
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
+        {(() => {
+          const visibleRoutes = state.routes.filter((route) => {
+            const { options } = descriptors[route.key];
+            if (options.tabBarItemStyle && (options.tabBarItemStyle as any).display === "none") {
+              return false;
             }
-          };
+            if (options.tabBarButton && typeof options.tabBarButton === "function") {
+              const res = options.tabBarButton({} as any);
+              if (res === null) return false;
+            }
+            return true;
+          });
 
           const isTeacher = role === "teacher";
           const isParent = role === "parent";
-          const hasManyTabs = state.routes.length > 5;
-          const themeColor = options.tabBarActiveTintColor || (isParent ? "#5E5CE6" : "#ddb7ff");
+          const hasManyTabs = visibleRoutes.length > 5;
 
-          const activeColor = (isParent || isTeacher) ? themeColor : "#0F172A";
-          const inactiveColor = isParent ? "rgba(255, 255, 255, 0.4)" : isTeacher ? "rgba(207, 194, 214, 0.6)" : "#8a9996";
+          return visibleRoutes.map((route, index) => {
+            const { options } = descriptors[route.key];
+            const label =
+              options.tabBarLabel !== undefined
+                ? options.tabBarLabel
+                : options.title !== undefined
+                  ? options.title
+                  : route.name;
 
-          const activeStyle = (isTeacher || isParent)
-            ? { backgroundColor: "transparent" }
-            : {
-                backgroundColor: themeColor,
-                borderRadius: 9999,
-                shadowColor: themeColor,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.4,
-                shadowRadius: 10,
-                elevation: 8,
-              };
+            const isFocused = state.routes[state.index]?.key === route.key;
 
-          return (
-            <Pressable
-              key={index}
-              onPress={onPress}
-              style={[
-                styles.tabItem,
-                isFocused ? activeStyle : styles.tabItemInactive,
-              ]}
-              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-            >
-              {options.tabBarIcon &&
-                options.tabBarIcon({
-                  focused: isFocused,
-                  color: isFocused ? activeColor : inactiveColor,
-                  size: isSmallPhone ? 18 : 20,
-                })}
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={{
-                  color: isFocused ? activeColor : inactiveColor,
-                  fontSize: isSmallPhone ? 8.5 : hasManyTabs ? 9 : 10,
-                  marginTop: isSmallPhone ? 2 : 4,
-                  fontWeight: isFocused ? "bold" : "600",
-                  letterSpacing: hasManyTabs ? 0.1 : 0.4,
-                }}
+            const onPress = () => {
+              const event = navigation.emit({
+                type: "tabPress",
+                target: route.key,
+                canPreventDefault: true,
+              });
+
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
+            };
+
+            const themeColor = options.tabBarActiveTintColor || (isParent ? "#5E5CE6" : "#ddb7ff");
+
+            const activeColor = (isParent || isTeacher) ? themeColor : "#0F172A";
+            const inactiveColor = isParent ? "rgba(255, 255, 255, 0.4)" : isTeacher ? "rgba(207, 194, 214, 0.6)" : "#8a9996";
+
+            const activeStyle = (isTeacher || isParent)
+              ? { backgroundColor: "transparent" }
+              : {
+                  backgroundColor: themeColor,
+                  borderRadius: 9999,
+                  shadowColor: themeColor,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 10,
+                  elevation: 8,
+                };
+
+            return (
+              <Pressable
+                key={index}
+                onPress={onPress}
+                style={[
+                  styles.tabItem,
+                  isFocused ? activeStyle : styles.tabItemInactive,
+                ]}
+                hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
               >
-                {label as string}
-              </Text>
-            </Pressable>
-          );
-        })}
+                {options.tabBarIcon &&
+                  options.tabBarIcon({
+                    focused: isFocused,
+                    color: isFocused ? activeColor : inactiveColor,
+                    size: isSmallPhone ? 18 : 20,
+                  })}
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={{
+                    color: isFocused ? activeColor : inactiveColor,
+                    fontSize: isSmallPhone ? 8.5 : hasManyTabs ? 9 : 10,
+                    marginTop: isSmallPhone ? 2 : 4,
+                    fontWeight: isFocused ? "bold" : "600",
+                    letterSpacing: hasManyTabs ? 0.1 : 0.4,
+                  }}
+                >
+                  {label as string}
+                </Text>
+              </Pressable>
+            );
+          });
+        })()}
       </LinearGradient>
     </View>
   );

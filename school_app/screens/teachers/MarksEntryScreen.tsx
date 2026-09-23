@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Pressable, Platform, Image, TextInput, Modal } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, Pressable, Platform, Image, TextInput, Modal, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { 
   Bell, Save, ChevronDown, CheckCircle2, AlertCircle, 
-  Search, Award, Percent, TrendingUp, Users, BookOpen, Filter, Check, X
+  Search, Award, Percent, TrendingUp, Users, BookOpen, Filter, Check, X, ArrowLeft
 } from 'lucide-react-native';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -54,6 +55,22 @@ export const MarksEntryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { isSmallPhone, headerPaddingTop } = useResponsive();
   const { user } = useAuthStore();
+  const navigation = useNavigation<any>();
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate("Examination");
+        }
+        return true;
+      };
+      const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+      return () => subscription.remove();
+    }, [navigation])
+  );
 
   // Selection States
   const [selectedExamId, setSelectedExamId] = useState('ex_midterm');
@@ -272,6 +289,19 @@ export const MarksEntryScreen: React.FC = () => {
           ]}
         >
           <View className="flex-row items-center flex-1 mr-2">
+            <Pressable
+              onPress={() => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  navigation.navigate("Examination");
+                }
+              }}
+              className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 items-center justify-center mr-2.5 active:bg-white/20"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <ArrowLeft size={20} color="#ddb7ff" />
+            </Pressable>
             <View className="relative">
               <View className="w-12 h-12 rounded-full border-2 border-[#ddb7ff] p-0.5 items-center justify-center bg-[#1a1525]">
                 <Image

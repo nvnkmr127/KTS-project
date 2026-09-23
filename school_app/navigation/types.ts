@@ -33,9 +33,20 @@ export type ParentTabParamList = {
 
 export type TeacherTabParamList = {
   Dashboard: undefined;
+  AllotAttendance: undefined;
   Attendance: undefined;
+  DailyDiary: undefined;
   Homework: undefined;
+  MySalary: undefined;
+  Settings: undefined;
+  Examination: undefined;
+  TeacherExamination: undefined;
+  TeacherExamSchedule: undefined;
+  TeacherExamResults: undefined;
+  TeacherExamSchedulePreview: undefined;
+  TeacherExamInvigilation: undefined;
   Marks: undefined;
+  MarksEntry: undefined;
   Diary: undefined;
   Leave: undefined;
 };
