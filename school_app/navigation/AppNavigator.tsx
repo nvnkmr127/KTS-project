@@ -181,6 +181,16 @@ const TeacherTabs = () => (
       options={{ ...getTabOptions(Award, '#ddb7ff', 'Results & Rankings'), tabBarItemStyle: { display: 'none' } }} 
     />
     <Tab.Screen 
+      name="MarksEntry" 
+      component={MarksEntryScreen} 
+      options={{ ...getTabOptions(Edit3, '#ddb7ff', 'Marks Entry'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherMarksEntry" 
+      component={MarksEntryScreen} 
+      options={{ ...getTabOptions(Edit3, '#ddb7ff', 'Marks Entry'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
       name="TeacherExamSchedulePreview" 
       component={TeacherExamSchedulePreviewScreen} 
       options={{ ...getTabOptions(Eye, '#ddb7ff', 'Schedule Preview'), tabBarItemStyle: { display: 'none' } }} 

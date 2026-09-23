@@ -382,10 +382,35 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
             {filteredExams.map((exam) => {
               const badgeStyle = getStatusBadgeStyle(exam.status);
 
+              let targetClass = "10A";
+              if (exam.classes && exam.classes !== "All Classes") {
+                const classes = exam.classes.replace(/^Class\s*/i, "").split(",").map((c) => c.trim());
+                if (classes.length > 0) targetClass = classes[0];
+              }
+
+              const examPayload = {
+                id: exam.id,
+                name: exam.name,
+                classes: exam.classes.replace(/^Class\s*/i, ""),
+                subjects: exam.subjects,
+                date: exam.date,
+                maxMarks: exam.maxMarks,
+                status: exam.status,
+              };
+
+              const handleOpenPreview = () => {
+                navigation.navigate("TeacherExamSchedulePreview", {
+                  examId: exam.id,
+                  exam: examPayload,
+                  selectedClass: targetClass,
+                });
+              };
+
               return (
-                <View
+                <Pressable
                   key={exam.id}
-                  className="bg-[#181524] border border-white/10 rounded-2xl p-4 shadow-lg relative overflow-hidden"
+                  onPress={handleOpenPreview}
+                  className="bg-[#181524] border border-white/10 rounded-2xl p-4 shadow-lg relative overflow-hidden active:border-[#ddb7ff]/40"
                   style={{ borderRadius: 16 }}
                 >
                   {/* Top Section: Icon, Title, Status */}
@@ -442,7 +467,7 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
                   <View className="flex-row items-center justify-end pt-2 border-t border-white/10">
                     {exam.status === "Results Published" && (
                       <Pressable
-                        onPress={() => navigation.navigate("TeacherExamResults")}
+                        onPress={() => navigation.navigate("TeacherExamResults", { examId: exam.id, exam: examPayload })}
                         className="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-500/40 flex-row items-center active:bg-blue-500/30"
                       >
                         <Text className="text-blue-300 font-extrabold text-xs mr-1">
@@ -454,7 +479,7 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
 
                     {exam.status === "Completed" && (
                       <Pressable
-                        onPress={() => navigation.navigate("MarksEntry")}
+                        onPress={() => navigation.navigate("MarksEntry", { examId: exam.id, exam: examPayload, selectedClass: targetClass })}
                         className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex-row items-center active:bg-emerald-500/30"
                       >
                         <Text className="text-emerald-300 font-extrabold text-xs mr-1">
@@ -466,7 +491,7 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
 
                     {exam.status === "Upcoming" && (
                       <Pressable
-                        onPress={() => navigation.navigate("TeacherExamSchedulePreview")}
+                        onPress={handleOpenPreview}
                         className="px-4 py-2 rounded-xl bg-[#ddb7ff]/20 border border-[#ddb7ff]/40 flex-row items-center active:bg-[#ddb7ff]/30"
                       >
                         <Text className="text-[#ddb7ff] font-extrabold text-xs mr-1">
@@ -476,7 +501,7 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
                       </Pressable>
                     )}
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>
