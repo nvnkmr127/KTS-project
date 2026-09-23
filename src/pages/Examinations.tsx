@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, useMemo } from 'react';
+import { useState, useEffect, Fragment, useMemo, useRef } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -30,6 +30,296 @@ export interface Invigilation {
   staffId: string;
   staffName: string;
   staffEmail: string;
+}
+
+export interface Holiday {
+  id?: string;
+  name: string;
+  date: string;
+  type?: string;
+  color?: string;
+  description?: string;
+}
+
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year: number, month: number) {
+  return new Date(year, month, 1).getDay();
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+export function isEligibleInvigilator(staff: StaffMember): boolean {
+  if (!staff) return false;
+  if (staff.status === 'Resigned') return false;
+
+  const category = (staff.category || '').toLowerCase().trim();
+  const designation = (staff.designation || '').toLowerCase().trim();
+  const department = (staff.department || '').toLowerCase().trim();
+
+  // Excluded roles: cleaners, drivers, watchmen, security, housekeeping, peons, etc.
+  const excludedKeywords = [
+    'cleaner',
+    'driver',
+    'watchman',
+    'watch man',
+    'security',
+    'guard',
+    'house keeping',
+    'housekeeping',
+    'house-keeping',
+    'peon',
+    'attender',
+    'attendant',
+    'maid',
+    'sweeper',
+    'helper',
+    'ayah',
+    'gardener',
+    'electrician',
+    'plumber',
+    'maintenance',
+    'bus driver',
+    'van driver'
+  ];
+
+  for (const kw of excludedKeywords) {
+    if (category.includes(kw) || designation.includes(kw) || department.includes(kw)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function getNextValidExamDate(startDateStr: string, holidaysList: Holiday[]): string {
+  if (!startDateStr) return new Date().toISOString().slice(0, 10);
+  let cleanStart = startDateStr;
+  const ddmmyyyy = startDateStr.match(/^(\d{2})-(\d{2})-(\d{4})/);
+  if (ddmmyyyy) {
+    cleanStart = `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+  }
+
+  let d = new Date(cleanStart + 'T00:00:00');
+  if (isNaN(d.getTime())) return startDateStr;
+
+  const holidayDates = new Set(holidaysList.map((h) => (h.date || '').split('T')[0]));
+
+  for (let i = 0; i < 60; i++) {
+    const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const isSunday = d.getDay() === 0;
+    const isHoliday = holidayDates.has(ymd);
+    if (!isSunday && !isHoliday) {
+      return ymd;
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return cleanStart;
+}
+
+interface ExamDatePickerProps {
+  value: string;
+  onChange: (val: string) => void;
+  minDate?: string;
+  holidays: Holiday[];
+  label?: string;
+}
+
+export function ExamDatePicker({
+  value,
+  onChange,
+  minDate,
+  holidays,
+  label = 'Date *'
+}: ExamDatePickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  let cleanMinDate = minDate || '';
+  const ddmmyyyy = cleanMinDate.match(/^(\d{2})-(\d{2})-(\d{4})/);
+  if (ddmmyyyy) {
+    cleanMinDate = `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+  }
+
+  const initialDate = value || cleanMinDate || new Date().toISOString().slice(0, 10);
+  const [currentYear, setCurrentYear] = useState(() => {
+    const d = new Date(initialDate + 'T00:00:00');
+    return isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+  });
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const d = new Date(initialDate + 'T00:00:00');
+    return isNaN(d.getTime()) ? new Date().getMonth() : d.getMonth();
+  });
+
+  useEffect(() => {
+    const target = value || cleanMinDate;
+    if (target) {
+      const d = new Date(target + 'T00:00:00');
+      if (!isNaN(d.getTime())) {
+        setCurrentYear(d.getFullYear());
+        setCurrentMonth(d.getMonth());
+      }
+    }
+  }, [value, cleanMinDate]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+  const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
+
+  const calendarDays: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) calendarDays.push(null);
+  for (let d = 1; d <= daysInMonth; d++) calendarDays.push(d);
+
+  const getCalendarDateStr = (day: number) =>
+    `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+  const getHolidayForDate = (dateStr: string) => {
+    return holidays.find((h) => (h.date || '').split('T')[0] === dateStr);
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      {label && <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">{label}</label>}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none text-left focus:border-[var(--blue)] transition-colors"
+      >
+        <span className={value ? 'text-[var(--tx)] font-medium' : 'text-[var(--tx3)]'}>
+          {value ? formatDate(value) : '-- Select Exam Date --'}
+        </span>
+        <Calendar size={13} className="text-[var(--tx3)] shrink-0" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1.5 bg-[var(--surf)] border border-[var(--b)] rounded-xl shadow-2xl z-[9999] p-3 w-[290px]">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentMonth === 0) {
+                  setCurrentMonth(11);
+                  setCurrentYear((y) => y - 1);
+                } else setCurrentMonth((m) => m - 1);
+              }}
+              className="p-1 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <div className="text-[12px] font-bold text-[var(--tx)]">
+              {MONTH_NAMES[currentMonth]} {currentYear}
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (currentMonth === 11) {
+                  setCurrentMonth(0);
+                  setCurrentYear((y) => y + 1);
+                } else setCurrentMonth((m) => m + 1);
+              }}
+              className="p-1 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx2)]"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          {/* Days of week */}
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-[var(--tx3)] mb-1">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+              <div key={d} className={d === 'Su' ? 'text-red-500' : ''}>
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Days Grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map((day, i) => {
+              if (day === null) return <div key={`empty-${i}`} className="h-8" />;
+              const dateStr = getCalendarDateStr(day);
+              const dateObj = new Date(dateStr + 'T00:00:00');
+              const isSunday = dateObj.getDay() === 0;
+              const holiday = getHolidayForDate(dateStr);
+              const isPastMinDate = cleanMinDate ? dateStr < cleanMinDate : false;
+              const isSelected = value === dateStr;
+
+              const isDisabled = isPastMinDate || isSunday || !!holiday;
+
+              let cellClass = 'cursor-pointer hover:bg-[var(--surf2)] text-[var(--tx)]';
+              let title = '';
+
+              if (isSelected) {
+                cellClass = 'bg-[var(--blue)] text-white font-bold shadow-sm';
+              } else if (isPastMinDate) {
+                cellClass = 'opacity-30 text-[var(--tx3)] cursor-not-allowed bg-transparent line-through';
+                title = cleanMinDate ? `Disabled: Prior to exam start date (${formatDate(cleanMinDate)})` : 'Disabled date';
+              } else if (holiday) {
+                cellClass = 'bg-red-500/10 text-red-600 font-semibold cursor-not-allowed border border-red-500/20';
+                title = `Holiday: ${holiday.name}${holiday.description ? ` (${holiday.description})` : ''} (Disabled)`;
+              } else if (isSunday) {
+                cellClass = 'bg-red-500/5 text-red-500/70 font-medium cursor-not-allowed';
+                title = 'Sunday (Disabled)';
+              }
+
+              return (
+                <button
+                  key={day}
+                  type="button"
+                  disabled={isDisabled}
+                  title={title}
+                  onClick={() => {
+                    if (isDisabled) return;
+                    onChange(dateStr);
+                    setIsOpen(false);
+                  }}
+                  className={`h-8 w-full flex flex-col items-center justify-center rounded-lg text-[11px] font-medium transition-all ${cellClass}`}
+                >
+                  <span>{day}</span>
+                  {holiday && (
+                    <span className="text-[6.5px] truncate max-w-full px-0.5 leading-none text-red-600 font-bold block" style={{ fontSize: '6.5px' }}>
+                      {holiday.name.slice(0, 5)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Info note */}
+          <div className="mt-2.5 pt-2 border-t border-[var(--b)] text-[9.5px] text-[var(--tx3)] space-y-0.5 leading-tight">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+              <span>Holidays & Sundays are disabled</span>
+            </div>
+            {cleanMinDate && (
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--tx3)] inline-block opacity-40" />
+                <span>Dates before {formatDate(cleanMinDate)} are disabled</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 
@@ -351,16 +641,6 @@ export function getScheduleForExam(
 
   return {};
 }
-
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function getFirstDayOfMonth(year: number, month: number) {
-  return new Date(year, month, 1).getDay();
-}
-
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 interface AddExamModal {
   dateStr: string;
@@ -1257,9 +1537,22 @@ export function Examinations() {
     return (saved && JSON.parse(saved)) || [];
   });
 
+  const [holidays, setHolidays] = useState<Holiday[]>(() => {
+    try {
+      const saved = localStorage.getItem('kts_holidays');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [classList, setClassList] = useState<string[]>([]);
   const [rawBatches, setRawBatches] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
+
+  const eligibleStaffList = useMemo(() => {
+    return staffList.filter(isEligibleInvigilator);
+  }, [staffList]);
   const [selectedMarksClass, setSelectedMarksClass] = useState('8A');
   const [students, setStudents] = useState<any[]>([]);
   const [selectedMarksExamId, setSelectedMarksExamId] = useState<string>('');
@@ -1821,7 +2114,7 @@ export function Examinations() {
     };
     syncDb();
 
-    // Load staff members
+    // Load staff members from localStorage and sync from database
     const savedStaff = localStorage.getItem('kts_staff_members');
     if (savedStaff) {
       try {
@@ -1833,6 +2126,53 @@ export function Examinations() {
     } else {
       setStaffList(STAFF);
     }
+
+    const loadStaffFromDb = async () => {
+      try {
+        const staffData = await api.getResources('faculty').catch(() => []);
+        const staffArr = extractItems(staffData);
+        if (staffArr.length > 0) {
+          const normalizedStaff = staffArr.map((s: any) => ({
+            ...s,
+            documents: typeof s.documents === 'string' ? JSON.parse(s.documents) : (s.documents || []),
+            status: s.status ? s.status.charAt(0).toUpperCase() + s.status.slice(1) : 'Active',
+            salary: typeof s.salary === 'string' ? parseFloat(s.salary) : s.salary
+          }));
+          setStaffList(normalizedStaff);
+          localStorage.setItem('kts_staff_members', JSON.stringify(normalizedStaff));
+        }
+      } catch (err) {
+        console.error('Error fetching staff in Examinations:', err);
+      }
+    };
+    loadStaffFromDb();
+
+    // Load holidays from API
+    const loadHolidaysFromDb = async () => {
+      try {
+        const holidaysRes = await api.getResources('holidays').catch(() => []);
+        const holidaysList = extractItems(holidaysRes);
+        if (holidaysList.length > 0) {
+          setHolidays(holidaysList);
+          localStorage.setItem('kts_holidays', JSON.stringify(holidaysList));
+        } else {
+          const settingsRes = await api.getResources('settings', { key: 'kts_holidays' }).catch(() => []);
+          const settingsList = extractItems(settingsRes);
+          if (settingsList.length > 0 && settingsList[0].value) {
+            try {
+              const parsed = typeof settingsList[0].value === 'string' ? JSON.parse(settingsList[0].value) : settingsList[0].value;
+              if (Array.isArray(parsed)) {
+                setHolidays(parsed);
+                localStorage.setItem('kts_holidays', JSON.stringify(parsed));
+              }
+            } catch { /* empty */ }
+          }
+        }
+      } catch (err) {
+        console.error('Error loading holidays in Examinations:', err);
+      }
+    };
+    loadHolidaysFromDb();
 
     // Load real batches & students with batch relationship
     const loadBatchesAndStudents = async () => {
@@ -1878,7 +2218,7 @@ export function Examinations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Listen to cross-tab updates to examinations, schedules, invigilations, and student marks
+  // Listen to cross-tab updates to examinations, schedules, invigilations, student marks, staff, and holidays
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.newValue) return;
@@ -1897,6 +2237,10 @@ export function Examinations() {
           // Another tab saved marks — update committed state and clear our draft
           setStudentMarks(JSON.parse(e.newValue));
           setDraftMarks({});
+        } else if (e.key === 'kts_staff_members') {
+          setStaffList(JSON.parse(e.newValue));
+        } else if (e.key === 'kts_holidays') {
+          setHolidays(JSON.parse(e.newValue));
         }
       } catch (err) {
         console.error('Error parsing storage change in Examinations:', err);
@@ -2281,12 +2625,48 @@ export function Examinations() {
   };
 
   const handleAddInvigilation = async () => {
-    if (!allotStaffId) return;
-    const selectedStaff = staffList.find((s) => s.id === allotStaffId);
-    if (!selectedStaff) return;
+    if (!allotStaffId) {
+      await alert('Please select an invigilator staff member.', 'Staff Required');
+      return;
+    }
+    const selectedStaff = staffList.find(
+      (s) =>
+        String(s.id) === String(allotStaffId) ||
+        String((s as any).staff_id) === String(allotStaffId) ||
+        String((s as any).staffId) === String(allotStaffId)
+    );
+    if (!selectedStaff) {
+      await alert('Selected staff member was not found.', 'Error');
+      return;
+    }
 
-    const selectedExam = exams.find((e) => e.id === allotExamId) || exams[0];
+    const selectedExam = exams.find((e) => String(e.id) === String(allotExamId)) || exams[0];
     const targetDate = allotDate || selectedExam?.date || new Date().toISOString().slice(0, 10);
+
+    // Validate that target date is on or after exam start date
+    if (selectedExam?.date) {
+      let cleanExamStart = selectedExam.date;
+      const ddmmyyyy = cleanExamStart.match(/^(\d{2})-(\d{2})-(\d{4})/);
+      if (ddmmyyyy) cleanExamStart = `${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`;
+      if (targetDate < cleanExamStart) {
+        await alert(`Cannot assign invigilation before the exam start date (${formatDate(selectedExam.date)}).`, 'Invalid Date');
+        return;
+      }
+    }
+
+    // Validate target date is not a holiday
+    const targetHoliday = holidays.find((h) => (h.date || '').split('T')[0] === targetDate);
+    if (targetHoliday) {
+      await alert(`Cannot assign invigilation on a holiday: ${targetHoliday.name} (${formatDate(targetDate)}).`, 'Holiday Conflict');
+      return;
+    }
+
+    // Validate target date is not a Sunday
+    const dObj = new Date(targetDate + 'T00:00:00');
+    if (dObj.getDay() === 0) {
+      await alert(`Cannot assign invigilation on a Sunday (${formatDate(targetDate)}).`, 'Sunday Conflict');
+      return;
+    }
 
     // Conflict Check 1: Room conflict (no other exam/invigilation in the same room at the same time)
     const roomConflict = invigilations.find(
@@ -2304,7 +2684,7 @@ export function Examinations() {
     // Conflict Check 2: Staff conflict (no other duties for this staff member at the same time)
     const staffConflict = invigilations.find(
       (inv) =>
-        inv.staffId === allotStaffId &&
+        (String(inv.staffId) === String(allotStaffId) || (inv.staffName && selectedStaff.name && inv.staffName.toLowerCase().trim() === selectedStaff.name.toLowerCase().trim())) &&
         inv.date === targetDate &&
         inv.timeSlot === allotTimeSlot
     );
@@ -2316,14 +2696,14 @@ export function Examinations() {
 
     const newInv: Invigilation = {
       id: 'inv-' + Date.now(),
-      examId: selectedExam ? selectedExam.id : 'custom',
+      examId: selectedExam ? String(selectedExam.id) : 'custom',
       examName: selectedExam ? selectedExam.name : 'Custom Exam',
       class: allotClass,
       subject: allotSubject,
       date: targetDate,
       timeSlot: allotTimeSlot,
       room: allotRoom,
-      staffId: selectedStaff.id,
+      staffId: String(selectedStaff.id),
       staffName: selectedStaff.name,
       staffEmail: selectedStaff.email || ''
     };
@@ -2331,7 +2711,7 @@ export function Examinations() {
     const updated = [...invigilations, newInv];
     setInvigilations(updated);
     localStorage.setItem('kts_exam_invigilations', JSON.stringify(updated));
-    saveSettingToDb('kts_exam_invigilations', updated);
+    await saveSettingToDb('kts_exam_invigilations', updated);
 
     try {
       const actorName = user?.name || 'Super Admin';
@@ -2355,6 +2735,7 @@ export function Examinations() {
     } catch { /* empty */ }
 
     setShowAllotModal(false);
+    await alert(`Invigilation duty successfully assigned to ${selectedStaff.name} for ${newInv.examName}.`, 'Duty Assigned');
   };
 
   const handleDeleteInvigilation = async (id: string) => {
@@ -3597,17 +3978,23 @@ export function Examinations() {
                 onClick={() => {
                   setShowAllotModal(true);
                   if (exams.length > 0) {
-                    setAllotExamId(exams[0].id);
-                    setAllotSubject(exams[0].subject === 'All Subjects' ? 'Mathematics' : exams[0].subject);
-                    setAllotDate(exams[0].date);
+                    const firstExam = exams[0];
+                    setAllotExamId(String(firstExam.id));
+                    setAllotSubject(firstExam.subject === 'All Subjects' ? 'Mathematics' : firstExam.subject);
+                    const validDate = getNextValidExamDate(firstExam.date, holidays);
+                    setAllotDate(validDate);
                     let cls = '8A';
-                    if (exams[0].class !== 'All Classes') {
-                      cls = exams[0].class.split(',')[0].trim();
+                    if (firstExam.class !== 'All Classes') {
+                      cls = firstExam.class.split(',')[0].trim();
                     }
                     setAllotClass(cls);
                   }
-                  if (staffList.length > 0) {
-                    setAllotStaffId(staffList[0].id);
+                  if (eligibleStaffList.length > 0) {
+                    setAllotStaffId(String(eligibleStaffList[0].id));
+                  } else if (staffList.length > 0) {
+                    setAllotStaffId(String(staffList[0].id));
+                  } else {
+                    setAllotStaffId('');
                   }
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] bg-[var(--blue)] text-white rounded-lg cursor-pointer hover:opacity-90 font-semibold"
@@ -3690,7 +4077,7 @@ export function Examinations() {
       {/* Allot Invisilation Modal */}
       {showAllotModal && isAdmin && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[445px] shadow-2xl">
+          <div className="bg-[var(--surf)] border border-[var(--b)] rounded-2xl w-full max-w-[445px] shadow-2xl overflow-visible">
             <div className="flex items-center justify-between p-5 border-b border-[var(--b)]">
               <div>
                 <div className="text-[14px] font-bold text-[var(--tx)]">Allot Exam Invisilator</div>
@@ -3699,7 +4086,7 @@ export function Examinations() {
               <button onClick={() => setShowAllotModal(false)} className="p-1.5 rounded-lg hover:bg-[var(--surf2)] cursor-pointer text-[var(--tx3)]"><X size={16} /></button>
             </div>
 
-            <div className="p-5 space-y-3.5 max-h-[70vh] overflow-y-auto">
+            <div className="p-5 space-y-3.5 overflow-visible">
               <div>
                 <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Select Scheduled Exam *</label>
                 <select
@@ -3707,10 +4094,11 @@ export function Examinations() {
                   onChange={(e) => {
                     const selectedId = e.target.value;
                     setAllotExamId(selectedId);
-                    const selectedExam = exams.find((ex) => ex.id === selectedId);
+                    const selectedExam = exams.find((ex) => String(ex.id) === String(selectedId));
                     if (selectedExam) {
                       setAllotSubject(selectedExam.subject === 'All Subjects' ? 'Mathematics' : selectedExam.subject);
-                      setAllotDate(selectedExam.date);
+                      const validDate = getNextValidExamDate(selectedExam.date, holidays);
+                      setAllotDate(validDate);
                       let cls = '8A';
                       if (selectedExam.class !== 'All Classes') {
                         cls = selectedExam.class.split(',')[0].trim();
@@ -3722,7 +4110,7 @@ export function Examinations() {
                 >
                   <option value="">-- Choose Exam --</option>
                   {exams.map((ex) => (
-                    <option key={ex.id} value={ex.id}>
+                    <option key={ex.id} value={String(ex.id)}>
                       {ex.name} (Class {ex.class} · {formatDate(ex.date)})
                     </option>
                   ))}
@@ -3762,13 +4150,19 @@ export function Examinations() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5">Date *</label>
-                  <input
-                    type="date"
-                    value={allotDate}
-                    onChange={(e) => setAllotDate(e.target.value)}
-                    className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] outline-none focus:border-[var(--blue)] cursor-pointer"
-                  />
+                  {(() => {
+                    const currentExam = exams.find((ex) => String(ex.id) === String(allotExamId)) || exams[0];
+                    const examStartDate = currentExam ? currentExam.date : '';
+                    return (
+                      <ExamDatePicker
+                        label="Date *"
+                        value={allotDate}
+                        onChange={(val) => setAllotDate(val)}
+                        minDate={examStartDate}
+                        holidays={holidays}
+                      />
+                    );
+                  })()}
                 </div>
                 <div>
                   <label className="block text-[11.5px] font-medium text-[var(--tx2)] mb-1.5 font-semibold">Time Slot *</label>
@@ -3805,11 +4199,15 @@ export function Examinations() {
                     className="w-full bg-[var(--surf2)] border border-[var(--b)] rounded-lg px-3 py-2 text-[12px] text-[var(--tx)] cursor-pointer outline-none font-semibold focus:border-[var(--blue)]"
                   >
                     <option value="">-- Select Staff Member --</option>
-                    {staffList.map((st) => (
-                      <option key={st.id} value={st.id}>
-                        {st.name} ({st.category || 'Teaching'} · {st.designation})
-                      </option>
-                    ))}
+                    {eligibleStaffList.length === 0 ? (
+                      <option value="" disabled>No eligible teaching/non-teaching staff found</option>
+                    ) : (
+                      eligibleStaffList.map((st) => (
+                        <option key={st.id} value={String(st.id)}>
+                          {st.name} ({st.category || 'Teaching'} · {st.designation})
+                        </option>
+                      ))
+                    )}
                   </select>
                 </div>
               </div>
