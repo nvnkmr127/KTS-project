@@ -132,7 +132,11 @@ export const TeacherExamInvigilationScreen: React.FC<{ navigation: any }> = ({ n
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        navigation.navigate("Examination");
+        if (navigation?.canGoBack && navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate("Examination");
+        }
         return true;
       };
       const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
@@ -166,7 +170,7 @@ export const TeacherExamInvigilationScreen: React.FC<{ navigation: any }> = ({ n
     { id: "TeacherExamResults", label: "Results & Rankings" },
     { id: "MarksEntry", label: "Marks Entry" },
     { id: "TeacherExamSchedulePreview", label: "Schedule Preview" },
-    { id: "TeacherExamInvigilation", label: "Exam Invisilation", active: true },
+    { id: "TeacherExamInvigilation", label: "Exam Invigilation", active: true },
   ];
 
   return (
@@ -185,7 +189,13 @@ export const TeacherExamInvigilationScreen: React.FC<{ navigation: any }> = ({ n
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center flex-1 mr-2">
               <Pressable
-                onPress={() => navigation.navigate("Examination")}
+                onPress={() => {
+                  if (navigation?.canGoBack && navigation.canGoBack()) {
+                    navigation.goBack();
+                  } else {
+                    navigation.navigate("Examination");
+                  }
+                }}
                 className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 items-center justify-center mr-3 active:bg-white/20"
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
@@ -314,7 +324,7 @@ export const TeacherExamInvigilationScreen: React.FC<{ navigation: any }> = ({ n
             <View className="flex-row items-center justify-between">
               <View className="flex-1 mr-2">
                 <Text className="text-white text-base font-black">
-                  My Exam Invisilation Duties
+                  My Exam Invigilation Duties
                 </Text>
                 <Text className="text-white/50 text-xs font-medium mt-0.5">
                   List of exam invigilation duties assigned to you

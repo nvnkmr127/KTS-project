@@ -188,10 +188,20 @@ const getAvatarColor = (init: string) => {
   return palette[sum % palette.length];
 };
 
-export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ navigation, route }) => {
+export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }> = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const { headerPaddingTop } = useResponsive();
   const { user } = useAuthStore();
+  const isSuperAdmin = user?.role === "super_admin";
+
+  const primaryColor = isSuperAdmin ? "#f0c110" : "#00f1a1";
+  const primaryLight = isSuperAdmin ? "#ffe5a0" : "#00f1a1";
+  const bgGradient = isSuperAdmin
+    ? (["#101415", "#1a1e1f", "#0b0c0d", "#080809"] as const)
+    : (["#061a14", "#0d2a24", "#081713", "#050f0c"] as const);
+
+  const cardBg = isSuperAdmin ? "#181d1f" : "#102d26";
+  const cardBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)";
 
   const [selectedClass, setSelectedClass] = useState<string>("Class 4B");
   const [selectedExamId, setSelectedExamId] = useState<string>("2");
@@ -232,7 +242,11 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        navigation.navigate("Examination");
+        if (navigation?.canGoBack && navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate("ExamSchedule");
+        }
         return true;
       };
       const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
@@ -394,12 +408,12 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
       if (pct !== null) {
         if (pct >= 90) {
           grade = "A+";
-          gradeColor = "#ddb7ff";
-          gradeBadgeBg = "rgba(168, 85, 247, 0.18)";
-          gradeBorder = "rgba(168, 85, 247, 0.4)";
+          gradeColor = isSuperAdmin ? "#f0c110" : "#00f1a1";
+          gradeBadgeBg = isSuperAdmin ? "rgba(240, 193, 16, 0.18)" : "rgba(0, 241, 161, 0.18)";
+          gradeBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.4)" : "rgba(0, 241, 161, 0.4)";
         } else if (pct >= 75) {
           grade = "A";
-          gradeColor = "#00f1a1";
+          gradeColor = "#34d399";
           gradeBadgeBg = "rgba(16, 185, 129, 0.18)";
           gradeBorder = "rgba(16, 185, 129, 0.4)";
         } else if (pct >= 65) {
@@ -442,12 +456,12 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
     if (overallPct !== null) {
       if (overallPct >= 90) {
         overallGrade = "A+";
-        overallGradeColor = "#ddb7ff";
-        overallBadgeBg = "rgba(168, 85, 247, 0.18)";
-        overallBorder = "rgba(168, 85, 247, 0.4)";
+        overallGradeColor = isSuperAdmin ? "#f0c110" : "#00f1a1";
+        overallBadgeBg = isSuperAdmin ? "rgba(240, 193, 16, 0.18)" : "rgba(0, 241, 161, 0.18)";
+        overallBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.4)" : "rgba(0, 241, 161, 0.4)";
       } else if (overallPct >= 75) {
         overallGrade = "A";
-        overallGradeColor = "#00f1a1";
+        overallGradeColor = "#34d399";
         overallBadgeBg = "rgba(16, 185, 129, 0.18)";
         overallBorder = "rgba(16, 185, 129, 0.4)";
       } else if (overallPct >= 65) {
@@ -509,7 +523,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
       classAvgDisplay: `${avg}%`,
       topScoreDisplay: highestPct >= 0 ? `${top} • ${topStudentName.split(" ")[0]}` : "0.0%",
     };
-  }, [studentsList, studentMarks, draftMarks, selectedExamId, maxPerSubject, subjectsList]);
+  }, [studentsList, studentMarks, draftMarks, selectedExamId, maxPerSubject, subjectsList, isSuperAdmin]);
 
   // Save marks to database / backend
   const handleSaveMarks = async () => {
@@ -555,18 +569,18 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
   };
 
   const topTabs = [
-    { id: "TeacherExamSchedule", label: "Exam Schedule" },
-    { id: "TeacherExamResults", label: "Results & Rankings" },
-    { id: "MarksEntry", label: "Marks Entry", active: true },
-    { id: "TeacherExamSchedulePreview", label: "Schedule Preview" },
-    { id: "TeacherExamInvigilation", label: "Exam Invigilation" },
+    { id: "AdminExamSchedule", label: "Exam Schedule" },
+    { id: "AdminExamResults", label: "Results & Rankings" },
+    { id: "AdminMarksPreview", label: "Marks Preview", active: true },
+    { id: "AdminExamScheduleDesigner", label: "Schedule Designer" },
+    { id: "AdminExamInvigilation", label: "Allot Invigilation" },
   ];
 
   return (
     <View style={styles.container}>
       {/* Background Gradient */}
       <LinearGradient
-        colors={["#22143d", "#150d26", "#0b0912", "#08070d"]}
+        colors={bgGradient}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -578,7 +592,13 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
               <Pressable
-                onPress={() => navigation.navigate("Examination")}
+                onPress={() => {
+                  if (navigation?.canGoBack && navigation.canGoBack()) {
+                    navigation.goBack();
+                  } else {
+                    navigation.navigate("ExamSchedule");
+                  }
+                }}
                 style={{
                   width: 40,
                   height: 40,
@@ -592,15 +612,15 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                 }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <ArrowLeft size={20} color="#ddb7ff" />
+                <ArrowLeft size={20} color={primaryColor} />
               </Pressable>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: "#ffffff", fontSize: 18, fontWeight: "900" }} numberOfLines={1}>
-                  Marks Entry
+                  Marks Preview
                 </Text>
                 <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#00f1a1", marginRight: 6 }} />
-                  <Text style={{ color: "#ddb7ff", fontSize: 11, fontWeight: "700" }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: primaryColor, marginRight: 6 }} />
+                  <Text style={{ color: primaryLight, fontSize: 11, fontWeight: "700" }}>
                     ACADEMIC YEAR: 2026-2027 (Current)
                   </Text>
                 </View>
@@ -612,8 +632,8 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
 
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
-        <View style={styles.toast}>
-          <CheckCircle2 size={18} color="#00f1a1" style={{ marginRight: 10 }} />
+        <View style={[styles.toast, { borderColor: primaryColor }]}>
+          <CheckCircle2 size={18} color={primaryColor} style={{ marginRight: 10 }} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "800" }}>{toastMessage.title}</Text>
             <Text style={{ color: "rgba(255, 255, 255, 0.7)", fontSize: 11, marginTop: 2 }}>{toastMessage.desc}</Text>
@@ -627,8 +647,8 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#ddb7ff"
-            colors={["#ddb7ff", "#38bdf8"]}
+            tintColor={primaryColor}
+            colors={[primaryColor, "#38bdf8"]}
           />
         }
         contentContainerStyle={{
@@ -640,7 +660,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
         {/* 4 KPI CARDS (2x2 Grid) */}
         <View style={styles.kpiGrid}>
           {/* 1. Upcoming Exams */}
-          <View style={styles.kpiCard}>
+          <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <View style={styles.kpiTopRow}>
               <Text style={styles.kpiTitle} numberOfLines={1}>Upcoming Exams</Text>
               <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(56, 189, 248, 0.15)", borderColor: "rgba(56, 189, 248, 0.3)" }]}>
@@ -652,7 +672,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
           </View>
 
           {/* 2. Class Average */}
-          <View style={styles.kpiCard}>
+          <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <View style={styles.kpiTopRow}>
               <Text style={styles.kpiTitle} numberOfLines={1}>Class Average</Text>
               <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(52, 211, 153, 0.15)", borderColor: "rgba(52, 211, 153, 0.3)" }]}>
@@ -664,11 +684,11 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
           </View>
 
           {/* 3. Top Score */}
-          <View style={styles.kpiCard}>
+          <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <View style={styles.kpiTopRow}>
               <Text style={styles.kpiTitle} numberOfLines={1}>Top Score</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(168, 85, 247, 0.15)", borderColor: "rgba(168, 85, 247, 0.3)" }]}>
-                <Award size={14} color="#ddb7ff" />
+              <View style={[styles.kpiIconWrapper, { backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)", borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)" }]}>
+                <Award size={14} color={primaryColor} />
               </View>
             </View>
             <Text style={styles.kpiValue} numberOfLines={1}>{topScoreDisplay.split(" • ")[0]}</Text>
@@ -678,7 +698,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
           </View>
 
           {/* 4. Results Published */}
-          <View style={styles.kpiCard}>
+          <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <View style={styles.kpiTopRow}>
               <Text style={styles.kpiTitle} numberOfLines={1}>Results Published</Text>
               <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(250, 204, 21, 0.15)", borderColor: "rgba(250, 204, 21, 0.3)" }]}>
@@ -707,13 +727,15 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                 }}
                 style={[
                   styles.tabButton,
-                  t.active ? styles.tabButtonActive : styles.tabButtonInactive,
+                  t.active
+                    ? { backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)", borderColor: primaryColor }
+                    : { backgroundColor: cardBg, borderColor: "rgba(255, 255, 255, 0.1)" },
                 ]}
               >
                 <Text
                   style={[
                     styles.tabButtonText,
-                    t.active ? styles.tabButtonTextActive : styles.tabButtonTextInactive,
+                    t.active ? { color: primaryColor } : { color: "rgba(255, 255, 255, 0.6)" },
                   ]}
                 >
                   {t.label}
@@ -723,13 +745,13 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
           </ScrollView>
         </View>
 
-        {/* MAIN MARKS ENTRY CARD */}
-        <View style={styles.mainCard}>
+        {/* MAIN MARKS PREVIEW / ENTRY CARD */}
+        <View style={[styles.mainCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           {/* Header & View Mode Switcher */}
           <View style={{ marginBottom: 14, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255, 255, 255, 0.1)" }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }}>Marks Entry</Text>
+                <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }}>Marks Preview</Text>
                 <Text style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 11, fontWeight: "500", marginTop: 2 }}>
                   View overall and subject-wise student marks.
                 </Text>
@@ -739,15 +761,29 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
               <View style={styles.viewModeWrapper}>
                 <Pressable
                   onPress={() => setViewMode("card")}
-                  style={[styles.viewModeBtn, viewMode === "card" && styles.viewModeBtnActive]}
+                  style={[
+                    styles.viewModeBtn,
+                    viewMode === "card" && {
+                      backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)",
+                      borderWidth: 1,
+                      borderColor: primaryColor,
+                    },
+                  ]}
                 >
-                  <LayoutGrid size={15} color={viewMode === "card" ? "#ddb7ff" : "rgba(255,255,255,0.4)"} />
+                  <LayoutGrid size={15} color={viewMode === "card" ? primaryColor : "rgba(255,255,255,0.4)"} />
                 </Pressable>
                 <Pressable
                   onPress={() => setViewMode("table")}
-                  style={[styles.viewModeBtn, viewMode === "table" && styles.viewModeBtnActive]}
+                  style={[
+                    styles.viewModeBtn,
+                    viewMode === "table" && {
+                      backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)",
+                      borderWidth: 1,
+                      borderColor: primaryColor,
+                    },
+                  ]}
                 >
-                  <TableIcon size={15} color={viewMode === "table" ? "#ddb7ff" : "rgba(255,255,255,0.4)"} />
+                  <TableIcon size={15} color={viewMode === "table" ? primaryColor : "rgba(255,255,255,0.4)"} />
                 </Pressable>
               </View>
             </View>
@@ -765,7 +801,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                     {selectedClass}
                   </Text>
                 </View>
-                <ChevronDown size={14} color="#ddb7ff" />
+                <ChevronDown size={14} color={primaryColor} />
               </Pressable>
 
               {/* Exam Dropdown Trigger */}
@@ -779,14 +815,14 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                     {currentExam.name} ({currentExam.status})
                   </Text>
                 </View>
-                <ChevronDown size={14} color="#ddb7ff" />
+                <ChevronDown size={14} color={primaryColor} />
               </Pressable>
             </View>
           </View>
 
           {/* Search Box */}
           <View style={styles.searchBox}>
-            <Search size={14} color="#ddb7ff" style={{ marginRight: 8 }} />
+            <Search size={14} color={primaryColor} style={{ marginRight: 8 }} />
             <TextInput
               placeholder="Search student by name or roll no..."
               placeholderTextColor="rgba(255, 255, 255, 0.4)"
@@ -833,7 +869,13 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                 return (
                   <View
                     key={student.roll}
-                    style={[styles.studentCard, isExpanded && styles.studentCardExpanded]}
+                    style={[
+                      styles.studentCard,
+                      isExpanded && {
+                        borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.35)" : "rgba(0, 241, 161, 0.35)",
+                        backgroundColor: isSuperAdmin ? "rgba(24, 29, 31, 0.95)" : "rgba(16, 45, 38, 0.95)",
+                      },
+                    ]}
                   >
                     {/* Top Row: Avatar + Name + Roll + Subject Breakdown Action */}
                     <Pressable
@@ -874,21 +916,23 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                         onPress={() => toggleStudent(student.roll)}
                         style={[
                           styles.breakdownToggleBtn,
-                          isExpanded ? styles.breakdownToggleBtnActive : styles.breakdownToggleBtnInactive,
+                          isExpanded
+                            ? { backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)", borderColor: primaryColor }
+                            : styles.breakdownToggleBtnInactive,
                         ]}
                       >
                         <Text
                           style={[
                             styles.breakdownToggleBtnText,
-                            isExpanded ? { color: "#ddb7ff" } : { color: "rgba(255,255,255,0.7)" },
+                            isExpanded ? { color: primaryColor } : { color: "rgba(255,255,255,0.7)" },
                           ]}
                         >
                           {isExpanded ? "Hide Subjects" : "View Subjects"}
                         </Text>
                         {isExpanded ? (
-                          <ChevronUp size={13} color={isExpanded ? "#ddb7ff" : "rgba(255,255,255,0.7)"} />
+                          <ChevronUp size={13} color={isExpanded ? primaryColor : "rgba(255,255,255,0.7)"} />
                         ) : (
-                          <ChevronDown size={13} color={isExpanded ? "#ddb7ff" : "rgba(255,255,255,0.7)"} />
+                          <ChevronDown size={13} color={isExpanded ? primaryColor : "rgba(255,255,255,0.7)"} />
                         )}
                       </Pressable>
                     </Pressable>
@@ -946,7 +990,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                     {/* EXPANDED SUBJECT-WISE MARKS BREAKDOWN */}
                     {isExpanded && (
                       <View style={styles.breakdownContainer}>
-                        {/* Breakdown Header (2 Rows to guarantee ZERO collision) */}
+                        {/* Breakdown Header */}
                         <View style={styles.breakdownHeaderBox}>
                           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 6 }}>
@@ -1072,7 +1116,9 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                           alignItems: "center",
                           paddingVertical: 12,
                           paddingHorizontal: 12,
-                          backgroundColor: isExpanded ? "rgba(221, 183, 255, 0.1)" : idx % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
+                          backgroundColor: isExpanded
+                            ? isSuperAdmin ? "rgba(240, 193, 16, 0.1)" : "rgba(0, 241, 161, 0.1)"
+                            : idx % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent",
                         }}
                       >
                         {/* Student Name */}
@@ -1155,9 +1201,9 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                               {isExpanded ? "Hide Subjects" : "View Subjects"}
                             </Text>
                             {isExpanded ? (
-                              <ChevronUp size={12} color="#ddb7ff" />
+                              <ChevronUp size={12} color={primaryColor} />
                             ) : (
-                              <ChevronDown size={12} color="#ddb7ff" />
+                              <ChevronDown size={12} color={primaryColor} />
                             )}
                           </Pressable>
                         </View>
@@ -1256,7 +1302,11 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
               <Pressable
                 onPress={handleSaveMarks}
                 disabled={isSaving}
-                style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+                style={[
+                  styles.saveBtn,
+                  { backgroundColor: primaryColor, shadowColor: primaryColor },
+                  isSaving && { opacity: 0.6 },
+                ]}
               >
                 <Check size={14} color="#0b0912" style={{ marginRight: 6 }} />
                 <Text style={styles.saveBtnText}>
@@ -1271,7 +1321,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
       {/* 1. CLASS PICKER MODAL */}
       <Modal visible={showClassPicker} transparent animationType="fade" onRequestClose={() => setShowClassPicker(false)}>
         <Pressable onPress={() => setShowClassPicker(false)} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Class</Text>
               <Pressable onPress={() => setShowClassPicker(false)}>
@@ -1288,12 +1338,19 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                       setSelectedClass(cls);
                       setShowClassPicker(false);
                     }}
-                    style={[styles.modalItem, isSelected && styles.modalItemSelected]}
+                    style={[
+                      styles.modalItem,
+                      isSelected && {
+                        backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)",
+                        borderWidth: 1,
+                        borderColor: primaryColor,
+                      },
+                    ]}
                   >
-                    <Text style={[styles.modalItemText, isSelected && styles.modalItemTextSelected]}>
+                    <Text style={[styles.modalItemText, isSelected && { color: primaryColor, fontWeight: "900" }]}>
                       {cls}
                     </Text>
-                    {isSelected && <Check size={16} color="#ddb7ff" />}
+                    {isSelected && <Check size={16} color={primaryColor} />}
                   </Pressable>
                 );
               })}
@@ -1305,7 +1362,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
       {/* 2. EXAM PICKER MODAL */}
       <Modal visible={showExamPicker} transparent animationType="fade" onRequestClose={() => setShowExamPicker(false)}>
         <Pressable onPress={() => setShowExamPicker(false)} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: cardBg, borderColor: cardBorder }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Examination</Text>
               <Pressable onPress={() => setShowExamPicker(false)}>
@@ -1322,17 +1379,24 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
                       setSelectedExamId(ex.id);
                       setShowExamPicker(false);
                     }}
-                    style={[styles.modalItem, isSelected && styles.modalItemSelected]}
+                    style={[
+                      styles.modalItem,
+                      isSelected && {
+                        backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)",
+                        borderWidth: 1,
+                        borderColor: primaryColor,
+                      },
+                    ]}
                   >
                     <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text style={[styles.modalItemText, isSelected && styles.modalItemTextSelected]}>
+                      <Text style={[styles.modalItemText, isSelected && { color: primaryColor, fontWeight: "900" }]}>
                         {ex.name}
                       </Text>
                       <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 10, marginTop: 2 }}>
                         Status: {ex.status} • Max Marks: {ex.maxMarks}
                       </Text>
                     </View>
-                    {isSelected && <Check size={16} color="#ddb7ff" />}
+                    {isSelected && <Check size={16} color={primaryColor} />}
                   </Pressable>
                 );
               })}
@@ -1347,7 +1411,7 @@ export const MarksEntryScreen: React.FC<{ navigation: any; route?: any }> = ({ n
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#08070d",
+    backgroundColor: "#050f0c",
   },
   header: {
     paddingHorizontal: 16,
@@ -1361,9 +1425,9 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     zIndex: 999,
-    backgroundColor: "#2d1b4e",
+    backgroundColor: "#061a14",
     borderWidth: 1,
-    borderColor: "rgba(221, 183, 255, 0.5)",
+    borderColor: "rgba(0, 241, 161, 0.5)",
     borderRadius: 16,
     padding: 14,
     shadowColor: "#000",
@@ -1382,9 +1446,9 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     width: "48.5%",
-    backgroundColor: "#181524",
+    backgroundColor: "#102d26",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: "rgba(0, 241, 161, 0.2)",
     borderRadius: 16,
     padding: 12,
   },
@@ -1428,28 +1492,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  tabButtonActive: {
-    backgroundColor: "rgba(56, 189, 248, 0.15)",
-    borderColor: "#38bdf8",
-  },
-  tabButtonInactive: {
-    backgroundColor: "#181524",
-    borderColor: "rgba(255, 255, 255, 0.1)",
-  },
   tabButtonText: {
     fontSize: 12,
     fontWeight: "700",
   },
-  tabButtonTextActive: {
-    color: "#38bdf8",
-  },
-  tabButtonTextInactive: {
-    color: "rgba(255, 255, 255, 0.6)",
-  },
   mainCard: {
-    backgroundColor: "#181524",
+    backgroundColor: "#102d26",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderColor: "rgba(0, 241, 161, 0.2)",
     borderRadius: 24,
     padding: 14,
   },
@@ -1465,11 +1515,6 @@ const styles = StyleSheet.create({
   viewModeBtn: {
     padding: 6,
     borderRadius: 8,
-  },
-  viewModeBtnActive: {
-    backgroundColor: "rgba(221, 183, 255, 0.2)",
-    borderWidth: 1,
-    borderColor: "rgba(221, 183, 255, 0.4)",
   },
   dropdownTriggerClass: {
     flex: 1,
@@ -1552,10 +1597,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: "hidden",
   },
-  studentCardExpanded: {
-    borderColor: "rgba(221, 183, 255, 0.35)",
-    backgroundColor: "rgba(24, 21, 36, 0.9)",
-  },
   studentCardTopRow: {
     padding: 12,
     flexDirection: "row",
@@ -1569,10 +1610,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-  },
-  breakdownToggleBtnActive: {
-    backgroundColor: "rgba(221, 183, 255, 0.2)",
-    borderColor: "rgba(221, 183, 255, 0.5)",
   },
   breakdownToggleBtnInactive: {
     backgroundColor: "rgba(255, 255, 255, 0.05)",
@@ -1681,13 +1718,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   saveBtn: {
-    backgroundColor: "#38bdf8",
+    backgroundColor: "#00f1a1",
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
-    shadowColor: "#38bdf8",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -1710,9 +1746,9 @@ const styles = StyleSheet.create({
   modalContent: {
     width: "100%",
     maxWidth: 360,
-    backgroundColor: "#181524",
+    backgroundColor: "#102d26",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
+    borderColor: "rgba(0, 241, 161, 0.2)",
     borderRadius: 24,
     padding: 16,
     shadowColor: "#000",
@@ -1743,19 +1779,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255, 255, 255, 0.05)",
   },
-  modalItemSelected: {
-    backgroundColor: "rgba(221, 183, 255, 0.2)",
-    borderWidth: 1,
-    borderColor: "rgba(221, 183, 255, 0.4)",
-  },
   modalItemText: {
     fontSize: 12,
     fontWeight: "700",
     color: "rgba(255, 255, 255, 0.8)",
   },
-  modalItemTextSelected: {
-    color: "#ddb7ff",
-  },
 });
 
-export default MarksEntryScreen;
+export default AdminMarksPreviewScreen;

@@ -100,6 +100,24 @@ export const CustomTabBar = ({
           const isTeacher = role === "teacher";
           const isParent = role === "parent";
           const hasManyTabs = visibleRoutes.length > 5;
+          const currentRouteName = state.routes[state.index]?.name;
+          const isExamSubRoute = [
+            "ExamSchedule",
+            "Schedule",
+            "AdminExamSchedule",
+            "AdminExamResults",
+            "AdminMarksPreview",
+            "AdminExamScheduleDesigner",
+            "AdminExamInvigilation",
+            "TeacherExamSchedule",
+            "TeacherExamResults",
+            "TeacherMarksEntry",
+            "MarksEntry",
+            "TeacherExamSchedulePreview",
+            "TeacherExamInvigilation",
+            "TeacherExamination",
+            "Examination",
+          ].includes(currentRouteName);
 
           return visibleRoutes.map((route, index) => {
             const { options } = descriptors[route.key];
@@ -110,7 +128,13 @@ export const CustomTabBar = ({
                   ? options.title
                   : route.name;
 
-            const isFocused = state.routes[state.index]?.key === route.key;
+            const isFocused =
+              state.routes[state.index]?.key === route.key ||
+              (isExamSubRoute &&
+                (route.name === "Schedule" ||
+                  route.name === "ExamSchedule" ||
+                  route.name === "Examination" ||
+                  route.name === "TeacherExamination"));
 
             const onPress = () => {
               const event = navigation.emit({

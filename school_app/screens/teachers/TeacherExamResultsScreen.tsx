@@ -452,7 +452,7 @@ export const TeacherExamResultsScreen: React.FC<{ navigation: any; route?: any }
     { id: "TeacherExamResults", label: "Results & Rankings", active: true },
     { id: "MarksEntry", label: "Marks Entry" },
     { id: "TeacherExamSchedulePreview", label: "Schedule Preview" },
-    { id: "TeacherExamInvigilation", label: "Exam Invisilation" },
+    { id: "TeacherExamInvigilation", label: "Exam Invigilation" },
   ];
 
   return (

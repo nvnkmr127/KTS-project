@@ -25,6 +25,7 @@ import {
   CalendarOff,
 } from "lucide-react-native";
 import { useResponsive } from "../../utils/responsive";
+import { api } from "../../services/api";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -321,13 +322,34 @@ export const TeacherExamSchedulePreviewScreen: React.FC<{ navigation: any; route
     }
   }, [route?.params]);
 
+  const [schedules, setSchedules] = useState<Record<string, Record<string, ClassExamSchedule>>>(INITIAL_SCHEDULES_DATA);
+
+  // Load schedules from DB / settings
+  const loadSchedulesFromDb = useCallback(async () => {
+    try {
+      const res = await api.getResources("settings", { key: "examinations_schedules" }).catch(() => null);
+      if (res && Array.isArray(res) && res.length > 0 && res[0]?.value) {
+        const parsed = typeof res[0].value === "string" ? JSON.parse(res[0].value) : res[0].value;
+        if (parsed && typeof parsed === "object") {
+          setSchedules((prev) => ({ ...prev, ...parsed }));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSchedulesFromDb();
+  }, [loadSchedulesFromDb]);
+
   // Active class scheduled entries
   const classSchedule = useMemo(() => {
     if (!selectedExam) return {};
-    const examSched = getScheduleForExam(INITIAL_SCHEDULES_DATA, selectedExam);
+    const examSched = getScheduleForExam(schedules, selectedExam);
     const cleanClass = selectedClass.replace(/^Class\s*/i, "").trim();
     return examSched[cleanClass] || examSched[selectedClass] || {};
-  }, [selectedExam, selectedClass]);
+  }, [selectedExam, selectedClass, schedules]);
 
   // Auto sync calendar month/year to the first scheduled date for the active exam/class
   useEffect(() => {
@@ -393,7 +415,7 @@ export const TeacherExamSchedulePreviewScreen: React.FC<{ navigation: any; route
 
   // Helper to count scheduled entries for an exam
   const getExamScheduleCount = (examId: string): number => {
-    const examSched = INITIAL_SCHEDULES_DATA[examId];
+    const examSched = schedules[examId] || INITIAL_SCHEDULES_DATA[examId];
     if (!examSched) return 0;
     return Object.values(examSched).reduce((sum, clsSched) => {
       return (

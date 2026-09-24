@@ -80,6 +80,11 @@ import AdminStaffAttendanceScreen from '../screens/admin_staff/AdminStaffAttenda
 import AdminAlertConfigurationScreen from '../screens/admin_staff/AdminAlertConfigurationScreen';
 import AdminActivityLogScreen from '../screens/admin_staff/AdminActivityLogScreen';
 import AdminStaffSettingsScreen from '../screens/admin_staff/AdminStaffSettingsScreen';
+import { AdminExamScheduleListScreen } from '../screens/admin_staff/AdminExamScheduleListScreen';
+import { AdminExamResultsScreen } from '../screens/admin_staff/AdminExamResultsScreen';
+import { AdminMarksPreviewScreen } from '../screens/admin_staff/AdminMarksPreviewScreen';
+import { AdminExamScheduleDesignerScreen } from '../screens/admin_staff/AdminExamScheduleDesignerScreen';
+import { AdminExamInvigilationScreen } from '../screens/admin_staff/AdminExamInvigilationScreen';
 
 // Teacher Screens
 import TeacherDashboard from '../screens/teachers/TeacherDashboard';
@@ -129,24 +134,109 @@ const getTabOptions = (icon: any, activeColor: string, title?: string) => ({
 
 // Role-Specific Tab Navigators
 const SuperAdminTabs = () => (
-  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#101415' } }}>
+  <Tab.Navigator
+    backBehavior="history"
+    tabBar={(props) => <CustomTabBar {...props} />}
+    screenOptions={{
+      headerShown: false,
+      tabBarHideOnKeyboard: true,
+      sceneStyle: { backgroundColor: '#101415' }
+    }}
+  >
     <Tab.Screen name="Dashboard" component={SuperAdminDashboard} options={getTabOptions(Home, '#f0c110')} />
     <Tab.Screen name="Analytics" component={AnalyticsDashboardScreen} options={getTabOptions(BarChart, '#f0c110')} />
     <Tab.Screen name="Users" component={UserManagementScreen} options={getTabOptions(Users, '#f0c110')} />
     <Tab.Screen name="Broadcast" component={NotificationCenterScreen} options={getTabOptions(Megaphone, '#f0c110')} />
     <Tab.Screen name="ActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} options={getTabOptions(History, '#f0c110', 'Activity Logs')} />
     <Tab.Screen name="Settings" component={PortalToolsScreen} options={getTabOptions(Settings, '#f0c110')} />
+
+    {/* Super Admin Examination & Sub-Screens (Preserves Bottom Tab Bar) */}
+    <Tab.Screen 
+      name="ExamSchedule" 
+      component={ExamScheduleScreen} 
+      options={{ ...getTabOptions(Calendar, '#f0c110', 'Exam Portal'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="Schedule" 
+      component={ExamScheduleScreen} 
+      options={{ ...getTabOptions(Calendar, '#f0c110', 'Exam Portal'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminExamSchedule" 
+      component={AdminExamScheduleListScreen} 
+      options={{ ...getTabOptions(Calendar, '#f0c110', 'Exam Schedule'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminExamResults" 
+      component={AdminExamResultsScreen} 
+      options={{ ...getTabOptions(Award, '#f0c110', 'Results & Rankings'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminMarksPreview" 
+      component={AdminMarksPreviewScreen} 
+      options={{ ...getTabOptions(Edit3, '#f0c110', 'Marks Preview'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminExamScheduleDesigner" 
+      component={AdminExamScheduleDesignerScreen} 
+      options={{ ...getTabOptions(Sliders, '#f0c110', 'Schedule Designer'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminExamInvigilation" 
+      component={AdminExamInvigilationScreen} 
+      options={{ ...getTabOptions(ShieldAlert, '#f0c110', 'Allot Invigilation'), tabBarItemStyle: { display: 'none' } }} 
+    />
   </Tab.Navigator>
 );
 
 const AdminStaffTabs = () => (
-  <Tab.Navigator tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#0d2a24' } }}>
+  <Tab.Navigator
+    backBehavior="history"
+    tabBar={(props) => <CustomTabBar {...props} />}
+    screenOptions={{
+      headerShown: false,
+      tabBarHideOnKeyboard: true,
+      sceneStyle: { backgroundColor: '#0d2a24' }
+    }}
+  >
     <Tab.Screen name="Dashboard" component={AdminStaffDashboard} options={getTabOptions(Home, '#00f1a1')} />
     <Tab.Screen name="Students" component={StudentDirectoryScreen} options={getTabOptions(Users, '#00f1a1')} />
     <Tab.Screen name="Fees" component={FeeCollectionScreen} options={getTabOptions(Banknote, '#00f1a1')} />
     <Tab.Screen name="Schedule" component={ExamScheduleScreen} options={getTabOptions(Calendar, '#00f1a1')} />
     <Tab.Screen name="Config" component={AdminAlertConfigurationScreen} options={getTabOptions(Sliders, '#00f1a1', 'Config')} />
     <Tab.Screen name="Settings" component={AdminStaffSettingsScreen} options={getTabOptions(Settings, '#00f1a1', 'Settings')} />
+
+    {/* Admin Examination & Sub-Screens (Preserves Bottom Tab Bar) */}
+    <Tab.Screen 
+      name="ExamSchedule" 
+      component={ExamScheduleScreen} 
+      options={{ ...getTabOptions(Calendar, '#00f1a1', 'Exam Portal'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminExamSchedule" 
+      component={AdminExamScheduleListScreen} 
+      options={{ ...getTabOptions(Calendar, '#00f1a1', 'Exam Schedule'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminExamResults" 
+      component={AdminExamResultsScreen} 
+      options={{ ...getTabOptions(Award, '#00f1a1', 'Results & Rankings'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminMarksPreview" 
+      component={AdminMarksPreviewScreen} 
+      options={{ ...getTabOptions(Edit3, '#00f1a1', 'Marks Preview'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminExamScheduleDesigner" 
+      component={AdminExamScheduleDesignerScreen} 
+      options={{ ...getTabOptions(Sliders, '#00f1a1', 'Schedule Designer'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AdminExamInvigilation" 
+      component={AdminExamInvigilationScreen} 
+      options={{ ...getTabOptions(ShieldAlert, '#00f1a1', 'Allot Invigilation'), tabBarItemStyle: { display: 'none' } }} 
+    />
   </Tab.Navigator>
 );
 
@@ -255,6 +345,16 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="TeacherHome" component={TeacherTabs} />
       <Stack.Screen name="ParentHome" component={ParentTabs} />
       <Stack.Screen name="GuestHome" component={GuestDashboard} />
+      <Stack.Screen 
+        name="Dashboard" 
+        component={
+          user?.role === 'super_admin' ? SuperAdminTabs :
+          user?.role === 'admin_staff' ? AdminStaffTabs :
+          user?.role === 'teacher' ? TeacherTabs :
+          user?.role === 'parent' ? ParentTabs :
+          GuestDashboard
+        } 
+      />
 
       {/* Feature Screens */}
       <Stack.Screen name="FeePayment" component={FeePaymentScreen} />
@@ -302,6 +402,11 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="UserManagement" component={UserManagementScreen} />
       <Stack.Screen name="LeaveApprovals" component={LeaveApprovalsScreen} />
       <Stack.Screen name="ExamSchedule" component={ExamScheduleScreen} />
+      <Stack.Screen name="AdminExamSchedule" component={AdminExamScheduleListScreen} />
+      <Stack.Screen name="AdminExamResults" component={AdminExamResultsScreen} />
+      <Stack.Screen name="AdminMarksPreview" component={AdminMarksPreviewScreen} />
+      <Stack.Screen name="AdminExamScheduleDesigner" component={AdminExamScheduleDesignerScreen} />
+      <Stack.Screen name="AdminExamInvigilation" component={AdminExamInvigilationScreen} />
       <Stack.Screen name="SalaryExpenses" component={SalaryExpensesScreen} />
       <Stack.Screen name="PortalTools" component={PortalToolsScreen} />
       <Stack.Screen name="FacultyShowcase" component={FacultyShowcaseScreen} />

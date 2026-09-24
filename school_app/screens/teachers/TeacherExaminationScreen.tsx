@@ -32,7 +32,11 @@ export const TeacherExaminationScreen: React.FC<{ navigation: any }> = ({ naviga
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        navigation.navigate("Dashboard");
+        if (navigation?.canGoBack && navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.navigate("TeacherHome");
+        }
         return true;
       };
       const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
@@ -104,7 +108,13 @@ export const TeacherExaminationScreen: React.FC<{ navigation: any }> = ({ naviga
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center flex-1 mr-3">
               <Pressable
-                onPress={() => navigation.navigate("Dashboard")}
+                onPress={() => {
+                  if (navigation?.canGoBack && navigation.canGoBack()) {
+                    navigation.goBack();
+                  } else {
+                    navigation.navigate("TeacherHome");
+                  }
+                }}
                 className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 items-center justify-center mr-3 active:bg-white/20"
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
