@@ -30,6 +30,7 @@ import {
   Download,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   X,
   Search,
   Users,
@@ -282,8 +283,11 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
   const primaryColor = isSuperAdmin ? "#f0c110" : "#00f1a1";
   const primaryLight = isSuperAdmin ? "#ffe5a0" : "#00f1a1";
   const bgGradient = isSuperAdmin
-    ? (["#101415", "#1a1e1f", "#0b0c0d", "#080809"] as const)
-    : (["#061a14", "#0d2a24", "#081713", "#050f0c"] as const);
+    ? (["#1d2022", "#101415"] as const)
+    : (["#0d2a24", "#121414"] as const);
+
+  const cardBg = isSuperAdmin ? "#101415" : "#102d26";
+  const cardBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.25)";
 
   const [duties, setDuties] = useState<InvigilationDutyItem[]>(DEFAULT_INVIGILATIONS);
   const [selectedExamId, setSelectedExamId] = useState<string>("3");
@@ -325,6 +329,22 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
 
   // Delete Modal State
   const [deletingDuty, setDeletingDuty] = useState<InvigilationDutyItem | null>(null);
+
+  // Custom UI Warning & Validation Modal State
+  const [warningModal, setWarningModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type?: "warning" | "error" | "info";
+  } | null>(null);
+
+  const showWarning = (
+    title: string,
+    message: string,
+    type: "warning" | "error" | "info" = "warning"
+  ) => {
+    setWarningModal({ visible: true, title, message, type });
+  };
 
   // Fetch holidays from API on mount
   useEffect(() => {
@@ -539,7 +559,11 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
 
   const handleSaveDuty = () => {
     if (!formSubject.trim()) {
-      Alert.alert("Validation Error", "Please provide a subject name.");
+      showWarning(
+        "Subject Required",
+        "Please select or provide a valid examination subject name.",
+        "warning"
+      );
       return;
     }
 
@@ -619,7 +643,7 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: "#101415" }]}>
       {/* Background Gradient */}
       <LinearGradient
         colors={bgGradient}
@@ -640,16 +664,22 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
               >
                 <ArrowLeft size={20} color={primaryLight} />
               </Pressable>
-              <View className="flex-1">
-                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1}>
+              <View className="flex-1 justify-center">
+                <Text className="text-white text-base md:text-xl font-extrabold" numberOfLines={1} style={{ includeFontPadding: false }}>
                   Allot Invigilation
                 </Text>
-                <View className="flex-row items-center mt-0.5">
+                <View className="flex-row items-center mt-0.5" style={{ flexWrap: "nowrap" }}>
                   <View
                     className="w-2 h-2 rounded-full mr-1.5"
-                    style={{ backgroundColor: primaryColor }}
+                    style={{ backgroundColor: primaryColor, flexShrink: 0 }}
                   />
-                  <Text className="text-xs font-semibold" style={{ color: primaryLight }}>
+                  <Text
+                    className="text-xs font-semibold flex-1"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ color: primaryLight, flexShrink: 1, includeFontPadding: false }}
+                  >
                     {currentExam.name}
                   </Text>
                 </View>
@@ -657,21 +687,30 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             </View>
 
             {/* Top Actions: Allot Duty & Export */}
-            <View className="flex-row items-center" style={{ gap: 6 }}>
+            <View className="flex-row items-center" style={{ gap: 6, flexShrink: 0, flexWrap: "nowrap" }}>
               <Pressable
                 onPress={openAddModal}
-                className="px-3 py-2 rounded-xl flex-row items-center shadow-md active:opacity-80"
-                style={{ backgroundColor: primaryColor }}
+                className="px-3 py-1.5 rounded-xl flex-row items-center shadow-md active:opacity-80"
+                style={{ backgroundColor: primaryColor, flexShrink: 0, flexWrap: "nowrap" }}
               >
-                <Plus size={15} color="#000" style={{ marginRight: 4 }} />
-                <Text className="text-black text-xs font-black">Allot Duty</Text>
+                <Plus size={14} color="#000" style={{ marginRight: 4, flexShrink: 0 }} />
+                <Text
+                  className="text-black text-xs font-black"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
+                  style={{ flexShrink: 0, includeFontPadding: false }}
+                >
+                  Allot Duty
+                </Text>
               </Pressable>
 
               <Pressable
                 onPress={handleExport}
                 className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 items-center justify-center active:bg-white/20"
+                style={{ flexShrink: 0 }}
               >
-                <Download size={15} color={primaryLight} />
+                <Download size={14} color={primaryLight} />
               </Pressable>
             </View>
           </View>
@@ -701,39 +740,63 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
         }}
       >
         {/* KPI METRICS */}
-        <View className="flex-row flex-wrap justify-between mb-4" style={{ gap: 10 }}>
+        <View className="flex-row mb-4" style={{ gap: 10 }}>
           <View
-            className="w-[48%] border rounded-2xl p-3.5 shadow-md"
+            className="flex-1 border rounded-2xl p-3.5 shadow-md"
             style={{
               backgroundColor: isSuperAdmin ? "rgba(26, 30, 31, 0.95)" : "rgba(16, 45, 38, 0.95)",
               borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)",
             }}
           >
             <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white/60 text-[11px] font-bold">Assigned Duties</Text>
-              <View className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 items-center justify-center">
+              <Text
+                className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                style={{ includeFontPadding: false }}
+              >
+                Assigned Duties
+              </Text>
+              <View className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
                 <ShieldCheck size={16} color="#ddb7ff" />
               </View>
             </View>
-            <Text className="text-white text-2xl font-black">{totalAssignedCount}</Text>
-            <Text className="text-white/40 text-[10px] font-medium mt-0.5">Exam Hall Duties</Text>
+            <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>
+              {totalAssignedCount}
+            </Text>
+            <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>
+              Exam Hall Duties
+            </Text>
           </View>
 
           <View
-            className="w-[48%] border rounded-2xl p-3.5 shadow-md"
+            className="flex-1 border rounded-2xl p-3.5 shadow-md"
             style={{
               backgroundColor: isSuperAdmin ? "rgba(26, 30, 31, 0.95)" : "rgba(16, 45, 38, 0.95)",
               borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)",
             }}
           >
             <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white/60 text-[11px] font-bold">Faculty Allotted</Text>
-              <View className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center">
+              <Text
+                className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                style={{ includeFontPadding: false }}
+              >
+                Faculty Allotted
+              </Text>
+              <View className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
                 <Users size={16} color="#34d399" />
               </View>
             </View>
-            <Text className="text-white text-2xl font-black">{distinctFacultyCount}</Text>
-            <Text className="text-white/40 text-[10px] font-medium mt-0.5">Teachers Active</Text>
+            <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>
+              {distinctFacultyCount}
+            </Text>
+            <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>
+              Teachers Active
+            </Text>
           </View>
         </View>
 
@@ -742,7 +805,7 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
+            contentContainerStyle={{ gap: 8, paddingRight: 16 }}
           >
             {topTabs.map((t) => (
               <Pressable
@@ -754,6 +817,7 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
                 }}
                 className="px-4 py-2.5 rounded-xl border flex-row items-center"
                 style={{
+                  flexShrink: 0,
                   backgroundColor: t.active
                     ? primaryColor
                     : isSuperAdmin
@@ -768,7 +832,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
               >
                 <Text
                   className="text-xs font-black"
-                  style={{ color: t.active ? "#000" : "#fff" }}
+                  style={{ color: t.active ? "#000" : "#fff", flexShrink: 0, includeFontPadding: false }}
+                  numberOfLines={1}
                 >
                   {t.label}
                 </Text>
@@ -779,7 +844,7 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
 
         {/* EXAM SELECTOR PILLS (ONLY UPCOMING EXAMS) */}
         <View className="mb-3">
-          <Text className="text-white/60 text-xs font-bold mb-2 uppercase tracking-wider">
+          <Text className="text-white/60 text-xs font-bold mb-2 uppercase tracking-wider" numberOfLines={1} style={{ includeFontPadding: false }}>
             Select Examination (Upcoming Only)
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -789,13 +854,15 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
                 onPress={() => setSelectedExamId(ex.id)}
                 className="px-3.5 py-2 rounded-xl border"
                 style={{
+                  flexShrink: 0,
                   backgroundColor: selectedExamId === ex.id ? `${primaryColor}25` : "rgba(255, 255, 255, 0.05)",
                   borderColor: selectedExamId === ex.id ? primaryColor : "rgba(255, 255, 255, 0.12)",
                 }}
               >
                 <Text
                   className="text-xs font-black"
-                  style={{ color: selectedExamId === ex.id ? primaryLight : "#fff" }}
+                  numberOfLines={1}
+                  style={{ color: selectedExamId === ex.id ? primaryLight : "#fff", flexShrink: 0, includeFontPadding: false }}
                 >
                   {ex.name}
                 </Text>
@@ -813,16 +880,17 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
               borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)",
             }}
           >
-            <Search size={16} color={primaryLight} style={{ marginRight: 8 }} />
+            <Search size={16} color={primaryLight} style={{ marginRight: 8, flexShrink: 0 }} />
             <TextInput
               placeholder="Search faculty or room..."
               placeholderTextColor="#ffffff50"
               value={searchFaculty}
               onChangeText={setSearchFaculty}
               className="flex-1 text-white text-xs font-semibold py-0"
+              style={{ includeFontPadding: false }}
             />
             {searchFaculty ? (
-              <Pressable onPress={() => setSearchFaculty("")}>
+              <Pressable onPress={() => setSearchFaculty("")} style={{ flexShrink: 0 }}>
                 <X size={15} color="#ffffff70" />
               </Pressable>
             ) : null}
@@ -833,10 +901,18 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             className="px-3.5 py-2.5 rounded-2xl flex-row items-center shadow-md active:opacity-80"
             style={{
               backgroundColor: primaryColor,
+              flexShrink: 0,
+              flexWrap: "nowrap",
             }}
           >
-            <Plus size={14} color="#000000" style={{ marginRight: 4 }} />
-            <Text className="text-xs font-black text-black">
+            <Plus size={14} color="#000000" style={{ marginRight: 4, flexShrink: 0 }} />
+            <Text
+              className="text-xs font-black text-black"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.85}
+              style={{ flexShrink: 0, includeFontPadding: false }}
+            >
               Allot Duty
             </Text>
           </Pressable>
@@ -853,17 +929,17 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
               }}
             >
               <UserCheck size={32} color={primaryLight} style={{ marginBottom: 8, opacity: 0.8 }} />
-              <Text className="text-white text-base font-bold">No Invigilation Duties Allotted</Text>
-              <Text className="text-white/50 text-xs text-center mt-1 mb-4">
+              <Text className="text-white text-base font-bold" style={{ includeFontPadding: false }}>No Invigilation Duties Allotted</Text>
+              <Text className="text-white/50 text-xs text-center mt-1 mb-4" style={{ includeFontPadding: false }}>
                 No faculty members assigned to {currentExam.name} yet.
               </Text>
               <Pressable
                 onPress={openAddModal}
                 className="px-4 py-2.5 rounded-xl flex-row items-center"
-                style={{ backgroundColor: primaryColor }}
+                style={{ backgroundColor: primaryColor, flexShrink: 0 }}
               >
                 <Plus size={15} color="#000" style={{ marginRight: 6 }} />
-                <Text className="text-black text-xs font-black">Allot First Duty</Text>
+                <Text className="text-black text-xs font-black" numberOfLines={1} style={{ includeFontPadding: false }}>Allot First Duty</Text>
               </Pressable>
             </View>
           ) : (
@@ -882,22 +958,28 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
                     <View
                       className="w-11 h-11 rounded-full items-center justify-center mr-3 border"
                       style={{
+                        flexShrink: 0,
                         backgroundColor: `${primaryColor}20`,
                         borderColor: `${primaryColor}40`,
                       }}
                     >
-                      <Text className="font-black text-base" style={{ color: primaryLight }}>
+                      <Text className="font-black text-base" style={{ color: primaryLight, includeFontPadding: false }}>
                         {duty.staffName ? duty.staffName[0] : "T"}
                       </Text>
                     </View>
                     <View className="flex-1">
-                      <View className="flex-row items-center flex-wrap" style={{ gap: 6, marginBottom: 2 }}>
-                        <Text className="text-white text-base font-black">
+                      <View className="flex-row items-center" style={{ gap: 6, marginBottom: 2, flexWrap: "nowrap" }}>
+                        <Text
+                          className="text-white text-base font-black flex-1 mr-1"
+                          numberOfLines={1}
+                          style={{ includeFontPadding: false }}
+                        >
                           {duty.staffName}
                         </Text>
                         <View
                           className="px-2 py-0.5 rounded-md border"
                           style={{
+                            flexShrink: 0,
                             backgroundColor:
                               duty.status === "Checked In"
                                 ? "rgba(16, 185, 129, 0.2)"
@@ -914,7 +996,10 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
                         >
                           <Text
                             className="text-[10px] font-black"
+                            numberOfLines={1}
                             style={{
+                              flexShrink: 0,
+                              includeFontPadding: false,
                               color:
                                 duty.status === "Checked In"
                                   ? "#34d399"
@@ -927,17 +1012,18 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
                           </Text>
                         </View>
                       </View>
-                      <Text className="text-white/50 text-xs font-semibold">
+                      <Text className="text-white/50 text-xs font-semibold" numberOfLines={1} style={{ includeFontPadding: false }}>
                         {duty.class} • {duty.subject}
                       </Text>
                     </View>
                   </View>
 
                   {/* Actions */}
-                  <View className="flex-row items-center" style={{ gap: 6 }}>
+                  <View className="flex-row items-center" style={{ gap: 6, flexShrink: 0 }}>
                     <Pressable
                       onPress={() => openEditModal(duty)}
                       className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 items-center justify-center active:bg-white/20"
+                      style={{ flexShrink: 0 }}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Pencil size={14} color={primaryLight} />
@@ -945,6 +1031,7 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
                     <Pressable
                       onPress={() => setDeletingDuty(duty)}
                       className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-500/30 items-center justify-center active:bg-rose-500/25"
+                      style={{ flexShrink: 0 }}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
                       <Trash2 size={14} color="#f87171" />
@@ -952,24 +1039,32 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
                   </View>
                 </View>
 
-                {/* Duty Details Strip */}
+                {/* Structured Duty Details Strip */}
                 <View
-                  className="rounded-xl p-3 flex-row flex-wrap items-center justify-between"
-                  style={{ backgroundColor: "rgba(0, 0, 0, 0.35)", gap: 8 }}
+                  className="rounded-xl p-3"
+                  style={{ backgroundColor: "rgba(0, 0, 0, 0.35)", gap: 6 }}
                 >
-                  <View className="flex-row items-center">
-                    <Calendar size={13} color={primaryLight} style={{ marginRight: 5 }} />
-                    <Text className="text-white text-xs font-bold">{formatToDDMMYYYY(duty.date)}</Text>
+                  <View className="flex-row items-center justify-between" style={{ flexWrap: "nowrap" }}>
+                    <View className="flex-row items-center flex-1 mr-2" style={{ flexWrap: "nowrap" }}>
+                      <Calendar size={13} color={primaryLight} style={{ marginRight: 5, flexShrink: 0 }} />
+                      <Text className="text-white text-xs font-bold" numberOfLines={1} style={{ includeFontPadding: false }}>
+                        {formatToDDMMYYYY(duty.date)}
+                      </Text>
+                    </View>
+
+                    <View className="flex-row items-center" style={{ flexShrink: 0, flexWrap: "nowrap" }}>
+                      <Clock size={13} color="#38bdf8" style={{ marginRight: 5, flexShrink: 0 }} />
+                      <Text className="text-white text-xs font-bold" numberOfLines={1} style={{ flexShrink: 0, includeFontPadding: false }}>
+                        {duty.timeSlot}
+                      </Text>
+                    </View>
                   </View>
 
-                  <View className="flex-row items-center">
-                    <Clock size={13} color="#38bdf8" style={{ marginRight: 5 }} />
-                    <Text className="text-white text-xs font-bold">{duty.timeSlot}</Text>
-                  </View>
-
-                  <View className="flex-row items-center">
-                    <Building size={13} color="#facc15" style={{ marginRight: 5 }} />
-                    <Text className="text-white text-xs font-bold">{duty.room}</Text>
+                  <View className="flex-row items-center pt-1 border-t border-white/5" style={{ flexWrap: "nowrap" }}>
+                    <Building size={13} color="#facc15" style={{ marginRight: 5, flexShrink: 0 }} />
+                    <Text className="text-white/80 text-xs font-bold flex-1" numberOfLines={1} style={{ includeFontPadding: false }}>
+                      Room: <Text className="text-white font-extrabold">{duty.room}</Text>
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -996,8 +1091,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             style={[
               styles.dutyModalCard,
               {
-                backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-                borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
               },
             ]}
           >
@@ -1417,8 +1512,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             style={[
               styles.pickerModalCard,
               {
-                backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-                borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
               },
             ]}
           >
@@ -1501,8 +1596,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             style={[
               styles.pickerModalCard,
               {
-                backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-                borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
               },
             ]}
           >
@@ -1574,8 +1669,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             style={[
               styles.pickerModalCard,
               {
-                backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-                borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
               },
             ]}
           >
@@ -1623,8 +1718,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             style={[
               styles.pickerModalCard,
               {
-                backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-                borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
               },
             ]}
           >
@@ -1660,8 +1755,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             style={[
               styles.smallPickerCard,
               {
-                backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-                borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
               },
             ]}
           >
@@ -1695,8 +1790,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             style={[
               styles.smallPickerCard,
               {
-                backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-                borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
               },
             ]}
           >
@@ -1736,8 +1831,8 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
             style={[
               styles.calendarModalCard,
               {
-                backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-                borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.35)" : "rgba(0, 241, 161, 0.35)",
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
               },
             ]}
           >
@@ -1941,6 +2036,92 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
         </Pressable>
       </Modal>
 
+      {/* CUSTOM LUXURY WARNING / VALIDATION MODAL */}
+      {warningModal && (
+        <Modal
+          visible={warningModal.visible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setWarningModal(null)}
+        >
+          <Pressable
+            onPress={() => setWarningModal(null)}
+            style={styles.modalOverlay}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              className="w-full max-w-sm border rounded-3xl p-5 shadow-2xl items-center"
+              style={{
+                backgroundColor: cardBg,
+                borderColor:
+                  warningModal.type === "error"
+                    ? "rgba(239, 68, 68, 0.45)"
+                    : warningModal.type === "warning"
+                    ? "rgba(245, 158, 11, 0.45)"
+                    : cardBorder,
+              }}
+            >
+              {/* Glowing Top Icon Badge */}
+              <View
+                className="w-14 h-14 rounded-2xl items-center justify-center mb-3 border shadow-md"
+                style={{
+                  backgroundColor:
+                    warningModal.type === "error"
+                      ? "rgba(239, 68, 68, 0.2)"
+                      : warningModal.type === "warning"
+                      ? "rgba(245, 158, 11, 0.2)"
+                      : `${primaryColor}20`,
+                  borderColor:
+                    warningModal.type === "error"
+                      ? "rgba(239, 68, 68, 0.45)"
+                      : warningModal.type === "warning"
+                      ? "rgba(245, 158, 11, 0.45)"
+                      : `${primaryColor}45`,
+                }}
+              >
+                {warningModal.type === "error" ? (
+                  <AlertCircle size={28} color="#f87171" />
+                ) : warningModal.type === "warning" ? (
+                  <AlertTriangle size={28} color="#facc15" />
+                ) : (
+                  <AlertCircle size={28} color={primaryLight} />
+                )}
+              </View>
+
+              <Text className="text-white text-base md:text-lg font-black text-center mb-1.5">
+                {warningModal.title}
+              </Text>
+
+              <Text className="text-white/70 text-xs text-center leading-relaxed mb-4 px-2">
+                {warningModal.message}
+              </Text>
+
+              <Pressable
+                onPress={() => setWarningModal(null)}
+                className="w-full py-3 rounded-xl items-center justify-center shadow-lg active:opacity-90"
+                style={{
+                  backgroundColor:
+                    warningModal.type === "error"
+                      ? "#ef4444"
+                      : warningModal.type === "warning"
+                      ? "#f59e0b"
+                      : primaryColor,
+                }}
+              >
+                <Text
+                  className="text-xs font-black"
+                  style={{
+                    color: warningModal.type === "error" ? "#fff" : "#000",
+                  }}
+                >
+                  Understood
+                </Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
       {/* DELETE CONFIRMATION MODAL */}
       <Modal
         visible={!!deletingDuty}
@@ -1948,38 +2129,52 @@ export const AdminExamInvigilationScreen: React.FC<{ navigation: any; route?: an
         animationType="fade"
         onRequestClose={() => setDeletingDuty(null)}
       >
-        <View className="flex-1 bg-black/80 items-center justify-center p-4">
-          <View
+        <Pressable
+          onPress={() => setDeletingDuty(null)}
+          style={styles.modalOverlay}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
             className="w-full max-w-sm border rounded-3xl p-5 shadow-2xl"
             style={{
-              backgroundColor: isSuperAdmin ? "#181d1f" : "#0d2822",
-              borderColor: "rgba(239, 68, 68, 0.4)",
+              backgroundColor: cardBg,
+              borderColor: "rgba(239, 68, 68, 0.45)",
             }}
           >
-            <View className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 items-center justify-center self-center mb-3">
+            <View className="w-13 h-13 rounded-2xl bg-rose-500/20 border border-rose-500/40 items-center justify-center self-center mb-3">
               <Trash2 size={24} color="#f87171" />
             </View>
-            <Text className="text-white text-lg font-black text-center mb-1">Remove Assignment?</Text>
-            <Text className="text-white/60 text-xs text-center mb-4 leading-relaxed">
-              Are you sure you want to remove invigilation duty assigned to <Text className="text-white font-bold">"{deletingDuty?.staffName}"</Text>?
+
+            <View className="items-center mb-1">
+              <View className="px-2.5 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 mb-1.5 flex-row items-center">
+                <AlertTriangle size={11} color="#f87171" style={{ marginRight: 4 }} />
+                <Text className="text-[10px] font-black text-rose-400 uppercase tracking-wider">
+                  Remove Assignment
+                </Text>
+              </View>
+              <Text className="text-white text-lg font-black text-center">Remove Duty?</Text>
+            </View>
+
+            <Text className="text-white/60 text-xs text-center mb-4 leading-relaxed px-1">
+              Are you sure you want to remove invigilation duty assigned to <Text className="text-white font-bold">"{deletingDuty?.staffName}"</Text> for <Text className="text-white font-bold">{deletingDuty?.subject}</Text>?
             </Text>
 
             <View className="flex-row items-center" style={{ gap: 10 }}>
               <Pressable
                 onPress={() => setDeletingDuty(null)}
-                className="flex-1 py-2.5 rounded-xl bg-white/10 border border-white/15 items-center justify-center"
+                className="flex-1 py-2.5 rounded-xl bg-white/10 border border-white/15 items-center justify-center active:bg-white/20"
               >
                 <Text className="text-white text-xs font-bold">Cancel</Text>
               </Pressable>
               <Pressable
                 onPress={handleDeleteDutyConfirm}
-                className="flex-1 py-2.5 rounded-xl bg-rose-500 items-center justify-center shadow-md"
+                className="flex-1 py-2.5 rounded-xl bg-rose-500 items-center justify-center shadow-md active:opacity-90"
               >
-                <Text className="text-white text-xs font-black">Delete</Text>
+                <Text className="text-white text-xs font-black">Remove</Text>
               </Pressable>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );

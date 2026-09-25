@@ -129,16 +129,22 @@ export const ExamScheduleScreen: React.FC<{ navigation: any }> = ({ navigation }
               >
                 <ArrowLeft size={20} color={primaryLight} />
               </Pressable>
-              <View className="flex-1">
-                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1}>
+              <View className="flex-1 justify-center">
+                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1} style={{ includeFontPadding: false }}>
                   Examination
                 </Text>
-                <View className="flex-row items-center mt-0.5">
+                <View className="flex-row items-center mt-0.5" style={{ flexWrap: 'nowrap' }}>
                   <View
                     className="w-2 h-2 rounded-full mr-1.5"
-                    style={{ backgroundColor: primaryColor }}
+                    style={{ backgroundColor: primaryColor, flexShrink: 0 }}
                   />
-                  <Text className="text-xs font-semibold" style={{ color: primaryLight }}>
+                  <Text
+                    className="text-xs font-semibold flex-1"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ color: primaryLight, flexShrink: 1, includeFontPadding: false }}
+                  >
                     Academic Session 2025-26
                   </Text>
                 </View>
@@ -196,29 +202,39 @@ export const ExamScheduleScreen: React.FC<{ navigation: any }> = ({ navigation }
               </View>
 
               {/* Text Info */}
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <View className="flex-row items-center flex-wrap" style={{ gap: 8, marginBottom: 3 }}>
-                  <Text className="text-white text-base font-extrabold">
+              <View style={{ flex: 1, marginRight: 10, justifyContent: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3, flexWrap: 'nowrap' }}>
+                  <Text
+                    className="text-white text-base font-extrabold"
+                    numberOfLines={1}
+                    style={{ flexShrink: 1, includeFontPadding: false }}
+                  >
                     {option.title}
                   </Text>
                   {option.badge && (
                     <View
                       className="px-2 py-0.5 rounded-md border"
                       style={{
+                        flexShrink: 0,
                         backgroundColor: `${option.badgeColor}20`,
                         borderColor: `${option.badgeColor}50`,
                       }}
                     >
                       <Text
                         className="text-[10px] font-black"
-                        style={{ color: option.badgeColor }}
+                        numberOfLines={1}
+                        style={{ color: option.badgeColor, flexShrink: 0, includeFontPadding: false }}
                       >
                         {option.badge}
                       </Text>
                     </View>
                   )}
                 </View>
-                <Text className="text-white/50 text-xs font-medium" numberOfLines={1}>
+                <Text
+                  className="text-white/50 text-xs font-medium"
+                  numberOfLines={1}
+                  style={{ includeFontPadding: false }}
+                >
                   {option.subtitle}
                 </Text>
               </View>
@@ -230,6 +246,7 @@ export const ExamScheduleScreen: React.FC<{ navigation: any }> = ({ navigation }
                   width: 32,
                   height: 32,
                   borderRadius: 16,
+                  flexShrink: 0,
                   backgroundColor: 'rgba(255, 255, 255, 0.05)',
                   borderColor: 'rgba(255, 255, 255, 0.1)',
                 }}

@@ -194,11 +194,11 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
   const primaryColor = isSuperAdmin ? "#f0c110" : "#00f1a1";
   const primaryLight = isSuperAdmin ? "#ffe5a0" : "#00f1a1";
   const bgGradient = isSuperAdmin
-    ? (["#101415", "#1a1e1f", "#0b0c0d", "#080809"] as const)
-    : (["#061a14", "#0d2a24", "#081713", "#050f0c"] as const);
+    ? (["#1d2022", "#101415"] as const)
+    : (["#0d2a24", "#121414"] as const);
 
-  const cardBg = isSuperAdmin ? "#181d1f" : "#102d26";
-  const cardBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)";
+  const cardBg = isSuperAdmin ? "#101415" : "#102d26";
+  const cardBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.25)";
 
   const [selectedClass, setSelectedClass] = useState<string>("Class 8A");
   const [selectedExamId, setSelectedExamId] = useState<string>("1");
@@ -433,7 +433,7 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: "#101415" }]}>
       {/* Background Gradient */}
       <LinearGradient
         colors={bgGradient}
@@ -460,16 +460,22 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
               >
                 <ArrowLeft size={20} color={primaryLight} />
               </Pressable>
-              <View className="flex-1">
-                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1}>
+              <View className="flex-1 justify-center">
+                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1} style={{ includeFontPadding: false }}>
                   Results & Rankings
                 </Text>
-                <View className="flex-row items-center mt-0.5">
+                <View className="flex-row items-center mt-0.5" style={{ flexWrap: "nowrap" }}>
                   <View
                     className="w-2 h-2 rounded-full mr-1.5"
-                    style={{ backgroundColor: primaryColor }}
+                    style={{ backgroundColor: primaryColor, flexShrink: 0 }}
                   />
-                  <Text className="text-xs font-semibold" style={{ color: primaryLight }}>
+                  <Text
+                    className="text-xs font-semibold flex-1"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ color: primaryLight, flexShrink: 1, includeFontPadding: false }}
+                  >
                     Academic Year: 2026-2027 (Current)
                   </Text>
                 </View>
@@ -518,83 +524,118 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
         }}
       >
         {/* 4 KPI CARDS (2x2 Grid) */}
-        <View style={styles.kpiGrid}>
-          {/* 1. Upcoming Exams */}
-          <View
-            style={[
-              styles.kpiCard,
-              { backgroundColor: cardBg, borderColor: cardBorder },
-            ]}
-          >
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Upcoming Exams</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(56, 189, 248, 0.15)", borderColor: "rgba(56, 189, 248, 0.3)" }]}>
-                <BookOpen size={14} color="#38bdf8" />
+        <View style={{ gap: 10, marginBottom: 16 }}>
+          {/* Row 1 */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* 1. Upcoming Exams */}
+            <View
+              style={[
+                styles.kpiCard,
+                { flex: 1, backgroundColor: cardBg, borderColor: cardBorder },
+              ]}
+            >
+              <View style={styles.kpiTopRow}>
+                <Text
+                  style={[styles.kpiTitle, { flex: 1, marginRight: 4, includeFontPadding: false }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Upcoming Exams
+                </Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(56, 189, 248, 0.15)", borderColor: "rgba(56, 189, 248, 0.3)", flexShrink: 0 }]}>
+                  <BookOpen size={14} color="#38bdf8" />
+                </View>
               </View>
+              <Text style={[styles.kpiValue, { includeFontPadding: false }]} numberOfLines={1}>1</Text>
+              <Text style={[styles.kpiSub, { includeFontPadding: false }]} numberOfLines={1}>This month</Text>
             </View>
-            <Text style={styles.kpiValue}>1</Text>
-            <Text style={styles.kpiSub}>This month</Text>
+
+            {/* 2. Class Average */}
+            <View
+              style={[
+                styles.kpiCard,
+                { flex: 1, backgroundColor: cardBg, borderColor: cardBorder },
+              ]}
+            >
+              <View style={styles.kpiTopRow}>
+                <Text
+                  style={[styles.kpiTitle, { flex: 1, marginRight: 4, includeFontPadding: false }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Class Average
+                </Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(52, 211, 153, 0.15)", borderColor: "rgba(52, 211, 153, 0.3)", flexShrink: 0 }]}>
+                  <BarChart2 size={14} color="#34d399" />
+                </View>
+              </View>
+              <Text style={[styles.kpiValue, { includeFontPadding: false }]} numberOfLines={1}>{classAvgDisplay}</Text>
+              <Text style={[styles.kpiSub, { includeFontPadding: false }]} numberOfLines={1}>{selectedClass} · Selected Exam</Text>
+            </View>
           </View>
 
-          {/* 2. Class Average */}
-          <View
-            style={[
-              styles.kpiCard,
-              { backgroundColor: cardBg, borderColor: cardBorder },
-            ]}
-          >
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Class Average</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(52, 211, 153, 0.15)", borderColor: "rgba(52, 211, 153, 0.3)" }]}>
-                <BarChart2 size={14} color="#34d399" />
+          {/* Row 2 */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* 3. Top Score */}
+            <View
+              style={[
+                styles.kpiCard,
+                { flex: 1, backgroundColor: cardBg, borderColor: cardBorder },
+              ]}
+            >
+              <View style={styles.kpiTopRow}>
+                <Text
+                  style={[styles.kpiTitle, { flex: 1, marginRight: 4, includeFontPadding: false }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Top Score
+                </Text>
+                <View
+                  style={[
+                    styles.kpiIconWrapper,
+                    {
+                      flexShrink: 0,
+                      backgroundColor: `${primaryColor}20`,
+                      borderColor: `${primaryColor}40`,
+                    },
+                  ]}
+                >
+                  <Award size={14} color={primaryLight} />
+                </View>
               </View>
+              <Text style={[styles.kpiValue, { includeFontPadding: false }]} numberOfLines={1}>{topScoreDisplay}</Text>
+              <Text style={[styles.kpiSub, { includeFontPadding: false }]} numberOfLines={1}>
+                {topStudentName}
+              </Text>
             </View>
-            <Text style={styles.kpiValue}>{classAvgDisplay}</Text>
-            <Text style={styles.kpiSub} numberOfLines={1}>{selectedClass} · Selected Exam</Text>
-          </View>
 
-          {/* 3. Top Score */}
-          <View
-            style={[
-              styles.kpiCard,
-              { backgroundColor: cardBg, borderColor: cardBorder },
-            ]}
-          >
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Top Score</Text>
-              <View
-                style={[
-                  styles.kpiIconWrapper,
-                  {
-                    backgroundColor: `${primaryColor}20`,
-                    borderColor: `${primaryColor}40`,
-                  },
-                ]}
-              >
-                <Award size={14} color={primaryLight} />
+            {/* 4. Results Published */}
+            <View
+              style={[
+                styles.kpiCard,
+                { flex: 1, backgroundColor: cardBg, borderColor: cardBorder },
+              ]}
+            >
+              <View style={styles.kpiTopRow}>
+                <Text
+                  style={[styles.kpiTitle, { flex: 1, marginRight: 4, includeFontPadding: false }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Results Published
+                </Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(250, 204, 21, 0.15)", borderColor: "rgba(250, 204, 21, 0.3)", flexShrink: 0 }]}>
+                  <TrendingUp size={14} color="#facc15" />
+                </View>
               </View>
+              <Text style={[styles.kpiValue, { includeFontPadding: false }]} numberOfLines={1}>1</Text>
+              <Text style={[styles.kpiSub, { includeFontPadding: false }]} numberOfLines={1}>Exams</Text>
             </View>
-            <Text style={styles.kpiValue} numberOfLines={1}>{topScoreDisplay}</Text>
-            <Text style={styles.kpiSub} numberOfLines={1}>
-              {topStudentName}
-            </Text>
-          </View>
-
-          {/* 4. Results Published */}
-          <View
-            style={[
-              styles.kpiCard,
-              { backgroundColor: cardBg, borderColor: cardBorder },
-            ]}
-          >
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Results Published</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(250, 204, 21, 0.15)", borderColor: "rgba(250, 204, 21, 0.3)" }]}>
-                <TrendingUp size={14} color="#facc15" />
-              </View>
-            </View>
-            <Text style={styles.kpiValue}>1</Text>
-            <Text style={styles.kpiSub}>Exams</Text>
           </View>
         </View>
 
@@ -603,7 +644,7 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
+            contentContainerStyle={{ gap: 8, paddingRight: 16 }}
           >
             {topTabs.map((t) => (
               <Pressable
@@ -615,6 +656,7 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
                 }}
                 style={[
                   styles.tabButton,
+                  { flexShrink: 0 },
                   t.active
                     ? { backgroundColor: primaryColor, borderColor: primaryColor }
                     : { backgroundColor: cardBg, borderColor: cardBorder },
@@ -623,8 +665,10 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
                 <Text
                   style={[
                     styles.tabButtonText,
+                    { flexShrink: 0, includeFontPadding: false },
                     t.active ? { color: "#000", fontWeight: "900" } : { color: "#fff" },
                   ]}
+                  numberOfLines={1}
                 >
                   {t.label}
                 </Text>
@@ -745,13 +789,14 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
                     ]}
                   >
                     {/* Header Row: Rank Badge + Avatar + Name + Grade */}
-                    <View style={styles.studentCardHeader}>
+                    <View style={[styles.studentCardHeader, { flexWrap: "nowrap" }]}>
                       {/* Left: Rank + Avatar + Name */}
-                      <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8, flexWrap: "nowrap" }}>
                         {/* Rank Badge */}
                         <View
                           style={[
                             styles.rankBadge,
+                            { flexShrink: 0 },
                             item.rank === 1
                               ? styles.rankBadge1
                               : item.rank === 2
@@ -761,10 +806,11 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
                               : styles.rankBadgeDefault,
                           ]}
                         >
-                          {item.rank === 1 && <Crown size={10} color="#facc15" style={{ marginRight: 2 }} />}
+                          {item.rank === 1 && <Crown size={10} color="#facc15" style={{ marginRight: 2, flexShrink: 0 }} />}
                           <Text
                             style={[
                               styles.rankText,
+                              { flexShrink: 0, includeFontPadding: false },
                               item.rank === 1
                                 ? { color: "#facc15" }
                                 : item.rank === 2
@@ -773,6 +819,7 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
                                 ? { color: primaryLight }
                                 : { color: "rgba(255,255,255,0.4)" },
                             ]}
+                            numberOfLines={1}
                           >
                             {item.rank !== null ? `#${item.rank}` : "--"}
                           </Text>
@@ -790,19 +837,20 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
                             alignItems: "center",
                             justifyContent: "center",
                             marginRight: 10,
+                            flexShrink: 0,
                           }}
                         >
-                          <Text style={{ color: avatar.color, fontSize: 11, fontWeight: "900" }}>
+                          <Text style={{ color: avatar.color, fontSize: 11, fontWeight: "900", includeFontPadding: false }} numberOfLines={1}>
                             {item.init}
                           </Text>
                         </View>
 
                         {/* Name & Roll */}
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.studentName} numberOfLines={1}>
+                          <Text style={[styles.studentName, { includeFontPadding: false }]} numberOfLines={1}>
                             {item.name}
                           </Text>
-                          <Text style={styles.studentRoll}>Roll: {item.roll}</Text>
+                          <Text style={[styles.studentRoll, { includeFontPadding: false }]} numberOfLines={1}>Roll: {item.roll}</Text>
                         </View>
                       </View>
 
@@ -812,18 +860,19 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
                           style={[
                             styles.gradePill,
                             {
+                              flexShrink: 0,
                               backgroundColor: item.gradeInfo.bg,
                               borderColor: `${item.gradeInfo.color}40`,
                             },
                           ]}
                         >
-                          <Text style={[styles.gradePillText, { color: item.gradeInfo.color }]}>
+                          <Text style={[styles.gradePillText, { color: item.gradeInfo.color, flexShrink: 0, includeFontPadding: false }]} numberOfLines={1}>
                             {item.gradeInfo.grade}
                           </Text>
                         </View>
                       ) : (
-                        <View style={styles.gradePillPending}>
-                          <Text style={styles.gradePillPendingText}>Pending</Text>
+                        <View style={[styles.gradePillPending, { flexShrink: 0 }]}>
+                          <Text style={[styles.gradePillPendingText, { flexShrink: 0, includeFontPadding: false }]} numberOfLines={1}>Pending</Text>
                         </View>
                       )}
                     </View>
@@ -831,26 +880,28 @@ export const AdminExamResultsScreen: React.FC<{ navigation: any; route?: any }> 
                     {/* Summary Row: Total Marks, Max, Percentage */}
                     <View style={styles.cardSummaryBox}>
                       <View style={styles.summaryItem}>
-                        <Text style={styles.summaryLabel}>Total</Text>
-                        <Text style={styles.summaryValue}>
+                        <Text style={[styles.summaryLabel, { includeFontPadding: false }]} numberOfLines={1}>Total</Text>
+                        <Text style={[styles.summaryValue, { includeFontPadding: false }]} numberOfLines={1}>
                           {item.isGraded ? item.totalObtained : "--"}
                         </Text>
                       </View>
                       <View style={styles.summaryDivider} />
                       <View style={styles.summaryItem}>
-                        <Text style={styles.summaryLabel}>Max</Text>
-                        <Text style={styles.summaryValue}>{totalMaxMarks}</Text>
+                        <Text style={[styles.summaryLabel, { includeFontPadding: false }]} numberOfLines={1}>Max</Text>
+                        <Text style={[styles.summaryValue, { includeFontPadding: false }]} numberOfLines={1}>{totalMaxMarks}</Text>
                       </View>
                       <View style={styles.summaryDivider} />
                       <View style={styles.summaryItem}>
-                        <Text style={styles.summaryLabel}>Percentage</Text>
+                        <Text style={[styles.summaryLabel, { includeFontPadding: false }]} numberOfLines={1}>Percentage</Text>
                         <Text
                           style={[
                             styles.summaryValuePct,
+                            { includeFontPadding: false },
                             item.percentage !== null
                               ? { color: primaryLight }
                               : { color: "rgba(255,255,255,0.4)" },
                           ]}
+                          numberOfLines={1}
                         >
                           {item.percentage !== null ? `${item.percentage}%` : "--"}
                         </Text>

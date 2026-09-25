@@ -24,6 +24,8 @@ import {
   Award,
   TrendingUp,
   CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
   Clock,
   ChevronDown,
   ChevronUp,
@@ -197,11 +199,11 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
   const primaryColor = isSuperAdmin ? "#f0c110" : "#00f1a1";
   const primaryLight = isSuperAdmin ? "#ffe5a0" : "#00f1a1";
   const bgGradient = isSuperAdmin
-    ? (["#101415", "#1a1e1f", "#0b0c0d", "#080809"] as const)
-    : (["#061a14", "#0d2a24", "#081713", "#050f0c"] as const);
+    ? (["#1d2022", "#101415"] as const)
+    : (["#0d2a24", "#121414"] as const);
 
-  const cardBg = isSuperAdmin ? "#181d1f" : "#102d26";
-  const cardBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)";
+  const cardBg = isSuperAdmin ? "#101415" : "#102d26";
+  const cardBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.25)";
 
   const [selectedClass, setSelectedClass] = useState<string>("Class 4B");
   const [selectedExamId, setSelectedExamId] = useState<string>("2");
@@ -358,32 +360,29 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
     });
   };
 
+  // Clear Student Marks Modal State
+  const [clearingStudent, setClearingStudent] = useState<StudentItem | null>(null);
+
   // Clear marks for a student
   const handleClearStudentMarks = (student: StudentItem) => {
-    Alert.alert(
-      "Clear Marks",
-      `Are you sure you want to clear all subject marks for ${student.name}? This will put them in a cleared state, which you can save.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear Marks",
-          style: "destructive",
-          onPress: () => {
-            setDraftMarks((prev) => {
-              const examMap = { ...(prev[selectedExamId] || {}) };
-              subjectsList.forEach((sub) => {
-                examMap[sub] = { ...(examMap[sub] || {}), [student.roll]: "" };
-              });
-              return {
-                ...prev,
-                [selectedExamId]: examMap,
-              };
-            });
-            showToast("Marks Cleared", `Subject marks for ${student.name} were cleared.`);
-          },
-        },
-      ]
-    );
+    setClearingStudent(student);
+  };
+
+  const handleConfirmClearMarks = () => {
+    if (!clearingStudent) return;
+    const student = clearingStudent;
+    setDraftMarks((prev) => {
+      const examMap = { ...(prev[selectedExamId] || {}) };
+      subjectsList.forEach((sub) => {
+        examMap[sub] = { ...(examMap[sub] || {}), [student.roll]: "" };
+      });
+      return {
+        ...prev,
+        [selectedExamId]: examMap,
+      };
+    });
+    showToast("Marks Cleared", `Subject marks for ${student.name} were cleared.`);
+    setClearingStudent(null);
   };
 
   // Compute student summary detail
@@ -577,7 +576,7 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: "#101415" }]}>
       {/* Background Gradient */}
       <LinearGradient
         colors={bgGradient}
@@ -614,13 +613,18 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
               >
                 <ArrowLeft size={20} color={primaryColor} />
               </Pressable>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: "#ffffff", fontSize: 18, fontWeight: "900" }} numberOfLines={1}>
+              <View style={{ flex: 1, justifyContent: "center" }}>
+                <Text style={{ color: "#ffffff", fontSize: 18, fontWeight: "900", includeFontPadding: false }} numberOfLines={1}>
                   Marks Preview
                 </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: primaryColor, marginRight: 6 }} />
-                  <Text style={{ color: primaryLight, fontSize: 11, fontWeight: "700" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2, flexWrap: "nowrap" }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: primaryColor, marginRight: 6, flexShrink: 0 }} />
+                  <Text
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ color: primaryLight, fontSize: 11, fontWeight: "700", flexShrink: 1, includeFontPadding: false }}
+                  >
                     ACADEMIC YEAR: 2026-2027 (Current)
                   </Text>
                 </View>
@@ -658,55 +662,90 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
         }}
       >
         {/* 4 KPI CARDS (2x2 Grid) */}
-        <View style={styles.kpiGrid}>
-          {/* 1. Upcoming Exams */}
-          <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Upcoming Exams</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(56, 189, 248, 0.15)", borderColor: "rgba(56, 189, 248, 0.3)" }]}>
-                <BookOpen size={14} color="#38bdf8" />
+        {/* 4 KPI CARDS (2x2 Grid) */}
+        <View style={{ gap: 10, marginBottom: 16 }}>
+          {/* Row 1 */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* 1. Upcoming Exams */}
+            <View style={[styles.kpiCard, { flex: 1, backgroundColor: cardBg, borderColor: cardBorder }]}>
+              <View style={styles.kpiTopRow}>
+                <Text
+                  style={[styles.kpiTitle, { flex: 1, marginRight: 4, includeFontPadding: false }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Upcoming Exams
+                </Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(56, 189, 248, 0.15)", borderColor: "rgba(56, 189, 248, 0.3)", flexShrink: 0 }]}>
+                  <BookOpen size={14} color="#38bdf8" />
+                </View>
               </View>
+              <Text style={[styles.kpiValue, { includeFontPadding: false }]} numberOfLines={1}>1</Text>
+              <Text style={[styles.kpiSub, { includeFontPadding: false }]} numberOfLines={1}>This month</Text>
             </View>
-            <Text style={styles.kpiValue}>1</Text>
-            <Text style={styles.kpiSub}>This month</Text>
+
+            {/* 2. Class Average */}
+            <View style={[styles.kpiCard, { flex: 1, backgroundColor: cardBg, borderColor: cardBorder }]}>
+              <View style={styles.kpiTopRow}>
+                <Text
+                  style={[styles.kpiTitle, { flex: 1, marginRight: 4, includeFontPadding: false }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Class Average
+                </Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(52, 211, 153, 0.15)", borderColor: "rgba(52, 211, 153, 0.3)", flexShrink: 0 }]}>
+                  <BarChart2 size={14} color="#34d399" />
+                </View>
+              </View>
+              <Text style={[styles.kpiValue, { includeFontPadding: false }]} numberOfLines={1}>{classAvgDisplay}</Text>
+              <Text style={[styles.kpiSub, { includeFontPadding: false }]} numberOfLines={1}>{selectedClass} • Selected Exam</Text>
+            </View>
           </View>
 
-          {/* 2. Class Average */}
-          <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Class Average</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(52, 211, 153, 0.15)", borderColor: "rgba(52, 211, 153, 0.3)" }]}>
-                <BarChart2 size={14} color="#34d399" />
+          {/* Row 2 */}
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* 3. Top Score */}
+            <View style={[styles.kpiCard, { flex: 1, backgroundColor: cardBg, borderColor: cardBorder }]}>
+              <View style={styles.kpiTopRow}>
+                <Text
+                  style={[styles.kpiTitle, { flex: 1, marginRight: 4, includeFontPadding: false }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Top Score
+                </Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)", borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)", flexShrink: 0 }]}>
+                  <Award size={14} color={primaryColor} />
+                </View>
               </View>
+              <Text style={[styles.kpiValue, { includeFontPadding: false }]} numberOfLines={1}>{topScoreDisplay.split(" • ")[0]}</Text>
+              <Text style={[styles.kpiSub, { includeFontPadding: false }]} numberOfLines={1}>
+                {topScoreDisplay.includes(" • ") ? topScoreDisplay.split(" • ")[1] : "No score yet"}
+              </Text>
             </View>
-            <Text style={styles.kpiValue}>{classAvgDisplay}</Text>
-            <Text style={styles.kpiSub} numberOfLines={1}>{selectedClass} • Selected Exam</Text>
-          </View>
 
-          {/* 3. Top Score */}
-          <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Top Score</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)", borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)" }]}>
-                <Award size={14} color={primaryColor} />
+            {/* 4. Results Published */}
+            <View style={[styles.kpiCard, { flex: 1, backgroundColor: cardBg, borderColor: cardBorder }]}>
+              <View style={styles.kpiTopRow}>
+                <Text
+                  style={[styles.kpiTitle, { flex: 1, marginRight: 4, includeFontPadding: false }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Results Published
+                </Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(250, 204, 21, 0.15)", borderColor: "rgba(250, 204, 21, 0.3)", flexShrink: 0 }]}>
+                  <TrendingUp size={14} color="#facc15" />
+                </View>
               </View>
+              <Text style={[styles.kpiValue, { includeFontPadding: false }]} numberOfLines={1}>1</Text>
+              <Text style={[styles.kpiSub, { includeFontPadding: false }]} numberOfLines={1}>Exams</Text>
             </View>
-            <Text style={styles.kpiValue} numberOfLines={1}>{topScoreDisplay.split(" • ")[0]}</Text>
-            <Text style={styles.kpiSub} numberOfLines={1}>
-              {topScoreDisplay.includes(" • ") ? topScoreDisplay.split(" • ")[1] : "No score yet"}
-            </Text>
-          </View>
-
-          {/* 4. Results Published */}
-          <View style={[styles.kpiCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Results Published</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(250, 204, 21, 0.15)", borderColor: "rgba(250, 204, 21, 0.3)" }]}>
-                <TrendingUp size={14} color="#facc15" />
-              </View>
-            </View>
-            <Text style={styles.kpiValue}>1</Text>
-            <Text style={styles.kpiSub}>Exams</Text>
           </View>
         </View>
 
@@ -715,7 +754,7 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
+            contentContainerStyle={{ gap: 8, paddingRight: 16 }}
           >
             {topTabs.map((t) => (
               <Pressable
@@ -727,6 +766,7 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
                 }}
                 style={[
                   styles.tabButton,
+                  { flexShrink: 0 },
                   t.active
                     ? { backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)", borderColor: primaryColor }
                     : { backgroundColor: cardBg, borderColor: "rgba(255, 255, 255, 0.1)" },
@@ -735,8 +775,10 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
                 <Text
                   style={[
                     styles.tabButtonText,
+                    { flexShrink: 0, includeFontPadding: false },
                     t.active ? { color: primaryColor } : { color: "rgba(255, 255, 255, 0.6)" },
                   ]}
+                  numberOfLines={1}
                 >
                   {t.label}
                 </Text>
@@ -880,10 +922,10 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
                     {/* Top Row: Avatar + Name + Roll + Subject Breakdown Action */}
                     <Pressable
                       onPress={() => toggleStudent(student.roll)}
-                      style={styles.studentCardTopRow}
+                      style={[styles.studentCardTopRow, { flexWrap: "nowrap" }]}
                     >
                       {/* Avatar + Student Name + Roll */}
-                      <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", flex: 1, marginRight: 8, flexWrap: "nowrap" }}>
                         <View
                           style={{
                             width: 36,
@@ -895,17 +937,18 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
                             alignItems: "center",
                             justifyContent: "center",
                             marginRight: 10,
+                            flexShrink: 0,
                           }}
                         >
-                          <Text style={{ color: avatar.color, fontSize: 11, fontWeight: "900" }}>
+                          <Text style={{ color: avatar.color, fontSize: 11, fontWeight: "900", includeFontPadding: false }} numberOfLines={1}>
                             {student.init}
                           </Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ color: "#ffffff", fontWeight: "900", fontSize: 13 }} numberOfLines={1}>
+                          <Text style={{ color: "#ffffff", fontWeight: "900", fontSize: 13, includeFontPadding: false }} numberOfLines={1}>
                             {student.name}
                           </Text>
-                          <Text style={{ color: "rgba(255, 255, 255, 0.4)", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 10.5, marginTop: 2 }}>
+                          <Text style={{ color: "rgba(255, 255, 255, 0.4)", fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace", fontSize: 10.5, marginTop: 2, includeFontPadding: false }} numberOfLines={1}>
                             {student.roll}
                           </Text>
                         </View>
@@ -916,6 +959,7 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
                         onPress={() => toggleStudent(student.roll)}
                         style={[
                           styles.breakdownToggleBtn,
+                          { flexShrink: 0 },
                           isExpanded
                             ? { backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)", borderColor: primaryColor }
                             : styles.breakdownToggleBtnInactive,
@@ -924,15 +968,17 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
                         <Text
                           style={[
                             styles.breakdownToggleBtnText,
+                            { flexShrink: 0, includeFontPadding: false },
                             isExpanded ? { color: primaryColor } : { color: "rgba(255,255,255,0.7)" },
                           ]}
+                          numberOfLines={1}
                         >
                           {isExpanded ? "Hide Subjects" : "View Subjects"}
                         </Text>
                         {isExpanded ? (
-                          <ChevronUp size={13} color={isExpanded ? primaryColor : "rgba(255,255,255,0.7)"} />
+                          <ChevronUp size={13} color={isExpanded ? primaryColor : "rgba(255,255,255,0.7)"} style={{ flexShrink: 0 }} />
                         ) : (
-                          <ChevronDown size={13} color={isExpanded ? primaryColor : "rgba(255,255,255,0.7)"} />
+                          <ChevronDown size={13} color={isExpanded ? primaryColor : "rgba(255,255,255,0.7)"} style={{ flexShrink: 0 }} />
                         )}
                       </Pressable>
                     </Pressable>
@@ -941,31 +987,31 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
                     <View style={styles.metricStrip}>
                       {/* 1. Max Marks */}
                       <View style={styles.metricCell}>
-                        <Text style={styles.metricLabel}>Max Marks</Text>
-                        <Text style={styles.metricValue}>{detail.totalMax}</Text>
+                        <Text style={[styles.metricLabel, { includeFontPadding: false }]} numberOfLines={1}>Max Marks</Text>
+                        <Text style={[styles.metricValue, { includeFontPadding: false }]} numberOfLines={1}>{detail.totalMax}</Text>
                       </View>
 
                       <View style={styles.metricDivider} />
 
                       {/* 2. Marks Obtained */}
                       <View style={styles.metricCell}>
-                        <Text style={styles.metricLabel}>Marks Obt.</Text>
-                        <Text style={styles.metricValue}>{detail.totalObtainedDisplay}</Text>
+                        <Text style={[styles.metricLabel, { includeFontPadding: false }]} numberOfLines={1}>Marks Obt.</Text>
+                        <Text style={[styles.metricValue, { includeFontPadding: false }]} numberOfLines={1}>{detail.totalObtainedDisplay}</Text>
                       </View>
 
                       <View style={styles.metricDivider} />
 
                       {/* 3. Percentage */}
                       <View style={styles.metricCell}>
-                        <Text style={styles.metricLabel}>Percentage</Text>
-                        <Text style={styles.metricValue}>{detail.overallPctDisplay}</Text>
+                        <Text style={[styles.metricLabel, { includeFontPadding: false }]} numberOfLines={1}>Percentage</Text>
+                        <Text style={[styles.metricValue, { includeFontPadding: false }]} numberOfLines={1}>{detail.overallPctDisplay}</Text>
                       </View>
 
                       <View style={styles.metricDivider} />
 
                       {/* 4. Grade */}
                       <View style={styles.metricCell}>
-                        <Text style={styles.metricLabel}>Grade</Text>
+                        <Text style={[styles.metricLabel, { includeFontPadding: false }]} numberOfLines={1}>Grade</Text>
                         <View
                           style={{
                             paddingHorizontal: 8,
@@ -978,9 +1024,10 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
                             justifyContent: "center",
                             minWidth: 30,
                             marginTop: 2,
+                            flexShrink: 0,
                           }}
                         >
-                          <Text style={{ color: detail.overallGradeColor, fontSize: 10.5, fontWeight: "900" }}>
+                          <Text style={{ color: detail.overallGradeColor, fontSize: 10.5, fontWeight: "900", flexShrink: 0, includeFontPadding: false }} numberOfLines={1}>
                             {detail.overallGrade}
                           </Text>
                         </View>
@@ -1402,6 +1449,117 @@ export const AdminMarksPreviewScreen: React.FC<{ navigation: any; route?: any }>
               })}
             </ScrollView>
           </View>
+        </Pressable>
+      </Modal>
+
+      {/* 3. CLEAR MARKS CONFIRMATION MODAL */}
+      <Modal
+        visible={!!clearingStudent}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setClearingStudent(null)}
+      >
+        <Pressable
+          onPress={() => setClearingStudent(null)}
+          style={styles.modalOverlay}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: cardBg,
+                borderColor: "rgba(239, 68, 68, 0.45)",
+                alignItems: "center",
+              },
+            ]}
+          >
+            {/* Warning Glow Icon Badge */}
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                backgroundColor: "rgba(239, 68, 68, 0.2)",
+                borderWidth: 1,
+                borderColor: "rgba(239, 68, 68, 0.45)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 12,
+              }}
+            >
+              <RotateCcw size={24} color="#f87171" />
+            </View>
+
+            <View style={{ alignItems: "center", marginBottom: 6 }}>
+              <View
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 2,
+                  borderRadius: 100,
+                  backgroundColor: "rgba(239, 68, 68, 0.15)",
+                  borderWidth: 1,
+                  borderColor: "rgba(239, 68, 68, 0.3)",
+                  marginBottom: 6,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <AlertTriangle size={11} color="#f87171" style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 10, fontWeight: "900", color: "#f87171", textTransform: "uppercase" }}>
+                  Reset Marks Draft
+                </Text>
+              </View>
+              <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900", textAlign: "center" }}>
+                Clear Student Marks?
+              </Text>
+            </View>
+
+            <Text
+              style={{
+                color: "rgba(255, 255, 255, 0.65)",
+                fontSize: 12,
+                textAlign: "center",
+                lineHeight: 18,
+                marginBottom: 16,
+                paddingHorizontal: 4,
+              }}
+            >
+              Are you sure you want to clear all subject marks for{" "}
+              <Text style={{ color: "#ffffff", fontWeight: "700" }}>{clearingStudent?.name}</Text>? This will reset all entered values to empty.
+            </Text>
+
+            <View style={{ flexDirection: "row", alignItems: "center", width: "100%", gap: 10 }}>
+              <Pressable
+                onPress={() => setClearingStudent(null)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.15)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "700" }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleConfirmClearMarks}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  backgroundColor: "#ef4444",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "900" }}>Clear Marks</Text>
+              </Pressable>
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>

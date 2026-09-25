@@ -273,11 +273,11 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
   const primaryColor = isSuperAdmin ? "#f0c110" : "#00f1a1";
   const primaryLight = isSuperAdmin ? "#ffe5a0" : "#00f1a1";
   const bgGradient = isSuperAdmin
-    ? (["#101415", "#1a1e1f", "#0b0c0d", "#080809"] as const)
-    : (["#061a14", "#0d2a24", "#081713", "#050f0c"] as const);
+    ? (["#1d2022", "#101415"] as const)
+    : (["#0d2a24", "#121414"] as const);
 
-  const cardBg = isSuperAdmin ? "#181d1f" : "#102d26";
-  const cardBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.2)" : "rgba(0, 241, 161, 0.2)";
+  const cardBg = isSuperAdmin ? "#101415" : "#102d26";
+  const cardBorder = isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.25)";
 
   // Persistent Schedules State
   const [schedules, setSchedules] = useState<Record<string, Record<string, ClassExamSchedule>>>(INITIAL_SCHEDULES_DATA);
@@ -660,7 +660,7 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isSuperAdmin && { backgroundColor: "#101415" }]}>
       {/* Background Deep Gradient */}
       <LinearGradient
         colors={bgGradient}
@@ -687,13 +687,19 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
               >
                 <ArrowLeft size={20} color={primaryColor} />
               </Pressable>
-              <View className="flex-1">
-                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1}>
+              <View className="flex-1 justify-center">
+                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1} style={{ includeFontPadding: false }}>
                   Schedule Designer
                 </Text>
-                <View className="flex-row items-center mt-0.5">
-                  <View className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: primaryColor }} />
-                  <Text className="text-xs font-semibold" style={{ color: primaryLight }}>
+                <View className="flex-row items-center mt-0.5" style={{ flexWrap: "nowrap" }}>
+                  <View className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: primaryColor, flexShrink: 0 }} />
+                  <Text
+                    className="text-xs font-semibold flex-1"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ color: primaryLight, flexShrink: 1, includeFontPadding: false }}
+                  >
                     Academic Year: 2026-2027 (Current)
                   </Text>
                 </View>
@@ -743,7 +749,7 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <View
-          style={[styles.toast, { borderColor: primaryColor }]}
+          style={[styles.toast, { backgroundColor: cardBg, borderColor: primaryColor }]}
         >
           <CheckCircle2 size={18} color={primaryColor} style={{ marginRight: 10 }} />
           <Text className="text-white text-xs md:text-sm font-bold flex-1">{toastMessage}</Text>
@@ -763,7 +769,7 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
+            contentContainerStyle={{ gap: 8, paddingRight: 16 }}
           >
             {topTabs.map((t) => (
               <Pressable
@@ -775,6 +781,7 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
                 }}
                 className="px-4 py-2.5 rounded-xl border flex-row items-center"
                 style={{
+                  flexShrink: 0,
                   backgroundColor: t.active
                     ? isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)"
                     : cardBg,
@@ -783,7 +790,8 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
               >
                 <Text
                   className="text-xs font-black"
-                  style={{ color: t.active ? primaryColor : "rgba(255, 255, 255, 0.6)" }}
+                  style={{ color: t.active ? primaryColor : "rgba(255, 255, 255, 0.6)", flexShrink: 0, includeFontPadding: false }}
+                  numberOfLines={1}
                 >
                   {t.label}
                 </Text>
@@ -797,68 +805,107 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
         {/* ========================================================= */}
         {!selectedExam && (
           <View>
-            {/* 4 KPI CARDS */}
-            <View className="flex-row flex-wrap justify-between mb-4" style={{ gap: 10 }}>
-              <View
-                className="w-[48%] border rounded-2xl p-3.5 shadow-md relative overflow-hidden"
-                style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-              >
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/60 text-[11px] font-bold">Upcoming Exams</Text>
-                  <View className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 items-center justify-center">
-                    <BookOpen size={16} color="#38bdf8" />
+            {/* 4 KPI CARDS (2x2 Grid) */}
+            <View className="mb-4" style={{ gap: 10 }}>
+              {/* Row 1 */}
+              <View className="flex-row" style={{ gap: 10 }}>
+                <View
+                  className="flex-1 border rounded-2xl p-3.5 shadow-md relative overflow-hidden"
+                  style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+                >
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text
+                      className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                      style={{ includeFontPadding: false }}
+                    >
+                      Upcoming Exams
+                    </Text>
+                    <View className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                      <BookOpen size={16} color="#38bdf8" />
+                    </View>
                   </View>
+                  <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>1</Text>
+                  <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>This month</Text>
                 </View>
-                <Text className="text-white text-2xl font-black">1</Text>
-                <Text className="text-white/40 text-[10px] font-medium mt-0.5">This month</Text>
+
+                <View
+                  className="flex-1 border rounded-2xl p-3.5 shadow-md relative overflow-hidden"
+                  style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+                >
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text
+                      className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                      style={{ includeFontPadding: false }}
+                    >
+                      Class Average
+                    </Text>
+                    <View className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                      <BarChart2 size={16} color="#34d399" />
+                    </View>
+                  </View>
+                  <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>0.0%</Text>
+                  <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>Class 8A • Selected Exam</Text>
+                </View>
               </View>
 
-              <View
-                className="w-[48%] border rounded-2xl p-3.5 shadow-md relative overflow-hidden"
-                style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-              >
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/60 text-[11px] font-bold">Class Average</Text>
-                  <View className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center">
-                    <BarChart2 size={16} color="#34d399" />
+              {/* Row 2 */}
+              <View className="flex-row" style={{ gap: 10 }}>
+                <View
+                  className="flex-1 border rounded-2xl p-3.5 shadow-md relative overflow-hidden"
+                  style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+                >
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text
+                      className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                      style={{ includeFontPadding: false }}
+                    >
+                      Top Score
+                    </Text>
+                    <View
+                      className="w-8 h-8 rounded-xl items-center justify-center border"
+                      style={{
+                        flexShrink: 0,
+                        backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)",
+                        borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
+                      }}
+                    >
+                      <Award size={16} color={primaryColor} />
+                    </View>
                   </View>
+                  <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>0.0%</Text>
+                  <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>No score yet</Text>
                 </View>
-                <Text className="text-white text-2xl font-black">0.0%</Text>
-                <Text className="text-white/40 text-[10px] font-medium mt-0.5">Class 8A • Selected Exam</Text>
-              </View>
 
-              <View
-                className="w-[48%] border rounded-2xl p-3.5 shadow-md relative overflow-hidden"
-                style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-              >
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/60 text-[11px] font-bold">Top Score</Text>
-                  <View
-                    className="w-8 h-8 rounded-xl items-center justify-center border"
-                    style={{
-                      backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)",
-                      borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
-                    }}
-                  >
-                    <Award size={16} color={primaryColor} />
+                <View
+                  className="flex-1 border rounded-2xl p-3.5 shadow-md relative overflow-hidden"
+                  style={{ backgroundColor: cardBg, borderColor: cardBorder }}
+                >
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text
+                      className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                      style={{ includeFontPadding: false }}
+                    >
+                      Results Published
+                    </Text>
+                    <View className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                      <TrendingUp size={16} color="#facc15" />
+                    </View>
                   </View>
+                  <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>1</Text>
+                  <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>Exams</Text>
                 </View>
-                <Text className="text-white text-2xl font-black">0.0%</Text>
-                <Text className="text-white/40 text-[10px] font-medium mt-0.5">No score yet</Text>
-              </View>
-
-              <View
-                className="w-[48%] border rounded-2xl p-3.5 shadow-md relative overflow-hidden"
-                style={{ backgroundColor: cardBg, borderColor: cardBorder }}
-              >
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/60 text-[11px] font-bold">Results Published</Text>
-                  <View className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 items-center justify-center">
-                    <TrendingUp size={16} color="#facc15" />
-                  </View>
-                </View>
-                <Text className="text-white text-2xl font-black">1</Text>
-                <Text className="text-white/40 text-[10px] font-medium mt-0.5">Exams</Text>
               </View>
             </View>
 
@@ -949,12 +996,12 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
               className="border rounded-2xl p-4 mb-4 shadow-lg"
               style={{ backgroundColor: cardBg, borderColor: cardBorder }}
             >
-              <View className="flex-row items-start justify-between mb-3">
+              <View className="flex-row items-start justify-between mb-3" style={{ flexWrap: "nowrap" }}>
                 <View className="flex-1 mr-2">
-                  <Text className="text-white text-base font-black" numberOfLines={1}>
+                  <Text className="text-white text-base font-black" numberOfLines={1} style={{ includeFontPadding: false }}>
                     Exam Schedule Designer — <Text style={{ color: primaryColor }}>{selectedExam.name}</Text>
                   </Text>
-                  <Text className="text-white/50 text-[11px] font-medium mt-0.5">
+                  <Text className="text-white/50 text-[11px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>
                     Start Date: {formatToDDMMYYYY(selectedExam.date)}
                   </Text>
                 </View>
@@ -963,11 +1010,12 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
                 <View
                   className="px-2.5 py-1 rounded-full border"
                   style={{
+                    flexShrink: 0,
                     backgroundColor: isSuperAdmin ? "rgba(240, 193, 16, 0.15)" : "rgba(0, 241, 161, 0.15)",
                     borderColor: isSuperAdmin ? "rgba(240, 193, 16, 0.3)" : "rgba(0, 241, 161, 0.3)",
                   }}
                 >
-                  <Text className="text-[11px] font-black" style={{ color: primaryColor }}>
+                  <Text className="text-[11px] font-black" numberOfLines={1} style={{ color: primaryColor, flexShrink: 0, includeFontPadding: false }}>
                     {totalClassExamsCount} exams scheduled
                   </Text>
                 </View>
@@ -993,16 +1041,19 @@ export const AdminExamScheduleDesignerScreen: React.FC<{ navigation: any; route?
                           ? "shadow-md"
                           : "bg-white/5 border-white/10 active:bg-white/10"
                       }`}
-                      style={
+                      style={[
+                        { flexShrink: 0 },
                         isSelected
                           ? { backgroundColor: primaryColor, borderColor: primaryColor }
                           : undefined
-                      }
+                      ]}
                     >
                       <Text
                         className={`text-xs font-black ${
                           isSelected ? "text-black" : "text-white/80"
                         }`}
+                        numberOfLines={1}
+                        style={{ flexShrink: 0, includeFontPadding: false }}
                       >
                         {c}
                       </Text>
