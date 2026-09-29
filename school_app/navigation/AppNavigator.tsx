@@ -104,6 +104,7 @@ import { TeacherPerformanceScreen } from '../screens/teachers/TeacherPerformance
 import TeacherHolidayCalendarScreen from '../screens/teachers/TeacherHolidayCalendarScreen';
 import TeacherActivityLogScreen from '../screens/teachers/TeacherActivityLogScreen';
 import { TeacherTimetableScreen } from '../screens/teachers/TeacherTimetableScreen';
+import { TeacherStudentAttendanceScreen } from '../screens/teachers/TeacherStudentAttendanceScreen';
 
 // Parent Screens
 import ParentDashboard from '../screens/parents/ParentDashboard';
@@ -247,7 +248,7 @@ const AdminStaffTabs = () => (
 const TeacherTabs = () => (
   <Tab.Navigator backBehavior="history" tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#0d0d12' } }}>
     <Tab.Screen name="Dashboard" component={TeacherDashboard} options={getTabOptions(Home, '#ddb7ff', 'Dashboard')} />
-    <Tab.Screen name="AllotAttendance" component={AttendanceMarkingScreen} options={getTabOptions(ClipboardCheck, '#ddb7ff', 'Allot Attendance')} />
+    <Tab.Screen name="AllotAttendance" component={TeacherStudentAttendanceScreen} options={getTabOptions(ClipboardCheck, '#ddb7ff', 'Attendance')} />
     <Tab.Screen name="DailyDiary" component={DailyDiaryScreen} options={getTabOptions(FileText, '#ddb7ff', 'Daily Diary')} />
     <Tab.Screen name="Homework" component={HomeworkAssignmentsScreen} options={getTabOptions(ClipboardList, '#ddb7ff', 'Homework')} />
     <Tab.Screen name="MySalary" component={TeacherSalaryScreen} options={getTabOptions(Banknote, '#ddb7ff', 'My Salary')} />
@@ -256,8 +257,18 @@ const TeacherTabs = () => (
     {/* Additional Teacher Screens (Preserves Bottom Tab Bar) */}
     <Tab.Screen 
       name="Attendance" 
-      component={AttendanceMarkingScreen} 
+      component={TeacherStudentAttendanceScreen} 
       options={{ ...getTabOptions(ClipboardCheck, '#ddb7ff', 'Attendance'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherStudentAttendance" 
+      component={TeacherStudentAttendanceScreen} 
+      options={{ ...getTabOptions(ClipboardCheck, '#ddb7ff', 'Student Attendance'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="StudentAttendance" 
+      component={TeacherStudentAttendanceScreen} 
+      options={{ ...getTabOptions(ClipboardCheck, '#ddb7ff', 'Student Attendance'), tabBarItemStyle: { display: 'none' } }} 
     />
     <Tab.Screen 
       name="Timetable" 

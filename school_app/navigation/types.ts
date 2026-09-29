@@ -52,6 +52,8 @@ export type TeacherTabParamList = {
   Timetable: undefined;
   TimetableBuilder: undefined;
   TeacherTimetable: undefined;
+  TeacherStudentAttendance: undefined;
+  StudentAttendance: undefined;
 };
 
 export type AdminStaffTabParamList = {

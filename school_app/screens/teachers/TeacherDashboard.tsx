@@ -97,6 +97,104 @@ interface SystemNoticeItem {
   category: 'Administrative' | 'Academic' | 'Urgent';
 }
 
+function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const clean = timeStr.trim();
+  const match = clean.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const period = match[3].toUpperCase();
+  if (period === 'PM' && hours < 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
+const DEFAULT_SCHEDULE_ITEMS: Array<Omit<ClassScheduleItem, 'status'>> = [
+  {
+    period: "P1",
+    periodIndex: 1,
+    time: "08:30 AM - 09:15 AM",
+    subject: "Mathematics",
+    class: "8-A",
+    room: "Room 402",
+  },
+  {
+    period: "P2",
+    periodIndex: 2,
+    time: "09:20 AM - 10:05 AM",
+    subject: "Physics (Lab)",
+    class: "8-B",
+    room: "Physics Lab A",
+  },
+  {
+    period: "P3",
+    periodIndex: 3,
+    time: "10:15 AM - 11:00 AM",
+    subject: "Mathematics",
+    class: "9-A",
+    room: "Room 305",
+  },
+  {
+    period: "P4",
+    periodIndex: 4,
+    time: "11:30 AM - 12:15 PM",
+    subject: "Advanced Algebra",
+    class: "10-B",
+    room: "Room 501",
+  },
+  {
+    period: "P5",
+    periodIndex: 5,
+    time: "01:00 PM - 01:45 PM",
+    subject: "Doubt Clearing Session",
+    class: "8-A",
+    room: "Room 402",
+  },
+  {
+    period: "P6",
+    periodIndex: 6,
+    time: "02:00 PM - 02:45 PM",
+    subject: "Computer Science",
+    class: "9-A",
+    room: "Computer Lab",
+  },
+  {
+    period: "P7",
+    periodIndex: 7,
+    time: "03:00 PM - 03:45 PM",
+    subject: "Remedial Mathematics",
+    class: "8-B",
+    room: "Room 304",
+  },
+];
+
+function calculateClassStatuses(classesList: Array<Omit<ClassScheduleItem, 'status'>>): ClassScheduleItem[] {
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  return classesList.map((item) => {
+    const parts = item.time.split('-');
+    const startMins = parseTimeToMinutes(parts[0] || '');
+    const endMins = parseTimeToMinutes(parts[1] || '');
+
+    let status: "Completed" | "In Progress" | "Upcoming" = "Upcoming";
+
+    if (currentMinutes >= endMins) {
+      status = "Completed";
+    } else if (currentMinutes >= startMins && currentMinutes < endMins) {
+      status = "In Progress";
+    } else {
+      status = "Upcoming";
+    }
+
+    return {
+      ...item,
+      status,
+    };
+  });
+}
+
 export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const { isSmallPhone, headerPaddingTop, scrollBottomPadding, tabBarBottomPadding } = useResponsive();
@@ -115,53 +213,26 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
   const [classTeacherOf, setClassTeacherOf] = useState<string>("Grade 8-A");
   const [teacherClasses, setTeacherClasses] = useState<string[]>(["8-A", "8-B", "9-A", "10-B"]);
   const [leaveBalance, setLeaveBalance] = useState({ cl: 8, sl: 5, el: 12, total: 25 });
-  const [todayClasses, setTodayClasses] = useState<ClassScheduleItem[]>([
-    {
-      period: "P1",
-      periodIndex: 1,
-      time: "08:30 AM - 09:15 AM",
-      subject: "Mathematics",
-      class: "8-A",
-      room: "Room 402",
-      status: "Completed",
-    },
-    {
-      period: "P2",
-      periodIndex: 2,
-      time: "09:20 AM - 10:05 AM",
-      subject: "Physics (Lab)",
-      class: "8-B",
-      room: "Physics Lab A",
-      status: "In Progress",
-    },
-    {
-      period: "P3",
-      periodIndex: 3,
-      time: "10:15 AM - 11:00 AM",
-      subject: "Mathematics",
-      class: "9-A",
-      room: "Room 305",
-      status: "Upcoming",
-    },
-    {
-      period: "P4",
-      periodIndex: 4,
-      time: "11:30 AM - 12:15 PM",
-      subject: "Advanced Algebra",
-      class: "10-B",
-      room: "Room 501",
-      status: "Upcoming",
-    },
-    {
-      period: "P5",
-      periodIndex: 5,
-      time: "01:00 PM - 01:45 PM",
-      subject: "Doubt Clearing Session",
-      class: "8-A",
-      room: "Room 402",
-      status: "Upcoming",
-    },
-  ]);
+  const [todayClasses, setTodayClasses] = useState<ClassScheduleItem[]>(() =>
+    calculateClassStatuses(DEFAULT_SCHEDULE_ITEMS)
+  );
+
+  // Automatic real-time period status updater based on live clock time
+  useEffect(() => {
+    const updateSchedule = () => {
+      setTodayClasses(calculateClassStatuses(DEFAULT_SCHEDULE_ITEMS));
+    };
+
+    updateSchedule();
+    const interval = setInterval(updateSchedule, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      setTodayClasses(calculateClassStatuses(DEFAULT_SCHEDULE_ITEMS));
+    }, [])
+  );
 
   const [dynamicTasks, setDynamicTasks] = useState<ActionTaskItem[]>([
     {
@@ -398,7 +469,7 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
     {
       id: "allot-att",
       title: "Attendance",
-      subtitle: "Mark Sessions",
+      subtitle: "View All Classes",
       icon: <ClipboardCheck size={22} color="#ddb7ff" />,
       route: "Attendance",
     },
@@ -1108,8 +1179,8 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
                     <ClipboardCheck size={20} color="#ddb7ff" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-white font-extrabold text-sm" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Mark Attendance</Text>
-                    <Text className="text-white/50 text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Allot student presence for today</Text>
+                    <Text className="text-white font-extrabold text-sm" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Student Attendance</Text>
+                    <Text className="text-white/50 text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>View attendance of all classes & students</Text>
                   </View>
                   <ChevronRight size={16} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
                 </Pressable>
@@ -1313,7 +1384,7 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
                 >
                   <View className="flex-row items-center flex-1 mr-2" style={{ flexWrap: "nowrap" }}>
                     <ClipboardCheck size={18} color="#ddb7ff" style={{ marginRight: 10, flexShrink: 0 }} />
-                    <Text className="text-white font-extrabold text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flexShrink: 1, includeFontPadding: false }}>Mark Attendance</Text>
+                    <Text className="text-white font-extrabold text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flexShrink: 1, includeFontPadding: false }}>Student Attendance</Text>
                   </View>
                   <ChevronRight size={16} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
                 </Pressable>

@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import {
   ArrowLeft,
   Calendar,
@@ -338,7 +339,7 @@ const generateClassTimetable = (cls: string): Record<string, Record<string, Time
 
 export const TeacherTimetableScreen: React.FC<any> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { isSmallPhone, tabBarBottomPadding } = useResponsive();
+  const { isSmallPhone, tabBarBottomPadding, headerPaddingTop } = useResponsive();
   const { user } = useAuthStore();
 
   const [selectedClass, setSelectedClass] = useState<string>('8A');
@@ -643,56 +644,68 @@ export const TeacherTimetableScreen: React.FC<any> = ({ navigation }) => {
   const headerHeight = 34;
 
   return (
-    <View className="flex-1 bg-[#0d0d12]">
-      {/* 1. TOP HEADER */}
+    <View style={styles.container}>
+      {/* Background Deep Gradient */}
       <LinearGradient
-        colors={['#1c162e', '#120f20', '#0d0d12']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={{ paddingTop: Math.max(insets.top, 14), paddingHorizontal: 16, paddingBottom: 12 }}
-        className="border-b border-white/10"
-      >
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center flex-1 mr-2">
-            <Pressable
-              onPress={() => {
-                if (navigation?.canGoBack && navigation.canGoBack()) {
-                  navigation.goBack();
-                } else {
-                  navigation.navigate('Dashboard');
-                }
-              }}
-              className="w-10 h-10 rounded-2xl bg-white/10 border border-white/15 items-center justify-center mr-3 active:bg-white/20"
-              style={{ flexShrink: 0 }}
-            >
-              <ArrowLeft size={19} color="#ddb7ff" />
-            </Pressable>
+        colors={["#22143d", "#150d26", "#0b0912", "#08070d"]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
 
-            <View className="flex-1">
-              <View className="flex-row items-center">
-                <Text className="text-white text-lg font-black tracking-tight mr-2" numberOfLines={1}>
-                  Timetable Designer
-                </Text>
-                <View className="bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-full flex-row items-center">
-                  <Shield size={10} color="#34d399" style={{ marginRight: 3 }} />
-                  <Text className="text-emerald-300 font-extrabold text-[10px]">Read Only</Text>
-                </View>
-              </View>
-
-              {/* Academic Year Dropdown Trigger */}
+      {/* HEADER (Matching Examination Screen Header) */}
+      <View style={{ zIndex: 50 }}>
+        <BlurView intensity={40} tint="dark" style={[styles.header, { paddingTop: headerPaddingTop }]}>
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center flex-1 mr-3">
               <Pressable
-                onPress={() => setShowYearModal(true)}
-                className="flex-row items-center mt-0.5 active:opacity-75"
+                onPress={() => {
+                  if (navigation?.canGoBack && navigation.canGoBack()) {
+                    navigation.goBack();
+                  } else {
+                    navigation.navigate('Dashboard');
+                  }
+                }}
+                className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 items-center justify-center mr-3 active:bg-white/20"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text className="text-[#ddb7ff] text-xs font-semibold mr-1">
-                  Academic Year: {selectedAcademicYear}
-                </Text>
-                <ChevronDown size={13} color="#ddb7ff" />
+                <ArrowLeft size={20} color="#ddb7ff" />
               </Pressable>
+
+              <View className="flex-1 justify-center">
+                <View className="flex-row items-center">
+                  <Text className="text-white text-lg md:text-xl font-extrabold mr-2" numberOfLines={1} style={{ includeFontPadding: false }}>
+                    Timetable Designer
+                  </Text>
+                  <View className="bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 rounded-full flex-row items-center">
+                    <Shield size={10} color="#34d399" style={{ marginRight: 3 }} />
+                    <Text className="text-emerald-300 font-extrabold text-[10px]">Read Only</Text>
+                  </View>
+                </View>
+
+                {/* Academic Year Dropdown Trigger */}
+                <Pressable
+                  onPress={() => setShowYearModal(true)}
+                  className="flex-row items-center mt-0.5 active:opacity-75"
+                  style={{ flexWrap: 'nowrap' }}
+                >
+                  <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" style={{ flexShrink: 0 }} />
+                  <Text
+                    className="text-[#ddb7ff] text-xs font-semibold mr-1"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ flexShrink: 1, includeFontPadding: false }}
+                  >
+                    Academic Year: {selectedAcademicYear}
+                  </Text>
+                  <ChevronDown size={13} color="#ddb7ff" />
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </LinearGradient>
+        </BlurView>
+      </View>
 
       {/* MAIN CONTENT SCROLLVIEW */}
       <ScrollView
@@ -1385,3 +1398,16 @@ export const TeacherTimetableScreen: React.FC<any> = ({ navigation }) => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#08070d',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+});
