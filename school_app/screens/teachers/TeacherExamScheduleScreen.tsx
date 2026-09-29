@@ -222,13 +222,19 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
               >
                 <ArrowLeft size={20} color="#ddb7ff" />
               </Pressable>
-              <View className="flex-1">
-                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1}>
+              <View className="flex-1 justify-center">
+                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1} style={{ includeFontPadding: false }}>
                   Exam Schedule
                 </Text>
-                <View className="flex-row items-center mt-0.5">
-                  <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" />
-                  <Text className="text-[#ddb7ff] text-xs font-semibold">
+                <View className="flex-row items-center mt-0.5" style={{ flexWrap: "nowrap" }}>
+                  <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" style={{ flexShrink: 0 }} />
+                  <Text
+                    className="text-[#ddb7ff] text-xs font-semibold flex-1"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ flexShrink: 1, includeFontPadding: false }}
+                  >
                     Academic Year: 2026-2027 (Current)
                   </Text>
                 </View>
@@ -239,9 +245,10 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
             <Pressable
               onPress={() => setShowExportModal(true)}
               className="px-3.5 py-2 rounded-xl bg-[#ddb7ff]/15 border border-[#ddb7ff]/30 flex-row items-center active:bg-[#ddb7ff]/25"
+              style={{ flexShrink: 0, flexWrap: "nowrap" }}
             >
-              <Download size={14} color="#ddb7ff" style={{ marginRight: 5 }} />
-              <Text className="text-[#ddb7ff] text-xs font-extrabold">Export</Text>
+              <Download size={14} color="#ddb7ff" style={{ marginRight: 5, flexShrink: 0 }} />
+              <Text className="text-[#ddb7ff] text-xs font-extrabold" numberOfLines={1} style={{ flexShrink: 0, includeFontPadding: false }}>Export</Text>
             </Pressable>
           </View>
         </BlurView>
@@ -250,8 +257,8 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
       {/* TOAST MESSAGE */}
       {toastMessage && (
         <View className="absolute top-24 left-4 right-4 z-50 bg-[#2d1b4e] border border-[#ddb7ff]/50 rounded-2xl p-3.5 shadow-2xl flex-row items-center">
-          <CheckCircle2 size={18} color="#00f1a1" style={{ marginRight: 10 }} />
-          <Text className="text-white text-xs md:text-sm font-bold flex-1">{toastMessage}</Text>
+          <CheckCircle2 size={18} color="#00f1a1" style={{ marginRight: 10, flexShrink: 0 }} />
+          <Text className="text-white text-xs md:text-sm font-bold flex-1" style={{ includeFontPadding: false }}>{toastMessage}</Text>
         </View>
       )}
 
@@ -263,54 +270,92 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
           paddingTop: 16,
         }}
       >
-        {/* 4 KPI CARDS (Matching Web App Metrics) */}
-        <View className="flex-row flex-wrap justify-between mb-4" style={{ gap: 10 }}>
-          {/* 1. Upcoming Exams */}
-          <View className="w-[48%] bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white/60 text-[11px] font-bold">Upcoming Exams</Text>
-              <View className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 items-center justify-center">
-                <BookOpen size={16} color="#38bdf8" />
+        {/* 4 KPI CARDS (2x2 Grid with Box Model Protection) */}
+        <View className="mb-4" style={{ gap: 10 }}>
+          {/* Row 1 */}
+          <View className="flex-row" style={{ gap: 10 }}>
+            {/* 1. Upcoming Exams */}
+            <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text
+                  className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  style={{ includeFontPadding: false }}
+                >
+                  Upcoming Exams
+                </Text>
+                <View className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                  <BookOpen size={16} color="#38bdf8" />
+                </View>
               </View>
+              <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>{upcomingCount}</Text>
+              <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>This month</Text>
             </View>
-            <Text className="text-white text-2xl font-black">{upcomingCount}</Text>
-            <Text className="text-white/40 text-[10px] font-medium mt-0.5">This month</Text>
+
+            {/* 2. Class Average */}
+            <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text
+                  className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  style={{ includeFontPadding: false }}
+                >
+                  Class Average
+                </Text>
+                <View className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                  <BarChart2 size={16} color="#34d399" />
+                </View>
+              </View>
+              <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>0.0%</Text>
+              <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>Class 10A • Selected</Text>
+            </View>
           </View>
 
-          {/* 2. Class Average */}
-          <View className="w-[48%] bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white/60 text-[11px] font-bold">Class Average</Text>
-              <View className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center">
-                <BarChart2 size={16} color="#34d399" />
+          {/* Row 2 */}
+          <View className="flex-row" style={{ gap: 10 }}>
+            {/* 3. Top Score */}
+            <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text
+                  className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  style={{ includeFontPadding: false }}
+                >
+                  Top Score
+                </Text>
+                <View className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                  <Award size={16} color="#ddb7ff" />
+                </View>
               </View>
+              <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>0.0%</Text>
+              <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>No score yet</Text>
             </View>
-            <Text className="text-white text-2xl font-black">0.0%</Text>
-            <Text className="text-white/40 text-[10px] font-medium mt-0.5">Class 10A • Selected Exam</Text>
-          </View>
 
-          {/* 3. Top Score */}
-          <View className="w-[48%] bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white/60 text-[11px] font-bold">Top Score</Text>
-              <View className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 items-center justify-center">
-                <Award size={16} color="#ddb7ff" />
+            {/* 4. Results Published */}
+            <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text
+                  className="text-white/60 text-[11px] font-bold flex-1 mr-1"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  style={{ includeFontPadding: false }}
+                >
+                  Results Published
+                </Text>
+                <View className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                  <TrendingUp size={16} color="#facc15" />
+                </View>
               </View>
+              <Text className="text-white text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>{resultsPublishedCount}</Text>
+              <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>Exams</Text>
             </View>
-            <Text className="text-white text-2xl font-black">0.0%</Text>
-            <Text className="text-white/40 text-[10px] font-medium mt-0.5">No score yet</Text>
-          </View>
-
-          {/* 4. Results Published */}
-          <View className="w-[48%] bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-white/60 text-[11px] font-bold">Results Published</Text>
-              <View className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 items-center justify-center">
-                <TrendingUp size={16} color="#facc15" />
-              </View>
-            </View>
-            <Text className="text-white text-2xl font-black">{resultsPublishedCount}</Text>
-            <Text className="text-white/40 text-[10px] font-medium mt-0.5">Exams</Text>
           </View>
         </View>
 
@@ -318,16 +363,17 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
         <View className="mb-4" style={{ gap: 8 }}>
           {/* Search Bar */}
           <View className="flex-row items-center bg-[#181524] border border-white/10 rounded-2xl px-3.5 py-2.5">
-            <Search size={16} color="#ddb7ff" style={{ marginRight: 8 }} />
+            <Search size={16} color="#ddb7ff" style={{ marginRight: 8, flexShrink: 0 }} />
             <TextInput
               placeholder="Search exams by name, class or subject..."
               placeholderTextColor="#ffffff50"
               value={searchQuery}
               onChangeText={setSearchQuery}
               className="flex-1 text-white text-xs font-semibold py-0"
+              style={{ includeFontPadding: false }}
             />
             {searchQuery ? (
-              <Pressable onPress={() => setSearchQuery("")}>
+              <Pressable onPress={() => setSearchQuery("")} style={{ flexShrink: 0 }}>
                 <X size={15} color="#ffffff70" />
               </Pressable>
             ) : null}
@@ -340,10 +386,10 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
               onPress={() => setShowStatusPicker(true)}
               className="flex-1 bg-[#181524] border border-white/10 rounded-xl px-3 py-2.5 flex-row items-center justify-between active:bg-white/10"
             >
-              <Text numberOfLines={1} className="text-white/80 text-xs font-bold mr-1">
+              <Text numberOfLines={1} className="text-white/80 text-xs font-bold mr-1 flex-1" style={{ includeFontPadding: false }}>
                 {selectedStatus}
               </Text>
-              <ChevronDown size={14} color="#ddb7ff" />
+              <ChevronDown size={14} color="#ddb7ff" style={{ flexShrink: 0 }} />
             </Pressable>
 
             {/* Sorting Dropdown Trigger */}
@@ -351,20 +397,20 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
               onPress={() => setShowSortPicker(true)}
               className="flex-1 bg-[#181524] border border-white/10 rounded-xl px-3 py-2.5 flex-row items-center justify-between active:bg-white/10"
             >
-              <Text numberOfLines={1} className="text-white/80 text-xs font-bold mr-1">
+              <Text numberOfLines={1} className="text-white/80 text-xs font-bold mr-1 flex-1" style={{ includeFontPadding: false }}>
                 {selectedSort}
               </Text>
-              <ChevronDown size={14} color="#ddb7ff" />
+              <ChevronDown size={14} color="#ddb7ff" style={{ flexShrink: 0 }} />
             </Pressable>
           </View>
         </View>
 
         {/* LIST OF EXAMS (READ-ONLY FOR TEACHER LOGIN) */}
         <View className="mb-2 flex-row items-center justify-between px-1">
-          <Text className="text-white/70 text-xs font-bold uppercase tracking-wider">
+          <Text className="text-white/70 text-xs font-bold uppercase tracking-wider" numberOfLines={1} style={{ includeFontPadding: false }}>
             Examination List
           </Text>
-          <Text className="text-[#ddb7ff] text-xs font-bold">
+          <Text className="text-[#ddb7ff] text-xs font-bold" numberOfLines={1} style={{ includeFontPadding: false }}>
             {filteredExams.length} {filteredExams.length === 1 ? "Exam" : "Exams"}
           </Text>
         </View>
@@ -372,8 +418,8 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
         {filteredExams.length === 0 ? (
           <View className="bg-[#181524] border border-white/10 rounded-2xl p-8 items-center justify-center my-4">
             <BookOpen size={32} color="#ffffff30" style={{ marginBottom: 8 }} />
-            <Text className="text-white/70 font-bold text-sm">No examinations found</Text>
-            <Text className="text-white/40 text-xs text-center mt-1">
+            <Text className="text-white/70 font-bold text-sm" style={{ includeFontPadding: false }}>No examinations found</Text>
+            <Text className="text-white/40 text-xs text-center mt-1" style={{ includeFontPadding: false }}>
               Try adjusting your search query or status filters.
             </Text>
           </View>
@@ -416,61 +462,65 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
                   {/* Top Section: Icon, Title, Status */}
                   <View className="flex-row items-start mb-3">
                     {/* Left Book Icon Badge */}
-                    <View className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-500/30 items-center justify-center mr-3">
+                    <View className="w-11 h-11 rounded-xl bg-blue-500/15 border border-blue-500/30 items-center justify-center mr-3" style={{ flexShrink: 0 }}>
                       <BookOpen size={20} color="#38bdf8" />
                     </View>
 
-                    <View className="flex-1">
-                      <View className="flex-row items-center flex-wrap" style={{ gap: 6, marginBottom: 2 }}>
-                        <Text className="text-white text-base font-black mr-1">
+                    <View className="flex-1 mr-2">
+                      <View className="flex-row items-center justify-between mb-1" style={{ flexWrap: "nowrap" }}>
+                        <Text className="text-white text-base font-black flex-1 mr-2" numberOfLines={1} style={{ includeFontPadding: false }}>
                           {exam.name}
                         </Text>
                         <View
                           className={`px-2 py-0.5 rounded-md border ${badgeStyle.bg} ${badgeStyle.border}`}
+                          style={{ flexShrink: 0 }}
                         >
-                          <Text className={`text-[10px] font-black ${badgeStyle.text}`}>
+                          <Text className={`text-[10px] font-black ${badgeStyle.text}`} numberOfLines={1} style={{ flexShrink: 0, includeFontPadding: false }}>
                             {exam.status}
                           </Text>
                         </View>
                       </View>
-                      <Text className="text-white/50 text-xs font-medium" numberOfLines={2}>
+                      <Text className="text-white/50 text-xs font-medium" numberOfLines={1} style={{ includeFontPadding: false }}>
                         {exam.classes}
                       </Text>
                     </View>
                   </View>
 
-                  {/* Metadata Info Row */}
-                  <View className="bg-black/30 rounded-xl p-2.5 mb-3.5 flex-row flex-wrap items-center justify-between" style={{ gap: 6 }}>
-                    <View className="flex-row items-center">
-                      <FileText size={12} color="#ddb7ff" style={{ marginRight: 4 }} />
-                      <Text className="text-white/70 text-xs font-semibold">
+                  {/* Structured 2-Tier Metadata Info Strip */}
+                  <View className="bg-black/30 rounded-xl p-3 mb-3.5" style={{ gap: 6 }}>
+                    <View className="flex-row items-center" style={{ flexWrap: "nowrap" }}>
+                      <FileText size={12} color="#ddb7ff" style={{ marginRight: 6, flexShrink: 0 }} />
+                      <Text className="text-white/70 text-xs font-semibold flex-1" numberOfLines={1} style={{ includeFontPadding: false }}>
                         Subjects: <Text className="text-white font-bold">{exam.subjects}</Text>
                       </Text>
                     </View>
 
-                    <View className="flex-row items-center">
-                      <Calendar size={12} color="#ddb7ff" style={{ marginRight: 4 }} />
-                      <Text className="text-white/70 text-xs font-semibold">
-                        Date: <Text className="text-white font-bold">{exam.date}</Text>
-                      </Text>
-                    </View>
+                    <View className="flex-row items-center justify-between pt-1 border-t border-white/5" style={{ flexWrap: "nowrap" }}>
+                      <View className="flex-row items-center flex-1 mr-2" style={{ flexWrap: "nowrap" }}>
+                        <Calendar size={12} color="#ddb7ff" style={{ marginRight: 5, flexShrink: 0 }} />
+                        <Text className="text-white/70 text-xs font-semibold" numberOfLines={1} style={{ includeFontPadding: false }}>
+                          Date: <Text className="text-white font-bold">{exam.date}</Text>
+                        </Text>
+                      </View>
 
-                    <View className="flex-row items-center">
-                      <Award size={12} color="#facc15" style={{ marginRight: 4 }} />
-                      <Text className="text-white/70 text-xs font-semibold">
-                        Max Marks: <Text className="text-[#facc15] font-black">{exam.maxMarks}</Text>
-                      </Text>
+                      <View className="flex-row items-center" style={{ flexShrink: 0, flexWrap: "nowrap" }}>
+                        <Award size={12} color="#facc15" style={{ marginRight: 5, flexShrink: 0 }} />
+                        <Text className="text-white/70 text-xs font-semibold" numberOfLines={1} style={{ flexShrink: 0, includeFontPadding: false }}>
+                          Max Marks: <Text className="text-[#facc15] font-black">{exam.maxMarks}</Text>
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
-                  {/* Action Button Row (Matching Web Application) */}
-                  <View className="flex-row items-center justify-end pt-2 border-t border-white/10">
+                  {/* Action Button Row */}
+                  <View className="flex-row items-center justify-end pt-2 border-t border-white/10" style={{ gap: 8 }}>
                     {exam.status === "Results Published" && (
                       <Pressable
                         onPress={() => navigation.navigate("TeacherExamResults", { examId: exam.id, exam: examPayload })}
-                        className="px-4 py-2 rounded-xl bg-blue-500/20 border border-blue-500/40 flex-row items-center active:bg-blue-500/30"
+                        className="px-3.5 py-1.5 rounded-xl bg-blue-500/20 border border-blue-500/40 flex-row items-center active:bg-blue-500/30"
+                        style={{ flexShrink: 0, flexWrap: "nowrap" }}
                       >
-                        <Text className="text-blue-300 font-extrabold text-xs mr-1">
+                        <Text className="text-blue-300 font-extrabold text-xs mr-1" numberOfLines={1} style={{ flexShrink: 0, includeFontPadding: false }}>
                           View Results
                         </Text>
                         <ChevronRight size={14} color="#93c5fd" />
@@ -480,9 +530,10 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
                     {exam.status === "Completed" && (
                       <Pressable
                         onPress={() => navigation.navigate("MarksEntry", { examId: exam.id, exam: examPayload, selectedClass: targetClass })}
-                        className="px-4 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex-row items-center active:bg-emerald-500/30"
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex-row items-center active:bg-emerald-500/30"
+                        style={{ flexShrink: 0, flexWrap: "nowrap" }}
                       >
-                        <Text className="text-emerald-300 font-extrabold text-xs mr-1">
+                        <Text className="text-emerald-300 font-extrabold text-xs mr-1" numberOfLines={1} style={{ flexShrink: 0, includeFontPadding: false }}>
                           Enter Marks
                         </Text>
                         <ChevronRight size={14} color="#6ee7b7" />
@@ -492,9 +543,10 @@ export const TeacherExamScheduleScreen: React.FC<{ navigation: any }> = ({ navig
                     {exam.status === "Upcoming" && (
                       <Pressable
                         onPress={handleOpenPreview}
-                        className="px-4 py-2 rounded-xl bg-[#ddb7ff]/20 border border-[#ddb7ff]/40 flex-row items-center active:bg-[#ddb7ff]/30"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#ddb7ff]/20 border border-[#ddb7ff]/40 flex-row items-center active:bg-[#ddb7ff]/30"
+                        style={{ flexShrink: 0, flexWrap: "nowrap" }}
                       >
-                        <Text className="text-[#ddb7ff] font-extrabold text-xs mr-1">
+                        <Text className="text-[#ddb7ff] font-extrabold text-xs mr-1" numberOfLines={1} style={{ flexShrink: 0, includeFontPadding: false }}>
                           View Schedule
                         </Text>
                         <ChevronRight size={14} color="#ddb7ff" />

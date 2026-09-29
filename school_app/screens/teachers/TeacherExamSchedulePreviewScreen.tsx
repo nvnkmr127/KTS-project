@@ -525,9 +525,15 @@ export const TeacherExamSchedulePreviewScreen: React.FC<{ navigation: any; route
                 <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1}>
                   Schedule Preview
                 </Text>
-                <View className="flex-row items-center mt-0.5">
-                  <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" />
-                  <Text className="text-[#ddb7ff] text-xs font-semibold">
+                <View className="flex-row items-center mt-0.5" style={{ flexWrap: "nowrap" }}>
+                  <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" style={{ flexShrink: 0 }} />
+                  <Text
+                    className="text-[#ddb7ff] text-xs font-semibold"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ flexShrink: 1, includeFontPadding: false }}
+                  >
                     Academic Year: 2026-2027 (Current)
                   </Text>
                 </View>
@@ -550,56 +556,68 @@ export const TeacherExamSchedulePreviewScreen: React.FC<{ navigation: any; route
         {/* ========================================================= */}
         {!selectedExam && (
           <View>
-            {/* 4 KPI CARDS */}
-            <View className="flex-row flex-wrap justify-between mb-4" style={{ gap: 10 }}>
-              <View className="w-[48%] bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/60 text-[11px] font-bold">Upcoming Exams</Text>
-                  <View className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 items-center justify-center">
-                    <BookOpen size={16} color="#38bdf8" />
+            {/* 4 KPI CARDS (2x2 Grid) */}
+            <View className="mb-4" style={{ gap: 10 }}>
+              <View className="flex-row" style={{ gap: 10 }}>
+                <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-white/60 text-[11px] font-bold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flexShrink: 1, includeFontPadding: false }}>
+                      Upcoming Exams
+                    </Text>
+                    <View className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                      <BookOpen size={16} color="#38bdf8" />
+                    </View>
                   </View>
+                  <Text className="text-white text-2xl font-black" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>0</Text>
+                  <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>This month</Text>
                 </View>
-                <Text className="text-white text-2xl font-black">0</Text>
-                <Text className="text-white/40 text-[10px] font-medium mt-0.5">This month</Text>
+
+                <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-white/60 text-[11px] font-bold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flexShrink: 1, includeFontPadding: false }}>
+                      Class Average
+                    </Text>
+                    <View className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                      <BarChart2 size={16} color="#34d399" />
+                    </View>
+                  </View>
+                  <Text className="text-white text-2xl font-black" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>0.0%</Text>
+                  <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>Class 10A • Selected Exam</Text>
+                </View>
               </View>
 
-              <View className="w-[48%] bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/60 text-[11px] font-bold">Class Average</Text>
-                  <View className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 items-center justify-center">
-                    <BarChart2 size={16} color="#34d399" />
+              <View className="flex-row" style={{ gap: 10 }}>
+                <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-white/60 text-[11px] font-bold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flexShrink: 1, includeFontPadding: false }}>
+                      Top Score
+                    </Text>
+                    <View className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                      <Award size={16} color="#ddb7ff" />
+                    </View>
                   </View>
+                  <Text className="text-white text-2xl font-black" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>0.0%</Text>
+                  <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>No score yet</Text>
                 </View>
-                <Text className="text-white text-2xl font-black">0.0%</Text>
-                <Text className="text-white/40 text-[10px] font-medium mt-0.5">Class 10A • Selected Exam</Text>
-              </View>
 
-              <View className="w-[48%] bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/60 text-[11px] font-bold">Top Score</Text>
-                  <View className="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 items-center justify-center">
-                    <Award size={16} color="#ddb7ff" />
+                <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-white/60 text-[11px] font-bold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flexShrink: 1, includeFontPadding: false }}>
+                      Results Published
+                    </Text>
+                    <View className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 items-center justify-center" style={{ flexShrink: 0 }}>
+                      <TrendingUp size={16} color="#facc15" />
+                    </View>
                   </View>
+                  <Text className="text-white text-2xl font-black" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>1</Text>
+                  <Text className="text-white/40 text-[10px] font-medium mt-0.5" numberOfLines={1} style={{ includeFontPadding: false }}>Exams</Text>
                 </View>
-                <Text className="text-white text-2xl font-black">0.0%</Text>
-                <Text className="text-white/40 text-[10px] font-medium mt-0.5">No score yet</Text>
-              </View>
-
-              <View className="w-[48%] bg-[#181524] border border-white/10 rounded-2xl p-3.5 shadow-md relative overflow-hidden">
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-white/60 text-[11px] font-bold">Results Published</Text>
-                  <View className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/30 items-center justify-center">
-                    <TrendingUp size={16} color="#facc15" />
-                  </View>
-                </View>
-                <Text className="text-white text-2xl font-black">1</Text>
-                <Text className="text-white/40 text-[10px] font-medium mt-0.5">Exams</Text>
               </View>
             </View>
 
             {/* SECTION HEADING */}
             <View className="mb-3 px-1">
-              <Text className="text-white text-base font-extrabold">
+              <Text className="text-white text-base font-extrabold" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>
                 Select an Exam to preview its schedule
               </Text>
             </View>
@@ -617,8 +635,8 @@ export const TeacherExamSchedulePreviewScreen: React.FC<{ navigation: any; route
                     className="bg-[#181524] border border-white/10 rounded-2xl p-4 active:bg-white/10 active:border-[#ddb7ff]/40 shadow-lg relative overflow-hidden"
                     style={{ borderRadius: 16 }}
                   >
-                    <View className="flex-row items-start justify-between mb-2.5">
-                      <Text className="text-white text-base font-black flex-1 mr-2">
+                    <View className="flex-row items-center justify-between mb-2.5">
+                      <Text className="text-white text-base font-black flex-1 mr-2" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>
                         {exam.name}
                       </Text>
                       <View
@@ -627,11 +645,14 @@ export const TeacherExamSchedulePreviewScreen: React.FC<{ navigation: any; route
                             ? "bg-emerald-500/20 border-emerald-500/40"
                             : "bg-white/5 border-white/15"
                         }`}
+                        style={{ flexShrink: 0 }}
                       >
                         <Text
                           className={`text-[10px] font-black ${
                             isScheduled ? "text-emerald-300" : "text-white/50"
                           }`}
+                          numberOfLines={1}
+                          style={{ includeFontPadding: false }}
                         >
                           {isScheduled ? "Scheduled" : "Not Scheduled"}
                         </Text>
@@ -639,26 +660,26 @@ export const TeacherExamSchedulePreviewScreen: React.FC<{ navigation: any; route
                     </View>
 
                     <View className="bg-black/30 rounded-xl p-2.5 mb-3" style={{ gap: 4 }}>
-                      <Text className="text-white/50 text-xs">
+                      <Text className="text-white/50 text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>
                         <Text className="text-white/80 font-bold">Classes: </Text>
                         {exam.classes}
                       </Text>
-                      <Text className="text-white/50 text-xs">
+                      <Text className="text-white/50 text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>
                         <Text className="text-white/80 font-bold">Subject: </Text>
                         {exam.subjects}
                       </Text>
-                      <Text className="text-white/50 text-xs">
+                      <Text className="text-white/50 text-xs" numberOfLines={1} style={{ includeFontPadding: false }}>
                         <Text className="text-white/80 font-bold">Date: </Text>
                         {formatToDDMMYYYY(exam.date)}
                       </Text>
                     </View>
 
                     <View className="flex-row items-center justify-between pt-2 border-t border-white/10">
-                      <Text className="text-white/50 text-xs font-semibold">
+                      <Text className="text-white/50 text-xs font-semibold" numberOfLines={1} style={{ includeFontPadding: false }}>
                         {totalEntries} entries scheduled
                       </Text>
-                      <View className="flex-row items-center">
-                        <Text className="text-[#38bdf8] text-xs font-extrabold mr-1">
+                      <View className="flex-row items-center" style={{ flexShrink: 0 }}>
+                        <Text className="text-[#38bdf8] text-xs font-extrabold mr-1" numberOfLines={1} style={{ includeFontPadding: false }}>
                           View Schedule →
                         </Text>
                       </View>

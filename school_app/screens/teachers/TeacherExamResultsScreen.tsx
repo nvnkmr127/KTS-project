@@ -481,9 +481,14 @@ export const TeacherExamResultsScreen: React.FC<{ navigation: any; route?: any }
                 <Text style={{ color: "#ffffff", fontSize: 18, fontWeight: "900" }} numberOfLines={1}>
                   Results & Rankings
                 </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#00f1a1", marginRight: 6 }} />
-                  <Text style={{ color: "#ddb7ff", fontSize: 11, fontWeight: "700" }}>
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2, flexWrap: "nowrap" }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#00f1a1", marginRight: 6, flexShrink: 0 }} />
+                  <Text
+                    style={{ color: "#ddb7ff", fontSize: 11, fontWeight: "700", flexShrink: 1, includeFontPadding: false }}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                  >
                     ACADEMIC YEAR: 2026-2027 (Current)
                   </Text>
                 </View>
@@ -510,55 +515,59 @@ export const TeacherExamResultsScreen: React.FC<{ navigation: any; route?: any }
         }}
       >
         {/* 4 KPI CARDS (2x2 Grid) */}
-        <View style={styles.kpiGrid}>
-          {/* 1. Upcoming Exams */}
-          <View style={styles.kpiCard}>
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Upcoming Exams</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(56, 189, 248, 0.15)", borderColor: "rgba(56, 189, 248, 0.3)" }]}>
-                <BookOpen size={14} color="#38bdf8" />
+        <View style={{ gap: 10, marginBottom: 16 }}>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* 1. Upcoming Exams */}
+            <View style={[styles.kpiCard, { flex: 1, width: undefined }]}>
+              <View style={styles.kpiTopRow}>
+                <Text style={styles.kpiTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Upcoming Exams</Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(56, 189, 248, 0.15)", borderColor: "rgba(56, 189, 248, 0.3)", flexShrink: 0 }]}>
+                  <BookOpen size={14} color="#38bdf8" />
+                </View>
               </View>
+              <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>1</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>This month</Text>
             </View>
-            <Text style={styles.kpiValue}>1</Text>
-            <Text style={styles.kpiSub}>This month</Text>
+
+            {/* 2. Class Average */}
+            <View style={[styles.kpiCard, { flex: 1, width: undefined }]}>
+              <View style={styles.kpiTopRow}>
+                <Text style={styles.kpiTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Class Average</Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(52, 211, 153, 0.15)", borderColor: "rgba(52, 211, 153, 0.3)", flexShrink: 0 }]}>
+                  <BarChart2 size={14} color="#34d399" />
+                </View>
+              </View>
+              <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{classAvgDisplay}</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>{selectedClass} · Selected Exam</Text>
+            </View>
           </View>
 
-          {/* 2. Class Average */}
-          <View style={styles.kpiCard}>
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Class Average</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(52, 211, 153, 0.15)", borderColor: "rgba(52, 211, 153, 0.3)" }]}>
-                <BarChart2 size={14} color="#34d399" />
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {/* 3. Top Score */}
+            <View style={[styles.kpiCard, { flex: 1, width: undefined }]}>
+              <View style={styles.kpiTopRow}>
+                <Text style={styles.kpiTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Top Score</Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(168, 85, 247, 0.15)", borderColor: "rgba(168, 85, 247, 0.3)", flexShrink: 0 }]}>
+                  <Award size={14} color="#ddb7ff" />
+                </View>
               </View>
+              <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>{topScoreDisplay}</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>
+                {topStudentName}
+              </Text>
             </View>
-            <Text style={styles.kpiValue}>{classAvgDisplay}</Text>
-            <Text style={styles.kpiSub} numberOfLines={1}>{selectedClass} · Selected Exam</Text>
-          </View>
 
-          {/* 3. Top Score */}
-          <View style={styles.kpiCard}>
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Top Score</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(168, 85, 247, 0.15)", borderColor: "rgba(168, 85, 247, 0.3)" }]}>
-                <Award size={14} color="#ddb7ff" />
+            {/* 4. Results Published */}
+            <View style={[styles.kpiCard, { flex: 1, width: undefined }]}>
+              <View style={styles.kpiTopRow}>
+                <Text style={styles.kpiTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Results Published</Text>
+                <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(250, 204, 21, 0.15)", borderColor: "rgba(250, 204, 21, 0.3)", flexShrink: 0 }]}>
+                  <TrendingUp size={14} color="#facc15" />
+                </View>
               </View>
+              <Text style={styles.kpiValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>1</Text>
+              <Text style={styles.kpiSub} numberOfLines={1}>Exams</Text>
             </View>
-            <Text style={styles.kpiValue} numberOfLines={1}>{topScoreDisplay}</Text>
-            <Text style={styles.kpiSub} numberOfLines={1}>
-              {topStudentName}
-            </Text>
-          </View>
-
-          {/* 4. Results Published */}
-          <View style={styles.kpiCard}>
-            <View style={styles.kpiTopRow}>
-              <Text style={styles.kpiTitle} numberOfLines={1}>Results Published</Text>
-              <View style={[styles.kpiIconWrapper, { backgroundColor: "rgba(250, 204, 21, 0.15)", borderColor: "rgba(250, 204, 21, 0.3)" }]}>
-                <TrendingUp size={14} color="#facc15" />
-              </View>
-            </View>
-            <Text style={styles.kpiValue}>1</Text>
-            <Text style={styles.kpiSub}>Exams</Text>
           </View>
         </View>
 
@@ -580,13 +589,16 @@ export const TeacherExamResultsScreen: React.FC<{ navigation: any; route?: any }
                 style={[
                   styles.tabButton,
                   t.active ? styles.tabButtonActive : styles.tabButtonInactive,
+                  { flexShrink: 0 },
                 ]}
               >
                 <Text
                   style={[
                     styles.tabButtonText,
                     t.active ? styles.tabButtonTextActive : styles.tabButtonTextInactive,
+                    { includeFontPadding: false },
                   ]}
+                  numberOfLines={1}
                 >
                   {t.label}
                 </Text>
@@ -600,11 +612,11 @@ export const TeacherExamResultsScreen: React.FC<{ navigation: any; route?: any }
           {/* Header & View Mode Switcher */}
           <View style={{ marginBottom: 14, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255, 255, 255, 0.1)" }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "900" }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                   Results — {currentExam.name}
                 </Text>
-                <Text style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 11, fontWeight: "500", marginTop: 2 }}>
+                <Text style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 11, fontWeight: "500", marginTop: 2 }} numberOfLines={1}>
                   Rankings based on overall percentage obtained
                 </Text>
               </View>
@@ -634,12 +646,12 @@ export const TeacherExamResultsScreen: React.FC<{ navigation: any; route?: any }
                 style={styles.dropdownTriggerClass}
               >
                 <View style={{ flex: 1, marginRight: 4 }}>
-                  <Text style={styles.dropdownLabel}>Class</Text>
-                  <Text style={styles.dropdownValue} numberOfLines={1}>
+                  <Text style={styles.dropdownLabel} numberOfLines={1}>Class</Text>
+                  <Text style={styles.dropdownValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                     {selectedClass}
                   </Text>
                 </View>
-                <ChevronDown size={14} color="#ddb7ff" />
+                <ChevronDown size={14} color="#ddb7ff" style={{ flexShrink: 0 }} />
               </Pressable>
 
               {/* Exam Dropdown */}
@@ -648,12 +660,12 @@ export const TeacherExamResultsScreen: React.FC<{ navigation: any; route?: any }
                 style={styles.dropdownTriggerExam}
               >
                 <View style={{ flex: 1, marginRight: 4 }}>
-                  <Text style={styles.dropdownLabel}>Exam</Text>
-                  <Text style={styles.dropdownValue} numberOfLines={1}>
+                  <Text style={styles.dropdownLabel} numberOfLines={1}>Exam</Text>
+                  <Text style={styles.dropdownValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                     {currentExam.name}
                   </Text>
                 </View>
-                <ChevronDown size={14} color="#ddb7ff" />
+                <ChevronDown size={14} color="#ddb7ff" style={{ flexShrink: 0 }} />
               </Pressable>
             </View>
           </View>

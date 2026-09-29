@@ -29,19 +29,19 @@ export const TeacherExaminationScreen: React.FC<{ navigation: any }> = ({ naviga
   const insets = useSafeAreaInsets();
   const { headerPaddingTop } = useResponsive();
 
+  const handleBack = useCallback(() => {
+    navigation.navigate("Dashboard");
+  }, [navigation]);
+
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
-        if (navigation?.canGoBack && navigation.canGoBack()) {
-          navigation.goBack();
-        } else {
-          navigation.navigate("TeacherHome");
-        }
+        handleBack();
         return true;
       };
       const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
       return () => subscription.remove();
-    }, [navigation])
+    }, [handleBack])
   );
 
   const examOptions: ExamBarOption[] = [
@@ -108,25 +108,25 @@ export const TeacherExaminationScreen: React.FC<{ navigation: any }> = ({ naviga
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center flex-1 mr-3">
               <Pressable
-                onPress={() => {
-                  if (navigation?.canGoBack && navigation.canGoBack()) {
-                    navigation.goBack();
-                  } else {
-                    navigation.navigate("TeacherHome");
-                  }
-                }}
+                onPress={handleBack}
                 className="w-10 h-10 rounded-xl bg-white/10 border border-white/15 items-center justify-center mr-3 active:bg-white/20"
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <ArrowLeft size={20} color="#ddb7ff" />
               </Pressable>
-              <View className="flex-1">
-                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1}>
+              <View className="flex-1 justify-center">
+                <Text className="text-white text-lg md:text-xl font-extrabold" numberOfLines={1} style={{ includeFontPadding: false }}>
                   Examination
                 </Text>
-                <View className="flex-row items-center mt-0.5">
-                  <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" />
-                  <Text className="text-[#ddb7ff] text-xs font-semibold">
+                <View className="flex-row items-center mt-0.5" style={{ flexWrap: "nowrap" }}>
+                  <View className="w-2 h-2 rounded-full bg-[#00f1a1] mr-1.5" style={{ flexShrink: 0 }} />
+                  <Text
+                    className="text-[#ddb7ff] text-xs font-semibold flex-1"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.85}
+                    style={{ flexShrink: 1, includeFontPadding: false }}
+                  >
                     Academic Session 2025-26
                   </Text>
                 </View>
@@ -146,10 +146,10 @@ export const TeacherExaminationScreen: React.FC<{ navigation: any }> = ({ naviga
       >
         {/* TOP HEADING TEXT (NO BORDER BOX, CLEAN TEXT) */}
         <View className="mb-5 px-1">
-          <Text className="text-white text-xl md:text-2xl font-black">
+          <Text className="text-white text-xl md:text-2xl font-black" numberOfLines={1} style={{ includeFontPadding: false }}>
             Examination Portal
           </Text>
-          <Text className="text-white/60 text-xs md:text-sm font-medium mt-1 leading-relaxed">
+          <Text className="text-white/60 text-xs md:text-sm font-medium mt-1 leading-relaxed" numberOfLines={2} style={{ includeFontPadding: false }}>
             Select an option below to manage schedules, marks, rankings and duties.
           </Text>
         </View>
@@ -173,35 +173,46 @@ export const TeacherExaminationScreen: React.FC<{ navigation: any }> = ({ naviga
                   height: 48,
                   borderRadius: 12,
                   marginRight: 16, // Fixed gap between icon and text
+                  flexShrink: 0,
                 }}
               >
                 {option.icon}
               </View>
 
               {/* Text Info */}
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <View className="flex-row items-center flex-wrap" style={{ gap: 8, marginBottom: 3 }}>
-                  <Text className="text-white text-base font-extrabold">
+              <View style={{ flex: 1, marginRight: 10, justifyContent: "center" }}>
+                <View className="flex-row items-center" style={{ gap: 8, marginBottom: 3, flexWrap: "nowrap" }}>
+                  <Text
+                    className="text-white text-base font-extrabold"
+                    numberOfLines={1}
+                    style={{ flexShrink: 1, includeFontPadding: false }}
+                  >
                     {option.title}
                   </Text>
                   {option.badge && (
                     <View
                       className="px-2 py-0.5 rounded-md border"
                       style={{
+                        flexShrink: 0,
                         backgroundColor: `${option.badgeColor}20`,
                         borderColor: `${option.badgeColor}50`,
                       }}
                     >
                       <Text
                         className="text-[10px] font-black"
-                        style={{ color: option.badgeColor }}
+                        numberOfLines={1}
+                        style={{ color: option.badgeColor, flexShrink: 0, includeFontPadding: false }}
                       >
                         {option.badge}
                       </Text>
                     </View>
                   )}
                 </View>
-                <Text className="text-white/50 text-xs font-medium" numberOfLines={1}>
+                <Text
+                  className="text-white/50 text-xs font-medium"
+                  numberOfLines={1}
+                  style={{ includeFontPadding: false }}
+                >
                   {option.subtitle}
                 </Text>
               </View>
@@ -209,7 +220,7 @@ export const TeacherExaminationScreen: React.FC<{ navigation: any }> = ({ naviga
               {/* Right Arrow */}
               <View
                 className="w-8 h-8 rounded-full bg-white/5 items-center justify-center border border-white/10"
-                style={{ width: 32, height: 32, borderRadius: 16 }}
+                style={{ width: 32, height: 32, borderRadius: 16, flexShrink: 0 }}
               >
                 <ChevronRight size={18} color="#ddb7ff" />
               </View>

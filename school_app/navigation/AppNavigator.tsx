@@ -22,7 +22,7 @@ import {
   GraduationCap, Banknote, Bus, ClipboardCheck, 
   ClipboardList, Star, CalendarOff, Users, 
   BarChart, Megaphone, Settings, FileText, Sliders, History,
-  Award, Eye, ShieldAlert, Edit3
+  Award, Eye, ShieldAlert, Edit3, TrendingUp, CalendarCheck
 } from 'lucide-react-native';
 
 // Auth Screens
@@ -100,6 +100,8 @@ import { TeacherExamScheduleScreen } from '../screens/teachers/TeacherExamSchedu
 import { TeacherExamResultsScreen } from '../screens/teachers/TeacherExamResultsScreen';
 import { TeacherExamSchedulePreviewScreen } from '../screens/teachers/TeacherExamSchedulePreviewScreen';
 import { TeacherExamInvigilationScreen } from '../screens/teachers/TeacherExamInvigilationScreen';
+import { TeacherPerformanceScreen } from '../screens/teachers/TeacherPerformanceScreen';
+import TeacherHolidayCalendarScreen from '../screens/teachers/TeacherHolidayCalendarScreen';
 
 // Parent Screens
 import ParentDashboard from '../screens/parents/ParentDashboard';
@@ -249,6 +251,68 @@ const TeacherTabs = () => (
     <Tab.Screen name="MySalary" component={TeacherSalaryScreen} options={getTabOptions(Banknote, '#ddb7ff', 'My Salary')} />
     <Tab.Screen name="Settings" component={TeacherSettingsScreen} options={getTabOptions(Settings, '#ddb7ff', 'Settings')} />
     
+    {/* Additional Teacher Screens (Preserves Bottom Tab Bar) */}
+    <Tab.Screen 
+      name="Attendance" 
+      component={AttendanceMarkingScreen} 
+      options={{ ...getTabOptions(ClipboardCheck, '#ddb7ff', 'Attendance'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="Timetable" 
+      component={TimetableBuilderScreen} 
+      options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Time Table'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TimetableBuilder" 
+      component={TimetableBuilderScreen} 
+      options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Time Table'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="Performance" 
+      component={TeacherPerformanceScreen} 
+      options={{ ...getTabOptions(TrendingUp, '#ddb7ff', 'Performance'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherPerformance" 
+      component={TeacherPerformanceScreen} 
+      options={{ ...getTabOptions(TrendingUp, '#ddb7ff', 'Performance'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="StudentPerformance" 
+      component={TeacherPerformanceScreen} 
+      options={{ ...getTabOptions(TrendingUp, '#ddb7ff', 'Performance'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="HolidayCalendar" 
+      component={TeacherHolidayCalendarScreen} 
+      options={{ ...getTabOptions(CalendarCheck, '#ddb7ff', 'Holiday Calendar'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherHolidayCalendar" 
+      component={TeacherHolidayCalendarScreen} 
+      options={{ ...getTabOptions(CalendarCheck, '#ddb7ff', 'Holiday Calendar'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherCommunication" 
+      component={MessagingScreen} 
+      options={{ ...getTabOptions(MessageCircle, '#ddb7ff', 'Messages'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="Leave" 
+      component={LeaveApplicationScreen} 
+      options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Leave Requests'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="LeaveApplication" 
+      component={LeaveApplicationScreen} 
+      options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Leave Requests'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherLeave" 
+      component={LeaveApplicationScreen} 
+      options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Leave Requests'), tabBarItemStyle: { display: 'none' } }} 
+    />
+
     {/* Examination & Sub-Screens (Preserves Bottom Tab Bar) */}
     <Tab.Screen 
       name="Examination" 
@@ -363,11 +427,17 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="Messaging" component={MessagingScreen} />
       <Stack.Screen name="TeacherCommunication" component={MessagingScreen} />
       <Stack.Screen name="EnquiryLeads" component={EnquiryLeadsScreen} />
-      <Stack.Screen name="StudentPerformance" component={StudentPerformanceScreen} />
+      <Stack.Screen 
+        name="StudentPerformance" 
+        component={user?.role === 'teacher' ? TeacherPerformanceScreen : StudentPerformanceScreen} 
+      />
+      <Stack.Screen name="TeacherPerformance" component={TeacherPerformanceScreen} />
       <Stack.Screen name="StudentDirectory" component={StudentDirectoryScreen} />
       <Stack.Screen name="Students" component={StudentDirectoryScreen} />
       <Stack.Screen name="SubstitutionManagement" component={SubstitutionManagementScreen} />
       <Stack.Screen name="LeaveApplication" component={LeaveApplicationScreen} />
+      <Stack.Screen name="Leave" component={LeaveApplicationScreen} />
+      <Stack.Screen name="TeacherLeave" component={LeaveApplicationScreen} />
       <Stack.Screen name="AnalyticsDashboard" component={AnalyticsDashboardScreen} />
       <Stack.Screen name="DailyDiary" component={DailyDiaryScreen} />
       <Stack.Screen name="HomeworkAssignments" component={HomeworkAssignmentsScreen} />
@@ -384,7 +454,10 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="TimetableBuilder" component={TimetableBuilderScreen} />
       <Stack.Screen name="Timetable" component={TimetableBuilderScreen} />
       <Stack.Screen name="TimeTable" component={TimetableBuilderScreen} />
-      <Stack.Screen name="Performance" component={StudentPerformanceScreen} />
+      <Stack.Screen 
+        name="Performance" 
+        component={user?.role === 'teacher' ? TeacherPerformanceScreen : StudentPerformanceScreen} 
+      />
       <Stack.Screen name="SchoolFacilities" component={SchoolFacilitiesScreen} />
       <Stack.Screen name="AttendanceMarking" component={AttendanceMarkingScreen} />
       <Stack.Screen name="AllotAttendance" component={AttendanceMarkingScreen} />
@@ -423,7 +496,8 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="ClassPromotions" component={ClassPromotionsScreen} />
       <Stack.Screen name="AlumniManagement" component={AlumniManagementScreen} />
       <Stack.Screen name="FeeCategory" component={FeeCategoryScreen} />
-      <Stack.Screen name="HolidayCalendar" component={HolidayCalendarScreen} />
+      <Stack.Screen name="HolidayCalendar" component={user?.role === 'teacher' ? TeacherHolidayCalendarScreen : HolidayCalendarScreen} />
+      <Stack.Screen name="TeacherHolidayCalendar" component={TeacherHolidayCalendarScreen} />
       <Stack.Screen name="AddStudent" component={AddStudentScreen} />
       <Stack.Screen name="RecycleBin" component={RecycleBinScreen} />
       <Stack.Screen name="ClassManagement" component={ClassManagementScreen} />
