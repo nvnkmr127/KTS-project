@@ -101,6 +101,11 @@ export const CustomTabBar = ({
           const isParent = role === "parent";
           const hasManyTabs = visibleRoutes.length > 5;
           const currentRouteName = state.routes[state.index]?.name;
+          const isAttendanceSubRoute = [
+            "AllotAttendance",
+            "TeacherAllotAttendance",
+          ].includes(currentRouteName);
+
           const isExamSubRoute = [
             "ExamSchedule",
             "Schedule",
@@ -130,6 +135,7 @@ export const CustomTabBar = ({
 
             const isFocused =
               state.routes[state.index]?.key === route.key ||
+              (isAttendanceSubRoute && (route.name === "AllotAttendance" || route.name === "TeacherAllotAttendance")) ||
               (isExamSubRoute &&
                 (route.name === "Schedule" ||
                   route.name === "ExamSchedule" ||
@@ -182,17 +188,19 @@ export const CustomTabBar = ({
                     size: isSmallPhone ? 18 : 20,
                   })}
                 <Text
-                  numberOfLines={1}
+                  numberOfLines={2}
                   ellipsizeMode="tail"
                   style={{
                     color: isFocused ? activeColor : inactiveColor,
-                    fontSize: isSmallPhone ? 8.5 : hasManyTabs ? 9 : 10,
-                    marginTop: isSmallPhone ? 2 : 4,
+                    fontSize: isSmallPhone ? 8.5 : hasManyTabs ? 9 : 9.5,
+                    lineHeight: isSmallPhone ? 10 : 11.5,
+                    marginTop: isSmallPhone ? 2 : 3,
                     fontWeight: isFocused ? "bold" : "600",
-                    letterSpacing: hasManyTabs ? 0.1 : 0.4,
+                    letterSpacing: hasManyTabs ? 0.1 : 0.2,
+                    textAlign: "center",
                   }}
                 >
-                  {label as string}
+                  {typeof label === "string" && label.toLowerCase() === "allot attendance" ? "Allot\nAttendance" : (label as string)}
                 </Text>
               </Pressable>
             );

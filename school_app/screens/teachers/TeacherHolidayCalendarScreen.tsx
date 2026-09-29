@@ -112,7 +112,7 @@ const calculateDurationDays = (startIso: string, endIso: string): number => {
   }
 };
 
-const DEFAULT_HOLIDAYS: HolidayItem[] = [
+export const DEFAULT_HOLIDAYS: HolidayItem[] = [
   {
     id: "hol_1",
     title: "Independence Day",
@@ -371,23 +371,68 @@ export const TeacherHolidayCalendarScreen: React.FC<{ navigation: any }> = ({
   const firstDayWeekdayIndex = new Date(calendarYear, calendarMonth, 1).getDay(); // 0 = Sunday
 
   const calendarWeeks = useMemo(() => {
-    const totalSlots: ({ dayNum: number; fullDateStr: string; isSunday: boolean } | null)[] = [];
-    for (let i = 0; i < firstDayWeekdayIndex; i++) {
-      totalSlots.push(null);
-    }
-    for (let d = 1; d <= daysInMonthCount; d++) {
-      const dayOfWeek = (firstDayWeekdayIndex + d - 1) % 7;
-      const monthStr = String(calendarMonth + 1).padStart(2, "0");
-      const dayStr = String(d).padStart(2, "0");
+    const totalSlots: {
+      dayNum: number;
+      fullDateStr: string;
+      isSunday: boolean;
+      isOtherMonth: boolean;
+      isPrevMonth?: boolean;
+      isNextMonth?: boolean;
+    }[] = [];
+
+    // Prev month details
+    const prevMonth = calendarMonth === 0 ? 11 : calendarMonth - 1;
+    const prevYear = calendarMonth === 0 ? calendarYear - 1 : calendarYear;
+    const daysInPrevMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+
+    // Next month details
+    const nextMonth = calendarMonth === 11 ? 0 : calendarMonth + 1;
+    const nextYear = calendarMonth === 11 ? calendarYear + 1 : calendarYear;
+
+    // 1. Previous month leading days
+    for (let i = firstDayWeekdayIndex - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const dayOfWeek = (firstDayWeekdayIndex - 1 - i) % 7;
+      const mStr = String(prevMonth + 1).padStart(2, "0");
+      const dStr = String(d).padStart(2, "0");
       totalSlots.push({
         dayNum: d,
-        fullDateStr: `${calendarYear}-${monthStr}-${dayStr}`,
+        fullDateStr: `${prevYear}-${mStr}-${dStr}`,
         isSunday: dayOfWeek === 0,
+        isOtherMonth: true,
+        isPrevMonth: true,
       });
     }
-    while (totalSlots.length % 7 !== 0) {
-      totalSlots.push(null);
+
+    // 2. Current month days
+    for (let d = 1; d <= daysInMonthCount; d++) {
+      const dayOfWeek = (firstDayWeekdayIndex + d - 1) % 7;
+      const mStr = String(calendarMonth + 1).padStart(2, "0");
+      const dStr = String(d).padStart(2, "0");
+      totalSlots.push({
+        dayNum: d,
+        fullDateStr: `${calendarYear}-${mStr}-${dStr}`,
+        isSunday: dayOfWeek === 0,
+        isOtherMonth: false,
+      });
     }
+
+    // 3. Next month trailing days to complete last week
+    let nextDayNum = 1;
+    while (totalSlots.length % 7 !== 0) {
+      const dayOfWeek = totalSlots.length % 7;
+      const mStr = String(nextMonth + 1).padStart(2, "0");
+      const dStr = String(nextDayNum).padStart(2, "0");
+      totalSlots.push({
+        dayNum: nextDayNum,
+        fullDateStr: `${nextYear}-${mStr}-${dStr}`,
+        isSunday: dayOfWeek === 0,
+        isOtherMonth: true,
+        isNextMonth: true,
+      });
+      nextDayNum++;
+    }
+
     const weeks: (typeof totalSlots)[] = [];
     for (let i = 0; i < totalSlots.length; i += 7) {
       weeks.push(totalSlots.slice(i, i + 7));
@@ -733,37 +778,21 @@ export const TeacherHolidayCalendarScreen: React.FC<{ navigation: any }> = ({
                       style={{ flexDirection: "row", width: "100%", marginBottom: 6 }}
                     >
                       {week.map((cell, colIdx) => {
-                        if (!cell) {
-                          return (
-                            <View
-                              key={`empty_${colIdx}`}
-                              style={{ width: `${100 / 7}%`, paddingHorizontal: 2 }}
-                            >
-                              <View
-                                style={{
-                                  width: "100%",
-                                  minHeight: 58,
-                                  borderRadius: 10,
-                                  backgroundColor: "rgba(255,255,255,0.02)",
-                                  borderWidth: 1,
-                                  borderColor: "rgba(255,255,255,0.04)",
-                                }}
-                              />
-                            </View>
-                          );
-                        }
-
-                        const { dayNum, fullDateStr, isSunday } = cell;
+                        const { dayNum, fullDateStr, isSunday, isOtherMonth, isPrevMonth, isNextMonth } = cell;
                         const holidayOnDay = findHolidayForDate(fullDateStr);
 
                         return (
                           <View
-                            key={`day_${dayNum}`}
+                            key={`day_${fullDateStr}_${colIdx}`}
                             style={{ width: `${100 / 7}%`, paddingHorizontal: 2 }}
                           >
                             <Pressable
                               onPress={() => {
-                                if (holidayOnDay) {
+                                if (isPrevMonth) {
+                                  handlePrevMonth();
+                                } else if (isNextMonth) {
+                                  handleNextMonth();
+                                } else if (holidayOnDay) {
                                   setSelectedHolidayDetail(holidayOnDay);
                                 }
                               }}
@@ -777,7 +806,13 @@ export const TeacherHolidayCalendarScreen: React.FC<{ navigation: any }> = ({
                                   flexDirection: "column",
                                   justifyContent: "space-between",
                                 },
-                                isSunday
+                                isOtherMonth
+                                  ? {
+                                      backgroundColor: "rgba(255, 255, 255, 0.02)",
+                                      borderColor: "rgba(255, 255, 255, 0.05)",
+                                      opacity: 0.55,
+                                    }
+                                  : isSunday
                                   ? {
                                       backgroundColor: "rgba(244, 63, 94, 0.12)",
                                       borderColor: "rgba(244, 63, 94, 0.35)",
@@ -805,14 +840,14 @@ export const TeacherHolidayCalendarScreen: React.FC<{ navigation: any }> = ({
                                 <Text
                                   style={{
                                     fontSize: 11,
-                                    fontWeight: "900",
-                                    color: isSunday ? "#fb7185" : "#ffffff",
+                                    fontWeight: isOtherMonth ? "600" : "900",
+                                    color: isOtherMonth ? "#71717a" : isSunday ? "#fb7185" : "#ffffff",
                                     includeFontPadding: false,
                                   }}
                                 >
                                   {dayNum}
                                 </Text>
-                                {holidayOnDay && (
+                                {holidayOnDay && !isOtherMonth && (
                                   <View
                                     style={{
                                       width: 6,
@@ -825,7 +860,7 @@ export const TeacherHolidayCalendarScreen: React.FC<{ navigation: any }> = ({
                               </View>
 
                               {/* Sunday or Holiday Indicator Badge */}
-                              {isSunday ? (
+                              {isSunday && !isOtherMonth ? (
                                 <View
                                   style={{
                                     width: "100%",
@@ -852,7 +887,7 @@ export const TeacherHolidayCalendarScreen: React.FC<{ navigation: any }> = ({
                                     SUN
                                   </Text>
                                 </View>
-                              ) : holidayOnDay ? (
+                              ) : holidayOnDay && !isOtherMonth ? (
                                 <View
                                   style={{
                                     width: "100%",

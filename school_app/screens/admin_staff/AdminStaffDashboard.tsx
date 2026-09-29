@@ -269,6 +269,7 @@ export const AdminStaffDashboard: React.FC<any> = ({ navigation: propNavigation 
     { title: 'Student Profiles', icon: <UserSquare2 size={24} color={primaryColor} />, route: 'StudentDirectory' },
     { title: 'Add Student', icon: <UserPlus size={24} color={primaryColor} />, route: 'AddStudent' },
     { title: 'Classes', icon: <School size={24} color={primaryColor} />, route: 'ClassManagement' },
+    { title: 'Allot Attendance', icon: <ClipboardCheck size={24} color={primaryColor} />, route: 'AdminAllotAttendance' },
     { title: 'Student Attendance', icon: <UserCheck size={24} color={primaryColor} />, route: 'AdminStudentAttendance' },
     { title: 'Daily Diary View', icon: <BookOpen size={24} color={primaryColor} />, route: 'AdminDailyDiary' },
     { title: 'Classes Promotions', icon: <TrendingUp size={24} color={primaryColor} />, route: 'ClassPromotions' },

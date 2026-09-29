@@ -241,7 +241,7 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
       classTag: "Class 8-A",
       due: "Pending for Morning Session",
       urgent: true,
-      route: "Attendance",
+      route: "AllotAttendance",
       actionText: "Mark Attendance",
     },
     {
@@ -716,7 +716,10 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
             </View>
 
             {/* Card 2: Attendance Status */}
-            <View className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-4 shadow-lg">
+            <Pressable 
+              onPress={() => navigation.navigate("AllotAttendance")}
+              className="flex-1 bg-[#181524] border border-white/10 rounded-2xl p-4 shadow-lg active:bg-[#201c30]"
+            >
               <View className="flex-row items-center justify-between mb-1.5" style={{ flexWrap: "nowrap" }}>
                 <Text className="text-white/60 text-[11px] font-extrabold uppercase tracking-wider" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flexShrink: 1, includeFontPadding: false }}>
                   Attendance
@@ -737,7 +740,7 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
               >
                 {pendingAttendanceCount > 0 ? `${pendingAttendanceCount} Pending` : "Complete"}
               </Text>
-            </View>
+            </Pressable>
           </View>
 
           <View className="flex-row justify-between" style={{ gap: 10 }}>
@@ -945,7 +948,7 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
                     </View>
 
                     <Pressable
-                      onPress={() => navigation.navigate("Attendance")}
+                      onPress={() => navigation.navigate("AllotAttendance")}
                       className="px-2.5 py-1 bg-white/10 rounded-lg active:bg-white/20"
                       style={{ flexShrink: 0, flexWrap: "nowrap" }}
                     >

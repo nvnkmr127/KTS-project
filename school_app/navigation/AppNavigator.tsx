@@ -105,6 +105,8 @@ import TeacherHolidayCalendarScreen from '../screens/teachers/TeacherHolidayCale
 import TeacherActivityLogScreen from '../screens/teachers/TeacherActivityLogScreen';
 import { TeacherTimetableScreen } from '../screens/teachers/TeacherTimetableScreen';
 import { TeacherStudentAttendanceScreen } from '../screens/teachers/TeacherStudentAttendanceScreen';
+import { TeacherAllotAttendanceScreen } from '../screens/teachers/TeacherAllotAttendanceScreen';
+import { AdminAllotAttendanceScreen } from '../screens/admin_staff/AdminAllotAttendanceScreen';
 
 // Parent Screens
 import ParentDashboard from '../screens/parents/ParentDashboard';
@@ -191,6 +193,16 @@ const SuperAdminTabs = () => (
       component={AdminExamInvigilationScreen} 
       options={{ ...getTabOptions(ShieldAlert, '#f0c110', 'Allot Invigilation'), tabBarItemStyle: { display: 'none' } }} 
     />
+    <Tab.Screen 
+      name="AdminAllotAttendance" 
+      component={AdminAllotAttendanceScreen} 
+      options={{ ...getTabOptions(ClipboardCheck, '#f0c110', 'Allot Attendance'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AllotAttendance" 
+      component={AdminAllotAttendanceScreen} 
+      options={{ ...getTabOptions(ClipboardCheck, '#f0c110', 'Allot Attendance'), tabBarItemStyle: { display: 'none' } }} 
+    />
   </Tab.Navigator>
 );
 
@@ -242,19 +254,34 @@ const AdminStaffTabs = () => (
       component={AdminExamInvigilationScreen} 
       options={{ ...getTabOptions(ShieldAlert, '#00f1a1', 'Allot Invigilation'), tabBarItemStyle: { display: 'none' } }} 
     />
+    <Tab.Screen 
+      name="AdminAllotAttendance" 
+      component={AdminAllotAttendanceScreen} 
+      options={{ ...getTabOptions(ClipboardCheck, '#00f1a1', 'Allot Attendance'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="AllotAttendance" 
+      component={AdminAllotAttendanceScreen} 
+      options={{ ...getTabOptions(ClipboardCheck, '#00f1a1', 'Allot Attendance'), tabBarItemStyle: { display: 'none' } }} 
+    />
   </Tab.Navigator>
 );
 
 const TeacherTabs = () => (
   <Tab.Navigator backBehavior="history" tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: '#0d0d12' } }}>
     <Tab.Screen name="Dashboard" component={TeacherDashboard} options={getTabOptions(Home, '#ddb7ff', 'Dashboard')} />
-    <Tab.Screen name="AllotAttendance" component={TeacherStudentAttendanceScreen} options={getTabOptions(ClipboardCheck, '#ddb7ff', 'Attendance')} />
+    <Tab.Screen name="AllotAttendance" component={TeacherAllotAttendanceScreen} options={getTabOptions(ClipboardCheck, '#ddb7ff', 'Allot Attendance')} />
     <Tab.Screen name="DailyDiary" component={DailyDiaryScreen} options={getTabOptions(FileText, '#ddb7ff', 'Daily Diary')} />
     <Tab.Screen name="Homework" component={HomeworkAssignmentsScreen} options={getTabOptions(ClipboardList, '#ddb7ff', 'Homework')} />
     <Tab.Screen name="MySalary" component={TeacherSalaryScreen} options={getTabOptions(Banknote, '#ddb7ff', 'My Salary')} />
     <Tab.Screen name="Settings" component={TeacherSettingsScreen} options={getTabOptions(Settings, '#ddb7ff', 'Settings')} />
     
     {/* Additional Teacher Screens (Preserves Bottom Tab Bar) */}
+    <Tab.Screen 
+      name="TeacherAllotAttendance" 
+      component={TeacherAllotAttendanceScreen} 
+      options={{ ...getTabOptions(ClipboardCheck, '#ddb7ff', 'Allot Attendance'), tabBarItemStyle: { display: 'none' } }} 
+    />
     <Tab.Screen 
       name="Attendance" 
       component={TeacherStudentAttendanceScreen} 
@@ -478,7 +505,6 @@ export const AppNavigator: React.FC = () => {
       />
       <Stack.Screen name="SchoolFacilities" component={SchoolFacilitiesScreen} />
       <Stack.Screen name="AttendanceMarking" component={AttendanceMarkingScreen} />
-      <Stack.Screen name="AllotAttendance" component={AttendanceMarkingScreen} />
       <Stack.Screen name="Attendance" component={AttendanceMarkingScreen} />
       <Stack.Screen name="TeacherSalary" component={TeacherSalaryScreen} />
       <Stack.Screen name="MySalary" component={TeacherSalaryScreen} />
@@ -530,6 +556,12 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="RecycleBin" component={RecycleBinScreen} />
       <Stack.Screen name="ClassManagement" component={ClassManagementScreen} />
       <Stack.Screen name="AdminStudentAttendance" component={AdminStudentAttendanceScreen} />
+      <Stack.Screen name="AdminAllotAttendance" component={AdminAllotAttendanceScreen} />
+      <Stack.Screen name="TeacherAllotAttendance" component={TeacherAllotAttendanceScreen} />
+      <Stack.Screen 
+        name="AllotAttendance" 
+        component={user?.role === 'teacher' ? TeacherAllotAttendanceScreen : AdminAllotAttendanceScreen} 
+      />
       <Stack.Screen name="AdminDailyDiary" component={AdminDailyDiaryScreen} />
       <Stack.Screen name="AdminStaffLeaves" component={AdminStaffLeavesScreen} />
       <Stack.Screen name="AdminBusTracking" component={AdminBusTrackingScreen} />
