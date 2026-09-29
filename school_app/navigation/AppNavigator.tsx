@@ -102,6 +102,7 @@ import { TeacherExamSchedulePreviewScreen } from '../screens/teachers/TeacherExa
 import { TeacherExamInvigilationScreen } from '../screens/teachers/TeacherExamInvigilationScreen';
 import { TeacherPerformanceScreen } from '../screens/teachers/TeacherPerformanceScreen';
 import TeacherHolidayCalendarScreen from '../screens/teachers/TeacherHolidayCalendarScreen';
+import TeacherActivityLogScreen from '../screens/teachers/TeacherActivityLogScreen';
 
 // Parent Screens
 import ParentDashboard from '../screens/parents/ParentDashboard';
@@ -465,6 +466,16 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="TeacherSalary" component={TeacherSalaryScreen} />
       <Stack.Screen name="MySalary" component={TeacherSalaryScreen} />
       <Stack.Screen name="TeacherSettings" component={TeacherSettingsScreen} />
+      <Stack.Screen name="TeacherActivityLog" component={TeacherActivityLogScreen} />
+      <Stack.Screen name="TeacherActivityLogs" component={TeacherActivityLogScreen} />
+      <Stack.Screen 
+        name="ActivityLog" 
+        component={
+          user?.role === 'teacher' ? TeacherActivityLogScreen : 
+          user?.role === 'super_admin' ? SuperAdminActivityLogScreen : 
+          AdminActivityLogScreen
+        } 
+      />
       <Stack.Screen name="TeacherExamination" component={TeacherExaminationScreen} />
       <Stack.Screen name="Examination" component={TeacherExaminationScreen} />
       <Stack.Screen name="TeacherExamSchedule" component={TeacherExamScheduleScreen} />
@@ -521,7 +532,13 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="SuperAdminRolesPermissions" component={SuperAdminRolesPermissionsScreen} />
       <Stack.Screen name="SuperAdminAdminConsole" component={SuperAdminAdminConsoleScreen} />
       <Stack.Screen name="AllUsersActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
-      <Stack.Screen name="ActivityLogs" component={SuperAdminAllUsersActivityLogsScreen} />
+      <Stack.Screen 
+        name="ActivityLogs" 
+        component={
+          user?.role === 'teacher' ? TeacherActivityLogScreen : 
+          SuperAdminAllUsersActivityLogsScreen
+        } 
+      />
       <Stack.Screen name="SuperAdminAcademicYears" component={SuperAdminAcademicYearsScreen} />
       <Stack.Screen name="AcademicYears" component={SuperAdminAcademicYearsScreen} />
       <Stack.Screen name="SuperAdminSchoolProfile" component={SuperAdminSchoolProfileScreen} />

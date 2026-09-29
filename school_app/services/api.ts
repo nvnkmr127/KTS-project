@@ -222,6 +222,24 @@ class ApiClient {
     return await this.request('/notifications');
   }
 
+  // Activity Logs
+  async getActivityLogs(params: Record<string, string> = {}) {
+    const query = new URLSearchParams(params).toString();
+    return await this.request(`/activity-logs${query ? `?${query}` : ''}`);
+  }
+
+  async getMyActivityStats(params?: Record<string, string>) {
+    const query = params ? new URLSearchParams(params).toString() : '';
+    return await this.request(`/activity-logs/my-stats${query ? `?${query}` : ''}`);
+  }
+
+  async recordActivityLog(data: any) {
+    return await this.request('/activity-logs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   // Biometric Integration Endpoints
   async biometricStatus() {
     return await this.request('/biometric/status');

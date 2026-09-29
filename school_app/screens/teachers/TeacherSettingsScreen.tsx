@@ -40,6 +40,7 @@ import {
   AlertTriangle,
   GraduationCap,
   Sparkles,
+  Activity,
 } from 'lucide-react-native';
 import { useResponsive } from '../../utils/responsive';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -271,6 +272,19 @@ export const TeacherSettingsScreen: React.FC<any> = ({ navigation }) => {
                 thumbColor={autoOfflineSync ? '#181524' : '#d4d4d8'}
               />
             </View>
+
+            <View className="h-[1px] bg-white/10" />
+
+            <Pressable
+              onPress={() => navigation.navigate('TeacherActivityLog')}
+              className="flex-row items-center justify-between py-1 active:opacity-75"
+            >
+              <View className="flex-1 mr-3">
+                <Text className="text-white font-bold text-sm">My Activity Log</Text>
+                <Text className="text-white/50 text-xs mt-0.5">Audit history of changes, marks & sessions</Text>
+              </View>
+              <ChevronRight size={18} color="#ddb7ff" />
+            </Pressable>
 
             <View className="h-[1px] bg-white/10" />
 

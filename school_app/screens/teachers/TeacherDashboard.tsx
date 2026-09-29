@@ -42,6 +42,7 @@ import {
   FileText,
   ShieldCheck,
   Layers,
+  Activity,
 } from "lucide-react-native";
 import { useResponsive } from "../../utils/responsive";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -423,11 +424,11 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
       route: "Performance",
     },
     {
-      id: "homework",
-      title: "Homework",
-      subtitle: "Assign Tasks",
-      icon: <ClipboardList size={22} color="#38bdf8" />,
-      route: "Homework",
+      id: "leave-app",
+      title: "Apply Leave",
+      subtitle: "Leave Portal",
+      icon: <CalendarOff size={22} color="#f472b6" />,
+      route: "Leave",
     },
     {
       id: "holiday-calendar",
@@ -437,11 +438,11 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
       route: "HolidayCalendar",
     },
     {
-      id: "leave-app",
-      title: "Apply Leave",
-      subtitle: "Leave Portal",
-      icon: <CalendarOff size={22} color="#f472b6" />,
-      route: "Leave",
+      id: "activity-log",
+      title: "Activity Log",
+      subtitle: "Audit History",
+      icon: <Activity size={22} color="#818cf8" />,
+      route: "TeacherActivityLog",
     },
     {
       id: "messages",
@@ -1134,24 +1135,6 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
                 <Pressable
                   onPress={() => {
                     setShowQuickActionModal(false);
-                    navigation.navigate("Homework");
-                  }}
-                  className="p-3.5 bg-white/5 border border-white/10 rounded-2xl flex-row items-center active:bg-[#ddb7ff]/20"
-                  style={{ flexWrap: "nowrap" }}
-                >
-                  <View className="w-10 h-10 rounded-xl bg-sky-500/20 items-center justify-center mr-3" style={{ flexShrink: 0 }}>
-                    <ClipboardList size={20} color="#38bdf8" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-white font-extrabold text-sm" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Add Homework</Text>
-                    <Text className="text-white/50 text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Assign exercises and deadlines</Text>
-                  </View>
-                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
-                </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    setShowQuickActionModal(false);
                     navigation.navigate("Leave");
                   }}
                   className="p-3.5 bg-white/5 border border-white/10 rounded-2xl flex-row items-center active:bg-[#ddb7ff]/20"
@@ -1163,6 +1146,24 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
                   <View className="flex-1">
                     <Text className="text-white font-extrabold text-sm" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Apply For Leave</Text>
                     <Text className="text-white/50 text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Submit absence request</Text>
+                  </View>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setShowQuickActionModal(false);
+                    navigation.navigate("TeacherActivityLog");
+                  }}
+                  className="p-3.5 bg-white/5 border border-white/10 rounded-2xl flex-row items-center active:bg-[#ddb7ff]/20"
+                  style={{ flexWrap: "nowrap" }}
+                >
+                  <View className="w-10 h-10 rounded-xl bg-indigo-500/20 items-center justify-center mr-3" style={{ flexShrink: 0 }}>
+                    <Activity size={20} color="#818cf8" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white font-extrabold text-sm" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Activity Log</Text>
+                    <Text className="text-white/50 text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>View action history & audit logs</Text>
                   </View>
                   <ChevronRight size={16} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
                 </Pressable>
