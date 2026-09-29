@@ -318,8 +318,24 @@ export const TeacherSettingsScreen: React.FC<any> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* SECTION 4: Sign Out Button */}
+        {/* SECTION 4: Activity Log & Sign Out */}
         <View className="mb-8">
+          <Pressable
+            onPress={() => navigation.navigate('TeacherActivityLog')}
+            className="w-full py-4 px-4 mb-3 bg-[#181524] border border-[#ddb7ff]/30 rounded-2xl flex-row items-center justify-between shadow-md active:bg-white/10"
+          >
+            <View className="flex-row items-center flex-1 mr-2">
+              <View className="w-10 h-10 rounded-xl bg-[#ddb7ff]/20 border border-[#ddb7ff]/40 items-center justify-center mr-3">
+                <Activity size={20} color="#ddb7ff" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-white font-extrabold text-sm">Activity Log</Text>
+                <Text className="text-white/50 text-xs mt-0.5 font-medium">Audit history of actions, marks & sessions</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color="#ddb7ff" />
+          </Pressable>
+
           <Pressable
             onPress={() => setIsSignOutModalOpen(true)}
             className="w-full py-4 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30"

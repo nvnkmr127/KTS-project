@@ -103,6 +103,7 @@ import { TeacherExamInvigilationScreen } from '../screens/teachers/TeacherExamIn
 import { TeacherPerformanceScreen } from '../screens/teachers/TeacherPerformanceScreen';
 import TeacherHolidayCalendarScreen from '../screens/teachers/TeacherHolidayCalendarScreen';
 import TeacherActivityLogScreen from '../screens/teachers/TeacherActivityLogScreen';
+import { TeacherTimetableScreen } from '../screens/teachers/TeacherTimetableScreen';
 
 // Parent Screens
 import ParentDashboard from '../screens/parents/ParentDashboard';
@@ -260,12 +261,17 @@ const TeacherTabs = () => (
     />
     <Tab.Screen 
       name="Timetable" 
-      component={TimetableBuilderScreen} 
+      component={TeacherTimetableScreen} 
       options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Time Table'), tabBarItemStyle: { display: 'none' } }} 
     />
     <Tab.Screen 
       name="TimetableBuilder" 
-      component={TimetableBuilderScreen} 
+      component={TeacherTimetableScreen} 
+      options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Time Table'), tabBarItemStyle: { display: 'none' } }} 
+    />
+    <Tab.Screen 
+      name="TeacherTimetable" 
+      component={TeacherTimetableScreen} 
       options={{ ...getTabOptions(Calendar, '#ddb7ff', 'Time Table'), tabBarItemStyle: { display: 'none' } }} 
     />
     <Tab.Screen 

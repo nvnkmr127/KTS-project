@@ -49,6 +49,9 @@ export type TeacherTabParamList = {
   MarksEntry: undefined;
   Diary: undefined;
   Leave: undefined;
+  Timetable: undefined;
+  TimetableBuilder: undefined;
+  TeacherTimetable: undefined;
 };
 
 export type AdminStaffTabParamList = {

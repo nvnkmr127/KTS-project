@@ -1336,6 +1336,21 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
                 <Pressable
                   onPress={() => {
                     setShowSidebarModal(false);
+                    navigation.navigate("TeacherActivityLog");
+                  }}
+                  className="w-full py-3.5 px-4 mb-2.5 bg-white/5 border border-white/15 rounded-2xl flex-row items-center justify-between active:bg-white/10"
+                  style={{ flexWrap: "nowrap" }}
+                >
+                  <View className="flex-row items-center flex-1 mr-2" style={{ flexWrap: "nowrap" }}>
+                    <Activity size={18} color="#ddb7ff" style={{ marginRight: 10, flexShrink: 0 }} />
+                    <Text className="text-white font-extrabold text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ flexShrink: 1, includeFontPadding: false }}>Activity Log</Text>
+                  </View>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setShowSidebarModal(false);
                     setShowSignOutModal(true);
                   }}
                   className="w-full py-3.5 bg-rose-500/20 border border-rose-500/50 rounded-2xl flex-row items-center justify-center active:bg-rose-500/30"
