@@ -13,6 +13,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { CustomToggleSwitch } from '../../components/CustomToggleSwitch';
 import {
   Settings,
   User,
@@ -198,11 +199,12 @@ export const TeacherSettingsScreen: React.FC<any> = ({ navigation }) => {
                 <Text className="text-white font-bold text-sm">Attendance Reminders</Text>
                 <Text className="text-white/50 text-xs mt-0.5">Morning & Post-lunch class presence reminders</Text>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={classAttendanceAlerts}
                 onValueChange={setClassAttendanceAlerts}
-                trackColor={{ false: '#3f3f46', true: '#ddb7ff' }}
-                thumbColor={classAttendanceAlerts ? '#181524' : '#d4d4d8'}
+                activeTrackColor="#ddb7ff"
+                activeBorderColor="#ddb7ff"
+                activeThumbColor="#181524"
               />
             </View>
 
@@ -213,11 +215,12 @@ export const TeacherSettingsScreen: React.FC<any> = ({ navigation }) => {
                 <Text className="text-white font-bold text-sm">Daily Diary Submission Alert</Text>
                 <Text className="text-white/50 text-xs mt-0.5">Notification reminder before 02:00 PM daily</Text>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={diarySubmissionReminders}
                 onValueChange={setDiarySubmissionReminders}
-                trackColor={{ false: '#3f3f46', true: '#ddb7ff' }}
-                thumbColor={diarySubmissionReminders ? '#181524' : '#d4d4d8'}
+                activeTrackColor="#ddb7ff"
+                activeBorderColor="#ddb7ff"
+                activeThumbColor="#181524"
               />
             </View>
 
@@ -228,11 +231,12 @@ export const TeacherSettingsScreen: React.FC<any> = ({ navigation }) => {
                 <Text className="text-white font-bold text-sm">Leave Application Updates</Text>
                 <Text className="text-white/50 text-xs mt-0.5">Alerts when admin approves or updates leave status</Text>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={leaveStatusAlerts}
                 onValueChange={setLeaveStatusAlerts}
-                trackColor={{ false: '#3f3f46', true: '#ddb7ff' }}
-                thumbColor={leaveStatusAlerts ? '#181524' : '#d4d4d8'}
+                activeTrackColor="#ddb7ff"
+                activeBorderColor="#ddb7ff"
+                activeThumbColor="#181524"
               />
             </View>
           </View>
@@ -250,11 +254,12 @@ export const TeacherSettingsScreen: React.FC<any> = ({ navigation }) => {
                 <Text className="text-white font-bold text-sm">Biometric Authentication</Text>
                 <Text className="text-white/50 text-xs mt-0.5">Fingerprint / Face ID login</Text>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={biometricLogin}
                 onValueChange={setBiometricLogin}
-                trackColor={{ false: '#3f3f46', true: '#ddb7ff' }}
-                thumbColor={biometricLogin ? '#181524' : '#d4d4d8'}
+                activeTrackColor="#ddb7ff"
+                activeBorderColor="#ddb7ff"
+                activeThumbColor="#181524"
               />
             </View>
 
@@ -265,11 +270,12 @@ export const TeacherSettingsScreen: React.FC<any> = ({ navigation }) => {
                 <Text className="text-white font-bold text-sm">Offline Fast Sync</Text>
                 <Text className="text-white/50 text-xs mt-0.5">Auto-cache timetable and student registers</Text>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={autoOfflineSync}
                 onValueChange={setAutoOfflineSync}
-                trackColor={{ false: '#3f3f46', true: '#ddb7ff' }}
-                thumbColor={autoOfflineSync ? '#181524' : '#d4d4d8'}
+                activeTrackColor="#ddb7ff"
+                activeBorderColor="#ddb7ff"
+                activeThumbColor="#181524"
               />
             </View>
 

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
+import { CustomToggleSwitch } from '../../components/CustomToggleSwitch';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
 import { resetToLogin } from '../../navigation/navigationRef';
@@ -188,11 +189,11 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
                   <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Instant notification on parent fee payment</Text>
                 </View>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={feeAlerts}
                 onValueChange={setFeeAlerts}
-                trackColor={{ false: '#262626', true: '#00f1a1' }}
-                thumbColor={feeAlerts ? '#101415' : '#737373'}
+                activeTrackColor="#00f1a1"
+                activeBorderColor="#00f1a1"
               />
             </View>
 
@@ -208,11 +209,11 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
                   <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Notify when teachers submit leave requests</Text>
                 </View>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={leaveAlerts}
                 onValueChange={setLeaveAlerts}
-                trackColor={{ false: '#262626', true: '#00f1a1' }}
-                thumbColor={leaveAlerts ? '#101415' : '#737373'}
+                activeTrackColor="#00f1a1"
+                activeBorderColor="#00f1a1"
               />
             </View>
 
@@ -228,11 +229,11 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
                   <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Push alerts on bus route completion or delay</Text>
                 </View>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={busGpsAlerts}
                 onValueChange={setBusGpsAlerts}
-                trackColor={{ false: '#262626', true: '#00f1a1' }}
-                thumbColor={busGpsAlerts ? '#101415' : '#737373'}
+                activeTrackColor="#00f1a1"
+                activeBorderColor="#00f1a1"
               />
             </View>
           </GlassCard>
@@ -266,11 +267,11 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
                 <Text className="text-white font-bold text-base">Auto Generate PDF Fee Receipts</Text>
                 <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Automatically generate printable receipt upon collection</Text>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={autoReceiptGen}
                 onValueChange={setAutoReceiptGen}
-                trackColor={{ false: '#262626', true: '#00f1a1' }}
-                thumbColor={autoReceiptGen ? '#101415' : '#737373'}
+                activeTrackColor="#00f1a1"
+                activeBorderColor="#00f1a1"
               />
             </View>
           </GlassCard>
@@ -291,11 +292,11 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
                   <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Use Fingerprint / Face ID for instant login</Text>
                 </View>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={biometricLogin}
                 onValueChange={setBiometricLogin}
-                trackColor={{ false: '#262626', true: '#00f1a1' }}
-                thumbColor={biometricLogin ? '#101415' : '#737373'}
+                activeTrackColor="#00f1a1"
+                activeBorderColor="#00f1a1"
               />
             </View>
 
@@ -311,11 +312,11 @@ export const AdminStaffSettingsScreen: React.FC<any> = ({ navigation: propNaviga
                   <Text className="text-white/60 text-xs mt-0.5 font-medium leading-relaxed">Store pending collections offline when network drops</Text>
                 </View>
               </View>
-              <Switch
+              <CustomToggleSwitch
                 value={autoOfflineSync}
                 onValueChange={setAutoOfflineSync}
-                trackColor={{ false: '#262626', true: '#00f1a1' }}
-                thumbColor={autoOfflineSync ? '#101415' : '#737373'}
+                activeTrackColor="#00f1a1"
+                activeBorderColor="#00f1a1"
               />
             </View>
 
