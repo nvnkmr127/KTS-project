@@ -115,6 +115,7 @@ export const DailyDiaryScreen: React.FC = () => {
   const [selectedAcademicYear, setSelectedAcademicYear] = useState<string>('2026-2027 (Current)');
   const [topics, setTopics] = useState<string>('');
   const [homework, setHomework] = useState<string>('');
+  const [homeworkSubmissionDate, setHomeworkSubmissionDate] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
@@ -122,6 +123,7 @@ export const DailyDiaryScreen: React.FC = () => {
   const [showClassDropdownModal, setShowClassDropdownModal] = useState<boolean>(false);
   const [showAcademicYearModal, setShowAcademicYearModal] = useState<boolean>(false);
   const [showDatePickerModal, setShowDatePickerModal] = useState<boolean>(false);
+  const [showHwDatePickerModal, setShowHwDatePickerModal] = useState<boolean>(false);
   const [toastData, setToastData] = useState<{ visible: boolean; title: string; message: string; isError?: boolean }>({
     visible: false,
     title: '',
@@ -129,7 +131,7 @@ export const DailyDiaryScreen: React.FC = () => {
     isError: false,
   });
 
-  // Calendar Navigator State
+  // Calendar Navigator State (Diary Date)
   const [calendarMonth, setCalendarMonth] = useState<number>(() => {
     const parts = selectedDate.split('-');
     if (parts.length === 3) {
@@ -143,6 +145,14 @@ export const DailyDiaryScreen: React.FC = () => {
     if (parts.length === 3) {
       return Number(parts[2]);
     }
+    return new Date().getFullYear();
+  });
+
+  // Calendar Navigator State (Homework Submission Date)
+  const [hwCalendarMonth, setHwCalendarMonth] = useState<number>(() => {
+    return new Date().getMonth();
+  });
+  const [hwCalendarYear, setHwCalendarYear] = useState<number>(() => {
     return new Date().getFullYear();
   });
 
@@ -276,6 +286,173 @@ export const DailyDiaryScreen: React.FC = () => {
     setShowDatePickerModal(false);
   };
 
+  // Homework submission date month navigation
+  const handleHwPrevMonth = () => {
+    if (hwCalendarMonth === 0) {
+      setHwCalendarMonth(11);
+      setHwCalendarYear((prev) => prev - 1);
+    } else {
+      setHwCalendarMonth((prev) => prev - 1);
+    }
+  };
+
+  const handleHwNextMonth = () => {
+    if (hwCalendarMonth === 11) {
+      setHwCalendarMonth(0);
+      setHwCalendarYear((prev) => prev + 1);
+    } else {
+      setHwCalendarMonth((prev) => prev + 1);
+    }
+  };
+
+  const calHwPrevMonthRef = useRef(handleHwPrevMonth);
+  const calHwNextMonthRef = useRef(handleHwNextMonth);
+  calHwPrevMonthRef.current = handleHwPrevMonth;
+  calHwNextMonthRef.current = handleHwNextMonth;
+
+  // Swipe gesture for HW Calendar Grid
+  const calHwSwipeResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return (
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) &&
+          Math.abs(gestureState.dx) > 15
+        );
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -35) {
+          calHwNextMonthRef.current?.();
+        } else if (gestureState.dx > 35) {
+          calHwPrevMonthRef.current?.();
+        }
+      },
+    })
+  ).current;
+
+  // Helper: check if date is strictly before today
+  const isPastDateStr = (dateStr: string): boolean => {
+    const today = getTodayDateStr();
+    return toIsoDateStr(dateStr) < toIsoDateStr(today);
+  };
+
+  const getTomorrowDateStr = () => {
+    const tmrw = new Date();
+    tmrw.setDate(tmrw.getDate() + 1);
+    const d = String(tmrw.getDate()).padStart(2, '0');
+    const m = String(tmrw.getMonth() + 1).padStart(2, '0');
+    const y = tmrw.getFullYear();
+    return `${d}-${m}-${y}`;
+  };
+
+  const handleSelectHwDate = (fullDateStr: string) => {
+    if (isPastDateStr(fullDateStr)) {
+      setToastData({
+        visible: true,
+        title: 'Past Date Disabled',
+        message: `Homework submission date cannot be in the past (${formatDateDisplay(fullDateStr)}). Please select today or an upcoming date.`,
+        isError: true,
+      });
+      return;
+    }
+
+    if (isSundayDateStr(fullDateStr)) {
+      setToastData({
+        visible: true,
+        title: 'Sunday (Weekend Holiday)',
+        message: `School remains closed on Sundays (${formatDateDisplay(fullDateStr)}). Please select an active school working day for homework submission.`,
+        isError: true,
+      });
+      return;
+    }
+
+    const holiday = findHolidayForDate(fullDateStr);
+    if (holiday) {
+      setToastData({
+        visible: true,
+        title: `${holiday.title} (Holiday)`,
+        message: `${formatDateDisplay(fullDateStr)} is an official school holiday (${holiday.title}). Please select an active school working day for homework submission.`,
+        isError: true,
+      });
+      return;
+    }
+
+    setHomeworkSubmissionDate(fullDateStr);
+    setShowHwDatePickerModal(false);
+  };
+
+  // Generate weeks for HW calendar grid (future dates enabled)
+  const hwCalendarWeeks = useMemo(() => {
+    const totalSlots: {
+      dayNum: number;
+      fullDateStr: string;
+      isSunday: boolean;
+      isOtherMonth: boolean;
+      isPrevMonth?: boolean;
+      isNextMonth?: boolean;
+    }[] = [];
+
+    const daysInMonthCount = new Date(hwCalendarYear, hwCalendarMonth + 1, 0).getDate();
+    const firstDayWeekdayIndex = new Date(hwCalendarYear, hwCalendarMonth, 1).getDay();
+
+    const prevMonth = hwCalendarMonth === 0 ? 11 : hwCalendarMonth - 1;
+    const prevYear = hwCalendarMonth === 0 ? hwCalendarYear - 1 : hwCalendarYear;
+    const daysInPrevMonth = new Date(hwCalendarYear, hwCalendarMonth, 0).getDate();
+
+    const nextMonth = hwCalendarMonth === 11 ? 0 : hwCalendarMonth + 1;
+    const nextYear = hwCalendarMonth === 11 ? hwCalendarYear + 1 : hwCalendarYear;
+
+    // 1. Previous month leading days
+    for (let i = firstDayWeekdayIndex - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const dayOfWeek = (firstDayWeekdayIndex - 1 - i) % 7;
+      const mStr = String(prevMonth + 1).padStart(2, '0');
+      const dStr = String(d).padStart(2, '0');
+      totalSlots.push({
+        dayNum: d,
+        fullDateStr: `${dStr}-${mStr}-${prevYear}`,
+        isSunday: dayOfWeek === 0,
+        isOtherMonth: true,
+        isPrevMonth: true,
+      });
+    }
+
+    // 2. Current month days
+    for (let d = 1; d <= daysInMonthCount; d++) {
+      const dayOfWeek = (firstDayWeekdayIndex + d - 1) % 7;
+      const mStr = String(hwCalendarMonth + 1).padStart(2, '0');
+      const dStr = String(d).padStart(2, '0');
+      totalSlots.push({
+        dayNum: d,
+        fullDateStr: `${dStr}-${mStr}-${hwCalendarYear}`,
+        isSunday: dayOfWeek === 0,
+        isOtherMonth: false,
+      });
+    }
+
+    // 3. Next month trailing days
+    let nextDayNum = 1;
+    while (totalSlots.length % 7 !== 0) {
+      const dayOfWeek = totalSlots.length % 7;
+      const mStr = String(nextMonth + 1).padStart(2, '0');
+      const dStr = String(nextDayNum).padStart(2, '0');
+      totalSlots.push({
+        dayNum: nextDayNum,
+        fullDateStr: `${dStr}-${mStr}-${nextYear}`,
+        isSunday: dayOfWeek === 0,
+        isOtherMonth: true,
+        isNextMonth: true,
+      });
+      nextDayNum++;
+    }
+
+    const weeks: (typeof totalSlots)[] = [];
+    for (let i = 0; i < totalSlots.length; i += 7) {
+      weeks.push(totalSlots.slice(i, i + 7));
+    }
+    return weeks;
+  }, [hwCalendarYear, hwCalendarMonth]);
+
 
 
   // Generate weeks for calendar grid with gray previous and next month dates
@@ -381,10 +558,15 @@ export const DailyDiaryScreen: React.FC = () => {
   );
   const pendingCount = Math.max(0, ASSIGNED_CLASSES.length - sentCount);
 
-  // Recent Submissions List
+  // Recent Submissions List (Showing logged in user name only)
   const myRecentSubmissions = useMemo(() => {
-    return [...assignedEntries].slice(0, 10);
-  }, [assignedEntries]);
+    return [...assignedEntries]
+      .map((e) => ({
+        ...e,
+        teacherName: teacherName,
+      }))
+      .slice(0, 10);
+  }, [assignedEntries, teacherName]);
 
   // Handle Save Diary Submission
   const handleSaveDiary = async () => {
@@ -408,6 +590,7 @@ export const DailyDiaryScreen: React.FC = () => {
         topics: topics.trim(),
         topicTitle: topics.trim(),
         homework: homework.trim(),
+        homeworkSubmissionDate: homeworkSubmissionDate || undefined,
         notes: notes.trim(),
         contentSummary: notes.trim() || topics.trim(),
         date: selectedDate,
@@ -423,6 +606,7 @@ export const DailyDiaryScreen: React.FC = () => {
       // Reset form inputs
       setTopics('');
       setHomework('');
+      setHomeworkSubmissionDate('');
       setNotes('');
     } catch (err) {
       console.log('Error saving diary entry:', err);
@@ -643,6 +827,59 @@ export const DailyDiaryScreen: React.FC = () => {
             />
           </View>
 
+          {/* Homework Submission Date */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>
+              <CalendarDays size={11} color="#cfc2d6" style={{ marginRight: 4 }} /> HOMEWORK SUBMISSION DATE
+            </Text>
+            <Pressable
+              onPress={() => {
+                if (homeworkSubmissionDate) {
+                  const parts = homeworkSubmissionDate.split('-');
+                  if (parts.length === 3) {
+                    setHwCalendarMonth(Number(parts[1]) - 1);
+                    setHwCalendarYear(Number(parts[2]));
+                  }
+                } else {
+                  const now = new Date();
+                  setHwCalendarMonth(now.getMonth());
+                  setHwCalendarYear(now.getFullYear());
+                }
+                setShowHwDatePickerModal(true);
+              }}
+              style={styles.inputBox}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                <CalendarDays size={15} color="#ddb7ff" style={{ marginRight: 8 }} />
+                <Text
+                  style={[
+                    styles.inputBoxText,
+                    !homeworkSubmissionDate && { color: '#71717a' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {homeworkSubmissionDate
+                    ? formatDateDisplay(homeworkSubmissionDate)
+                    : 'Select submission due date (optional)'}
+                </Text>
+              </View>
+              {homeworkSubmissionDate ? (
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setHomeworkSubmissionDate('');
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={{ padding: 2 }}
+                >
+                  <X size={15} color="#a1a1aa" />
+                </Pressable>
+              ) : (
+                <ChevronDown size={14} color="#ddb7ff" />
+              )}
+            </Pressable>
+          </View>
+
           {/* Special Notes (optional) */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>
@@ -717,6 +954,16 @@ export const DailyDiaryScreen: React.FC = () => {
                   <View style={styles.recentHomeworkBox}>
                     <Text style={styles.recentHomeworkText}>
                       Homework: <Text style={{ color: '#ffffff', fontWeight: '400' }}>{entry.homework}</Text>
+                    </Text>
+                  </View>
+                )}
+
+                {/* Homework Submission Date */}
+                {Boolean(entry.homeworkSubmissionDate) && (
+                  <View style={styles.recentHwDueBadge}>
+                    <CalendarDays size={12} color="#38bdf8" style={{ marginRight: 5 }} />
+                    <Text style={styles.recentHwDueText}>
+                      Submission Due: <Text style={{ color: '#ffffff', fontWeight: '700' }}>{formatDateDisplay(entry.homeworkSubmissionDate!)}</Text>
                     </Text>
                   </View>
                 )}
@@ -1147,6 +1394,234 @@ export const DailyDiaryScreen: React.FC = () => {
                   Select Today ({formatDateDisplay(getTodayDateStr())})
                 </Text>
               </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* HOMEWORK SUBMISSION DATE PICKER MODAL (FUTURE DATES ENABLED, HOLIDAYS & SUNDAYS SHOWN) */}
+      <Modal
+        visible={showHwDatePickerModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowHwDatePickerModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.datePickerModalBox}>
+            {/* Modal Header */}
+            <View style={styles.datePickerHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                <View style={styles.datePickerIconCircle}>
+                  <CalendarDays size={18} color="#ddb7ff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.datePickerTitle}>Submission Due Date</Text>
+                  <Text style={styles.datePickerSubtitle}>
+                    Pick a future working day for homework submission
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={() => setShowHwDatePickerModal(false)}
+                style={styles.modalCloseBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={16} color="#ddb7ff" />
+              </Pressable>
+            </View>
+
+            {/* Month Navigator with < Month Year > */}
+            <View style={styles.datePickerMonthNav}>
+              <Pressable
+                onPress={handleHwPrevMonth}
+                style={styles.navArrowBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <ChevronLeft size={16} color="#ddb7ff" />
+              </Pressable>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <CalendarIcon size={14} color="#ddb7ff" style={{ marginRight: 6 }} />
+                <Text style={styles.datePickerMonthText}>
+                  {MONTH_NAMES[hwCalendarMonth]} {hwCalendarYear}
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleHwNextMonth}
+                style={styles.navArrowBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <ChevronRight size={16} color="#ddb7ff" />
+              </Pressable>
+            </View>
+
+            {/* Swipeable Calendar Body */}
+            <View {...calHwSwipeResponder.panHandlers} style={{ width: '100%' }}>
+              {/* Day Names Header */}
+              <View style={styles.weekdayHeaderRow}>
+                {DAY_SHORT_NAMES.map((d, i) => (
+                  <View key={d} style={styles.weekdayCol}>
+                    <Text
+                      style={[
+                        styles.weekdayHeaderText,
+                        i === 0 && { color: '#fb7185' },
+                      ]}
+                    >
+                      {d}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Weeks & Days Grid */}
+              <View style={{ width: '100%' }}>
+                {hwCalendarWeeks.map((week, weekIdx) => (
+                  <View key={`hw_week_${weekIdx}`} style={styles.calendarWeekRow}>
+                    {week.map((cell, colIdx) => {
+                      const { dayNum, fullDateStr, isSunday, isPrevMonth, isNextMonth } = cell;
+                      const holidayOnDay = findHolidayForDate(fullDateStr);
+                      const isPast = isPastDateStr(fullDateStr);
+                      const isSelected = homeworkSubmissionDate === fullDateStr;
+                      const isToday = fullDateStr === getTodayDateStr();
+
+                      return (
+                        <View
+                          key={`hw_day_${fullDateStr}_${colIdx}`}
+                          style={styles.calendarCellSlot}
+                        >
+                          <Pressable
+                            onPress={() => {
+                              if (isPrevMonth) {
+                                handleHwPrevMonth();
+                              } else if (isNextMonth) {
+                                handleHwNextMonth();
+                              }
+                              handleSelectHwDate(fullDateStr);
+                            }}
+                            style={[
+                              styles.calendarDayCard,
+                              isPast && styles.calendarFutureCard,
+                              !isPast && isSunday && styles.calendarSundayCard,
+                              !isPast && holidayOnDay && styles.calendarHolidayCard,
+                              isSelected && styles.calendarSelectedCard,
+                            ]}
+                          >
+                            {/* Day Number and Top Indicator */}
+                            <View style={styles.calendarDayHeaderRow}>
+                              <Text
+                                style={[
+                                  styles.calendarDayNumText,
+                                  isPast && { color: '#52525b' },
+                                  !isPast && isSunday && { color: '#fb7185' },
+                                  !isPast && holidayOnDay && { color: holidayOnDay.color || '#ddb7ff' },
+                                  isSelected && { color: '#ffffff', fontWeight: '900' },
+                                ]}
+                              >
+                                {dayNum}
+                              </Text>
+
+                              {holidayOnDay ? (
+                                <View
+                                  style={[
+                                    styles.calendarHolidayDot,
+                                    { backgroundColor: holidayOnDay.color || '#ddb7ff' },
+                                    isPast && { opacity: 0.4 },
+                                  ]}
+                                />
+                              ) : isToday && !isSelected ? (
+                                <View style={styles.calendarTodayDot} />
+                              ) : null}
+                            </View>
+
+                            {/* Badge Label: ACTIVE, SUN, HOL, or TODAY */}
+                            {isSelected ? (
+                              <View style={styles.calendarSelectedBadge}>
+                                <Text style={styles.calendarSelectedBadgeText} numberOfLines={1}>
+                                  DUE
+                                </Text>
+                              </View>
+                            ) : isSunday ? (
+                              <View style={[styles.calendarSunBadge, isPast && { opacity: 0.4 }]}>
+                                <Text style={styles.calendarSunBadgeText} numberOfLines={1}>
+                                  SUN
+                                </Text>
+                              </View>
+                            ) : holidayOnDay ? (
+                              <View
+                                style={[
+                                  styles.calendarHolBadge,
+                                  { backgroundColor: holidayOnDay.color || '#ddb7ff' },
+                                  isPast && { opacity: 0.4 },
+                                ]}
+                              >
+                                <Text
+                                  style={styles.calendarHolBadgeText}
+                                  numberOfLines={1}
+                                >
+                                  {holidayOnDay.title.split(' ')[0] || 'HOL'}
+                                </Text>
+                              </View>
+                            ) : isToday ? (
+                              <View style={styles.calendarTodayBadge}>
+                                <Text style={styles.calendarTodayBadgeText} numberOfLines={1}>
+                                  TODAY
+                                </Text>
+                              </View>
+                            ) : null}
+                          </Pressable>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Legend */}
+            <View style={styles.calendarLegendRow}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#7c3aed' }]} />
+                <Text style={styles.legendText}>Selected Due</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#f59e0b' }]} />
+                <Text style={styles.legendText}>Holiday (Off)</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#fb7185' }]} />
+                <Text style={styles.legendText}>Sunday</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#52525b' }]} />
+                <Text style={styles.legendText}>Past</Text>
+              </View>
+            </View>
+
+            {/* Quick Actions Footer */}
+            <View style={[styles.datePickerFooter, { flexDirection: 'row', gap: 8 }]}>
+              <Pressable
+                onPress={() => {
+                  const tmrw = getTomorrowDateStr();
+                  handleSelectHwDate(tmrw);
+                }}
+                style={[styles.todayQuickBtn, { flex: 1 }]}
+              >
+                <Text style={styles.todayQuickBtnText}>
+                  Tomorrow ({formatDateDisplay(getTomorrowDateStr())})
+                </Text>
+              </Pressable>
+              {Boolean(homeworkSubmissionDate) && (
+                <Pressable
+                  onPress={() => {
+                    setHomeworkSubmissionDate('');
+                    setShowHwDatePickerModal(false);
+                  }}
+                  style={[styles.todayQuickBtn, { flex: 0.6, backgroundColor: 'rgba(255, 255, 255, 0.06)', borderColor: 'rgba(255, 255, 255, 0.15)' }]}
+                >
+                  <Text style={[styles.todayQuickBtnText, { color: 'rgba(255, 255, 255, 0.7)' }]}>
+                    Clear
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
         </View>
@@ -2062,6 +2537,23 @@ const styles = StyleSheet.create({
   },
   toastDoneButtonTextError: {
     color: '#0d0d12',
+  },
+  recentHwDueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  recentHwDueText: {
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
 

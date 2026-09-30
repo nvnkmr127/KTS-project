@@ -13,6 +13,7 @@ export interface DiaryEntry {
   contentSummary?: string;
   notes?: string;
   homework?: string;
+  homeworkSubmissionDate?: string; // DD-MM-YYYY or YYYY-MM-DD
   date: string; // DD-MM-YYYY or YYYY-MM-DD
   submittedAt: string;
   attachmentName?: string;
@@ -266,6 +267,7 @@ export const useDiaryStore = create<DiaryStore>((set, get) => ({
         contentSummary: notes,
         notes: notes,
         homework: newEntryData.homework || '',
+        homeworkSubmissionDate: newEntryData.homeworkSubmissionDate || undefined,
         date: cleanDate,
         submittedAt: timeStr,
         attachmentName: newEntryData.attachmentName,

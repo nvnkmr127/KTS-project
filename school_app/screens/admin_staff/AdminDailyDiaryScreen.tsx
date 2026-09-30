@@ -583,6 +583,11 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                       {submittedEntry.homework && (
                         <View className="bg-black/40 p-2.5 rounded-xl border border-white/5 mt-2.5">
                           <Text className="text-amber-400 text-sm font-bold">Homework: <Text className="text-white/80 font-normal">{submittedEntry.homework}</Text></Text>
+                          {Boolean(submittedEntry.homeworkSubmissionDate) && (
+                            <Text className="text-sky-400 text-xs font-semibold mt-1">
+                              Submission Due: <Text className="text-white/90 font-bold">{submittedEntry.homeworkSubmissionDate}</Text>
+                            </Text>
+                          )}
                         </View>
                       )}
 
@@ -629,6 +634,11 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                           <Text className="text-amber-400 text-xs font-bold">
                             Homework: <Text className="text-white/80 font-normal">{entry.homework}</Text>
                           </Text>
+                          {Boolean(entry.homeworkSubmissionDate) && (
+                            <Text className="text-sky-400 text-[11px] font-semibold mt-1">
+                              Submission Due: <Text className="text-white/90 font-bold">{entry.homeworkSubmissionDate}</Text>
+                            </Text>
+                          )}
                         </View>
                       )}
 
