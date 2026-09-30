@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, TextInput, BackHandler, PanResponder } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -8,9 +8,10 @@ import {
 } from 'lucide-react-native';
 import { AdminStaffHeader } from '../../components/AdminStaffHeader';
 import { GlassCard } from '../../components/GlassCard';
-import { useDiaryStore, DiaryEntry } from '../../store/diaryStore';
+import { useDiaryStore, DiaryEntry, normalizeDate } from '../../store/diaryStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useResponsive } from '../../utils/responsive';
+import { DEFAULT_HOLIDAYS, HolidayItem } from '../teachers/TeacherHolidayCalendarScreen';
 
 export interface ClassDiarySubmissionSummary {
   classId: string;
@@ -63,6 +64,10 @@ const PERIOD_STRUCTURE_LIST: PeriodStructure[] = [
 ];
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
   const { user } = useAuthStore();
@@ -70,12 +75,107 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
   const { insets, isSmallPhone, isTablet, scrollBottomPadding, containerStyle } = useResponsive();
   const diaryEntries = useDiaryStore((state) => state.diaryEntries);
   const [selectedAcademicYear] = useState('2026-2027 (Current)');
-  const [selectedDate, setSelectedDate] = useState('04-08-2026');
+
+  // Default to today formatted DD-MM-YYYY
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const d = String(today.getDate()).padStart(2, '0');
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const y = today.getFullYear();
+    return `${d}-${m}-${y}`;
+  });
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClassDetail, setSelectedClassDetail] = useState<string | null>(null);
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+  const [dateSelectionError, setDateSelectionError] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({ visible: false, title: '', message: '' });
 
-  // Handle Hardware Back Button & System Back Gesture (matching chevron left behavior)
+  // Helper: convert date to ISO (YYYY-MM-DD) format
+  const toIsoDateStr = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+    }
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+  };
+
+  // Find holiday for date helper
+  const findHolidayForDate = (dateStr: string): HolidayItem | undefined => {
+    const isoDate = toIsoDateStr(dateStr);
+    return DEFAULT_HOLIDAYS.find((h) => {
+      const hStart = toIsoDateStr(h.startDate);
+      const hEnd = toIsoDateStr(h.endDate || h.startDate);
+      return isoDate >= hStart && isoDate <= hEnd;
+    });
+  };
+
+  // Helper: check if date is Sunday
+  const isSundayDateStr = (dateStr: string): boolean => {
+    if (!dateStr) return false;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return false;
+    let y: number, m: number, d: number;
+    if (parts[0].length === 4) {
+      y = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      d = parseInt(parts[2], 10);
+    } else {
+      d = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      y = parseInt(parts[2], 10);
+    }
+    const dt = new Date(y, m, d);
+    return dt.getDay() === 0;
+  };
+
+  // Date selection helper (Future dates strictly disabled)
+  const isFutureDateStr = (dateStr: string) => {
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const iso = toIsoDateStr(dateStr);
+    return iso > todayIso;
+  };
+
+  const handleSelectDate = (fullDateStr: string) => {
+    if (isFutureDateStr(fullDateStr)) {
+      setDateSelectionError({
+        visible: true,
+        title: 'Future Date Disabled',
+        message: `Daily diary cannot be viewed for upcoming dates (${fullDateStr}). Only past and current dates are allowed.`,
+      });
+      return;
+    }
+
+    if (isSundayDateStr(fullDateStr)) {
+      setDateSelectionError({
+        visible: true,
+        title: 'Sunday (Weekend Holiday)',
+        message: `School remains closed on Sundays (${fullDateStr}). Daily diary entries cannot be submitted on weekend holidays.`,
+      });
+      return;
+    }
+
+    const holiday = findHolidayForDate(fullDateStr);
+    if (holiday) {
+      setDateSelectionError({
+        visible: true,
+        title: `${holiday.title} (Holiday)`,
+        message: `${fullDateStr} is an official holiday (${holiday.title}). Daily diary entries cannot be submitted on holidays.`,
+      });
+      return;
+    }
+
+    setSelectedDate(fullDateStr);
+    setShowDatePickerModal(false);
+  };
+
+  // Handle Hardware Back Button & System Back Gesture
   useEffect(() => {
     const onBackPress = () => {
       if (showDatePickerModal) {
@@ -104,24 +204,34 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
 
   // Calculate live submissions per class for selected date
   const getClassEntriesCount = (classId: string) => {
-    return diaryEntries.filter(e => e.classId.toUpperCase() === classId.toUpperCase() && e.date === selectedDate).length;
+    const normSel = normalizeDate(selectedDate);
+    const cleanId = classId.replace(/^Class\s*/i, '').toUpperCase();
+    return diaryEntries.filter(
+      e => e.classId.toUpperCase() === cleanId && normalizeDate(e.date) === normSel
+    ).length;
   };
 
   const totalClasses = ALL_CLASSES_LIST.length;
   const classesSubmittedCount = ALL_CLASSES_LIST.filter(c => getClassEntriesCount(c.classId) > 0).length;
   const pendingClassesCount = ALL_CLASSES_LIST.filter(c => c.hasSchedule && getClassEntriesCount(c.classId) < 5).length;
 
-  // Real JS Date-based Calendar State (default August 2026)
-  const [viewDate, setViewDate] = useState(new Date(2026, 7, 4));
+  // Real JS Date-based Calendar State
+  const [viewDate, setViewDate] = useState(() => {
+    const parts = selectedDate.split('-');
+    if (parts.length === 3) {
+      return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    }
+    return new Date();
+  });
+
+  const calendarMonth = viewDate.getMonth();
+  const calendarYear = viewDate.getFullYear();
 
   const handlePrevMonth = () => {
     setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   };
 
   const handleNextMonth = () => {
-    const today = new Date();
-    const isCurrentOrFutureMonth = viewDate.getFullYear() > today.getFullYear() || (viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() >= today.getMonth());
-    if (isCurrentOrFutureMonth) return;
     setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
@@ -130,7 +240,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
   calPrevMonthRef.current = handlePrevMonth;
   calNextMonthRef.current = handleNextMonth;
 
-  // Swipe Gesture Responder for Calendar Month Grid (Right-to-Left: Next Month, Left-to-Right: Previous Month)
+  // Swipe Gesture Responder for Calendar Month Grid
   const calSwipeResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -147,31 +257,77 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
     })
   ).current;
 
-  const monthYearDisplay = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  // Generate calendar weeks with previous and next month dates in gray
+  const calendarWeeks = useMemo(() => {
+    const totalSlots: {
+      dayNum: number;
+      dateStr: string;
+      isSunday: boolean;
+      isOtherMonth: boolean;
+      isPrevMonth?: boolean;
+      isNextMonth?: boolean;
+    }[] = [];
 
-  // Generate 7-column Calendar Grid Days dynamically using real JS Date math
-  const generateRealCalendarGrid = () => {
-    const year = viewDate.getFullYear();
-    const month = viewDate.getMonth();
-    const firstDayIdx = new Date(year, month, 1).getDay(); // 0 = Sun
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInMonthCount = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+    const firstDayWeekdayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
 
-    const days: Array<{ dayNum: number; dateStr: string } | null> = [];
+    const prevMonth = calendarMonth === 0 ? 11 : calendarMonth - 1;
+    const prevYear = calendarMonth === 0 ? calendarYear - 1 : calendarYear;
+    const daysInPrevMonth = new Date(calendarYear, calendarMonth, 0).getDate();
 
-    for (let i = 0; i < firstDayIdx; i++) {
-      days.push(null);
+    const nextMonth = calendarMonth === 11 ? 0 : calendarMonth + 1;
+    const nextYear = calendarMonth === 11 ? calendarYear + 1 : calendarYear;
+
+    // 1. Previous month leading days
+    for (let i = firstDayWeekdayIndex - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const dayOfWeek = (firstDayWeekdayIndex - 1 - i) % 7;
+      const mStr = String(prevMonth + 1).padStart(2, '0');
+      const dStr = String(d).padStart(2, '0');
+      totalSlots.push({
+        dayNum: d,
+        dateStr: `${dStr}-${mStr}-${prevYear}`,
+        isSunday: dayOfWeek === 0,
+        isOtherMonth: true,
+        isPrevMonth: true,
+      });
     }
 
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dayStr = String(d).padStart(2, '0');
-      const monthStr = String(month + 1).padStart(2, '0');
-      days.push({ dayNum: d, dateStr: `${dayStr}-${monthStr}-${year}` });
+    // 2. Current month days
+    for (let d = 1; d <= daysInMonthCount; d++) {
+      const dayOfWeek = (firstDayWeekdayIndex + d - 1) % 7;
+      const mStr = String(calendarMonth + 1).padStart(2, '0');
+      const dStr = String(d).padStart(2, '0');
+      totalSlots.push({
+        dayNum: d,
+        dateStr: `${dStr}-${mStr}-${calendarYear}`,
+        isSunday: dayOfWeek === 0,
+        isOtherMonth: false,
+      });
     }
 
-    return days;
-  };
+    // 3. Next month trailing days to complete full grid
+    let nextDayNum = 1;
+    while (totalSlots.length % 7 !== 0) {
+      const dayOfWeek = totalSlots.length % 7;
+      const mStr = String(nextMonth + 1).padStart(2, '0');
+      const dStr = String(nextDayNum).padStart(2, '0');
+      totalSlots.push({
+        dayNum: nextDayNum,
+        dateStr: `${dStr}-${mStr}-${nextYear}`,
+        isSunday: dayOfWeek === 0,
+        isOtherMonth: true,
+        isNextMonth: true,
+      });
+      nextDayNum++;
+    }
 
-  const calendarGridDays = generateRealCalendarGrid();
+    const weeks: (typeof totalSlots)[] = [];
+    for (let i = 0; i < totalSlots.length; i += 7) {
+      weeks.push(totalSlots.slice(i, i + 7));
+    }
+    return weeks;
+  }, [calendarYear, calendarMonth]);
 
   const primaryColor = isSuperAdmin ? '#ffe5a0' : '#00f1a1';
   const primaryGold = isSuperAdmin ? '#f0c110' : '#00f1a1';
@@ -179,6 +335,19 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
   const primaryBtnClass = isSuperAdmin ? 'bg-[#f0c110]' : 'bg-[#00f1a1]';
   const primaryBadgeClass = isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40';
   const primaryPillClass = isSuperAdmin ? 'bg-amber-500/15 border border-amber-500/30' : 'bg-emerald-500/15 border border-emerald-500/30';
+
+  // Get all entries for selected class and date in Level 2 view
+  const selectedClassEntries = useMemo(() => {
+    if (!selectedClassDetail) return [];
+    const normDate = normalizeDate(selectedDate);
+    const cleanId = selectedClassDetail.replace(/^Class\s*/i, '').toUpperCase();
+    return diaryEntries.filter(
+      e => e.classId.toUpperCase() === cleanId && normalizeDate(e.date) === normDate
+    );
+  }, [selectedClassDetail, selectedDate, diaryEntries]);
+
+  // Unmatched / General diary entries (non-period specific)
+  const matchedEntryIds = new Set<string>();
 
   return (
     <View style={[styles.container, isSuperAdmin && { backgroundColor: '#101415' }]}>
@@ -327,7 +496,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                               )}
                             </View>
                             <Text className="text-white/60 text-xs mt-0.5" numberOfLines={1}>
-                              {isNoSchedule ? 'No Schedule' : `${subCount} Teacher${subCount === 1 ? '' : 's'} Submitted`}
+                              {isNoSchedule ? `${subCount > 0 ? `${subCount} Diary Submitted` : 'No Schedule'}` : `${subCount} Teacher${subCount === 1 ? '' : 's'} Submitted`}
                             </Text>
                           </View>
                         </View>
@@ -356,7 +525,7 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
             <View className="flex-row justify-between items-center mb-4">
               <View className="flex-1 mr-2">
                 <Text className="text-white font-extrabold text-lg">Class {selectedClassDetail} Submissions</Text>
-                <Text className="text-white/50 text-xs">Timeline for Tuesday • {selectedDate}</Text>
+                <Text className="text-white/50 text-xs">Timeline for {selectedDate}</Text>
               </View>
 
               <Pressable
@@ -381,11 +550,13 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
               }
 
               // Match submitted entry for this class, date, and periodNumber
-              const submittedEntry = diaryEntries.find(
-                e => e.classId.toUpperCase() === (selectedClassDetail || '').toUpperCase() && 
-                     e.periodNumber === pt.periodNumber && 
-                     e.date === selectedDate
+              const submittedEntry = selectedClassEntries.find(
+                e => e.periodNumber === pt.periodNumber
               );
+
+              if (submittedEntry?.id) {
+                matchedEntryIds.add(submittedEntry.id);
+              }
 
               return (
                 <GlassCard key={idx} intensity="low" className="mb-3 p-3.5 border-white/10 bg-[#101415]/90">
@@ -403,11 +574,11 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                   {submittedEntry ? (
                     <View className="mt-1">
                       <View className="flex-row items-center">
-                        <Text className="text-white font-extrabold text-base mr-2">{submittedEntry.subject}</Text>
+                        <Text className="text-white font-extrabold text-base mr-2">{submittedEntry.subject || 'General'}</Text>
                         <Text className="text-white/60 text-sm">— {submittedEntry.teacherName}</Text>
                       </View>
-                      <Text className="text-white/80 text-sm font-bold mt-1.5">{submittedEntry.topicTitle}</Text>
-                      <Text className="text-white/60 text-sm mt-1 leading-relaxed">{submittedEntry.contentSummary}</Text>
+                      <Text className="text-white/80 text-sm font-bold mt-1.5">{submittedEntry.topics || submittedEntry.topicTitle}</Text>
+                      <Text className="text-white/60 text-sm mt-1 leading-relaxed">{submittedEntry.contentSummary || submittedEntry.notes}</Text>
 
                       {submittedEntry.homework && (
                         <View className="bg-black/40 p-2.5 rounded-xl border border-white/5 mt-2.5">
@@ -428,6 +599,48 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
                 </GlassCard>
               );
             })}
+
+            {/* Additional General Submissions from Teacher Portal */}
+            {selectedClassEntries.filter(e => !matchedEntryIds.has(e.id)).length > 0 && (
+              <View className="mt-4 pt-3 border-t border-white/10">
+                <Text className="text-white/60 text-xs font-bold uppercase tracking-wider mb-3">
+                  Additional Diary Submissions (Teacher Portal)
+                </Text>
+                {selectedClassEntries
+                  .filter(e => !matchedEntryIds.has(e.id))
+                  .map((entry) => (
+                    <GlassCard key={entry.id} intensity="low" className="mb-3 p-3.5 border-white/10 bg-[#101415]/90">
+                      <View className="flex-row items-center justify-between mb-1.5">
+                        <Text className={`${primaryTextClass} text-sm font-extrabold`}>
+                          {entry.teacherName}
+                        </Text>
+                        <View className={`px-2 py-0.5 rounded-md ${primaryBadgeClass}`}>
+                          <Text className={`${primaryTextClass} text-[10px] font-bold`}>Submitted {entry.submittedAt}</Text>
+                        </View>
+                      </View>
+
+                      <Text className="text-white text-sm font-bold mt-1">
+                        <Text className="text-white/50 font-normal">Topics: </Text>
+                        {entry.topics || entry.topicTitle}
+                      </Text>
+
+                      {Boolean(entry.homework) && (
+                        <View className="bg-black/40 p-2 rounded-xl border border-white/5 mt-2">
+                          <Text className="text-amber-400 text-xs font-bold">
+                            Homework: <Text className="text-white/80 font-normal">{entry.homework}</Text>
+                          </Text>
+                        </View>
+                      )}
+
+                      {Boolean(entry.notes) && (
+                        <Text className="text-sky-300 text-xs mt-1.5">
+                          Note: {entry.notes}
+                        </Text>
+                      )}
+                    </GlassCard>
+                  ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -456,78 +669,130 @@ export const AdminDailyDiaryScreen: React.FC<any> = ({ navigation }) => {
               <Pressable onPress={handlePrevMonth} className="p-1 border border-white/10 rounded-lg bg-white/5">
                 <ChevronLeft size={16} color={primaryColor} />
               </Pressable>
-              <Text className="text-white font-extrabold text-sm">{monthYearDisplay}</Text>
-              {(() => {
-                const today = new Date();
-                const isCurrentOrFutureMonth = viewDate.getFullYear() > today.getFullYear() || (viewDate.getFullYear() === today.getFullYear() && viewDate.getMonth() >= today.getMonth());
-                return (
-                  <Pressable
-                    onPress={handleNextMonth}
-                    disabled={isCurrentOrFutureMonth}
-                    className={`p-1 border border-white/10 rounded-lg bg-white/5 ${isCurrentOrFutureMonth ? 'opacity-25' : 'active:bg-white/20'}`}
-                  >
-                    <ChevronRight size={16} color={primaryColor} />
-                  </Pressable>
-                );
-              })()}
+              <Text className="text-white font-extrabold text-sm">
+                {MONTH_NAMES[calendarMonth]} {calendarYear}
+              </Text>
+              <Pressable
+                onPress={handleNextMonth}
+                className="p-1 border border-white/10 rounded-lg bg-white/5 active:bg-white/20"
+              >
+                <ChevronRight size={16} color={primaryColor} />
+              </Pressable>
             </View>
 
-            {/* Swipeable Calendar Grid Container (Swipe Left/Right to change months) */}
+            {/* Swipeable Calendar Grid Container */}
             <View {...calSwipeResponder.panHandlers}>
-              {/* 7-Column Days of Week Bar (14.28% Width Each) */}
+              {/* 7-Column Days of Week Bar */}
               <View className="flex-row mb-2">
                 {DAYS_OF_WEEK.map((d, i) => (
                   <View key={i} style={{ width: '14.28%', alignItems: 'center' }}>
-                    <Text className="text-white/40 text-[10px] font-bold uppercase">{d}</Text>
+                    <Text className={`text-[10px] font-bold uppercase ${i === 0 ? 'text-red-400/70' : 'text-white/40'}`}>
+                      {d}
+                    </Text>
                   </View>
                 ))}
               </View>
 
-              {/* 7-Column Calendar Days Grid (14.28% Width Each) */}
-              <View className="flex-row flex-wrap mb-4">
-                {calendarGridDays.map((cell, idx) => {
-                  if (!cell) {
-                    return <View key={idx} style={{ width: '14.28%', height: 36 }} />;
-                  }
-                  const isSelected = selectedDate === cell.dateStr;
-                  const now = new Date();
-                  now.setHours(23, 59, 59, 999);
-                  const cellDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), cell.dayNum);
-                  const isFuture = cellDate > now;
+              {/* 7-Column Calendar Days Grid with gray other-month dates */}
+              <View className="mb-4">
+                {calendarWeeks.map((week, wIdx) => (
+                  <View key={wIdx} className="flex-row mb-1">
+                    {week.map((cell, cIdx) => {
+                      const isSelected = selectedDate === cell.dateStr;
+                      const now = new Date();
+                      now.setHours(23, 59, 59, 999);
+                      const parts = cell.dateStr.split('-');
+                      const cellDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                      const isFuture = cellDate > now;
 
-                  return (
-                    <View key={idx} style={{ width: '14.28%', height: 36, padding: 2 }}>
-                      <Pressable
-                        disabled={isFuture}
-                        onPress={() => {
-                          if (!isFuture) {
-                            setSelectedDate(cell.dateStr);
-                            setShowDatePickerModal(false);
-                          }
-                        }}
-                        className={`w-full h-full rounded-xl items-center justify-center border ${
-                          isFuture
-                            ? 'opacity-20 bg-white/5 border-transparent'
-                            : isSelected
-                            ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]')
-                            : 'bg-white/5 border-white/10'
-                        }`}
-                      >
-                        <Text className={`text-xs font-bold ${isFuture ? 'text-white/30' : isSelected ? 'text-[#101415]' : 'text-white'}`}>
-                          {cell.dayNum}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  );
-                })}
+                      return (
+                        <View key={cIdx} style={{ width: '14.28%', height: 38, padding: 2 }}>
+                          <Pressable
+                            onPress={() => {
+                              if (cell.isPrevMonth) {
+                                handlePrevMonth();
+                              } else if (cell.isNextMonth) {
+                                handleNextMonth();
+                              }
+                              handleSelectDate(cell.dateStr);
+                            }}
+                            className={`w-full h-full rounded-xl items-center justify-center border ${
+                              isFuture
+                                ? 'opacity-20 bg-white/5 border-transparent'
+                                : isSelected
+                                ? (isSuperAdmin ? 'bg-[#f0c110] border-[#f0c110]' : 'bg-[#00f1a1] border-[#00f1a1]')
+                                : cell.isSunday
+                                ? 'bg-red-500/10 border-red-500/20'
+                                : 'bg-white/5 border-white/10'
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-bold ${
+                                isFuture
+                                  ? 'text-white/30'
+                                  : isSelected
+                                  ? 'text-[#101415] font-black'
+                                  : cell.isSunday
+                                  ? 'text-red-400'
+                                  : 'text-white'
+                              }`}
+                            >
+                              {cell.dayNum}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
               </View>
             </View>
 
+            <View className="flex-row" style={{ gap: 8 }}>
+              <Pressable
+                onPress={() => {
+                  const today = new Date();
+                  const d = String(today.getDate()).padStart(2, '0');
+                  const m = String(today.getMonth() + 1).padStart(2, '0');
+                  const y = today.getFullYear();
+                  handleSelectDate(`${d}-${m}-${y}`);
+                }}
+                className={`flex-1 py-3 rounded-xl items-center justify-center ${isSuperAdmin ? 'bg-[#f0c110]/20 border border-[#f0c110]/40' : 'bg-[#00f1a1]/20 border border-[#00f1a1]/40'}`}
+              >
+                <Text className={`${primaryTextClass} font-extrabold text-xs`}>Select Today</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setShowDatePickerModal(false)}
+                className="flex-1 py-3 rounded-xl bg-white/10 items-center justify-center"
+              >
+                <Text className="text-white font-bold text-xs">Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* DATE SELECTION ERROR MODAL */}
+      <Modal
+        visible={dateSelectionError.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDateSelectionError((prev) => ({ ...prev, visible: false }))}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.dateErrorModalBox}>
+            <View style={styles.dateErrorIconBox}>
+              <AlertCircle size={28} color="#fb7185" />
+            </View>
+
+            <Text style={styles.dateErrorTitle}>{dateSelectionError.title}</Text>
+            <Text style={styles.dateErrorMessage}>{dateSelectionError.message}</Text>
+
             <Pressable
-              onPress={() => setShowDatePickerModal(false)}
-              className="w-full py-3 rounded-xl bg-white/10 items-center"
+              onPress={() => setDateSelectionError((prev) => ({ ...prev, visible: false }))}
+              style={styles.dateErrorDismissBtn}
             >
-              <Text className="text-white font-bold text-xs">Close Calendar</Text>
+              <Text style={styles.dateErrorDismissBtnText}>Understood</Text>
             </Pressable>
           </View>
         </View>
@@ -544,6 +809,68 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: 16,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dateErrorModalBox: {
+    backgroundColor: '#181524',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(251, 113, 133, 0.4)',
+    padding: 22,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+    shadowColor: '#fb7185',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  dateErrorIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(251, 113, 133, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 113, 133, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  dateErrorTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  dateErrorMessage: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11.5,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 16,
+  },
+  dateErrorDismissBtn: {
+    backgroundColor: '#fb7185',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    width: '100%',
+    alignItems: 'center',
+  },
+  dateErrorDismissBtnText: {
+    color: '#0d0d12',
+    fontSize: 13,
+    fontWeight: '800',
+  },
 });
 
 export default AdminDailyDiaryScreen;
+
+

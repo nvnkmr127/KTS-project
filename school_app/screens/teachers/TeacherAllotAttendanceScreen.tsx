@@ -416,17 +416,72 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
     }
   };
 
-  // Date selection helper (Future dates strictly disabled)
+  // Date selection state & error modal state
+  const [dateSelectionError, setDateSelectionError] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({ visible: false, title: '', message: '' });
+
+  // Helper: check if date is Sunday
+  const isSundayDateStr = (dateStr: string): boolean => {
+    if (!dateStr) return false;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return false;
+    let y: number, m: number, d: number;
+    if (parts[0].length === 4) {
+      y = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      d = parseInt(parts[2], 10);
+    } else {
+      d = parseInt(parts[0], 10);
+      m = parseInt(parts[1], 10) - 1;
+      y = parseInt(parts[2], 10);
+    }
+    const dt = new Date(y, m, d);
+    return dt.getDay() === 0;
+  };
+
+  // Date selection helper (Future dates, Sundays, and Holidays show error popup)
   const isFutureDateStr = (dateStr: string) => {
     const today = getTodayDateStr();
     return dateStr > today;
   };
 
   const handleSelectDate = (fullDateStr: string) => {
-    if (isFutureDateStr(fullDateStr)) return;
+    if (isFutureDateStr(fullDateStr)) {
+      setDateSelectionError({
+        visible: true,
+        title: 'Future Date Disabled',
+        message: `Attendance cannot be allotted for upcoming dates (${formatDateDisplay(fullDateStr)}). Only past and current dates are allowed.`,
+      });
+      return;
+    }
+
+    if (isSundayDateStr(fullDateStr)) {
+      setDateSelectionError({
+        visible: true,
+        title: 'Sunday (Weekend Holiday)',
+        message: `School remains closed on Sundays (${formatDateDisplay(fullDateStr)}). Attendance cannot be allotted on weekends.`,
+      });
+      return;
+    }
+
+    const holiday = findHolidayForDate(fullDateStr);
+    if (holiday) {
+      setDateSelectionError({
+        visible: true,
+        title: `${holiday.title} (Holiday)`,
+        message: `${formatDateDisplay(fullDateStr)} is an official holiday (${holiday.title}). Attendance cannot be allotted on holidays.`,
+      });
+      return;
+    }
+
     setDate(fullDateStr);
     setShowDatePickerModal(false);
   };
+
+
 
   return (
     <View style={styles.container}>
@@ -918,6 +973,8 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
                       const { dayNum, fullDateStr, isSunday, isOtherMonth, isPrevMonth, isNextMonth } = cell;
                       const holidayOnDay = findHolidayForDate(fullDateStr);
                       const isFuture = isFutureDateStr(fullDateStr);
+                      const isHoliday = Boolean(holidayOnDay && !isOtherMonth);
+                      const isDisabled = isFuture || isHoliday;
                       const isSelected = date === fullDateStr;
                       const isToday = fullDateStr === getTodayDateStr();
 
@@ -935,18 +992,12 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
                               }
                               handleSelectDate(fullDateStr);
                             }}
-                            disabled={isFuture}
                             style={[
                               styles.calendarDayCard,
-                              isOtherMonth && {
-                                backgroundColor: 'rgba(255, 255, 255, 0.02)',
-                                borderColor: 'rgba(255, 255, 255, 0.04)',
-                                opacity: 0.5,
-                              },
-                              !isOtherMonth && isSunday && styles.calendarSundayCard,
-                              !isOtherMonth && holidayOnDay && !isFuture && styles.calendarHolidayCard,
-                              isSelected && styles.calendarSelectedCard,
                               isFuture && styles.calendarFutureCard,
+                              !isFuture && isSunday && styles.calendarSundayCard,
+                              !isFuture && holidayOnDay && styles.calendarHolidayCard,
+                              isSelected && styles.calendarSelectedCard,
                             ]}
                           >
                             {/* Day Number and Top Indicator */}
@@ -954,9 +1005,8 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
                               <Text
                                 style={[
                                   styles.calendarDayNumText,
-                                  isOtherMonth && { color: '#71717a', fontWeight: '600' },
-                                  !isOtherMonth && isSunday && { color: '#fb7185' },
-                                  !isOtherMonth && holidayOnDay && !isFuture && { color: holidayOnDay.color || '#ddb7ff' },
+                                  !isFuture && isSunday && { color: '#fb7185' },
+                                  !isFuture && holidayOnDay && { color: holidayOnDay.color || '#ddb7ff' },
                                   isSelected && { color: '#ffffff', fontWeight: '900' },
                                   isFuture && { color: '#52525b' },
                                 ]}
@@ -964,11 +1014,12 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
                                 {dayNum}
                               </Text>
 
-                              {holidayOnDay && !isFuture && !isOtherMonth ? (
+                              {holidayOnDay ? (
                                 <View
                                   style={[
                                     styles.calendarHolidayDot,
                                     { backgroundColor: holidayOnDay.color || '#ddb7ff' },
+                                    isFuture && { opacity: 0.4 },
                                   ]}
                                 />
                               ) : isToday && !isSelected ? (
@@ -983,17 +1034,18 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
                                   ACTIVE
                                 </Text>
                               </View>
-                            ) : !isOtherMonth && isSunday ? (
-                              <View style={styles.calendarSunBadge}>
+                            ) : isSunday ? (
+                              <View style={[styles.calendarSunBadge, isFuture && { opacity: 0.4 }]}>
                                 <Text style={styles.calendarSunBadgeText} numberOfLines={1}>
                                   SUN
                                 </Text>
                               </View>
-                            ) : !isOtherMonth && holidayOnDay && !isFuture ? (
+                            ) : holidayOnDay ? (
                               <View
                                 style={[
                                   styles.calendarHolBadge,
                                   { backgroundColor: holidayOnDay.color || '#ddb7ff' },
+                                  isFuture && { opacity: 0.4 },
                                 ]}
                               >
                                 <Text
@@ -1003,7 +1055,7 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
                                   {holidayOnDay.title.split(' ')[0] || 'HOL'}
                                 </Text>
                               </View>
-                            ) : !isOtherMonth && isToday ? (
+                            ) : isToday ? (
                               <View style={styles.calendarTodayBadge}>
                                 <Text style={styles.calendarTodayBadgeText} numberOfLines={1}>
                                   TODAY
@@ -1027,7 +1079,7 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#f59e0b' }]} />
-                <Text style={styles.legendText}>Holiday</Text>
+                <Text style={styles.legendText}>Holiday (Off)</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#fb7185' }]} />
@@ -1044,17 +1096,39 @@ export const TeacherAllotAttendanceScreen: React.FC<{ navigation: any }> = ({ na
               <Pressable
                 onPress={() => {
                   const todayStr = getTodayDateStr();
-                  setDate(todayStr);
-                  const now = new Date();
-                  setCalendarMonth(now.getMonth());
-                  setCalendarYear(now.getFullYear());
-                  setShowDatePickerModal(false);
+                  handleSelectDate(todayStr);
                 }}
                 style={styles.todayQuickBtn}
               >
                 <Text style={styles.todayQuickBtnText}>Select Today ({formatDateDisplay(getTodayDateStr())})</Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* DATE SELECTION ERROR MODAL */}
+      <Modal
+        visible={dateSelectionError.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDateSelectionError((prev) => ({ ...prev, visible: false }))}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.dateErrorModalBox}>
+            <View style={styles.dateErrorIconBox}>
+              <AlertCircle size={28} color="#fb7185" />
+            </View>
+
+            <Text style={styles.dateErrorTitle}>{dateSelectionError.title}</Text>
+            <Text style={styles.dateErrorMessage}>{dateSelectionError.message}</Text>
+
+            <Pressable
+              onPress={() => setDateSelectionError((prev) => ({ ...prev, visible: false }))}
+              style={styles.dateErrorDismissBtn}
+            >
+              <Text style={styles.dateErrorDismissBtnText}>Understood</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -2359,4 +2433,58 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
   },
+  dateErrorModalBox: {
+    backgroundColor: '#181524',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: 'rgba(251, 113, 133, 0.4)',
+    padding: 22,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 320,
+    shadowColor: '#fb7185',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  dateErrorIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(251, 113, 133, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 113, 133, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  dateErrorTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  dateErrorMessage: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11.5,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: 16,
+  },
+  dateErrorDismissBtn: {
+    backgroundColor: '#fb7185',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    width: '100%',
+    alignItems: 'center',
+  },
+  dateErrorDismissBtnText: {
+    color: '#0d0d12',
+    fontSize: 13,
+    fontWeight: '800',
+  },
 });
+
