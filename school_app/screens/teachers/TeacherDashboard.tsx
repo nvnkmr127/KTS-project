@@ -1241,6 +1241,24 @@ export const TeacherDashboard: React.FC<any> = ({ navigation }) => {
                   </View>
                   <ChevronRight size={16} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
                 </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setShowQuickActionModal(false);
+                    navigation.navigate("TeacherCommunication");
+                  }}
+                  className="p-3.5 bg-white/5 border border-white/10 rounded-2xl flex-row items-center active:bg-[#ddb7ff]/20"
+                  style={{ flexWrap: "nowrap" }}
+                >
+                  <View className="w-10 h-10 rounded-xl bg-emerald-500/20 items-center justify-center mr-3" style={{ flexShrink: 0 }}>
+                    <MessageSquare size={20} color="#4ade80" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white font-extrabold text-sm" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Parent Messages</Text>
+                    <Text className="text-white/50 text-xs" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={{ includeFontPadding: false }}>Call or WhatsApp parents of assigned class</Text>
+                  </View>
+                  <ChevronRight size={16} color="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }} />
+                </Pressable>
               </View>
             </View>
           </View>

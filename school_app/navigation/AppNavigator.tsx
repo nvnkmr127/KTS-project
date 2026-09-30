@@ -107,6 +107,7 @@ import { TeacherTimetableScreen } from '../screens/teachers/TeacherTimetableScre
 import { TeacherStudentAttendanceScreen } from '../screens/teachers/TeacherStudentAttendanceScreen';
 import { TeacherAllotAttendanceScreen } from '../screens/teachers/TeacherAllotAttendanceScreen';
 import { AdminAllotAttendanceScreen } from '../screens/admin_staff/AdminAllotAttendanceScreen';
+import TeacherCommunicationScreen from '../screens/teachers/TeacherCommunicationScreen';
 
 // Parent Screens
 import ParentDashboard from '../screens/parents/ParentDashboard';
@@ -339,7 +340,7 @@ const TeacherTabs = () => (
     />
     <Tab.Screen 
       name="TeacherCommunication" 
-      component={MessagingScreen} 
+      component={TeacherCommunicationScreen} 
       options={{ ...getTabOptions(MessageCircle, '#ddb7ff', 'Messages'), tabBarItemStyle: { display: 'none' } }} 
     />
     <Tab.Screen 
@@ -470,7 +471,7 @@ export const AppNavigator: React.FC = () => {
       <Stack.Screen name="ReportCard" component={ReportCardScreen} />
       <Stack.Screen name="BusTracking" component={BusTrackingScreen} />
       <Stack.Screen name="Messaging" component={MessagingScreen} />
-      <Stack.Screen name="TeacherCommunication" component={MessagingScreen} />
+      <Stack.Screen name="TeacherCommunication" component={TeacherCommunicationScreen} />
       <Stack.Screen name="EnquiryLeads" component={EnquiryLeadsScreen} />
       <Stack.Screen 
         name="StudentPerformance" 
