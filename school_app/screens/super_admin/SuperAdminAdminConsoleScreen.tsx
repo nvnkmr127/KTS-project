@@ -9,7 +9,8 @@ import {
   ArrowLeft, Search, ShieldCheck, UserSquare2, UserPlus, 
   School, UserCheck, BookOpen, TrendingUp, GraduationCap, 
   Wallet, Tag, CalendarDays, CalendarOff, CalendarRange, 
-  FileEdit, ArrowLeftRight, Megaphone, UserSearch, Bus, Sliders
+  FileEdit, ArrowLeftRight, Megaphone, UserSearch, Bus, Sliders,
+  ClipboardCheck
 } from 'lucide-react-native';
 import { useResponsive } from '../../utils/responsive';
 
@@ -27,31 +28,32 @@ const ADMIN_OPTIONS: AdminOption[] = [
   { id: '1', title: 'Student Profiles', subtitle: 'Directory & enrollment', icon: <UserSquare2 size={24} color="#ffe5a0" />, route: 'StudentDirectory', category: 'Students' },
   { id: '2', title: 'Add Student', subtitle: 'New admissions & intake', icon: <UserPlus size={24} color="#ffe5a0" />, route: 'AddStudent', category: 'Students' },
   { id: '3', title: 'Student Attendance', subtitle: 'Daily & monthly logs', icon: <UserCheck size={24} color="#ffe5a0" />, route: 'AdminStudentAttendance', category: 'Students' },
-  { id: '4', title: 'Classes Promotions', subtitle: 'Annual session upgrades', icon: <TrendingUp size={24} color="#ffe5a0" />, route: 'ClassPromotions', category: 'Students' },
-  { id: '5', title: 'Alumni Directory', subtitle: 'Graduated batches', icon: <GraduationCap size={24} color="#ffe5a0" />, route: 'AlumniManagement', category: 'Students' },
+  { id: '4', title: 'Allot Attendance', subtitle: 'Period-wise student presence', icon: <ClipboardCheck size={24} color="#ffe5a0" />, route: 'AdminAllotAttendance', category: 'Students' },
+  { id: '5', title: 'Classes Promotions', subtitle: 'Annual session upgrades', icon: <TrendingUp size={24} color="#ffe5a0" />, route: 'ClassPromotions', category: 'Students' },
+  { id: '6', title: 'Alumni Directory', subtitle: 'Graduated batches', icon: <GraduationCap size={24} color="#ffe5a0" />, route: 'AlumniManagement', category: 'Students' },
 
   // Academics
-  { id: '6', title: 'Class Management', subtitle: 'Sections & class teachers', icon: <School size={24} color="#ffe5a0" />, route: 'ClassManagement', category: 'Academics' },
-  { id: '7', title: 'Daily Diary View', subtitle: 'Homework & teacher logs', icon: <BookOpen size={24} color="#ffe5a0" />, route: 'AdminDailyDiary', category: 'Academics' },
-  { id: '8', title: 'Timetable Builder', subtitle: 'Period allocations & slots', icon: <CalendarRange size={24} color="#ffe5a0" />, route: 'TimetableBuilder', category: 'Academics' },
-  { id: '9', title: 'Exam Schedule', subtitle: 'Term & test timetables', icon: <FileEdit size={24} color="#ffe5a0" />, route: 'ExamSchedule', category: 'Academics' },
-  { id: '10', title: 'Holiday Calendar', subtitle: 'Annual academic holidays', icon: <CalendarDays size={24} color="#ffe5a0" />, route: 'HolidayCalendar', category: 'Academics' },
+  { id: '7', title: 'Class Management', subtitle: 'Sections & class teachers', icon: <School size={24} color="#ffe5a0" />, route: 'ClassManagement', category: 'Academics' },
+  { id: '8', title: 'Daily Diary View', subtitle: 'Homework & teacher logs', icon: <BookOpen size={24} color="#ffe5a0" />, route: 'AdminDailyDiary', category: 'Academics' },
+  { id: '9', title: 'Timetable Builder', subtitle: 'Period allocations & slots', icon: <CalendarRange size={24} color="#ffe5a0" />, route: 'TimetableBuilder', category: 'Academics' },
+  { id: '10', title: 'Exam Schedule', subtitle: 'Term & test timetables', icon: <FileEdit size={24} color="#ffe5a0" />, route: 'ExamSchedule', category: 'Academics' },
+  { id: '11', title: 'Holiday Calendar', subtitle: 'Annual academic holidays', icon: <CalendarDays size={24} color="#ffe5a0" />, route: 'HolidayCalendar', category: 'Academics' },
 
   // Finance
-  { id: '11', title: 'Fee Collection', subtitle: 'Ledger & receipt entries', icon: <Wallet size={24} color="#ffe5a0" />, route: 'FeeList', category: 'Finance' },
-  { id: '12', title: 'Fee Categories', subtitle: 'Tuition & transport heads', icon: <Tag size={24} color="#ffe5a0" />, route: 'FeeCategory', category: 'Finance' },
-  { id: '13', title: 'Salary Categories', subtitle: 'Payroll heads & allotments', icon: <Wallet size={24} color="#ffe5a0" />, route: 'SalaryCategories', category: 'Finance' },
+  { id: '12', title: 'Fee Collection', subtitle: 'Ledger & receipt entries', icon: <Wallet size={24} color="#ffe5a0" />, route: 'FeeList', category: 'Finance' },
+  { id: '13', title: 'Fee Categories', subtitle: 'Tuition & transport heads', icon: <Tag size={24} color="#ffe5a0" />, route: 'FeeCategory', category: 'Finance' },
+  { id: '14', title: 'Salary Categories', subtitle: 'Payroll heads & allotments', icon: <Wallet size={24} color="#ffe5a0" />, route: 'SalaryCategories', category: 'Finance' },
 
   // Operations
-  { id: '14', title: 'Staff Management', subtitle: 'Faculty directory & onboard', icon: <UserSquare2 size={24} color="#ffe5a0" />, route: 'StaffManagement', category: 'Operations' },
-  { id: '15', title: 'Staff Attendance', subtitle: 'Faculty biometric logs & roster', icon: <UserCheck size={24} color="#ffe5a0" />, route: 'StaffAttendance', category: 'Operations' },
-  { id: '16', title: 'Staff Leaves', subtitle: 'Review & approve leaves', icon: <CalendarOff size={24} color="#ffe5a0" />, route: 'AdminStaffLeaves', category: 'Operations' },
-  { id: '17', title: 'Roles & Privileges', subtitle: 'Role based access matrix', icon: <ShieldCheck size={24} color="#ffe5a0" />, route: 'RolesPermissions', category: 'Operations' },
-  { id: '18', title: 'Substitution Assign', subtitle: 'Teacher proxy allotments', icon: <ArrowLeftRight size={24} color="#ffe5a0" />, route: 'SubstitutionManagement', category: 'Operations' },
-  { id: '19', title: 'Circulars & Alerts', subtitle: 'Parent & staff broadcasts', icon: <Megaphone size={24} color="#ffe5a0" />, route: 'AdminAlertConfiguration', category: 'Operations' },
-  { id: '20', title: 'Enquiry Leads', subtitle: 'Admission CRM & inquiries', icon: <UserSearch size={24} color="#ffe5a0" />, route: 'EnquiryLeads', category: 'Operations' },
-  { id: '21', title: 'Bus GPS Tracking', subtitle: 'Route movement monitor', icon: <Bus size={24} color="#ffe5a0" />, route: 'AdminBusTracking', category: 'Operations' },
-  { id: '22', title: 'Configuration', subtitle: 'Alert rules & auto-broadcast settings', icon: <Sliders size={24} color="#ffe5a0" />, route: 'AdminAlertConfiguration', category: 'Operations' },
+  { id: '15', title: 'Staff Management', subtitle: 'Faculty directory & onboard', icon: <UserSquare2 size={24} color="#ffe5a0" />, route: 'StaffManagement', category: 'Operations' },
+  { id: '16', title: 'Staff Attendance', subtitle: 'Faculty biometric logs & roster', icon: <UserCheck size={24} color="#ffe5a0" />, route: 'StaffAttendance', category: 'Operations' },
+  { id: '17', title: 'Staff Leaves', subtitle: 'Review & approve leaves', icon: <CalendarOff size={24} color="#ffe5a0" />, route: 'AdminStaffLeaves', category: 'Operations' },
+  { id: '18', title: 'Roles & Privileges', subtitle: 'Role based access matrix', icon: <ShieldCheck size={24} color="#ffe5a0" />, route: 'RolesPermissions', category: 'Operations' },
+  { id: '19', title: 'Substitution Assign', subtitle: 'Teacher proxy allotments', icon: <ArrowLeftRight size={24} color="#ffe5a0" />, route: 'SubstitutionManagement', category: 'Operations' },
+  { id: '20', title: 'Circulars & Alerts', subtitle: 'Parent & staff broadcasts', icon: <Megaphone size={24} color="#ffe5a0" />, route: 'AdminAlertConfiguration', category: 'Operations' },
+  { id: '21', title: 'Enquiry Leads', subtitle: 'Admission CRM & inquiries', icon: <UserSearch size={24} color="#ffe5a0" />, route: 'EnquiryLeads', category: 'Operations' },
+  { id: '22', title: 'Bus GPS Tracking', subtitle: 'Route movement monitor', icon: <Bus size={24} color="#ffe5a0" />, route: 'AdminBusTracking', category: 'Operations' },
+  { id: '23', title: 'Configuration', subtitle: 'Alert rules & auto-broadcast settings', icon: <Sliders size={24} color="#ffe5a0" />, route: 'AdminAlertConfiguration', category: 'Operations' },
 ];
 
 export const SuperAdminAdminConsoleScreen: React.FC = () => {
@@ -157,7 +159,6 @@ export const SuperAdminAdminConsoleScreen: React.FC = () => {
           <Text className="text-[#ffe5a0] text-xs font-bold uppercase tracking-wider">
             ADMIN MODULES ({filteredOptions.length})
           </Text>
-          <Text className="text-white/40 text-[10px]">Excludes Reports & Recycle Bin</Text>
         </View>
 
         {/* Admin Options Grid (2 Columns) */}
